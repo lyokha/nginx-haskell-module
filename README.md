@@ -2,7 +2,7 @@ Nginx Haskell module
 ====================
 
 This Nginx module allows compiling and running Haskell source code found in a
-configuration file or an existing shared library. Here is a motivational
+configuration file or an existing shared library. Below is a motivational
 example.
 
 ```nginx
@@ -70,12 +70,12 @@ NGX_EXPORT_S_SS (isMatch)
 }
 ```
 
-Source code is loaded with directives *haskell compile* or *haskell load*. Both
-directives accept an absolute path to a haskell source file as their first
-argument and a haskell source code as their second argument. The code is getting
-saved to the path and compiled to a shared library when nginx starts. The
-directives have a subtle distinction: *haskell compile* always requires the code
-argument and runs compiler unconditionally, whereas *haskell load* checks if the
-target library exists and does not compile source code in this case: in fact the
-source code argument may be omitted.
+Haskell source code is loaded with directives *haskell compile* or *haskell
+load*. Both directives accept an absolute path to a haskell source file as their
+first argument and a haskell source code as their second argument. The code is
+getting saved to the path and compiled to a shared library when nginx starts.
+The directives have a subtle distinction: *haskell compile* always requires the
+code argument and runs compiler unconditionally, whereas *haskell load* checks
+if the target library exists and does not compile source code in this case, thus
+eliminating necessity of the source code argument.
 
