@@ -79,3 +79,60 @@ code argument and runs compiler unconditionally, whereas *haskell load* checks
 if the target library exists and does not compile source code in this case, thus
 eliminating necessity of the source code argument.
 
+The module may load an arbitrary haskell code but only those functions are
+accessible from the nginx that are exported with special macros *NGX_EXPORT_S_S*
+and *NGX_EXPORT_S_SS* (here *S_S* and *S_SS* stand for mnemonical types
+*returns-String-accepts-String* and *returns-String-accepts-String-String*).
+Effectively this means that only *string* functions are supported that return
+strings and accept one or two string arguments.
+
+In this example four custom haskell functions are exported: *toUpper*, *takeN*,
+*reverse* (which is normal *reverse* imported from *Prelude*) and *isMatch*
+(which requires module *Text.Regex.PCRE*). As soon as normally this code won't
+compile due to ambiguity involved by presence of the two packages *regex-pcre*
+and *regex-pcre-builtin*, I had to add an extra *ghc* compilation flag using
+directive *haskell ghc_extra_flags*.
+
+Let's look inside the *server* clause, in *location /* where the exported
+haskell functions are used. Directive *haskell_run* takes three or four
+arguments: it depends on the type of the exported function (*S_S* or *S_SS*).
+The first argument of the directive is the name of an exported haskell function,
+the second argument is a custom variable where the function return value will be
+stored, and the remaining (one or two) arguments are complex values (in the
+nginx notion, it means that they may contain arbitrary number of variables and
+plain symbols) that correspond to the arguments of the exported function.
+Directive *haskell_run* is allowed in *server*, *location* and *location-if*
+clauses. In this example all returned strings are stored in the same variable
+*hs_a* which is not a good habit for nginx configuration files. I only wanted to
+show that upper nginx configuration levels being merged with lower levels behave
+as normally expected.
+
+What about doing some tests? Let's first start nginx.
+
+```
+nginx -p. -c./nginx.conf
+[1 of 1] Compiling NgxHaskellUserRuntime ( /tmp/ngx_haskell.hs, /tmp/ngx_haskell.o )
+Linking /tmp/ngx_haskell.so ...
+```
+
+Nginx compiles haskell code at its start. Had compilation failed and nginx would
+not have started! But in this case the code is OK and we are moving forward.
+
+```
+# curl 'http://localhost:8010/?a=hello_world'
+toUpper (hello_world) = HELLO_WORLD
+# curl 'http://localhost:8010/?a=hello_world&b=4'
+takeN (hello_world, 4) = hell
+# curl 'http://localhost:8010/?a=hello_world&b=oops'
+takeN (hello_world, oops) = 
+# curl 'http://localhost:8010/?c=intelligence'
+reverse (intelligence) = ecnegilletni
+# curl 'http://localhost:8010/?d=intelligence&a=^i'
+isMatch (intelligence, ^i) = True
+# curl 'http://localhost:8010/?d=intelligence&a=^I'
+isMatch (intelligence, ^I) = False
+```
+
+(of course using plain character ``^`` in an URL is not welcome, but otherwise I
+would have to write another haskell function to decode URLs)
+
