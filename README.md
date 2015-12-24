@@ -2,8 +2,10 @@ Nginx Haskell module
 ====================
 
 This Nginx module allows compiling and running Haskell source code found in a
-configuration file or an existing shared library. Below is a motivational
-example.
+configuration file or an existing shared library.
+
+Motivational example
+--------------------
 
 ```nginx
 user                nobody;
@@ -135,4 +137,28 @@ isMatch (intelligence, ^I) = False
 
 (of course using plain character ``^`` in an URL is not welcome, but otherwise I
 would have to write another haskell function to decode URLs)
+
+Some facts about efficiency
+---------------------------
+
+- Advantages
+
+    + The haskell library gets compiled at the very start of nginx and further
+      loaded with *dlopen()*.
+    + Nginx strings are passed to haskell exported functions as strings with
+      lengths, no extra allocations are needed.
+
+- Pitfalls
+
+    + Haskell strings are simple lists, they are not contiguously allocated
+      (but on the other hand they are lazy, which usually means efficient)
+    + Haskell exported functions allocate new strings which later get copied 
+      to an nginx request context's pool and freed.
+
+Some facts about exceptions
+---------------------------
+
+Haskell source code must be preferably pure and safe as soon as C code is known
+to be unfamiliar with catching Haskell exceptions. That is why I used functions
+from the *Safe* module in the above example.
 
