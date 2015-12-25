@@ -676,14 +676,14 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
 {
     ngx_uint_t                         i;
     ngx_http_haskell_main_conf_t      *mcf;
+    ngx_http_haskell_loc_conf_t       *lcf;
     ngx_int_t                         *self = (ngx_int_t *) data;
     ngx_int_t                          found_idx = NGX_ERROR;
-    ngx_http_haskell_loc_conf_t       *lcf;
     ngx_array_t                       *code_vars;
     ngx_http_haskell_code_var_data_t  *code_vars_elts;
     ngx_str_t                          arg1, arg2;
     char                              *res;
-    u_char                            *res_val;
+    u_char                            *res_copy;
     ngx_uint_t                         len;
 
     if (self == NULL) {
@@ -783,17 +783,17 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
         return NGX_ERROR;
     }
 
-    res_val = ngx_pcalloc(r->pool, len);
-    if (res_val == NULL) {
+    res_copy = ngx_pcalloc(r->pool, len);
+    if (res_copy == NULL) {
         ngx_free(res);
         return NGX_ERROR;
     }
 
-    ngx_memcpy(res_val, res, len);
+    ngx_memcpy(res_copy, res, len);
     ngx_free(res);
 
     v->len = len;
-    v->data = res_val;
+    v->data = res_copy;
     v->valid = 1;
     v->no_cacheable = 0;
     v->not_found = 0;
