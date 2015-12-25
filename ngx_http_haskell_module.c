@@ -53,19 +53,19 @@ static const char  haskell_module_code_tail[] =
 "AUX_NGX_SF -> AUX_NGX.CString -> AUX_NGX.CInt -> "
 "AUX_NGX.Ptr AUX_NGX.CString -> IO AUX_NGX.CInt\n"
 "aux_ngx_hs_s_s (AUX_NGX_S_S f) x n p = do\n"
-"    (x, s) <- AUX_NGX.newCStringLen $ f $ aux_ngx_peekUnsafeCStringLen x $ "
+"    (s, l) <- AUX_NGX.newCStringLen $ f $ aux_ngx_peekUnsafeCStringLen x $ "
 "fromIntegral n\n"
-"    AUX_NGX.poke p x\n"
-"    return $ fromIntegral s\n"
+"    AUX_NGX.poke p s\n"
+"    return $ fromIntegral l\n"
 "aux_ngx_hs_s_ss :: AUX_NGX_SF -> "
 "AUX_NGX.CString -> AUX_NGX.CInt -> AUX_NGX.CString -> AUX_NGX.CInt -> "
 "AUX_NGX.Ptr AUX_NGX.CString -> IO AUX_NGX.CInt\n"
 "aux_ngx_hs_s_ss (AUX_NGX_S_SS f) x n y m p = do\n"
-"    (x, s) <- AUX_NGX.newCStringLen $ f "
+"    (s, l) <- AUX_NGX.newCStringLen $ f "
 "(aux_ngx_peekUnsafeCStringLen x $ fromIntegral n) $ "
 "aux_ngx_peekUnsafeCStringLen y $ fromIntegral m\n"
-"    AUX_NGX.poke p x\n"
-"    return $ fromIntegral s\n";
+"    AUX_NGX.poke p s\n"
+"    return $ fromIntegral l\n";
 
 static const char  haskell_compile_cmd[] =
     "ghc --make -O2 -shared -dynamic -no-hs-main -pgmP cpp"
@@ -87,6 +87,8 @@ typedef enum {
 typedef struct {
     ngx_uint_t                        code_loaded;
     ngx_str_t                         ghc_extra_flags;
+    ngx_str_t                         lib_path;
+    ngx_array_t                       handlers;
     void                             *dl_handle;
     void                            (*hs_init)(int *, char ***);
     void                            (*hs_exit)(void);
@@ -101,9 +103,15 @@ typedef struct {
 
 
 typedef struct {
-    ngx_int_t                         self;
+    void                             *self;
+    ngx_str_t                         name;
     ngx_http_haskell_handler_type_e   type;
-    void                             *handler;
+} ngx_http_haskell_handler_t;
+
+
+typedef struct {
+    ngx_int_t                         self;
+    ngx_http_haskell_handler_t        handler;
     ngx_http_complex_value_t          args[2];
 } ngx_http_haskell_code_var_data_t;
 
@@ -112,8 +120,8 @@ static char *ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_http_haskell_write_code(ngx_conf_t *cf, ngx_str_t source_name,
     ngx_str_t fragment);
 static char *ngx_http_haskell_compile(ngx_conf_t *cf, void *conf,
-    ngx_str_t source_name, ngx_str_t lib_name);
-static char *ngx_http_haskell_load(ngx_conf_t *cf, void *conf, char *lib_name);
+    ngx_str_t source_name);
+static ngx_int_t ngx_http_haskell_load(ngx_cycle_t *cycle);
 static void ngx_http_haskell_unload(ngx_http_haskell_main_conf_t *mcf);
 static char *ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
@@ -121,6 +129,7 @@ static void *ngx_http_haskell_create_main_conf(ngx_conf_t *cf);
 static void *ngx_http_haskell_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_haskell_merge_loc_conf(ngx_conf_t *cf, void *parent,
     void *child);
+static ngx_int_t ngx_http_haskell_init(ngx_cycle_t *cycle);
 static void ngx_http_haskell_exit(ngx_cycle_t *cycle);
 static ngx_int_t ngx_http_haskell_run_handler(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
@@ -168,11 +177,11 @@ ngx_module_t  ngx_http_haskell_module = {
     NGX_HTTP_MODULE,                         /* module type */
     NULL,                                    /* init master */
     NULL,                                    /* init module */
-    NULL,                                    /* init process */
+    ngx_http_haskell_init,                   /* init process */
     NULL,                                    /* init thread */
     NULL,                                    /* exit thread */
-    NULL,                                    /* exit process */
-    ngx_http_haskell_exit,                   /* exit master */
+    ngx_http_haskell_exit,                   /* exit process */
+    NULL,                                    /* exit master */
     NGX_MODULE_V1_PADDING
 };
 
@@ -184,6 +193,12 @@ ngx_http_haskell_create_main_conf(ngx_conf_t *cf)
 
     mcf = ngx_pcalloc(cf->pool, sizeof(ngx_http_haskell_main_conf_t));
     if (mcf == NULL) {
+        return NULL;
+    }
+
+    if (ngx_array_init(&mcf->handlers, cf->pool, 1,
+                       sizeof(ngx_http_haskell_handler_t)) != NGX_OK)
+    {
         return NULL;
     }
 
@@ -234,6 +249,26 @@ ngx_http_haskell_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 }
 
 
+static ngx_int_t
+ngx_http_haskell_init(ngx_cycle_t *cycle)
+{
+    ngx_http_haskell_main_conf_t  *mcf;
+
+    mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
+
+    if (ngx_http_haskell_load(cycle) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    if (mcf != NULL && mcf->dl_handle != NULL) {
+        mcf->hs_init(&ngx_argc, &ngx_argv);
+        mcf->hs_add_root(mcf->init_HsModule);
+    }
+
+    return NGX_OK;
+}
+
+
 static void
 ngx_http_haskell_exit(ngx_cycle_t *cycle)
 {
@@ -253,7 +288,7 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_haskell_main_conf_t  *mcf = conf;
 
     ngx_int_t                      i;
-    ngx_str_t                     *value, base_name, lib_name;
+    ngx_str_t                     *value, base_name;
     ngx_file_info_t                lib_info;
     ngx_uint_t                     load = 0, load_without_code = 0;
     ngx_uint_t                     base_name_start = 0;
@@ -327,18 +362,18 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    lib_name.len = value[2].len;
-    lib_name.data = ngx_pnalloc(cf->pool, lib_name.len + 1);
-    if (lib_name.data == NULL) {
+    mcf->lib_path.len = value[2].len;
+    mcf->lib_path.data = ngx_pnalloc(cf->pool, mcf->lib_path.len + 1);
+    if (mcf->lib_path.data == NULL) {
         return NGX_CONF_ERROR;
     }
 
-    ngx_memcpy(lib_name.data, value[2].data, value[2].len - 3);
-    ngx_memcpy(lib_name.data + value[2].len - 3, ".so", 3);
-    lib_name.data[value[2].len] = '\0';
+    ngx_memcpy(mcf->lib_path.data, value[2].data, value[2].len - 3);
+    ngx_memcpy(mcf->lib_path.data + value[2].len - 3, ".so", 3);
+    mcf->lib_path.data[value[2].len] = '\0';
 
     if (load) {
-        if (ngx_file_info(lib_name.data, &lib_info) == NGX_FILE_ERROR) {
+        if (ngx_file_info(mcf->lib_path.data, &lib_info) == NGX_FILE_ERROR) {
             if (load_without_code) {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                             "haskell library cannot be loaded nor compiled");
@@ -355,17 +390,11 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             return NGX_CONF_ERROR;
         }
 
-        if (ngx_http_haskell_compile(cf, conf, value[2], lib_name)
+        if (ngx_http_haskell_compile(cf, conf, value[2])
             != NGX_CONF_OK)
         {
             return NGX_CONF_ERROR;
         }
-    }
-
-    if (ngx_http_haskell_load(cf, conf, (char*) lib_name.data)
-        != NGX_CONF_OK)
-    {
-        return NGX_CONF_ERROR;
     }
 
     mcf->code_loaded = 1;
@@ -426,8 +455,7 @@ ngx_http_haskell_write_code(ngx_conf_t *cf, ngx_str_t source_name,
 
 
 static char *
-ngx_http_haskell_compile(ngx_conf_t *cf, void *conf, ngx_str_t source_name,
-                         ngx_str_t lib_name)
+ngx_http_haskell_compile(ngx_conf_t *cf, void *conf, ngx_str_t source_name)
 {
     ngx_http_haskell_main_conf_t  *mcf = conf;
 
@@ -437,8 +465,8 @@ ngx_http_haskell_compile(ngx_conf_t *cf, void *conf, ngx_str_t source_name,
     if (mcf->ghc_extra_flags.len > 0) {
         extra_len = mcf->ghc_extra_flags.len + 1;
     }
-    full_len = STRLEN(haskell_compile_cmd) + lib_name.len + source_name.len +
-            extra_len + 3;
+    full_len = STRLEN(haskell_compile_cmd) + mcf->lib_path.len +
+            source_name.len + extra_len + 2;
 
     compile_cmd = ngx_pnalloc(cf->pool, full_len);
     if (compile_cmd == NULL) {
@@ -447,11 +475,11 @@ ngx_http_haskell_compile(ngx_conf_t *cf, void *conf, ngx_str_t source_name,
 
     ngx_memcpy(compile_cmd,
                haskell_compile_cmd, STRLEN(haskell_compile_cmd));
-    ngx_memcpy(compile_cmd + STRLEN(haskell_compile_cmd), lib_name.data,
-               lib_name.len);
-    ngx_memcpy(compile_cmd + STRLEN(haskell_compile_cmd) + lib_name.len,
+    ngx_memcpy(compile_cmd + STRLEN(haskell_compile_cmd), mcf->lib_path.data,
+               mcf->lib_path.len);
+    ngx_memcpy(compile_cmd + STRLEN(haskell_compile_cmd) + mcf->lib_path.len,
                " ", 1);
-    passed_len = STRLEN(haskell_compile_cmd) + lib_name.len + 1;
+    passed_len = STRLEN(haskell_compile_cmd) + mcf->lib_path.len + 1;
     if (extra_len > 0) {
         ngx_memcpy(compile_cmd + passed_len,
                    mcf->ghc_extra_flags.data, mcf->ghc_extra_flags.len);
@@ -472,71 +500,69 @@ ngx_http_haskell_compile(ngx_conf_t *cf, void *conf, ngx_str_t source_name,
 }
 
 
-static char *
-ngx_http_haskell_load(ngx_conf_t *cf, void *conf, char *lib_name)
+static ngx_int_t
+ngx_http_haskell_load(ngx_cycle_t *cycle)
 {
-    ngx_http_haskell_main_conf_t  *mcf = conf;
-
+    ngx_http_haskell_main_conf_t  *mcf;
     char                          *dl_error;
 
+    mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
+
     if (mcf->dl_handle != NULL) {
-        ngx_http_haskell_unload(mcf);
+        dlclose(mcf->dl_handle);
+        dlerror();
     }
 
-    mcf->dl_handle = dlopen(lib_name, RTLD_LAZY);
+    mcf->dl_handle = dlopen((char*) mcf->lib_path.data, RTLD_LAZY);
     if (mcf->dl_handle == NULL) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "failed to load compiled haskell library");
-        return NGX_CONF_ERROR;
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                      "failed to load compiled haskell library");
+        return NGX_ERROR;
     }
     dlerror();
 
     mcf->hs_init = (void (*)(int *, char ***)) dlsym(mcf->dl_handle, "hs_init");
     dl_error = dlerror();
     if (dl_error != NULL) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                    "failed to load function \"hs_init\": %s", dl_error);
-        return NGX_CONF_ERROR;
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                      "failed to load function \"hs_init\": %s", dl_error);
+        return NGX_ERROR;
     }
 
     mcf->hs_exit = (void (*)(void)) dlsym(mcf->dl_handle, "hs_exit");
     dl_error = dlerror();
     if (dl_error != NULL) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                    "failed to load function \"hs_exit\": %s", dl_error);
-        return NGX_CONF_ERROR;
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                      "failed to load function \"hs_exit\": %s", dl_error);
+        return NGX_ERROR;
     }
 
     mcf->hs_add_root = (void (*)(void (*)(void))) dlsym(mcf->dl_handle,
                                                         "hs_add_root");
     dl_error = dlerror();
     if (dl_error != NULL) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                    "failed to load function \"hs_add_root\": %s", dl_error);
-        return NGX_CONF_ERROR;
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                      "failed to load function \"hs_add_root\": %s", dl_error);
+        return NGX_ERROR;
     }
 
     mcf->init_HsModule = (void (*)(void)) dlsym(mcf->dl_handle,
                                             "__stginit_NgxHaskellUserRuntime" );
     dl_error = dlerror();
     if (dl_error != NULL) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-            "failed to load function \"__stginit_NgxHaskellUserRuntime\": %s",
-            dl_error);
-        return NGX_CONF_ERROR;
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                      "failed to load function "
+                      "\"__stginit_NgxHaskellUserRuntime\": %s", dl_error);
+        return NGX_ERROR;
     }
 
-    mcf->hs_init(&ngx_argc, &ngx_argv);
-    mcf->hs_add_root(mcf->init_HsModule);
-
-    return NGX_CONF_OK;
+    return NGX_OK;
 }
 
 
 static void
 ngx_http_haskell_unload(ngx_http_haskell_main_conf_t *mcf)
 {
-    /* BEWARE: hs_exit() may log 'nginx: timer_settime: Invalid argument' */
     mcf->hs_exit();
     dlclose(mcf->dl_handle);
 }
@@ -549,8 +575,7 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ngx_http_haskell_main_conf_t      *mcf;
     ngx_str_t                         *value;
-    void                              *handler;
-    char                              *handler_name;
+    ngx_str_t                          handler_name;
     ngx_http_compile_complex_value_t   ccv1, ccv2;
     ngx_http_variable_t               *v;
     ngx_http_haskell_code_var_data_t  *code_var_data;
@@ -577,36 +602,28 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     value[2].len--;
     value[2].data++;
 
-    handler_name = ngx_pnalloc(cf->pool,
-                               value[1].len + handler_prefix_size + 1);
-    if (handler_name == NULL) {
+    handler_name.len = value[1].len + handler_prefix_size;
+    handler_name.data = ngx_pnalloc(cf->pool, handler_name.len + 1);
+    if (handler_name.data == NULL) {
         return NGX_CONF_ERROR;
     }
 
-    ngx_memcpy(handler_name,
+    ngx_memcpy(handler_name.data,
                haskell_module_handler_prefix, handler_prefix_size);
-    ngx_memcpy(handler_name + handler_prefix_size,
+    ngx_memcpy(handler_name.data + handler_prefix_size,
                value[1].data, value[1].len);
-    handler_name[value[1].len + handler_prefix_size] ='\0';
-
-    handler = dlsym(mcf->dl_handle, handler_name);
-    dl_error = dlerror();
-    if (dl_error != NULL) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                    "failed to load haskell handler \"%s\": %s",
-                    handler_name, dl_error);
-        return NGX_CONF_ERROR;
-    }
+    handler_name.data[handler_name.len] ='\0';
 
     code_var_data = ngx_array_push(&lcf->code_vars);
     if (code_var_data == NULL) {
         return NGX_CONF_ERROR;
     }
 
-    code_var_data->type = cf->args->nelts == 5 ?
+    code_var_data->handler.type = cf->args->nelts == 5 ?
             ngx_http_haskell_handler_type_s_ss :
             ngx_http_haskell_handler_type_s_s;
-    code_var_data->handler = handler;
+    code_var_data->handler.name = handler_name;
+    code_var_data->handler.self = NULL;
 
     v = ngx_http_add_variable(cf, &value[2], NGX_HTTP_VAR_CHANGEABLE);
     if (v == NULL) {
@@ -658,6 +675,7 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
                              ngx_http_variable_value_t *v, uintptr_t  data)
 {
     ngx_uint_t                         i;
+    ngx_http_haskell_main_conf_t      *mcf;
     ngx_int_t                         *self = (ngx_int_t *) data;
     ngx_int_t                          found_idx = NGX_ERROR;
     ngx_http_haskell_loc_conf_t       *lcf;
@@ -695,7 +713,58 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
         return NGX_ERROR;
     }
 
-    if (code_vars_elts[found_idx].type == ngx_http_haskell_handler_type_s_ss) {
+    mcf = ngx_http_get_module_main_conf(r, ngx_http_haskell_module);
+
+    if (!code_vars_elts[found_idx].handler.self) {
+        ngx_http_haskell_handler_t  *handlers;
+        char                        *dl_error;
+
+        handlers = mcf->handlers.elts;
+
+        for (i = 0; i < mcf->handlers.nelts; i++) {
+            if (code_vars_elts[found_idx].handler.name.len ==
+                handlers[i].name.len
+                && ngx_strncmp(code_vars_elts[found_idx].handler.name.data,
+                               handlers[i].name.data,
+                               code_vars_elts[found_idx].handler.name.len) == 0)
+            {
+                if (code_vars_elts[found_idx].handler.type != handlers[i].type)
+                {
+                    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0,
+                                  "unexpected haskell handler type");
+                    return NGX_ERROR;
+                }
+                code_vars_elts[found_idx].handler.self = handlers[i].self;
+            }
+        }
+
+        if (!code_vars_elts[found_idx].handler.self) {
+            ngx_http_haskell_handler_t  *handlers_elem;
+            void                        *handler;
+
+            handler = dlsym(mcf->dl_handle,
+                        (char*) code_vars_elts[found_idx].handler.name.data);
+            dl_error = dlerror();
+            if (dl_error != NULL) {
+                ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0,
+                            "failed to load haskell handler \"%V\": %s",
+                            &code_vars_elts[found_idx].handler.name, dl_error);
+                return NGX_ERROR;
+            }
+
+            code_vars_elts[found_idx].handler.self = handler;
+            handlers_elem = ngx_array_push(&mcf->handlers);
+            if (handlers_elem == NULL) {
+                return NGX_ERROR;
+            }
+
+            *handlers_elem = code_vars_elts[found_idx].handler;
+        }
+    }
+
+    if (code_vars_elts[found_idx].handler.type ==
+        ngx_http_haskell_handler_type_s_ss)
+    {
         if (ngx_http_complex_value(r, &code_vars_elts[found_idx].args[1], &arg2)
             != NGX_OK)
         {
@@ -703,11 +772,12 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
         }
 
         len = ((ngx_http_haskell_handler_s_ss)
-               code_vars_elts[found_idx].handler)(arg1.data, arg1.len,
-                                                  arg2.data, arg2.len, &res);
+               code_vars_elts[found_idx].handler.self)
+                    (arg1.data, arg1.len, arg2.data, arg2.len, &res);
     } else {
         len = ((ngx_http_haskell_handler_s_s)
-               code_vars_elts[found_idx].handler)(arg1.data, arg1.len, &res);
+               code_vars_elts[found_idx].handler.self)
+                    (arg1.data, arg1.len, &res);
     }
     if (res == NULL) {
         return NGX_ERROR;
