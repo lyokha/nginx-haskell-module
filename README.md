@@ -143,8 +143,8 @@ Some facts about efficiency
 
 - Advantages
 
-    + The haskell library gets compiled at the very start of nginx and further
-      loaded with *dlopen()*.
+    + The haskell library gets compiled at the very start of nginx and later
+      loaded with *dlopen()* in every nginx worker process.
     + Nginx strings are passed to haskell exported functions as strings with
       lengths, no extra allocations are needed.
 
@@ -153,7 +153,7 @@ Some facts about efficiency
     + Haskell strings are simple lists, they are not contiguously allocated
       (but on the other hand they are lazy, which usually means efficient)
     + Haskell exported functions allocate new strings which later get copied 
-      to an nginx request context's pool and freed.
+      to the nginx request context's pool and freed.
 
 Some facts about exceptions
 ---------------------------
