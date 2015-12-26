@@ -128,7 +128,6 @@ static char *ngx_http_haskell_write_code(ngx_conf_t *cf, ngx_str_t source_name,
 static char *ngx_http_haskell_compile(ngx_conf_t *cf, void *conf,
     ngx_str_t source_name);
 static ngx_int_t ngx_http_haskell_load(ngx_cycle_t *cycle);
-static void ngx_http_haskell_unload(ngx_http_haskell_main_conf_t *mcf);
 static char *ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static void *ngx_http_haskell_create_main_conf(ngx_conf_t *cf);
@@ -283,7 +282,8 @@ ngx_http_haskell_exit(ngx_cycle_t *cycle)
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
 
     if (mcf != NULL && mcf->dl_handle != NULL) {
-        ngx_http_haskell_unload(mcf);
+        mcf->hs_exit();
+        dlclose(mcf->dl_handle);
     }
 }
 
@@ -517,8 +517,9 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
 
     if (mcf->dl_handle != NULL) {
-        dlclose(mcf->dl_handle);
-        dlerror();
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                      "haskell library has been unexpectedly loaded");
+        return NGX_ERROR;
     }
 
     mcf->dl_handle = dlopen((char*) mcf->lib_path.data, RTLD_LAZY);
@@ -578,14 +579,6 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     }
 
     return NGX_OK;
-}
-
-
-static void
-ngx_http_haskell_unload(ngx_http_haskell_main_conf_t *mcf)
-{
-    mcf->hs_exit();
-    dlclose(mcf->dl_handle);
 }
 
 
