@@ -165,6 +165,6 @@ from the *Safe* module in the above example.
 See also
 --------
 
-[*An article*](http://lin-techdet.blogspot.ru/2015/12/nginx-module-to-enable-haskell-binding.html)
+[*An article*](http://lin-techdet.blogspot.com/2015/12/nginx-module-to-enable-haskell-binding.html)
 about the module in my blog.
 
