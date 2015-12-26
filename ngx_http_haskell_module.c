@@ -105,12 +105,18 @@ typedef struct {
 typedef struct {
     void                             *self;
     ngx_str_t                         name;
+} ngx_http_haskell_ref_handler_t;
+
+
+typedef struct {
+    ngx_int_t                         index;
+    ngx_str_t                         name;
     ngx_http_haskell_handler_type_e   type;
 } ngx_http_haskell_handler_t;
 
 
 typedef struct {
-    ngx_int_t                         self;
+    ngx_int_t                         index;
     ngx_http_haskell_handler_t        handler;
     ngx_http_complex_value_t          args[2];
 } ngx_http_haskell_code_var_data_t;
@@ -197,7 +203,7 @@ ngx_http_haskell_create_main_conf(ngx_conf_t *cf)
     }
 
     if (ngx_array_init(&mcf->handlers, cf->pool, 1,
-                       sizeof(ngx_http_haskell_handler_t)) != NGX_OK)
+                       sizeof(ngx_http_haskell_ref_handler_t)) != NGX_OK)
     {
         return NULL;
     }
@@ -503,8 +509,10 @@ ngx_http_haskell_compile(ngx_conf_t *cf, void *conf, ngx_str_t source_name)
 static ngx_int_t
 ngx_http_haskell_load(ngx_cycle_t *cycle)
 {
-    ngx_http_haskell_main_conf_t  *mcf;
-    char                          *dl_error;
+    ngx_uint_t                       i;
+    ngx_http_haskell_main_conf_t    *mcf;
+    ngx_http_haskell_ref_handler_t  *handlers;
+    char                            *dl_error;
 
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
 
@@ -556,6 +564,19 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         return NGX_ERROR;
     }
 
+    handlers = mcf->handlers.elts;
+
+    for (i = 0; i < mcf->handlers.nelts; i++) {
+        handlers[i].self = dlsym(mcf->dl_handle, (char*) handlers[i].name.data);
+        dl_error = dlerror();
+        if (dl_error != NULL) {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                        "failed to load haskell handler \"%V\": %s",
+                        &handlers[i].name, dl_error);
+            return NGX_ERROR;
+        }
+    }
+
     return NGX_OK;
 }
 
@@ -573,15 +594,16 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_haskell_loc_conf_t       *lcf = conf;
 
+    ngx_uint_t                         i;
     ngx_http_haskell_main_conf_t      *mcf;
     ngx_str_t                         *value;
     ngx_str_t                          handler_name;
+    ngx_http_haskell_ref_handler_t    *handlers;
     ngx_http_compile_complex_value_t   ccv1, ccv2;
     ngx_http_variable_t               *v;
     ngx_http_haskell_code_var_data_t  *code_var_data;
     ngx_int_t                          v_idx;
     ngx_uint_t                        *v_idx_ptr;
-    char                              *dl_error;
 
     const size_t  handler_prefix_size = STRLEN(haskell_module_handler_prefix);
 
@@ -623,7 +645,31 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             ngx_http_haskell_handler_type_s_ss :
             ngx_http_haskell_handler_type_s_s;
     code_var_data->handler.name = handler_name;
-    code_var_data->handler.self = NULL;
+    code_var_data->handler.index = NGX_ERROR;
+
+    handlers = mcf->handlers.elts;
+
+    for (i = 0; i < mcf->handlers.nelts; i++) {
+        if (handler_name.len == handlers[i].name.len
+            && ngx_strncmp(handler_name.data, handlers[i].name.data,
+                           handler_name.len) == 0)
+        {
+            code_var_data->handler.index = i;
+            break;
+        }
+    }
+    if (code_var_data->handler.index == NGX_ERROR) {
+        ngx_http_haskell_ref_handler_t  *handlers_elem;
+
+        handlers_elem = ngx_array_push(&mcf->handlers);
+        if (handlers_elem == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        handlers_elem->name = code_var_data->handler.name;
+        handlers_elem->self = NULL;
+        code_var_data->handler.index = mcf->handlers.nelts - 1;
+    }
 
     v = ngx_http_add_variable(cf, &value[2], NGX_HTTP_VAR_CHANGEABLE);
     if (v == NULL) {
@@ -640,7 +686,7 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    code_var_data->self = v_idx;
+    code_var_data->index = v_idx;
     *v_idx_ptr = v_idx;
 
     v->data = (uintptr_t) v_idx_ptr;
@@ -677,8 +723,9 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
     ngx_uint_t                         i;
     ngx_http_haskell_main_conf_t      *mcf;
     ngx_http_haskell_loc_conf_t       *lcf;
-    ngx_int_t                         *self = (ngx_int_t *) data;
+    ngx_int_t                         *index = (ngx_int_t *) data;
     ngx_int_t                          found_idx = NGX_ERROR;
+    ngx_http_haskell_ref_handler_t    *handlers;
     ngx_array_t                       *code_vars;
     ngx_http_haskell_code_var_data_t  *code_vars_elts;
     ngx_str_t                          arg1, arg2;
@@ -686,7 +733,7 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
     u_char                            *res_copy;
     ngx_uint_t                         len;
 
-    if (self == NULL) {
+    if (index == NULL) {
         return NGX_ERROR;
     }
 
@@ -696,7 +743,7 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
     code_vars_elts = code_vars->elts;
 
     for (i = 0; i < code_vars->nelts; i++) {
-        if (*self != code_vars_elts[i].self) {
+        if (*index != code_vars_elts[i].index) {
             continue;
         }
         found_idx = i;
@@ -714,53 +761,7 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
     }
 
     mcf = ngx_http_get_module_main_conf(r, ngx_http_haskell_module);
-
-    if (!code_vars_elts[found_idx].handler.self) {
-        ngx_http_haskell_handler_t  *handlers;
-        char                        *dl_error;
-
-        handlers = mcf->handlers.elts;
-
-        for (i = 0; i < mcf->handlers.nelts; i++) {
-            if (code_vars_elts[found_idx].handler.name.len ==
-                handlers[i].name.len
-                && ngx_strncmp(code_vars_elts[found_idx].handler.name.data,
-                               handlers[i].name.data,
-                               code_vars_elts[found_idx].handler.name.len) == 0)
-            {
-                if (code_vars_elts[found_idx].handler.type != handlers[i].type)
-                {
-                    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0,
-                                  "unexpected haskell handler type");
-                    return NGX_ERROR;
-                }
-                code_vars_elts[found_idx].handler.self = handlers[i].self;
-            }
-        }
-
-        if (!code_vars_elts[found_idx].handler.self) {
-            ngx_http_haskell_handler_t  *handlers_elem;
-            void                        *handler;
-
-            handler = dlsym(mcf->dl_handle,
-                        (char*) code_vars_elts[found_idx].handler.name.data);
-            dl_error = dlerror();
-            if (dl_error != NULL) {
-                ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0,
-                            "failed to load haskell handler \"%V\": %s",
-                            &code_vars_elts[found_idx].handler.name, dl_error);
-                return NGX_ERROR;
-            }
-
-            code_vars_elts[found_idx].handler.self = handler;
-            handlers_elem = ngx_array_push(&mcf->handlers);
-            if (handlers_elem == NULL) {
-                return NGX_ERROR;
-            }
-
-            *handlers_elem = code_vars_elts[found_idx].handler;
-        }
-    }
+    handlers = mcf->handlers.elts;
 
     if (code_vars_elts[found_idx].handler.type ==
         ngx_http_haskell_handler_type_s_ss)
@@ -772,11 +773,11 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
         }
 
         len = ((ngx_http_haskell_handler_s_ss)
-               code_vars_elts[found_idx].handler.self)
+               handlers[code_vars_elts[found_idx].handler.index].self)
                     (arg1.data, arg1.len, arg2.data, arg2.len, &res);
     } else {
         len = ((ngx_http_haskell_handler_s_s)
-               code_vars_elts[found_idx].handler.self)
+               handlers[code_vars_elts[found_idx].handler.index].self)
                     (arg1.data, arg1.len, &res);
     }
     if (res == NULL) {
