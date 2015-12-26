@@ -162,3 +162,9 @@ Haskell source code must be preferably pure and safe as soon as C code is known
 to be unfamiliar with catching Haskell exceptions. That is why I used functions
 from the *Safe* module in the above example.
 
+See also
+--------
+
+[*An article*](http://lin-techdet.blogspot.ru/2015/12/nginx-module-to-enable-haskell-binding.html)
+about the module in my blog.
+
