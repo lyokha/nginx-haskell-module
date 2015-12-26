@@ -15,10 +15,8 @@ events {
     worker_connections  1024;
 }
 
-
 http {
     default_type        application/octet-stream;
-
     sendfile            on;
 
     haskell ghc_extra_flags '-hide-package regex-pcre';
