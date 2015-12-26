@@ -8,8 +8,8 @@ Motivational example
 --------------------
 
 ```nginx
-user                nobody;
-worker_processes    2;
+user                    nobody;
+worker_processes        2;
 
 events {
     worker_connections  1024;
