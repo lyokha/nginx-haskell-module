@@ -105,6 +105,7 @@ typedef struct {
 typedef struct {
     void                             *self;
     ngx_str_t                         name;
+    ngx_http_haskell_handler_type_e   type;
 } ngx_http_haskell_ref_handler_t;
 
 
@@ -592,6 +593,7 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_str_t                         *value;
     ngx_str_t                          handler_name;
     ngx_http_haskell_ref_handler_t    *handlers;
+    ngx_http_haskell_handler_type_e    type;
     ngx_http_compile_complex_value_t   ccv1, ccv2;
     ngx_http_variable_t               *v;
     ngx_http_haskell_code_var_data_t  *code_var_data;
@@ -634,11 +636,11 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    code_var_data->handler.type = cf->args->nelts == 5 ?
-            ngx_http_haskell_handler_type_s_ss :
-            ngx_http_haskell_handler_type_s_s;
-    code_var_data->handler.name = handler_name;
     code_var_data->handler.index = NGX_ERROR;
+    code_var_data->handler.name = handler_name;
+
+    type = cf->args->nelts == 5 ? ngx_http_haskell_handler_type_s_ss :
+            ngx_http_haskell_handler_type_s_s;
 
     handlers = mcf->handlers.elts;
 
@@ -648,6 +650,12 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                            handler_name.len) == 0)
         {
             code_var_data->handler.index = i;
+            if (type != handlers[i].type) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "haskell handler \"%V\" was already "
+                                   "declared with a different type", &value[1]);
+                return NGX_CONF_ERROR;
+            }
             break;
         }
     }
@@ -659,10 +667,13 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             return NGX_CONF_ERROR;
         }
 
-        handlers_elem->name = code_var_data->handler.name;
         handlers_elem->self = NULL;
+        handlers_elem->name = code_var_data->handler.name;
+        handlers_elem->type = type;
         code_var_data->handler.index = mcf->handlers.nelts - 1;
     }
+
+    code_var_data->handler.type = type;
 
     v = ngx_http_add_variable(cf, &value[2], NGX_HTTP_VAR_CHANGEABLE);
     if (v == NULL) {
