@@ -777,7 +777,7 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
         return NGX_ERROR;
     }
 
-    res_copy = ngx_pcalloc(r->pool, len);
+    res_copy = ngx_pnalloc(r->pool, len);
     if (res_copy == NULL) {
         ngx_free(res);
         return NGX_ERROR;
