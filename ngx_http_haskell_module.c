@@ -719,8 +719,7 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
     ngx_int_t                         *index = (ngx_int_t *) data;
     ngx_int_t                          found_idx = NGX_ERROR;
     ngx_http_haskell_ref_handler_t    *handlers;
-    ngx_array_t                       *code_vars;
-    ngx_http_haskell_code_var_data_t  *code_vars_elts;
+    ngx_http_haskell_code_var_data_t  *code_vars;
     ngx_str_t                          arg1, arg2;
     char                              *res;
     u_char                            *res_copy;
@@ -732,11 +731,10 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
 
     lcf = ngx_http_get_module_loc_conf(r, ngx_http_haskell_module);
 
-    code_vars = &lcf->code_vars;
-    code_vars_elts = code_vars->elts;
+    code_vars = lcf->code_vars.elts;
 
-    for (i = 0; i < code_vars->nelts; i++) {
-        if (*index != code_vars_elts[i].index) {
+    for (i = 0; i < lcf->code_vars.nelts; i++) {
+        if (*index != code_vars[i].index) {
             continue;
         }
         found_idx = i;
@@ -747,7 +745,7 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
         return NGX_ERROR;
     }
 
-    if (ngx_http_complex_value(r, &code_vars_elts[found_idx].args[0], &arg1)
+    if (ngx_http_complex_value(r, &code_vars[found_idx].args[0], &arg1)
         != NGX_OK)
     {
         return NGX_ERROR;
@@ -756,21 +754,20 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
     mcf = ngx_http_get_module_main_conf(r, ngx_http_haskell_module);
     handlers = mcf->handlers.elts;
 
-    if (code_vars_elts[found_idx].handler.type ==
-        ngx_http_haskell_handler_type_s_ss)
+    if (code_vars[found_idx].handler.type == ngx_http_haskell_handler_type_s_ss)
     {
-        if (ngx_http_complex_value(r, &code_vars_elts[found_idx].args[1], &arg2)
+        if (ngx_http_complex_value(r, &code_vars[found_idx].args[1], &arg2)
             != NGX_OK)
         {
             return NGX_ERROR;
         }
 
         len = ((ngx_http_haskell_handler_s_ss)
-               handlers[code_vars_elts[found_idx].handler.index].self)
+               handlers[code_vars[found_idx].handler.index].self)
                     (arg1.data, arg1.len, arg2.data, arg2.len, &res);
     } else {
         len = ((ngx_http_haskell_handler_s_s)
-               handlers[code_vars_elts[found_idx].handler.index].self)
+               handlers[code_vars[found_idx].handler.index].self)
                     (arg1.data, arg1.len, &res);
     }
     if (res == NULL) {
