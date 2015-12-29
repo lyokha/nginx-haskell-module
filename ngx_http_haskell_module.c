@@ -20,7 +20,7 @@
 #include <dlfcn.h>
 #include <HsFFI.h>
 
-#define STRLEN(X) sizeof(X) - 1
+#define STRLEN(X) (sizeof(X) - 1)
 
 
 static const char  haskell_module_handler_prefix[] = "ngx_hs_";
