@@ -24,19 +24,24 @@
 
 
 static const char  haskell_module_handler_prefix[] = "ngx_hs_";
+static const char  haskell_module_type_checker_prefix[] = "type_";
 
 static const char  haskell_module_code_head[] =
 "{-# LANGUAGE ForeignFunctionInterface, CPP #-}""\n\n"
-"#define NGX_EXPORT_S_S(F) ngx_hs_ ## F = aux_ngx_hs_s_s $ AUX_NGX_S_S $ F; "
+"#define NGX_EXPORT_S_S(F) ngx_hs_ ## F = aux_ngx_hs_s_s $ AUX_NGX_S_S F; "
 "\\\n"
 "foreign export ccall ngx_hs_ ## F :: "
 "AUX_NGX.CString -> AUX_NGX.CInt -> AUX_NGX.Ptr AUX_NGX.CString -> "
-"IO AUX_NGX.CInt\n"
-"#define NGX_EXPORT_S_SS(F) ngx_hs_ ## F = aux_ngx_hs_s_ss $ AUX_NGX_S_SS $ F; "
+"IO AUX_NGX.CInt; \\\n"
+"type_ngx_hs_ ## F = return $ fromIntegral $ fromEnum $ AUX_NGX_S_S F; \\\n"
+"foreign export ccall type_ngx_hs_ ## F :: IO AUX_NGX.CInt\n\n"
+"#define NGX_EXPORT_S_SS(F) ngx_hs_ ## F = aux_ngx_hs_s_ss $ AUX_NGX_S_SS F; "
 "\\\n"
 "foreign export ccall ngx_hs_ ## F :: "
 "AUX_NGX.CString -> AUX_NGX.CInt -> AUX_NGX.CString -> AUX_NGX.CInt -> "
-"AUX_NGX.Ptr AUX_NGX.CString -> IO AUX_NGX.CInt\n\n"
+"AUX_NGX.Ptr AUX_NGX.CString -> IO AUX_NGX.CInt; \\\n"
+"type_ngx_hs_ ## F = return $ fromIntegral $ fromEnum $ AUX_NGX_S_SS F; \\\n"
+"foreign export ccall type_ngx_hs_ ## F :: IO AUX_NGX.CInt\n\n"
 "module NgxHaskellUserRuntime where\n\n"
 "import qualified Foreign.C as AUX_NGX\n"
 "import qualified Foreign.Ptr as AUX_NGX\n"
@@ -45,7 +50,11 @@ static const char  haskell_module_code_head[] =
 
 static const char  haskell_module_code_tail[] =
 "\ndata AUX_NGX_SF = AUX_NGX_S_S (String -> String) |\n"
-"          AUX_NGX_S_SS (String -> String -> String)\n\n"
+"          AUX_NGX_S_SS (String -> String -> String)\n"
+"instance Enum AUX_NGX_SF where\n"
+"    toEnum _ = AUX_NGX_S_S id\n"
+"    fromEnum (AUX_NGX_S_S _) = 0\n"
+"    fromEnum (AUX_NGX_S_SS _) = 1\n\n"
 "aux_ngx_peekUnsafeCStringLen :: AUX_NGX.CString -> Int -> String\n"
 "aux_ngx_peekUnsafeCStringLen x = "
 "AUX_NGX.unsafePerformIO . curry AUX_NGX.peekCStringLen x\n"
@@ -258,20 +267,7 @@ ngx_http_haskell_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 static ngx_int_t
 ngx_http_haskell_init(ngx_cycle_t *cycle)
 {
-    ngx_http_haskell_main_conf_t  *mcf;
-
-    mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
-
-    if (ngx_http_haskell_load(cycle) != NGX_OK) {
-        return NGX_ERROR;
-    }
-
-    if (mcf != NULL && mcf->dl_handle != NULL) {
-        mcf->hs_init(&ngx_argc, &ngx_argv);
-        mcf->hs_add_root(mcf->init_HsModule);
-    }
-
-    return NGX_OK;
+    return ngx_http_haskell_load(cycle);
 }
 
 
@@ -515,6 +511,9 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     ngx_http_haskell_ref_handler_t  *handlers;
     char                            *dl_error;
 
+    const size_t  type_checker_prefix_size =
+            STRLEN(haskell_module_type_checker_prefix);
+
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
 
     if (mcf->dl_handle != NULL) {
@@ -566,15 +565,51 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         return NGX_ERROR;
     }
 
+    mcf->hs_init(&ngx_argc, &ngx_argv);
+    mcf->hs_add_root(mcf->init_HsModule);
+
     handlers = mcf->handlers.elts;
 
     for (i = 0; i < mcf->handlers.nelts; i++) {
+        int   (*type_checker)(void);
+        char   *type_checker_name = NULL;
+
         handlers[i].self = dlsym(mcf->dl_handle, (char*) handlers[i].name.data);
         dl_error = dlerror();
         if (dl_error != NULL) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                         "failed to load haskell handler \"%V\": %s",
                         &handlers[i].name, dl_error);
+            return NGX_ERROR;
+        }
+
+        type_checker_name = ngx_alloc(
+            type_checker_prefix_size + handlers[i].name.len + 1, cycle->log);
+        if (type_checker_name == NULL) {
+            return NGX_ERROR;
+        }
+
+        ngx_memcpy(type_checker_name, haskell_module_type_checker_prefix,
+                   type_checker_prefix_size);
+        ngx_memcpy(type_checker_name + type_checker_prefix_size,
+                   handlers[i].name.data, handlers[i].name.len + 1);
+
+        type_checker = dlsym(mcf->dl_handle, type_checker_name);
+        dl_error = dlerror();
+        if (dl_error != NULL) {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                        "failed to load haskell handler type checker \"%s\": "
+                        "%s", type_checker_name, dl_error);
+            ngx_free(type_checker_name);
+            return NGX_ERROR;
+        }
+
+        ngx_free(type_checker_name);
+
+        if ((int) handlers[i].type != type_checker()) {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                          "actual type of haskell handler \"%V\" mismatches "
+                          "call samples", &handlers[i].name);
             return NGX_ERROR;
         }
     }
@@ -660,16 +695,16 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
     }
     if (code_var_data->handler.index == NGX_ERROR) {
-        ngx_http_haskell_ref_handler_t  *handlers_elem;
+        ngx_http_haskell_ref_handler_t  *handler;
 
-        handlers_elem = ngx_array_push(&mcf->handlers);
-        if (handlers_elem == NULL) {
+        handler = ngx_array_push(&mcf->handlers);
+        if (handler == NULL) {
             return NGX_CONF_ERROR;
         }
 
-        handlers_elem->self = NULL;
-        handlers_elem->name = code_var_data->handler.name;
-        handlers_elem->type = type;
+        handler->self = NULL;
+        handler->name = code_var_data->handler.name;
+        handler->type = type;
         code_var_data->handler.index = mcf->handlers.nelts - 1;
     }
 
