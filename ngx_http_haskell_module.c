@@ -25,6 +25,10 @@
 
 static const char  haskell_module_handler_prefix[] = "ngx_hs_";
 static const char  haskell_module_type_checker_prefix[] = "type_";
+static const size_t  haskell_module_handler_prefix_len =
+    STRLEN(haskell_module_handler_prefix);
+static const size_t  haskell_module_type_checker_prefix_len =
+    STRLEN(haskell_module_type_checker_prefix);
 
 static const char  haskell_module_code_head[] =
 "{-# LANGUAGE ForeignFunctionInterface, CPP #-}""\n\n"
@@ -138,6 +142,7 @@ static char *ngx_http_haskell_write_code(ngx_conf_t *cf, ngx_str_t source_name,
 static char *ngx_http_haskell_compile(ngx_conf_t *cf, void *conf,
     ngx_str_t source_name);
 static ngx_int_t ngx_http_haskell_load(ngx_cycle_t *cycle);
+static void ngx_http_haskell_unload(ngx_cycle_t *cycle);
 static char *ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static void *ngx_http_haskell_create_main_conf(ngx_conf_t *cf);
@@ -274,14 +279,7 @@ ngx_http_haskell_init(ngx_cycle_t *cycle)
 static void
 ngx_http_haskell_exit(ngx_cycle_t *cycle)
 {
-    ngx_http_haskell_main_conf_t  *mcf;
-
-    mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
-
-    if (mcf != NULL && mcf->dl_handle != NULL) {
-        mcf->hs_exit();
-        dlclose(mcf->dl_handle);
-    }
+    ngx_http_haskell_unload(cycle);
 }
 
 
@@ -511,9 +509,6 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     ngx_http_haskell_ref_handler_t  *handlers;
     char                            *dl_error;
 
-    const size_t  type_checker_prefix_size =
-            STRLEN(haskell_module_type_checker_prefix);
-
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
 
     if (mcf->dl_handle != NULL) {
@@ -571,50 +566,83 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     handlers = mcf->handlers.elts;
 
     for (i = 0; i < mcf->handlers.nelts; i++) {
-        int   (*type_checker)(void);
-        char   *type_checker_name = NULL;
+        ngx_str_t    handler_name;
+        int        (*type_checker)(void);
+        char        *type_checker_name = NULL;
+
+        if (handlers[i].name.len <= haskell_module_handler_prefix_len
+            || ngx_strncmp(handlers[i].name.data,
+                           haskell_module_handler_prefix,
+                           haskell_module_handler_prefix_len) != 0)
+        {
+            continue;
+        }
+
+        handler_name.len = handlers[i].name.len -
+                haskell_module_handler_prefix_len;
+        handler_name.data = handlers[i].name.data +
+                haskell_module_handler_prefix_len;
 
         handlers[i].self = dlsym(mcf->dl_handle, (char*) handlers[i].name.data);
         dl_error = dlerror();
         if (dl_error != NULL) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                         "failed to load haskell handler \"%V\": %s",
-                        &handlers[i].name, dl_error);
+                        &handler_name, dl_error);
+            ngx_http_haskell_unload(cycle);
             return NGX_ERROR;
         }
 
         type_checker_name = ngx_alloc(
-            type_checker_prefix_size + handlers[i].name.len + 1, cycle->log);
+            haskell_module_type_checker_prefix_len + handlers[i].name.len + 1,
+            cycle->log);
         if (type_checker_name == NULL) {
+            ngx_http_haskell_unload(cycle);
             return NGX_ERROR;
         }
 
-        ngx_memcpy(type_checker_name, haskell_module_type_checker_prefix,
-                   type_checker_prefix_size);
-        ngx_memcpy(type_checker_name + type_checker_prefix_size,
+        ngx_memcpy(type_checker_name,
+                   haskell_module_type_checker_prefix,
+                   haskell_module_type_checker_prefix_len);
+        ngx_memcpy(type_checker_name + haskell_module_type_checker_prefix_len,
                    handlers[i].name.data, handlers[i].name.len + 1);
 
         type_checker = dlsym(mcf->dl_handle, type_checker_name);
         dl_error = dlerror();
+        ngx_free(type_checker_name);
         if (dl_error != NULL) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                        "failed to load haskell handler type checker \"%s\": "
-                        "%s", type_checker_name, dl_error);
-            ngx_free(type_checker_name);
+                        "failed to load haskell handler type checker \"%V\": "
+                        "%s", handler_name, dl_error);
+            ngx_http_haskell_unload(cycle);
             return NGX_ERROR;
         }
 
-        ngx_free(type_checker_name);
-
         if ((int) handlers[i].type != type_checker()) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                          "actual type of haskell handler \"%V\" mismatches "
-                          "call samples", &handlers[i].name);
+                          "actual type of haskell handler \"%V\" "
+                          "does not match call samples", &handler_name);
+            ngx_http_haskell_unload(cycle);
             return NGX_ERROR;
         }
     }
 
     return NGX_OK;
+}
+
+
+static void
+ngx_http_haskell_unload(ngx_cycle_t *cycle)
+{
+    ngx_http_haskell_main_conf_t    *mcf;
+
+    mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
+
+    if (mcf->dl_handle != NULL) {
+        mcf->hs_exit();
+        dlclose(mcf->dl_handle);
+        mcf->dl_handle = NULL;
+    }
 }
 
 
@@ -635,8 +663,6 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_int_t                          v_idx;
     ngx_uint_t                        *v_idx_ptr;
 
-    const size_t  handler_prefix_size = STRLEN(haskell_module_handler_prefix);
-
     mcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_haskell_module);
 
     if (!mcf->code_loaded) {
@@ -654,15 +680,16 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     value[2].len--;
     value[2].data++;
 
-    handler_name.len = value[1].len + handler_prefix_size;
+    handler_name.len = value[1].len + haskell_module_handler_prefix_len;
     handler_name.data = ngx_pnalloc(cf->pool, handler_name.len + 1);
     if (handler_name.data == NULL) {
         return NGX_CONF_ERROR;
     }
 
     ngx_memcpy(handler_name.data,
-               haskell_module_handler_prefix, handler_prefix_size);
-    ngx_memcpy(handler_name.data + handler_prefix_size,
+               haskell_module_handler_prefix,
+               haskell_module_handler_prefix_len);
+    ngx_memcpy(handler_name.data + haskell_module_handler_prefix_len,
                value[1].data, value[1].len);
     handler_name.data[handler_name.len] ='\0';
 
