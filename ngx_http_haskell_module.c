@@ -53,9 +53,9 @@ static const char  haskell_module_code_head[] =
 "import qualified System.IO.Unsafe as AUX_NGX\n";
 
 static const char  haskell_module_code_tail[] =
-"\ndata AUX_NGX_SF = AUX_NGX_S_S (String -> String) |\n"
+"\ndata AUX_NGX_EF_TYPE = AUX_NGX_S_S (String -> String) |\n"
 "          AUX_NGX_S_SS (String -> String -> String)\n"
-"instance Enum AUX_NGX_SF where\n"
+"instance Enum AUX_NGX_EF_TYPE where\n"
 "    toEnum _ = AUX_NGX_S_S id\n"
 "    fromEnum (AUX_NGX_S_S _) = 0\n"
 "    fromEnum (AUX_NGX_S_SS _) = 1\n\n"
@@ -63,14 +63,14 @@ static const char  haskell_module_code_tail[] =
 "aux_ngx_peekUnsafeCStringLen x = "
 "AUX_NGX.unsafePerformIO . curry AUX_NGX.peekCStringLen x\n"
 "aux_ngx_hs_s_s :: "
-"AUX_NGX_SF -> AUX_NGX.CString -> AUX_NGX.CInt -> "
+"AUX_NGX_EF_TYPE -> AUX_NGX.CString -> AUX_NGX.CInt -> "
 "AUX_NGX.Ptr AUX_NGX.CString -> IO AUX_NGX.CInt\n"
 "aux_ngx_hs_s_s (AUX_NGX_S_S f) x n p = do\n"
 "    (s, l) <- AUX_NGX.newCStringLen $ f $ aux_ngx_peekUnsafeCStringLen x $ "
 "fromIntegral n\n"
 "    AUX_NGX.poke p s\n"
 "    return $ fromIntegral l\n"
-"aux_ngx_hs_s_ss :: AUX_NGX_SF -> "
+"aux_ngx_hs_s_ss :: AUX_NGX_EF_TYPE -> "
 "AUX_NGX.CString -> AUX_NGX.CInt -> AUX_NGX.CString -> AUX_NGX.CInt -> "
 "AUX_NGX.Ptr AUX_NGX.CString -> IO AUX_NGX.CInt\n"
 "aux_ngx_hs_s_ss (AUX_NGX_S_SS f) x n y m p = do\n"
