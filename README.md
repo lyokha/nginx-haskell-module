@@ -89,7 +89,7 @@ Effectively this means that only those functions are supported that return
 strings or booleans and accept one or two string arguments.
 
 In this example four custom haskell functions are exported: *toUpper*, *takeN*,
-*reverse* (which is normal *reverse* imported from *Prelude*) and *isMatch*
+*reverse* (which is normal *reverse* imported from *Prelude*) and *matches*
 (which requires module *Text.Regex.PCRE*). As soon as normally this code won't
 compile due to ambiguity involved by presence of the two packages *regex-pcre*
 and *regex-pcre-builtin*, I had to add an extra *ghc* compilation flag using
@@ -130,9 +130,9 @@ takeN (hello_world, oops) =
 # curl 'http://localhost:8010/?c=intelligence'
 reverse (intelligence) = ecnegilletni
 # curl 'http://localhost:8010/?d=intelligence&a=^i'
-isMatch (intelligence, ^i) = True
+matches (intelligence, ^i) = 1
 # curl 'http://localhost:8010/?d=intelligence&a=^I'
-isMatch (intelligence, ^I) = False
+matches (intelligence, ^I) = 0
 ```
 
 (of course using plain character ``^`` in an URL is not welcome, but otherwise I
