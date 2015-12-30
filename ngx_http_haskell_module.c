@@ -436,8 +436,8 @@ ngx_http_haskell_write_code(ngx_conf_t *cf, ngx_str_t source_name,
     out.name.data[source_name.len] = '\0';
     out.name.len = source_name.len;
 
-    out.fd = ngx_open_file(out.name.data,
-                            NGX_FILE_WRONLY, NGX_FILE_TRUNCATE, 0);
+    out.fd = ngx_open_file(out.name.data, NGX_FILE_WRONLY, NGX_FILE_TRUNCATE,
+                           NGX_FILE_DEFAULT_ACCESS);
     if (out.fd == NGX_INVALID_FILE) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno,
                            "failed to write haskell source code file");
