@@ -35,9 +35,9 @@ NGX_EXPORT_S_SS (takeN)
 
 NGX_EXPORT_S_S (reverse)
 
-isMatch :: String -> String -> String
-isMatch a b = show $ (not . null) $ headDef "" $ getAllTextMatches $ a =~ b
-NGX_EXPORT_S_SS (isMatch)
+matches :: String -> String -> Bool
+matches a b = not $ null (getAllTextMatches $ a =~ b :: [String])
+NGX_EXPORT_B_SS (matches)
 
     ';
 
@@ -61,8 +61,8 @@ NGX_EXPORT_S_SS (isMatch)
                 break;
             }
             if ($arg_d) {
-                haskell_run isMatch $hs_a $arg_d $arg_a;
-                echo "isMatch ($arg_d, $arg_a) = $hs_a";
+                haskell_run matches $hs_a $arg_d $arg_a;
+                echo "matches ($arg_d, $arg_a) = $hs_a";
                 break;
             }
         }
@@ -80,11 +80,13 @@ if the target library exists and does not compile source code in this case, thus
 eliminating necessity of the source code argument.
 
 The module may load an arbitrary haskell code but only those functions are
-accessible from the nginx that are exported with special macros *NGX_EXPORT_S_S*
-and *NGX_EXPORT_S_SS* (here *S_S* and *S_SS* stand for mnemonical types
-*returns-String-accepts-String* and *returns-String-accepts-String-String*).
-Effectively this means that only *string* functions are supported that return
-strings and accept one or two string arguments.
+accessible from the nginx that are exported with special macros
+*NGX_EXPORT_S_S*, *NGX_EXPORT_S_SS*, *NGX_EXPORT_B_S* and *NGX_EXPORT_B_SS*
+(here *S_S*, *S_SS*, *B_S* and *B_SS* stand for mnemonic types
+*returns-String-accepts-String*, *returns-String-accepts-String-String*,
+*returns-Bool-accepts-String* and *returns-Bool-accepts-String-String*).
+Effectively this means that only those functions are supported that return
+strings or booleans and accept one or two string arguments.
 
 In this example four custom haskell functions are exported: *toUpper*, *takeN*,
 *reverse* (which is normal *reverse* imported from *Prelude*) and *isMatch*
@@ -95,11 +97,11 @@ directive *haskell ghc_extra_flags*.
 
 Let's look inside the *server* clause, in *location /* where the exported
 haskell functions are used. Directive *haskell_run* takes three or four
-arguments: it depends on the type of the exported function (*S_S* or *S_SS*).
+arguments: it depends on the type of the exported function (*S_S*, *S_SS etc.*).
 The first argument of the directive is the name of an exported haskell function,
 the second argument is a custom variable where the function return value will be
 stored, and the remaining (one or two) arguments are complex values (in the
-nginx notion, it means that they may contain arbitrary number of variables and
+nginx notion: it means that they may contain arbitrary number of variables and
 plain symbols) that correspond to the arguments of the exported function.
 Directive *haskell_run* is allowed in *server*, *location* and *location-if*
 clauses. In this example all returned strings are stored in the same variable
@@ -150,8 +152,8 @@ Some facts about efficiency
 
     + Haskell strings are simple lists, they are not contiguously allocated
       (but on the other hand they are lazy, which usually means efficient)
-    + Haskell exported functions allocate new strings which later get copied 
-      to the nginx request context's pool and freed.
+    + Haskell exported functions of types *S_S* and *S_SS* allocate new strings
+      which later get copied to the nginx request context's pool and freed.
 
 Some facts about exceptions
 ---------------------------
