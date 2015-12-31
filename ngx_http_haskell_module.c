@@ -751,16 +751,6 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             && ngx_strncmp(handler_name.data, handlers[i].name.data,
                            handler_name.len) == 0)
         {
-            ++handlers[i].n_args[cf->args->nelts - 4];
-
-            if (handlers[i].n_args[0] > 0 && handlers[i].n_args[1] > 0) {
-                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                                   "haskell handler \"%V\" was already "
-                                   "declared with different number of args",
-                                   &value[1]);
-                return NGX_CONF_ERROR;
-            }
-
             code_var_data->handler = i;
             break;
         }
@@ -774,10 +764,23 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 
         handler->self = NULL;
+        handler->type = ngx_http_haskell_handler_type_uninitialized;
         handler->name = handler_name;
-        handler->n_args[0] = cf->args->nelts == 4 ? 1 : 0;
-        handler->n_args[1] = cf->args->nelts == 5 ? 1 : 0;
+        ngx_memzero(handler->n_args, sizeof(handler->n_args));
+
+        handlers = mcf->handlers.elts;
         code_var_data->handler = mcf->handlers.nelts - 1;
+    }
+
+    ++handlers[code_var_data->handler].n_args[cf->args->nelts - 4];
+
+    if (handlers[code_var_data->handler].n_args[0] > 0
+        && handlers[code_var_data->handler].n_args[1] > 0)
+    {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "haskell handler \"%V\" was already declared "
+                           "with different number of args", &value[1]);
+        return NGX_CONF_ERROR;
     }
 
     v = ngx_http_add_variable(cf, &value[2], NGX_HTTP_VAR_CHANGEABLE);
