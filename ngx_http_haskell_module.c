@@ -539,6 +539,10 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
 
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
 
+    if (!mcf->code_loaded) {
+        return NGX_OK;
+    }
+
     if (mcf->dl_handle != NULL) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                       "haskell library has been unexpectedly loaded");
@@ -683,6 +687,10 @@ ngx_http_haskell_unload(ngx_cycle_t *cycle)
 
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
 
+    if (!mcf->code_loaded) {
+        return;
+    }
+
     if (mcf->dl_handle != NULL) {
         mcf->hs_exit();
         dlclose(mcf->dl_handle);
@@ -766,7 +774,7 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         handler->self = NULL;
         handler->type = ngx_http_haskell_handler_type_uninitialized;
         handler->name = handler_name;
-        ngx_memzero(handler->n_args, sizeof(handler->n_args));
+        ngx_memzero(&handler->n_args, sizeof(handler->n_args));
 
         handlers = mcf->handlers.elts;
         code_var_data->handler = mcf->handlers.nelts - 1;
