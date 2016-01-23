@@ -95,7 +95,7 @@ static const char  haskell_module_code_tail[] =
 "data AUX_NGX_STR_TYPE = AUX_NGX_STR_TYPE AUX_NGX.CSize "
 "(AUX_NGX.Ptr AUX_NGX.CChar)\n"
 "instance AUX_NGX.Storable AUX_NGX_STR_TYPE where\n"
-"    sizeOf (AUX_NGX_STR_TYPE i p) = SIZEOF_AUX_NGX_STR_TYPE\n"
+"    sizeOf _ = SIZEOF_AUX_NGX_STR_TYPE\n"
 "    alignment = AUX_NGX.sizeOf\n"
 "    peek ptr = do\n"
 "        a <- AUX_NGX.peekByteOff ptr 0\n"
