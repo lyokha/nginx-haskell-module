@@ -39,6 +39,13 @@ matches :: String -> String -> Bool
 matches a b = not $ null (getAllTextMatches $ a =~ b :: [String])
 NGX_EXPORT_B_SS (matches)
 
+firstNotEmpty = headDef "" . filter (not . null)
+NGX_EXPORT_S_LS (firstNotEmpty)
+
+isInList [] = False
+isInList (x : xs) = x `elem` xs
+NGX_EXPORT_B_LS (isInList)
+
     ';
 
     server {
@@ -65,6 +72,16 @@ NGX_EXPORT_B_SS (matches)
                 echo "matches ($arg_d, $arg_a) = $hs_a";
                 break;
             }
+            if ($arg_e) {
+                haskell_run firstNotEmpty $hs_a $arg_f $arg_g $arg_a;
+                echo "firstNotEmpty ($arg_f, $arg_g, $arg_a) = $hs_a";
+                break;
+            }
+            if ($arg_l) {
+                haskell_run isInList $hs_a $arg_a secret1 secret2 secret3;
+                echo "isInList ($arg_a, <secret words>) = $hs_a";
+                break;
+            }
         }
     }
 }
@@ -80,23 +97,25 @@ if the target library exists and does not compile source code in this case, thus
 eliminating necessity of the source code argument.
 
 The module may load an arbitrary haskell code but only those functions are
-accessible from the nginx that are exported with special macros
-*NGX_EXPORT_S_S*, *NGX_EXPORT_S_SS*, *NGX_EXPORT_B_S* and *NGX_EXPORT_B_SS*
-(here *S_S*, *S_SS*, *B_S* and *B_SS* stand for mnemonic types
-*returns-String-accepts-String*, *returns-String-accepts-String-String*,
-*returns-Bool-accepts-String* and *returns-Bool-accepts-String-String*).
+accessible from nginx that are exported with special macros *NGX_EXPORT_S_S*,
+*NGX_EXPORT_S_SS*, *NGX_EXPORT_B_S* and *NGX_EXPORT_B_SS* (here *S_S*, *S_SS*,
+*B_S* and *B_SS* stand for mnemonic types *returns-String-accepts-String*,
+*returns-String-accepts-String-String*, *returns-Bool-accepts-String* and
+*returns-Bool-accepts-String-String*) and their *list* counterparts
+*NGX_EXPORT_S_LS* and *NGX_EXPORT_B_LS* (*LS* stands for *List-of-Strings*).
 Effectively this means that only those functions are supported that return
-strings or booleans and accept one or two string arguments.
+strings or booleans and accept one, two or more (only *S_LS* and *B_LS*) string
+arguments.
 
-In this example four custom haskell functions are exported: *toUpper*, *takeN*,
-*reverse* (which is normal *reverse* imported from *Prelude*) and *matches*
-(which requires module *Text.Regex.PCRE*). As soon as normally this code won't
-compile due to ambiguity involved by presence of the two packages *regex-pcre*
-and *regex-pcre-builtin*, I had to add an extra *ghc* compilation flag using
-directive *haskell ghc_extra_flags*.
+In this example six custom haskell functions are exported: *toUpper*, *takeN*,
+*reverse* (which is normal *reverse* imported from *Prelude*), *matches*
+(which requires module *Text.Regex.PCRE*), *firstNotEmpty* and *isInList*. As
+soon as probably this code won't compile due to ambiguity involved by presence
+of the two packages *regex-pcre* and *regex-pcre-builtin*, I had to add an extra
+*ghc* compilation flag using directive *haskell ghc_extra_flags*.
 
 Let's look inside the *server* clause, in *location /* where the exported
-haskell functions are used. Directive *haskell_run* takes three or four
+haskell functions are used. Directive *haskell_run* takes three or more
 arguments: it depends on the type of the exported function (*S_S*, *S_SS etc.*).
 The first argument of the directive is the name of an exported haskell function,
 the second argument is a custom variable where the function return value will be
@@ -133,6 +152,18 @@ reverse (intelligence) = ecnegilletni
 matches (intelligence, ^i) = 1
 # curl 'http://localhost:8010/?d=intelligence&a=^I'
 matches (intelligence, ^I) = 0
+# curl 'http://localhost:8010/?e=1&g=intelligence&a=smart'
+firstNotEmpty (, intelligence, smart) = intelligence
+# curl 'http://localhost:8010/?e=1&g=intelligence&f=smart'
+firstNotEmpty (smart, intelligence, ) = smart
+# curl 'http://localhost:8010/?e=1'
+firstNotEmpty (, , ) = 
+# curl 'http://localhost:8010/?l=1'
+isInList (, <secret words>) = 0
+# curl 'http://localhost:8010/?l=1&a=s'
+isInList (s, <secret words>) = 0
+# curl 'http://localhost:8010/?l=1&a=secret2'
+isInList (secret2, <secret words>) = 1
 ```
 
 (of course using plain character ``^`` in an URL is not welcome, but otherwise I
@@ -152,8 +183,9 @@ Some facts about efficiency
 
     + Haskell strings are simple lists, they are not contiguously allocated
       (but on the other hand they are lazy, which usually means efficient)
-    + Haskell exported functions of types *S_S* and *S_SS* allocate new strings
-      which later get copied to the nginx request context's pool and freed.
+    + Haskell exported functions of types *S_S*, *S_SS* and *S_LS* allocate new
+      strings which later get copied to the nginx request context's pool and
+      freed.
 
 Some facts about exceptions
 ---------------------------
