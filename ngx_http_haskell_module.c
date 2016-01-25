@@ -457,7 +457,7 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         if (ngx_file_info(mcf->lib_path.data, &lib_info) == NGX_FILE_ERROR) {
             if (load_without_code) {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                            "haskell library cannot be loaded nor compiled");
+                        "haskell library cannot be loaded nor compiled");
                 return NGX_CONF_ERROR;
             }
             load = 0;
@@ -635,7 +635,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     }
 
     mcf->init_HsModule = (void (*)(void)) dlsym(mcf->dl_handle,
-                                            "__stginit_NgxHaskellUserRuntime" );
+                                            "__stginit_NgxHaskellUserRuntime");
     dl_error = dlerror();
     if (dl_error != NULL) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
@@ -672,8 +672,8 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         dl_error = dlerror();
         if (dl_error != NULL) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                        "failed to load haskell handler \"%V\": %s",
-                        &handler_name, dl_error);
+                          "failed to load haskell handler \"%V\": %s",
+                          &handler_name, dl_error);
             ngx_http_haskell_unload(cycle);
             return NGX_ERROR;
         }
@@ -697,8 +697,8 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         ngx_free(type_checker_name);
         if (dl_error != NULL) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                        "failed to load haskell handler type checker \"%V\": "
-                        "%s", handler_name, dl_error);
+                          "failed to load haskell handler type checker \"%V\": "
+                          "%s", handler_name, dl_error);
             ngx_http_haskell_unload(cycle);
             return NGX_ERROR;
         }
