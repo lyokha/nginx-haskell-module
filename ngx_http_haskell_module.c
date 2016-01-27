@@ -417,8 +417,11 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    if (value[2].len < 3 ||
-        ngx_strncmp(value[2].data + value[2].len - 3, ".hs", 3) != 0)
+    if (value[2].len < 3
+        || !(ngx_strncmp(value[2].data + value[2].len - 3, ".hs", 3) == 0
+             || (load_without_code
+                 && ngx_strncmp(value[2].data + value[2].len - 3, ".so", 3)
+                    == 0)))
     {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                         "haskell source code file must have extension \".hs\"");
