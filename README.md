@@ -33,9 +33,7 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString.Char8 as C8
 
-pattern SkipFstIfItIs x xs <-
-    ((\(a, b) -> (C.ord a, b)) . fromMaybe (C.chr 0, B.empty) . C8.uncons
-    -> (x, xs))
+pattern SkipFstIfItIs x xs <- (fromMaybe (0, B.empty) . B.uncons -> (x, xs))
 
 toUpper = map C.toUpper
 NGX_EXPORT_S_S (toUpper)
@@ -70,14 +68,11 @@ NGX_EXPORT_Y_Y (jSONListOfIntsTakeN)
 urlDecode :: ByteString -> Maybe ByteString
 urlDecode (B.null -> True) = Just B.empty
 urlDecode (SkipFstIfItIs 37 xs)
-    | B.length xs > 1 =
-         urlDecode (B.drop 2 xs) >>=
-         return . ((C.chr . read $ "0x" ++ C8.unpack (B.take 2 xs)) `C8.cons`)
+    | B.length xs > 1 = urlDecode (B.drop 2 xs) >>=
+         return . ((readDef 0 $ "0x" ++ C8.unpack (B.take 2 xs)) `B.cons`)
     | otherwise = Nothing
-urlDecode (SkipFstIfItIs 43 xs) =
-    urlDecode xs >>= return . (C.chr 32 `C8.cons`)
-urlDecode (B.uncons -> Just (x, xs)) =
-    urlDecode xs >>= return . (x `B.cons`)
+urlDecode (SkipFstIfItIs 43 xs) = urlDecode xs >>= return . (32 `B.cons`)
+urlDecode (B.uncons -> Just (x, xs)) = urlDecode xs >>= return . (x `B.cons`)
 
     ';
 
@@ -163,10 +158,7 @@ auxiliary function *urlDecode* adopted for ByteString arguments from
 syntactic extensions used in the code: *View Patterns* and *Pattern Synonyms*.
 The first is declared in a pragma in the wrapping haskell code so it does not
 need to be set explicitly, the second is passed via directive *haskell
-ghc_extra_flags*. As soon as single quotes cannot be used inside the haskell
-code (because the code itself is wrapped within single quotes in the directive
-*haskell compile*), explicit declarations of *Char* instances are written via
-*C.chr* patterns.
+ghc_extra_flags*.
 
 Let's look inside the *server* clause, in *location /* where the exported
 haskell functions are used. Directive *haskell_run* takes three or more
