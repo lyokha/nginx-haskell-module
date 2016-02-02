@@ -19,7 +19,7 @@ http {
     default_type        application/octet-stream;
     sendfile            on;
 
-    haskell ghc_extra_flags '-hide-package regex-pcre -XPatternSynonyms';
+    haskell ghc_extra_flags '-hide-package regex-pcre';
 
     haskell compile /tmp/ngx_haskell.hs '
 
@@ -32,8 +32,6 @@ import           Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString.Char8 as C8
-
-pattern SkipFstIfItIs x xs <- (fromMaybe (0, B.empty) . B.uncons -> (x, xs))
 
 toUpper = map C.toUpper
 NGX_EXPORT_S_S (toUpper)
@@ -63,15 +61,15 @@ jSONListOfIntsTakeN x = BL.toStrict $ encode $ take n $ fromMaybe []
     where (readDef 0 . C8.unpack -> n, B.tail -> y) = B.break (== 124) x
 NGX_EXPORT_Y_Y (jSONListOfIntsTakeN)
 
--- adopted for ByteString from
+-- adopted for ByteString arguments from
 -- http://www.rosettacode.org/wiki/URL_decoding#Haskell
 urlDecode :: ByteString -> Maybe ByteString
 urlDecode (B.null -> True) = Just B.empty
-urlDecode (SkipFstIfItIs 37 xs)
+urlDecode (B.uncons -> Just (37, xs))
     | B.length xs > 1 = urlDecode (B.drop 2 xs) >>=
          return . ((readDef 0 $ "0x" ++ C8.unpack (B.take 2 xs)) `B.cons`)
     | otherwise = Nothing
-urlDecode (SkipFstIfItIs 43 xs) = urlDecode xs >>= return . (32 `B.cons`)
+urlDecode (B.uncons -> Just (43, xs)) = urlDecode xs >>= return . (32 `B.cons`)
 urlDecode (B.uncons -> Just (x, xs)) = urlDecode xs >>= return . (x `B.cons`)
 
     ';
@@ -152,13 +150,13 @@ In this example eight custom haskell functions are exported: *toUpper*, *takeN*,
 *isJSONListOfInts* and *jSONListOfIntsTakeN*. As soon as probably this code
 won't compile due to ambiguity involved by presence of the two packages
 *regex-pcre* and *regex-pcre-builtin*, I had to add an extra *ghc* compilation
-flag using directive *haskell ghc_extra_flags*. The last two functions use an
-auxiliary function *urlDecode* adopted for ByteString arguments from
-[here](http://www.rosettacode.org/wiki/URL_decoding#Haskell). There are two
-syntactic extensions used in the code: *View Patterns* and *Pattern Synonyms*.
-The first is declared in a pragma in the wrapping haskell code so it does not
-need to be set explicitly, the second is passed via directive *haskell
-ghc_extra_flags*.
+flag using directive *haskell ghc_extra_flags*. Functions *isJSONListOfInts* and
+*jSONListOfIntsTakeN* use an auxiliary function *urlDecode* that was taken from
+[here](http://www.rosettacode.org/wiki/URL_decoding#Haskell) and adopted for
+ByteString arguments. This auxiliary function declares *view patterns* in its
+clauses but this extension does not have to be declared explicitly because it is
+already enabled in a pragma from the wrapping haskell code provided by this
+module.
 
 Let's look inside the *server* clause, in *location /* where the exported
 haskell functions are used. Directive *haskell_run* takes three or more
