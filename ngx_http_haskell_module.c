@@ -70,19 +70,39 @@ static const char  haskell_module_code_head[] =
 "AUX_NGX.Ptr AUX_NGX_STR_TYPE -> AUX_NGX.CInt -> IO AUX_NGX.CUInt; \\\n"
 "type_ngx_hs_ ## F = return $ fromIntegral $ fromEnum $ AUX_NGX_B_LS F; \\\n"
 "foreign export ccall type_ngx_hs_ ## F :: IO AUX_NGX.CInt\n\n"
+"#define NGX_EXPORT_Y_Y(F) ngx_hs_ ## F = aux_ngx_hs_y_y $ AUX_NGX_Y_Y F; \\\n"
+"foreign export ccall ngx_hs_ ## F :: "
+"AUX_NGX.CString -> AUX_NGX.CInt -> AUX_NGX.Ptr AUX_NGX.CString -> "
+"IO AUX_NGX.CInt; \\\n"
+"type_ngx_hs_ ## F = return $ fromIntegral $ fromEnum $ AUX_NGX_Y_Y F; \\\n"
+"foreign export ccall type_ngx_hs_ ## F :: IO AUX_NGX.CInt\n\n"
+"#define NGX_EXPORT_B_Y(F) ngx_hs_ ## F = aux_ngx_hs_b_y $ AUX_NGX_B_Y F; \\\n"
+"foreign export ccall ngx_hs_ ## F :: "
+"AUX_NGX.CString -> AUX_NGX.CInt -> IO AUX_NGX.CUInt; \\\n"
+"type_ngx_hs_ ## F = return $ fromIntegral $ fromEnum $ AUX_NGX_B_Y F; \\\n"
+"foreign export ccall type_ngx_hs_ ## F :: IO AUX_NGX.CInt\n\n"
 "module NgxHaskellUserRuntime where\n\n"
 "import qualified Foreign.C as AUX_NGX\n"
 "import qualified Foreign.Ptr as AUX_NGX\n"
 "import qualified Foreign.Storable as AUX_NGX\n"
-"import qualified System.IO.Unsafe as AUX_NGX\n";
+"import qualified System.IO.Unsafe as AUX_NGX\n"
+"import qualified Control.Monad as AUX_NGX\n"
+"import qualified Data.ByteString as AUX_NGX_BS\n"
+"import qualified Data.ByteString.Unsafe as AUX_NGX_BS\n"
+"import qualified Data.ByteString.Char8 as AUX_NGX_C8\n\n"
+"-- START OF USER HASKELL CODE\n";
 
 static const char  haskell_module_code_tail[] =
-"\ndata AUX_NGX_EF_TYPE = AUX_NGX_S_S (String -> String)\n"
+"\n-- END OF USER HASKELL CODE\n\n"
+"data AUX_NGX_EF_TYPE = AUX_NGX_S_S (String -> String)\n"
 "                     | AUX_NGX_S_SS (String -> String -> String)\n"
 "                     | AUX_NGX_S_LS ([String] -> String)\n"
 "                     | AUX_NGX_B_S (String -> Bool)\n"
 "                     | AUX_NGX_B_SS (String -> String -> Bool)\n"
 "                     | AUX_NGX_B_LS ([String] -> Bool)\n"
+"                     | AUX_NGX_Y_Y (AUX_NGX_BS.ByteString -> "
+"AUX_NGX_BS.ByteString)\n"
+"                     | AUX_NGX_B_Y (AUX_NGX_BS.ByteString -> Bool)\n"
 "instance Enum AUX_NGX_EF_TYPE where\n"
 "    toEnum _ = AUX_NGX_S_S id            -- not used\n"
 "    fromEnum (AUX_NGX_S_S _)  = 1\n"
@@ -90,7 +110,9 @@ static const char  haskell_module_code_tail[] =
 "    fromEnum (AUX_NGX_S_LS _) = 3\n"
 "    fromEnum (AUX_NGX_B_S _)  = 4\n"
 "    fromEnum (AUX_NGX_B_SS _) = 5\n"
-"    fromEnum (AUX_NGX_B_LS _) = 6\n\n"
+"    fromEnum (AUX_NGX_B_LS _) = 6\n"
+"    fromEnum (AUX_NGX_Y_Y _)  = 7\n"
+"    fromEnum (AUX_NGX_B_Y _)  = 8\n\n"
 "data AUX_NGX_STR_TYPE = AUX_NGX_STR_TYPE AUX_NGX.CSize "
 "(AUX_NGX.Ptr AUX_NGX.CChar)\n"
 "instance AUX_NGX.Storable AUX_NGX_STR_TYPE where\n"
@@ -137,6 +159,14 @@ static const char  haskell_module_code_tail[] =
 "    (s, fromIntegral -> l) <- AUX_NGX.newCStringLen $ "
 "f $ aux_ngx_peekUnsafeNgxStringArrayLen x n\n"
 "    AUX_NGX.poke p s\n"
+"    return l\n"
+"aux_ngx_hs_y_y :: "
+"AUX_NGX_EF_TYPE -> AUX_NGX.CString -> AUX_NGX.CInt -> "
+"AUX_NGX.Ptr AUX_NGX.CString -> IO AUX_NGX.CInt\n"
+"aux_ngx_hs_y_y (AUX_NGX_Y_Y f) x (fromIntegral -> n) p = do\n"
+"    (s, fromIntegral -> l) <- AUX_NGX.newCStringLen $ AUX_NGX_C8.unpack $ f $ "
+"AUX_NGX.unsafePerformIO $ AUX_NGX_BS.unsafePackCStringLen (x, n)\n"
+"    AUX_NGX.poke p s\n"
 "    return l\n\n"
 "aux_ngx_hs_b_s :: "
 "AUX_NGX_EF_TYPE -> AUX_NGX.CString -> AUX_NGX.CInt -> IO AUX_NGX.CUInt\n"
@@ -152,7 +182,12 @@ static const char  haskell_module_code_tail[] =
 "AUX_NGX_EF_TYPE -> AUX_NGX.Ptr AUX_NGX_STR_TYPE -> AUX_NGX.CInt -> "
 "IO AUX_NGX.CUInt\n"
 "aux_ngx_hs_b_ls (AUX_NGX_B_LS f) x (fromIntegral -> n) = return $ "
-"fromIntegral $ fromEnum $ f $ aux_ngx_peekUnsafeNgxStringArrayLen x n\n";
+"fromIntegral $ fromEnum $ f $ aux_ngx_peekUnsafeNgxStringArrayLen x n\n"
+"aux_ngx_hs_b_y :: "
+"AUX_NGX_EF_TYPE -> AUX_NGX.CString -> AUX_NGX.CInt -> IO AUX_NGX.CUInt\n"
+"aux_ngx_hs_b_y (AUX_NGX_B_Y f) x (fromIntegral -> n) = "
+"AUX_NGX.liftM (fromIntegral . fromEnum . f) $ "
+"AUX_NGX_BS.unsafePackCStringLen (x, n)\n";
 
 static const char  haskell_compile_cmd[] =
     "ghc --make -O2 -shared -dynamic -no-hs-main -pgmP cpp"
@@ -172,6 +207,10 @@ typedef HsWord32 (*ngx_http_haskell_handler_b_ss)
     (HsPtr, HsInt32, HsPtr, HsInt32);
 typedef HsWord32 (*ngx_http_haskell_handler_b_ls)
     (HsPtr, HsInt32);
+typedef HsInt32 (*ngx_http_haskell_handler_y_y)
+    (HsPtr, HsInt32, HsPtr);
+typedef HsWord32 (*ngx_http_haskell_handler_b_y)
+    (HsPtr, HsInt32);
 
 typedef enum {
     ngx_http_haskell_handler_type_uninitialized = 0,
@@ -180,7 +219,9 @@ typedef enum {
     ngx_http_haskell_handler_type_s_ls,
     ngx_http_haskell_handler_type_b_s,
     ngx_http_haskell_handler_type_b_ss,
-    ngx_http_haskell_handler_type_b_ls
+    ngx_http_haskell_handler_type_b_ls,
+    ngx_http_haskell_handler_type_y_y,
+    ngx_http_haskell_handler_type_b_y
 } ngx_http_haskell_handler_type_e;
 
 
@@ -711,6 +752,8 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         switch (handlers[i].type) {
         case ngx_http_haskell_handler_type_s_s:
         case ngx_http_haskell_handler_type_b_s:
+        case ngx_http_haskell_handler_type_y_y:
+        case ngx_http_haskell_handler_type_b_y:
             wrong_n_args = handlers[i].n_args[0] == 0
                         || handlers[i].n_args[1] > 0
                         || handlers[i].n_args[2] > 0 ? 1 : 0;
@@ -948,6 +991,8 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
         }
     case ngx_http_haskell_handler_type_s_s:
     case ngx_http_haskell_handler_type_b_s:
+    case ngx_http_haskell_handler_type_y_y:
+    case ngx_http_haskell_handler_type_b_y:
         if (ngx_http_complex_value(r, &args[0], &arg1) != NGX_OK) {
             return NGX_ERROR;
         }
@@ -1000,6 +1045,16 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
                handlers[code_vars[found_idx].handler].self)
                     (argn, code_vars[found_idx].args.nelts);
         break;
+    case ngx_http_haskell_handler_type_y_y:
+        len = ((ngx_http_haskell_handler_y_y)
+               handlers[code_vars[found_idx].handler].self)
+                    (arg1.data, arg1.len, &res);
+        break;
+    case ngx_http_haskell_handler_type_b_y:
+        len = ((ngx_http_haskell_handler_b_y)
+               handlers[code_vars[found_idx].handler].self)
+                    (arg1.data, arg1.len);
+        break;
     default:
         return NGX_ERROR;
     }
@@ -1008,6 +1063,7 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
     case ngx_http_haskell_handler_type_s_s:
     case ngx_http_haskell_handler_type_s_ss:
     case ngx_http_haskell_handler_type_s_ls:
+    case ngx_http_haskell_handler_type_y_y:
         if (res == NULL) {
             return NGX_ERROR;
         }
@@ -1022,6 +1078,7 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
     case ngx_http_haskell_handler_type_b_s:
     case ngx_http_haskell_handler_type_b_ss:
     case ngx_http_haskell_handler_type_b_ls:
+    case ngx_http_haskell_handler_type_b_y:
         res_copy = len == 1 ? (u_char *) "1" : (u_char *) "0";
         len = 1;
         break;
