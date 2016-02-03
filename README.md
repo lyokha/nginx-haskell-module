@@ -169,18 +169,18 @@ In this example eight custom haskell functions are exported: *toUpper*, *takeN*,
 *isJSONListOfInts* and *jSONListOfIntsTakeN*. As soon as probably this code
 won't compile due to ambiguity involved by presence of the two packages
 *regex-pcre* and *regex-pcre-builtin*, I had to add an extra *ghc* compilation
-flag *-hide-package regex-pcre* using directive *haskell ghc_extra_flags*.
-Another flag *-XFlexibleInstances* allows declaration of *instance UrlDecodable
-String*. Class UrlDecodable provides function *urlDecode* that was adopted from
-[here](http://www.rosettacode.org/wiki/URL_decoding#Haskell) for decoding
-strings and byte strings. Functions urlDecode are not exported but there is no
-restriction for doing that. These auxiliary functions use *view patterns* in
-their clauses, however this extension does not have to be declared explicitly
-because it was already enabled in a pragma from the wrapping haskell code
-provided by this module. It is worth noting that literal instances of type
-*Char* (like *'%'*, *'+'* etc.) are not allowed inside this haskell code because
-it is wrapped inside single quotes as an argument of an nginx directive: use
-function *chr* to fight this restriction as it was done in function urlDecode.
+flag *-hide-package regex-pcre* with directive *haskell ghc_extra_flags*.
+Another flag *-XFlexibleInstances* passed into the directive allows declaration
+of *instance UrlDecodable String*. Class UrlDecodable provides function
+*urlDecode* for decoding strings and byte strings that was adopted from
+[here](http://www.rosettacode.org/wiki/URL_decoding#Haskell). Both instances of
+urlDecode use *view patterns* in their clauses, however this extension does not
+have to be declared explicitly because it was already enabled in a pragma from
+the wrapping haskell code provided by this module. It is worth noting that
+literal instances of type *Char* (like *'%'*, *'+'* etc.) are not allowed inside
+this haskell code because it is wrapped inside single quotes as an argument of
+an nginx directive: use function *chr* to fight this restriction as it was done
+in function urlDecode.
 
 Let's look inside the *server* clause, in *location /* where the exported
 haskell functions are used. Directive *haskell_run* takes three or more
