@@ -42,9 +42,7 @@ NGX_EXPORT_S_SS (takeN)
 
 NGX_EXPORT_S_S (reverse)
 
-matches :: String -> String -> Bool
-matches a b = not $ null
-    (getAllTextMatches $ on (=~) (fromMaybe "" . urlDecode) a b :: [String])
+matches a b = not $ null (getAllTextMatches $ on (=~) urlDecode a b :: [String])
 NGX_EXPORT_B_SS (matches)
 
 firstNotEmpty = headDef "" . filter (not . null)
@@ -55,41 +53,44 @@ isInList (x : xs) = x `elem` xs
 NGX_EXPORT_B_LS (isInList)
 
 isJSONListOfInts x = isJust
-    (decodeStrict $ fromMaybe B.empty $ urlDecode x :: Maybe [Int])
+    (decodeStrict $ fromMaybe B.empty $ doURLDecode x :: Maybe [Int])
 NGX_EXPORT_B_Y (isJSONListOfInts)
 
 jSONListOfIntsTakeN x = BL.toStrict $ encode $ take n $ fromMaybe []
-    (decodeStrict $ fromMaybe B.empty $ urlDecode y :: Maybe [Int])
+    (decodeStrict $ fromMaybe B.empty $ doURLDecode y :: Maybe [Int])
     where (readDef 0 . C8.unpack -> n, B.tail -> y) = B.break (== 124) x
 NGX_EXPORT_Y_Y (jSONListOfIntsTakeN)
 
 class UrlDecodable a
-    where urlDecode :: a -> Maybe a
+    where doURLDecode :: a -> Maybe a
 
 instance UrlDecodable String where
     -- adopted from
     -- http://www.rosettacode.org/wiki/URL_decoding#Haskell
-    urlDecode [] = Just []
-    urlDecode (\'%\' : xs) =
+    doURLDecode [] = Just []
+    doURLDecode (\'%\' : xs) =
         case xs of
-            (a : b : xss) -> urlDecode xss >>=
+            (a : b : xss) -> doURLDecode xss >>=
                 return . ((C.chr . read $ "0x" ++ [a, b]) :)
             _ -> Nothing
-    urlDecode (\'+\' : xs) = urlDecode xs >>= return . (\' \' :)
-    urlDecode (x:xs) = urlDecode xs >>= return . (x :)
+    doURLDecode (\'+\' : xs) = doURLDecode xs >>= return . (\' \' :)
+    doURLDecode (x:xs) = doURLDecode xs >>= return . (x :)
 
 instance UrlDecodable ByteString where
     -- adopted for ByteString arguments from
     -- http://www.rosettacode.org/wiki/URL_decoding#Haskell
-    urlDecode (B.null -> True) = Just B.empty
-    urlDecode (B.uncons -> Just (37, xs))
-        | B.length xs > 1 = urlDecode (B.drop 2 xs) >>=
+    doURLDecode (B.null -> True) = Just B.empty
+    doURLDecode (B.uncons -> Just (37, xs))
+        | B.length xs > 1 = doURLDecode (B.drop 2 xs) >>=
              return . ((readDef 0 $ "0x" ++ C8.unpack (B.take 2 xs)) `B.cons`)
         | otherwise = Nothing
-    urlDecode (B.uncons -> Just (43, xs)) =
-        urlDecode xs >>= return . (32 `B.cons`)
-    urlDecode (B.uncons -> Just (x, xs)) =
-        urlDecode xs >>= return . (x `B.cons`)
+    doURLDecode (B.uncons -> Just (43, xs)) =
+        doURLDecode xs >>= return . (32 `B.cons`)
+    doURLDecode (B.uncons -> Just (x, xs)) =
+        doURLDecode xs >>= return . (x `B.cons`)
+
+urlDecode = fromMaybe "" . doURLDecode
+NGX_EXPORT_S_S (urlDecode)
 
     ';
 
@@ -114,7 +115,8 @@ instance UrlDecodable ByteString where
             }
             if ($arg_d) {
                 haskell_run matches $hs_a $arg_d $arg_a;
-                echo "matches ($arg_d, $arg_a) = $hs_a";
+                haskell_run urlDecode $hs_b $arg_a;
+                echo "matches ($arg_d, $hs_b) = $hs_a";
                 break;
             }
             if ($arg_e) {
@@ -129,12 +131,14 @@ instance UrlDecodable ByteString where
             }
             if ($arg_m) {
                 haskell_run isJSONListOfInts $hs_a $arg_m;
-                echo "isJSONListOfInts ($arg_m) = $hs_a";
+                haskell_run urlDecode $hs_b $arg_m;
+                echo "isJSONListOfInts ($hs_b) = $hs_a";
                 break;
             }
             if ($arg_n) {
                 haskell_run jSONListOfIntsTakeN $hs_a $arg_take|$arg_n;
-                echo "jSONListOfIntsTakeN ($arg_n, $arg_take) = $hs_a";
+                haskell_run urlDecode $hs_b $arg_n;
+                echo "jSONListOfIntsTakeN ($hs_b, $arg_take) = $hs_a";
                 break;
             }
         }
@@ -163,29 +167,25 @@ two function types that work with type *ByteString*: *NGX_EXPORT_Y_Y* and
 functions are supported that return strings or booleans and accept one, two or
 more (only *S_LS* and *B_LS*) string arguments.
 
-In this example eight custom haskell functions are exported: *toUpper*, *takeN*,
+In this example nine custom haskell functions are exported: *toUpper*, *takeN*,
 *reverse* (which is normal *reverse* imported from *Prelude*), *matches*
 (which requires module *Text.Regex.PCRE*), *firstNotEmpty*, *isInList*,
-*isJSONListOfInts* and *jSONListOfIntsTakeN*. As soon as probably this code
-won't compile due to ambiguity involved by presence of the two packages
-*regex-pcre* and *regex-pcre-builtin*, I had to add an extra *ghc* compilation
-flag *-hide-package regex-pcre* with directive *haskell ghc_extra_flags*.
-Another flag *-XFlexibleInstances* passed into the directive allows declaration
-of *instance UrlDecodable String*. Class *UrlDecodable* provides function
-*urlDecode* for decoding strings and byte strings that was adopted from
-[here](http://www.rosettacode.org/wiki/URL_decoding#Haskell). Byte string
-instance of *urlDecode* makes use of *view patterns* in its clauses, however
-this extension does not have to be declared explicitly because it was already
-enabled in a pragma from the wrapping haskell code provided by this module. In
-the string instance of *urlDecode* there are explicit characters wrapped inside
-single quotes which are in turn escaped with backslashes to not confuse nginx
-parser as the haskell code itself is wrapped inside single quotes.
-
-It is worth noting that
-literal instances of type *Char* (like *'%'*, *'+'* etc.) are not allowed inside
-this haskell code because it is wrapped inside single quotes as an argument of
-an nginx directive: use function *chr* to fight this restriction as it was done
-in function urlDecode.
+*isJSONListOfInts*, *jSONListOfIntsTakeN* and *urlDecode*. As soon as probably
+this code won't compile due to ambiguity involved by presence of the two
+packages *regex-pcre* and *regex-pcre-builtin*, I had to add an extra *ghc*
+compilation flag *-hide-package regex-pcre* with directive *haskell
+ghc_extra_flags*. Another flag *-XFlexibleInstances* passed into the directive
+allows declaration of *instance UrlDecodable String*. Class *UrlDecodable*
+provides function *doURLDecode* for decoding strings and byte strings that was
+adopted from [here](http://www.rosettacode.org/wiki/URL_decoding#Haskell). Byte
+string instance of *doURLDecode* makes use of *view patterns* in its clauses,
+however this extension does not have to be declared explicitly because it was
+already enabled in a pragma from the wrapping haskell code provided by this
+module. In the string instance of *doURLDecode* there are explicit characters
+wrapped inside single quotes which are in turn escaped with backslashes to not
+confuse nginx parser as the haskell code itself is wrapped inside single quotes.
+Exported function *urlDecode* is defined via the string instance of
+*doURLDecode*: if decoding fails it returns an empty string.
 
 Let's look inside the *server* clause, in *location /* where the exported
 haskell functions are used. Directive *haskell_run* takes three or more
@@ -222,9 +222,9 @@ takeN (hello_world, oops) =
 %> curl 'http://localhost:8010/?c=intelligence'
 reverse (intelligence) = ecnegilletni
 %> curl 'http://localhost:8010/?d=intelligence&a=%5Ei'              # URL-encoded ^i
-matches (intelligence, %5Ei) = 1
+matches (intelligence, ^i) = 1
 %> curl 'http://localhost:8010/?d=intelligence&a=%5EI'              # URL-encoded ^I
-matches (intelligence, %5EI) = 0
+matches (intelligence, ^I) = 0
 %> curl 'http://localhost:8010/?e=1&g=intelligence&a=smart'
 firstNotEmpty (, intelligence, smart) = intelligence
 %> curl 'http://localhost:8010/?e=1&g=intelligence&f=smart'
@@ -238,13 +238,13 @@ isInList (s, <secret words>) = 0
 %> curl 'http://localhost:8010/?l=1&a=secret2'
 isInList (secret2, <secret words>) = 1
 %> curl 'http://localhost:8010/?m=%5B1%2C2%2C3%5D'                  # URL-encoded [1,2,3]
-isJSONListOfInts (%5B1%2C2%2C3%5D) = 1
+isJSONListOfInts ([1,2,3]) = 1
 %> curl 'http://localhost:8010/?m=unknown'
 isJSONListOfInts (unknown) = 0
 %> curl 'http://localhost:8010/?n=%5B10%2C20%2C30%2C40%5D&take=3'   # URL-encoded [10,20,30,40]
-jSONListOfIntsTakeN (%5B10%2C20%2C30%2C40%5D, 3) = [10,20,30]
+jSONListOfIntsTakeN ([10,20,30,40], 3) = [10,20,30]
 %> curl 'http://localhost:8010/?n=%5B10%2C20%2C30%2C40%5D&take=undefined'
-jSONListOfIntsTakeN (%5B10%2C20%2C30%2C40%5D, undefined) = []
+jSONListOfIntsTakeN ([10,20,30,40], undefined) = []
 ```
 
 Some facts about efficiency
