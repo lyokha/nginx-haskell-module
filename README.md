@@ -44,7 +44,7 @@ NGX_EXPORT_S_S (reverse)
 
 matches :: String -> String -> Bool
 matches a b = not $ null
-    (getAllTextMatches (on (=~) (fromMaybe "" . urlDecode) a b) :: [String])
+    (getAllTextMatches $ on (=~) (fromMaybe "" . urlDecode) a b :: [String])
 NGX_EXPORT_B_SS (matches)
 
 firstNotEmpty = headDef "" . filter (not . null)
