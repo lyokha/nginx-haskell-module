@@ -70,12 +70,12 @@ instance UrlDecodable String where
     -- adopted from
     -- http://www.rosettacode.org/wiki/URL_decoding#Haskell
     urlDecode [] = Just []
-    urlDecode ((C.ord -> 37) : xs) =
+    urlDecode (\'%\' : xs) =
         case xs of
             (a : b : xss) -> urlDecode xss >>=
                 return . ((C.chr . read $ "0x" ++ [a, b]) :)
             _ -> Nothing
-    urlDecode ((C.ord -> 43) : xs) = urlDecode xs >>= return . (C.chr 32 :)
+    urlDecode (\'+\' : xs) = urlDecode xs >>= return . (\' \' :)
     urlDecode (x:xs) = urlDecode xs >>= return . (x :)
 
 instance UrlDecodable ByteString where
@@ -171,12 +171,17 @@ won't compile due to ambiguity involved by presence of the two packages
 *regex-pcre* and *regex-pcre-builtin*, I had to add an extra *ghc* compilation
 flag *-hide-package regex-pcre* with directive *haskell ghc_extra_flags*.
 Another flag *-XFlexibleInstances* passed into the directive allows declaration
-of *instance UrlDecodable String*. Class UrlDecodable provides function
+of *instance UrlDecodable String*. Class *UrlDecodable* provides function
 *urlDecode* for decoding strings and byte strings that was adopted from
-[here](http://www.rosettacode.org/wiki/URL_decoding#Haskell). Both instances of
-urlDecode use *view patterns* in their clauses, however this extension does not
-have to be declared explicitly because it was already enabled in a pragma from
-the wrapping haskell code provided by this module. It is worth noting that
+[here](http://www.rosettacode.org/wiki/URL_decoding#Haskell). Byte string
+instance of *urlDecode* makes use of *view patterns* in its clauses, however
+this extension does not have to be declared explicitly because it was already
+enabled in a pragma from the wrapping haskell code provided by this module. In
+the string instance of *urlDecode* there are explicit characters wrapped inside
+single quotes which are in turn escaped with backslashes to not confuse nginx
+parser as the haskell code itself is wrapped inside single quotes.
+
+It is worth noting that
 literal instances of type *Char* (like *'%'*, *'+'* etc.) are not allowed inside
 this haskell code because it is wrapped inside single quotes as an argument of
 an nginx directive: use function *chr* to fight this restriction as it was done
@@ -186,8 +191,8 @@ Let's look inside the *server* clause, in *location /* where the exported
 haskell functions are used. Directive *haskell_run* takes three or more
 arguments: it depends on the type of the exported function (*S_S*, *S_SS etc.*).
 The first argument of the directive is the name of an exported haskell function,
-the second argument is a custom variable where the function return value will be
-stored, and the remaining (one or two) arguments are complex values (in the
+the second argument is a custom variable where the function's return value will
+be stored, and the remaining (one or two) arguments are complex values (in the
 nginx notion: it means that they may contain arbitrary number of variables and
 plain symbols) that correspond to the arguments of the exported function.
 Directive *haskell_run* is allowed in *server*, *location* and *location-if*
