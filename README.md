@@ -180,7 +180,7 @@ because it was already enabled in a pragma from the wrapping haskell code
 provided by this module. It is worth noting that literal instances of type
 *Char* (like *'%'*, *'+'* etc.) are not allowed inside this haskell code because
 it is wrapped inside single quotes as an argument of an nginx directive: use
-function *chr* to fight this restriction like it was done in function urlDecode.
+function *chr* to fight this restriction as it was done in function urlDecode.
 
 Let's look inside the *server* clause, in *location /* where the exported
 haskell functions are used. Directive *haskell_run* takes three or more
