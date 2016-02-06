@@ -278,6 +278,7 @@ static ngx_int_t ngx_http_haskell_init(ngx_cycle_t *cycle);
 static void ngx_http_haskell_exit(ngx_cycle_t *cycle);
 static ngx_int_t ngx_http_haskell_run_handler(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
+static void ngx_http_haskell_request_cleanup(void *data);
 
 
 static ngx_command_t  ngx_http_haskell_module_commands[] = {
@@ -648,7 +649,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         return NGX_ERROR;
     }
 
-    mcf->dl_handle = dlopen((char*) mcf->lib_path.data, RTLD_LAZY);
+    mcf->dl_handle = dlopen((char *) mcf->lib_path.data, RTLD_LAZY);
     if (mcf->dl_handle == NULL) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                       "failed to load compiled haskell library");
@@ -715,7 +716,8 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         handler_name.data = handlers[i].name.data +
                 haskell_module_handler_prefix_len;
 
-        handlers[i].self = dlsym(mcf->dl_handle, (char*) handlers[i].name.data);
+        handlers[i].self = dlsym(mcf->dl_handle,
+                                 (char *) handlers[i].name.data);
         dl_error = dlerror();
         if (dl_error != NULL) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
@@ -959,7 +961,7 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
     ngx_http_complex_value_t          *args;
     ngx_str_t                          arg1, arg2, *argn = NULL;
     char                              *res = NULL;
-    u_char                            *res_copy;
+    ngx_pool_cleanup_t                *cln;
     ngx_uint_t                         len;
 
     if (index == NULL) {
@@ -1070,19 +1072,19 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
         if (res == NULL) {
             return NGX_ERROR;
         }
-        res_copy = ngx_pnalloc(r->pool, len);
-        if (res_copy == NULL) {
+        cln = ngx_pool_cleanup_add(r->pool, 0);
+        if (cln == NULL) {
             ngx_free(res);
             return NGX_ERROR;
         }
-        ngx_memcpy(res_copy, res, len);
-        ngx_free(res);
+        cln->handler = ngx_http_haskell_request_cleanup;
+        cln->data = res;
         break;
     case ngx_http_haskell_handler_type_b_s:
     case ngx_http_haskell_handler_type_b_ss:
     case ngx_http_haskell_handler_type_b_ls:
     case ngx_http_haskell_handler_type_b_y:
-        res_copy = len == 1 ? (u_char *) "1" : (u_char *) "0";
+        res = len == 1 ? "1" : "0";
         len = 1;
         break;
     default:
@@ -1090,11 +1092,16 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
     }
 
     v->len = len;
-    v->data = res_copy;
+    v->data = (u_char *) res;
     v->valid = 1;
     v->no_cacheable = 0;
     v->not_found = 0;
 
     return NGX_OK;
+}
+
+static void ngx_http_haskell_request_cleanup(void *data)
+{
+    ngx_free(data);
 }
 

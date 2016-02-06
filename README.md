@@ -260,10 +260,10 @@ Some facts about efficiency
 - Pitfalls
 
     + Haskell strings are simple lists, they are not contiguously allocated
-      (but on the other hand they are lazy, which usually means efficient)
+      (but on the other hand they are lazy, which usually means efficient).
     + Haskell exported functions of types *S_S*, *S_SS*, *S_LS* and *Y_Y*
-      allocate new strings which later get copied to the nginx request context's
-      pool and freed.
+      allocate new strings with *malloc()* which get freed upon the request
+      termination.
 
 Some facts about exceptions
 ---------------------------
