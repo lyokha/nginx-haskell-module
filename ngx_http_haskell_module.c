@@ -750,7 +750,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         if (dl_error != NULL) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                           "failed to load haskell handler type checker \"%V\": "
-                          "%s", handler_name, dl_error);
+                          "%s", &handler_name, dl_error);
             ngx_http_haskell_unload(cycle);
             return NGX_ERROR;
         }
