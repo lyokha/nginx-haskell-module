@@ -43,7 +43,7 @@ NGX_EXPORT_S_SS (takeN)
 NGX_EXPORT_S_S (reverse)
 
 -- does not match when any of the 2 args is empty or not decodable
-matches = (fromMaybe False .) . on (liftM2 (=~)) ((doURLDecode =<<) . toMaybe)
+matches = (fromMaybe False .) . liftM2 (=~) `on` (doURLDecode =<<) . toMaybe
     where toMaybe [] = Nothing
           toMaybe a  = Just a
 NGX_EXPORT_B_SS (matches)
@@ -74,9 +74,8 @@ instance UrlDecodable String where
     doURLDecode (\'%\' : xs) =
         case xs of
             (a : b : xss) ->
-                case readMay [\'0\', \'x\', a, b] of
-                    Just d -> liftM (C.chr d :) $ doURLDecode xss
-                    _ -> Nothing
+                liftM2 ((:) . C.chr) (readMay [\'0\', \'x\', a, b]) $
+                    doURLDecode xss
             _ -> Nothing
     doURLDecode (\'+\' : xs) = liftM (\' \' :) $ doURLDecode xs
     doURLDecode (x : xs) = liftM (x :) $ doURLDecode xs
@@ -87,9 +86,8 @@ instance UrlDecodable ByteString where
     doURLDecode (B.null -> True) = Just B.empty
     doURLDecode (B.uncons -> Just (37, xs))
         | B.length xs > 1 =
-            case readMay (\'0\' : \'x\' : C8.unpack (B.take 2 xs)) of
-                Just d -> liftM (d `B.cons`) $ doURLDecode (B.drop 2 xs)
-                _ -> Nothing
+            liftM2 B.cons (readMay $ \'0\' : \'x\' : C8.unpack (B.take 2 xs)) $
+                doURLDecode $ B.drop 2 xs
         | otherwise = Nothing
     doURLDecode (B.uncons -> Just (43, xs)) =
         liftM (32 `B.cons`) $ doURLDecode xs
