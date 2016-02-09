@@ -25,13 +25,14 @@ http {
 
 import qualified Data.Char as C
 import           Text.Regex.PCRE
-import           Safe
-import           Data.Function (on)
 import           Data.Aeson
 import           Data.Maybe
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as C8
+import           Data.Function (on)
+import           Control.Monad
+import           Safe
 
 toUpper = map C.toUpper
 NGX_EXPORT_S_S (toUpper)
@@ -41,7 +42,10 @@ NGX_EXPORT_S_SS (takeN)
 
 NGX_EXPORT_S_S (reverse)
 
-matches = on (=~) urlDecode
+-- does not match when any of the 2 args is empty or not decodable
+matches = (fromMaybe False .) . on (liftM2 (=~)) ((doURLDecode =<<) . toMaybe)
+    where toMaybe [] = Nothing
+          toMaybe a  = Just a
 NGX_EXPORT_B_SS (matches)
 
 firstNotEmpty = headDef "" . filter (not . null)
@@ -69,24 +73,28 @@ instance UrlDecodable String where
     doURLDecode [] = Just []
     doURLDecode (\'%\' : xs) =
         case xs of
-            (a : b : xss) -> doURLDecode xss >>=
-                return . ((C.chr . read $ "0x" ++ [a, b]) :)
+            (a : b : xss) ->
+                case readMay [\'0\', \'x\', a, b] of
+                    Just d -> liftM (C.chr d :) $ doURLDecode xss
+                    _ -> Nothing
             _ -> Nothing
-    doURLDecode (\'+\' : xs) = doURLDecode xs >>= return . (\' \' :)
-    doURLDecode (x:xs) = doURLDecode xs >>= return . (x :)
+    doURLDecode (\'+\' : xs) = liftM (\' \' :) $ doURLDecode xs
+    doURLDecode (x : xs) = liftM (x :) $ doURLDecode xs
 
 instance UrlDecodable ByteString where
     -- adopted for ByteString arguments from
     -- http://www.rosettacode.org/wiki/URL_decoding#Haskell
     doURLDecode (B.null -> True) = Just B.empty
     doURLDecode (B.uncons -> Just (37, xs))
-        | B.length xs > 1 = doURLDecode (B.drop 2 xs) >>=
-             return . ((readDef 0 $ "0x" ++ C8.unpack (B.take 2 xs)) `B.cons`)
+        | B.length xs > 1 =
+            case readMay (\'0\' : \'x\' : C8.unpack (B.take 2 xs)) of
+                Just d -> liftM (d `B.cons`) $ doURLDecode (B.drop 2 xs)
+                _ -> Nothing
         | otherwise = Nothing
     doURLDecode (B.uncons -> Just (43, xs)) =
-        doURLDecode xs >>= return . (32 `B.cons`)
+        liftM (32 `B.cons`) $ doURLDecode xs
     doURLDecode (B.uncons -> Just (x, xs)) =
-        doURLDecode xs >>= return . (x `B.cons`)
+        liftM (x `B.cons`) $ doURLDecode xs
 
 urlDecode = fromMaybe "" . doURLDecode
 NGX_EXPORT_S_S (urlDecode)
@@ -182,7 +190,7 @@ adopted from [here](http://www.rosettacode.org/wiki/URL_decoding#Haskell). Byte
 string instance of *doURLDecode* makes use of *view patterns* in its clauses,
 however this extension does not have to be declared explicitly because it was
 already enabled in a pragma from the wrapping haskell code provided by this
-module. In the string instance of *doURLDecode* there are explicit characters
+module. In several clauses of *doURLDecode* there are explicit characters
 wrapped inside single quotes which are in turn escaped with backslashes to not
 confuse nginx parser as the haskell code itself is wrapped inside single quotes.
 Exported function *urlDecode* is defined via the string instance of
