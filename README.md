@@ -27,9 +27,9 @@ import qualified Data.Char as C
 import           Text.Regex.PCRE
 import           Data.Aeson
 import           Data.Maybe
-import           Data.ByteString (ByteString)
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Char8 as C8
+import           Data.ByteString.Lazy (ByteString)
+import qualified Data.ByteString.Lazy as B
+import qualified Data.ByteString.Lazy.Char8 as C8
 import           Data.Function (on)
 import           Control.Monad
 import           Safe
@@ -56,11 +56,11 @@ isInList (x : xs) = x `elem` xs
 NGX_EXPORT_B_LS (isInList)
 
 isJSONListOfInts x = isJust
-    (decodeStrict $ fromMaybe B.empty $ doURLDecode x :: Maybe [Int])
+    (decode $ fromMaybe B.empty $ doURLDecode x :: Maybe [Int])
 NGX_EXPORT_B_Y (isJSONListOfInts)
 
 jSONListOfIntsTakeN x = encode $ take n $ fromMaybe []
-    (decodeStrict $ fromMaybe B.empty $ doURLDecode y :: Maybe [Int])
+    (decode $ fromMaybe B.empty $ doURLDecode y :: Maybe [Int])
     where (readDef 0 . C8.unpack -> n, B.tail -> y) = B.break (== 124) x
 NGX_EXPORT_Y_Y (jSONListOfIntsTakeN)
 
@@ -167,12 +167,10 @@ accessible from nginx that are exported with special macros *NGX_EXPORT_S_S*,
 *returns-String-accepts-String-String*, *returns-Bool-accepts-String* and
 *returns-Bool-accepts-String-String*), their *list* counterparts
 *NGX_EXPORT_S_LS* and *NGX_EXPORT_B_LS* (*LS* stands for *List-of-Strings*) and
-two macros that deal with *byte strings*: *NGX_EXPORT_Y_Y* and
-*NGX_EXPORT_B_Y* (*Y* stands for *bYte*). For the sake of performance byte
-string macros accept *strict* but return (only *Y_Y*) *lazy* byte strings.
-Effectively this means that only those functions are supported that return
-strings, byte strings or booleans and accept one, two or more (only *S_LS* and
-*B_LS*) string arguments or one byte string.
+two macros that deal with *lazy byte strings*: *NGX_EXPORT_Y_Y* and
+*NGX_EXPORT_B_Y* (*Y* stands for *bYte*). Effectively this means that only those
+functions are supported that return strings, byte strings or booleans and accept
+one, two or more (only *S_LS* and *B_LS*) string arguments or one byte string.
 
 In this example nine custom haskell functions are exported: *toUpper*, *takeN*,
 *reverse* (which is normal *reverse* imported from *Prelude*), *matches*

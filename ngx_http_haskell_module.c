@@ -101,9 +101,9 @@ static const char  haskell_module_code_tail[] =
 "                    | AUX_NGX_B_S (String -> Bool)\n"
 "                    | AUX_NGX_B_SS (String -> String -> Bool)\n"
 "                    | AUX_NGX_B_LS ([String] -> Bool)\n"
-"                    | AUX_NGX_Y_Y (AUX_NGX_BS.ByteString -> "
+"                    | AUX_NGX_Y_Y (AUX_NGX_BSL.ByteString -> "
 "AUX_NGX_BSL.ByteString)\n"
-"                    | AUX_NGX_B_Y (AUX_NGX_BS.ByteString -> Bool)\n"
+"                    | AUX_NGX_B_Y (AUX_NGX_BSL.ByteString -> Bool)\n"
 "instance Enum AUX_NGX_EXPORT where\n"
 "    toEnum _ = AUX_NGX_S_S id            -- not used\n"
 "    fromEnum (AUX_NGX_S_S _)  = 1\n"
@@ -159,7 +159,8 @@ static const char  haskell_module_code_tail[] =
 "aux_ngx_hs_y_y :: AUX_NGX_EXPORT -> AUX_NGX.CString -> AUX_NGX.CInt -> "
 "AUX_NGX.Ptr AUX_NGX.CString -> IO AUX_NGX.CInt\n"
 "aux_ngx_hs_y_y (AUX_NGX_Y_Y f) x (fromIntegral -> n) p = do\n"
-"    s <- AUX_NGX.liftM f $ AUX_NGX_BS.unsafePackCStringLen (x, n)\n"
+"    s <- AUX_NGX.liftM (f . AUX_NGX_BSL.fromStrict) $ "
+"AUX_NGX_BS.unsafePackCStringLen (x, n)\n"
 "    let l = AUX_NGX_BSL.length s\n"
 "    t <- AUX_NGX.mallocBytes $ fromIntegral l\n"
 "    let mallocSuccess = t /= AUX_NGX.nullPtr\n"
@@ -192,7 +193,7 @@ static const char  haskell_module_code_tail[] =
 "aux_ngx_hs_b_y :: AUX_NGX_EXPORT -> AUX_NGX.CString -> AUX_NGX.CInt -> "
 "IO AUX_NGX.CUInt\n"
 "aux_ngx_hs_b_y (AUX_NGX_B_Y f) x (fromIntegral -> n) =\n"
-"    AUX_NGX.liftM (fromIntegral . fromEnum . f) $ "
+"    AUX_NGX.liftM (fromIntegral . fromEnum . f . AUX_NGX_BSL.fromStrict) $ "
 "AUX_NGX_BS.unsafePackCStringLen (x, n)\n";
 
 static const char  haskell_compile_cmd[] =
