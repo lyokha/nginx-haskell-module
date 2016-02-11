@@ -27,9 +27,10 @@ import qualified Data.Char as C
 import           Text.Regex.PCRE
 import           Data.Aeson
 import           Data.Maybe
-import           Data.ByteString.Lazy (ByteString)
-import qualified Data.ByteString.Lazy as B
-import qualified Data.ByteString.Lazy.Char8 as C8
+import qualified Data.ByteString.Lazy as L
+import qualified Data.ByteString.Lazy.Char8 as C8L
+import qualified Data.ByteString as B
+import qualified Data.ByteString.Char8 as C8
 import           Data.Function (on)
 import           Control.Monad
 import           Safe
@@ -56,11 +57,11 @@ isInList (x : xs) = x `elem` xs
 NGX_EXPORT_B_LS (isInList)
 
 isJSONListOfInts x = isJust
-    (decode $ fromMaybe B.empty $ doURLDecode x :: Maybe [Int])
+    (decode $ fromMaybe L.empty $ doURLDecode $ L.fromStrict x :: Maybe [Int])
 NGX_EXPORT_B_Y (isJSONListOfInts)
 
 jSONListOfIntsTakeN x = encode $ take n $ fromMaybe []
-    (decode $ fromMaybe B.empty $ doURLDecode y :: Maybe [Int])
+    (decode $ fromMaybe L.empty $ doURLDecode $ L.fromStrict y :: Maybe [Int])
     where (readDef 0 . C8.unpack -> n, B.tail -> y) = B.break (== 124) x
 NGX_EXPORT_Y_Y (jSONListOfIntsTakeN)
 
@@ -73,26 +74,25 @@ instance UrlDecodable String where
     doURLDecode [] = Just []
     doURLDecode (\'%\' : xs) =
         case xs of
-            (a : b : xss) ->
-                liftM2 ((:) . C.chr) (readMay [\'0\', \'x\', a, b]) $
-                    doURLDecode xss
+            (a : b : xss) -> liftM2 ((:) . C.chr)
+                (readMay [\'0\', \'x\', a, b]) $ doURLDecode xss
             _ -> Nothing
     doURLDecode (\'+\' : xs) = liftM (\' \' :) $ doURLDecode xs
     doURLDecode (x : xs) = liftM (x :) $ doURLDecode xs
 
-instance UrlDecodable ByteString where
+instance UrlDecodable L.ByteString where
     -- adopted for ByteString arguments from
     -- http://www.rosettacode.org/wiki/URL_decoding#Haskell
-    doURLDecode (B.null -> True) = Just B.empty
-    doURLDecode (B.uncons -> Just (37, xs))
-        | B.length xs > 1 =
-            liftM2 B.cons (readMay $ \'0\' : \'x\' : C8.unpack (B.take 2 xs)) $
-                doURLDecode $ B.drop 2 xs
+    doURLDecode (L.null -> True) = Just L.empty
+    doURLDecode (L.uncons -> Just (37, xs))
+        | L.length xs > 1 = liftM2 L.cons
+            (readMay $ \'0\' : \'x\' : C8L.unpack (L.take 2 xs)) $
+            doURLDecode $ L.drop 2 xs
         | otherwise = Nothing
-    doURLDecode (B.uncons -> Just (43, xs)) =
-        liftM (32 `B.cons`) $ doURLDecode xs
-    doURLDecode (B.uncons -> Just (x, xs)) =
-        liftM (x `B.cons`) $ doURLDecode xs
+    doURLDecode (L.uncons -> Just (43, xs)) =
+        liftM (32 `L.cons`) $ doURLDecode xs
+    doURLDecode (L.uncons -> Just (x, xs)) =
+        liftM (x `L.cons`) $ doURLDecode xs
 
 urlDecode = fromMaybe "" . doURLDecode
 NGX_EXPORT_S_S (urlDecode)
@@ -167,10 +167,12 @@ accessible from nginx that are exported with special macros *NGX_EXPORT_S_S*,
 *returns-String-accepts-String-String*, *returns-Bool-accepts-String* and
 *returns-Bool-accepts-String-String*), their *list* counterparts
 *NGX_EXPORT_S_LS* and *NGX_EXPORT_B_LS* (*LS* stands for *List-of-Strings*) and
-two macros that deal with *lazy byte strings*: *NGX_EXPORT_Y_Y* and
-*NGX_EXPORT_B_Y* (*Y* stands for *bYte*). Effectively this means that only those
-functions are supported that return strings, byte strings or booleans and accept
-one, two or more (only *S_LS* and *B_LS*) string arguments or one byte string.
+two macros that deal with *byte strings*: *NGX_EXPORT_Y_Y* and *NGX_EXPORT_B_Y*
+(*Y* stands for *bYte*). For the sake of efficiency byte string macros accept
+*strict* but return (only *Y_Y*) *lazy* byte strings. Effectively this means
+that only those functions are supported that return strings, byte strings or
+booleans and accept one, two or more (only *S_LS* and *B_LS*) string arguments
+or one byte string.
 
 In this example nine custom haskell functions are exported: *toUpper*, *takeN*,
 *reverse* (which is normal *reverse* imported from *Prelude*), *matches*
