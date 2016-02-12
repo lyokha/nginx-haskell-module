@@ -57,7 +57,7 @@ isInList (x : xs) = x `elem` xs
 NGX_EXPORT_B_LS (isInList)
 
 jSONListOfInts :: B.ByteString -> Maybe [Int]
-jSONListOfInts = decode . fromMaybe L.empty . doURLDecode . L.fromStrict
+jSONListOfInts = (decode =<<) . doURLDecode . L.fromStrict
 
 isJSONListOfInts = isJust . jSONListOfInts
 NGX_EXPORT_B_Y (isJSONListOfInts)
