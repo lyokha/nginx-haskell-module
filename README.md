@@ -284,14 +284,14 @@ hide deeply in details. Innocuously looking function *matches* from the above
 example not only is inefficient but also unsafe. The only reason for both the
 problems is simple: *matches* accepts a regular expression in every single user
 request meaning that it must be compiled every time again (inefficiency) and
-being wrongly composed it may lead to uncatchable compilation errors (unsafety).
-An obvious solution that must fix the problems is to not allow users passing
-regular expressions but create and compile them in the code instead. If it is
-not acceptable by some reasons and users still may send regular expressions in
-requests then they must at least be checked against compilation errors. To
-achieve this a lower level API functions *compile* and *execute* are required
-(they are exported from module *Text.Regex.PCRE.String*). Below is a safe
-version of *matches*.
+having been wrongly composed it may lead to uncatchable compilation errors
+(unsafety). An obvious solution that must fix the problems is to not allow users
+passing regular expressions but create and compile them in the haskell code
+instead. If it is not acceptable by some reasons and users still may send
+regular expressions in requests then they must at least be checked against
+compilation errors. To achieve this a lower level API functions *compile* and
+*execute* are required (they are exported from module *Text.Regex.PCRE.String*).
+Below is a safe version of *matches*.
 
 ```haskell
 matchesSafe = (fromMaybe False .) . liftM2 safeMatch `on`
