@@ -299,12 +299,12 @@ matchesSafe = (fromMaybe False .) . liftM2 safeMatch `on`
     where safeMatch a b = unsafePerformIO $ do
             p <- compile compBlank execBlank b
             case p of
-                Left _ -> return False
                 Right x -> do
                     r <- execute x a
                     return $ case r of
-                        Left _ -> False
-                        Right x -> maybe False (return True) x
+                        Right (Just _) -> True
+                        _ -> False
+                _ -> return False
           toMaybe [] = Nothing
           toMaybe a  = Just a
 ```
