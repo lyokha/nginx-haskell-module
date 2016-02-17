@@ -312,7 +312,7 @@ matchesSafe = (fromMaybe False .) . liftM2 safeMatch `on`
 Functions *compile* and *execute* expose IO monad: that is why the result of
 *safeMatch* gets unwrapped with *unsafePerformIO* (exported from
 *System.IO.Unsafe*). There is nothing bad about that in this particular case:
-internally higher level regex API functions like *(=~)* and *match* do the same
+internally higher level API regex functions like *(=~)* and *match* do the same
 in their implementations.
 
 See also
