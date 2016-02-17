@@ -267,8 +267,9 @@ Some facts about efficiency
 
 - Pitfalls
 
-    + Haskell strings are simple lists, they are not contiguously allocated
-      (but on the other hand they are lazy, which usually means efficient).
+    + (This does not refer to *byte strings*.) Haskell strings are simple lists,
+      they are not contiguously allocated (but on the other hand they are lazy,
+      which usually means efficient).
     + Haskell exported functions of types *S_S*, *S_SS*, *S_LS* and *Y_Y*
       allocate new strings with *malloc()* which get freed upon the request
       termination.
@@ -276,9 +277,43 @@ Some facts about efficiency
 Some facts about exceptions
 ---------------------------
 
-Haskell source code must be preferably pure and safe as soon as C code is known
+Haskell source code must preferably be pure and safe as soon as C code is known
 to be unfamiliar with catching Haskell exceptions. That is why I used functions
-from the *Safe* module in the above example.
+from the *Safe* module in the above example. Causes of probable exceptions may
+hide deeply in details. Innocuously looking function *matches* from the above
+example not only is inefficient but also unsafe. The only reason for both the
+problems is simple: *matches* accepts a regular expression in every single user
+request meaning that it must be compiled every time again (inefficiency) and
+being wrongly composed it may lead to uncatchable compilation errors (unsafety).
+An obvious solution that must fix the problems is to not allow users passing
+regular expressions but create and compile them in the code instead. If it is
+not acceptable by some reasons and users still may send regular expressions in
+requests then they must at least be checked against compilation errors. To
+achieve this a lower level API functions *compile* and *execute* are required
+(they are exported from module *Text.Regex.PCRE.String*). Below is a safe
+version of *matches*.
+
+```haskell
+matchesSafe = (fromMaybe False .) . liftM2 safeMatch `on`
+              (doURLDecode =<<) . toMaybe
+    where safeMatch a b = unsafePerformIO $ do
+            p <- compile compBlank execBlank b
+            case p of
+                Left _ -> return False
+                Right x -> do
+                    r <- execute x a
+                    return $ case r of
+                        Left _ -> False
+                        Right x -> maybe False (return True) x
+          toMaybe [] = Nothing
+          toMaybe a  = Just a
+```
+
+Functions *compile* and *execute* expose IO Monad: that is why the result of
+*safeMatch* gets unwrapped with *unsafePerformIO* (exported from
+*System.IO.Unsafe*). There is nothing bad about that in this particular case:
+internally higher level regex API functions like *(=~)* and *match* do the same
+in their implementations.
 
 See also
 --------
