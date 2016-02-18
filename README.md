@@ -294,8 +294,8 @@ compilation errors. To achieve this a lower level API functions *compile* and
 Below is a safe version of *matches*.
 
 ```haskell
-matchesSafe = (fromMaybe False .) . liftM2 safeMatch `on`
-              (doURLDecode =<<) . toMaybe
+matches = (fromMaybe False .) . liftM2 safeMatch `on`
+          (doURLDecode =<<) . toMaybe
     where safeMatch a b = unsafePerformIO $ do
             p <- compile compBlank execBlank b
             case p of
@@ -312,8 +312,8 @@ matchesSafe = (fromMaybe False .) . liftM2 safeMatch `on`
 Functions *compile* and *execute* expose IO monad: that is why the result of
 *safeMatch* gets unwrapped with *unsafePerformIO* (exported from
 *System.IO.Unsafe*). There is nothing bad about that in this particular case:
-internally higher level API regex functions like *(=~)* and *match* do the same
-in their implementations.
+internally higher level API regex functions like *(=~)* and *match* do all the
+same.
 
 See also
 --------
