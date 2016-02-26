@@ -221,37 +221,37 @@ Nginx compiles haskell code at its start. Had compilation failed and nginx would
 not have started! But in this case the code is OK and we are moving forward.
 
 ```
-%> curl 'http://localhost:8010/?a=hello_world'
+# curl 'http://localhost:8010/?a=hello_world'
 toUpper (hello_world) = HELLO_WORLD
-%> curl 'http://localhost:8010/?a=hello_world&b=4'
+# curl 'http://localhost:8010/?a=hello_world&b=4'
 takeN (hello_world, 4) = hell
-%> curl 'http://localhost:8010/?a=hello_world&b=oops'
+# curl 'http://localhost:8010/?a=hello_world&b=oops'
 takeN (hello_world, oops) = 
-%> curl 'http://localhost:8010/?c=intelligence'
+# curl 'http://localhost:8010/?c=intelligence'
 reverse (intelligence) = ecnegilletni
-%> curl 'http://localhost:8010/?d=intelligence&a=%5Ei'              # URL-encoded ^i
+# curl 'http://localhost:8010/?d=intelligence&a=%5Ei'              # URL-encoded ^i
 matches (intelligence, ^i) = 1
-%> curl 'http://localhost:8010/?d=intelligence&a=%5EI'              # URL-encoded ^I
+# curl 'http://localhost:8010/?d=intelligence&a=%5EI'              # URL-encoded ^I
 matches (intelligence, ^I) = 0
-%> curl 'http://localhost:8010/?e=1&g=intelligence&a=smart'
+# curl 'http://localhost:8010/?e=1&g=intelligence&a=smart'
 firstNotEmpty (, intelligence, smart) = intelligence
-%> curl 'http://localhost:8010/?e=1&g=intelligence&f=smart'
+# curl 'http://localhost:8010/?e=1&g=intelligence&f=smart'
 firstNotEmpty (smart, intelligence, ) = smart
-%> curl 'http://localhost:8010/?e=1'
+# curl 'http://localhost:8010/?e=1'
 firstNotEmpty (, , ) = 
-%> curl 'http://localhost:8010/?l=1'
+# curl 'http://localhost:8010/?l=1'
 isInList (, <secret words>) = 0
-%> curl 'http://localhost:8010/?l=1&a=s'
+# curl 'http://localhost:8010/?l=1&a=s'
 isInList (s, <secret words>) = 0
-%> curl 'http://localhost:8010/?l=1&a=secret2'
+# curl 'http://localhost:8010/?l=1&a=secret2'
 isInList (secret2, <secret words>) = 1
-%> curl 'http://localhost:8010/?m=%5B1%2C2%2C3%5D'                  # URL-encoded [1,2,3]
+# curl 'http://localhost:8010/?m=%5B1%2C2%2C3%5D'                  # URL-encoded [1,2,3]
 isJSONListOfInts ([1,2,3]) = 1
-%> curl 'http://localhost:8010/?m=unknown'
+# curl 'http://localhost:8010/?m=unknown'
 isJSONListOfInts (unknown) = 0
-%> curl 'http://localhost:8010/?n=%5B10%2C20%2C30%2C40%5D&take=3'   # URL-encoded [10,20,30,40]
+# curl 'http://localhost:8010/?n=%5B10%2C20%2C30%2C40%5D&take=3'   # URL-encoded [10,20,30,40]
 jSONListOfIntsTakeN ([10,20,30,40], 3) = [10,20,30]
-%> curl 'http://localhost:8010/?n=%5B10%2C20%2C30%2C40%5D&take=undefined'
+# curl 'http://localhost:8010/?n=%5B10%2C20%2C30%2C40%5D&take=undefined'
 jSONListOfIntsTakeN ([10,20,30,40], undefined) = []
 ```
 
