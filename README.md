@@ -220,7 +220,7 @@ Linking /tmp/ngx_haskell.so ...
 Nginx compiles haskell code at its start. Had compilation failed and nginx would
 not have started! But in this case the code is OK and we are moving forward.
 
-```
+```ShellSession
 # curl 'http://localhost:8010/?a=hello_world'
 toUpper (hello_world) = HELLO_WORLD
 # curl 'http://localhost:8010/?a=hello_world&b=4'
