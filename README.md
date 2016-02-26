@@ -212,7 +212,7 @@ as normally expected.
 What about doing some tests? Let's first start nginx.
 
 ```ShellSession
-%> nginx -p. -c./nginx.conf
+# nginx -p. -c./nginx.conf
 [1 of 1] Compiling NgxHaskellUserRuntime ( /tmp/ngx_haskell.hs, /tmp/ngx_haskell.o )
 Linking /tmp/ngx_haskell.so ...
 ```
