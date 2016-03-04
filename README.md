@@ -19,7 +19,8 @@ http {
     default_type        application/octet-stream;
     sendfile            on;
 
-    haskell ghc_extra_flags '-hide-package regex-pcre -XFlexibleInstances';
+    haskell ghc_extra_flags
+            '-hide-package regex-pcre -XFlexibleInstances -XTupleSections';
 
     haskell compile /tmp/ngx_haskell.hs '
 
@@ -31,6 +32,9 @@ import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Lazy.Char8 as C8L
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as C8
+import           Text.Pandoc
+import           Text.Pandoc.Builder
+import           Text.Pandoc.Error
 import           Data.Function (on)
 import           Control.Monad
 import           Safe
@@ -98,6 +102,24 @@ instance UrlDecodable L.ByteString where
 urlDecode = fromMaybe "" . doURLDecode
 NGX_EXPORT_S_S (urlDecode)
 
+defHtmlWriterOptions = def { writerStandalone = True, writerTemplate = tmpl }
+    where tmpl = "<html>\\n<body>\\n$body$</body></html>"
+
+fromMd (C8.unpack -> x) = uncurry (, "text/html", ) $
+    case readMarkdown def x of
+        Right p -> (writeHtml p, 200)
+        Left  e -> (, 500) $ writeError $ case e of
+                      ParseFailure  e -> show e
+                      ParsecError _ e -> show e
+    where writeHtml = C8L.pack . writeHtmlString defHtmlWriterOptions
+          writeError = writeHtml . doc . para . singleton . Str
+NGX_EXPORT_HANDLER (fromMd)
+
+toYesNo "0" = "No"
+toYesNo "1" = "Yes"
+toYesNo  _  = "Unknown"
+NGX_EXPORT_S_S (toYesNo)
+
     ';
 
     server {
@@ -148,6 +170,27 @@ NGX_EXPORT_S_S (urlDecode)
                 break;
             }
         }
+
+        location /content {
+            haskell_run isJSONListOfInts $hs_a $arg_n;
+            haskell_run toYesNo $hs_b $hs_a;
+            haskell_run jSONListOfIntsTakeN $hs_c $arg_take|$arg_n;
+            haskell_run urlDecode $hs_d $arg_n;
+            haskell_content fromMd "
+##Do some JSON parsing
+
+### Given ``$hs_d``
+
+* Is this list of integer numbers?
+
+    + *$hs_b*
+
+* Take $arg_take elements
+
+    + *``$hs_c``*
+    ";
+
+        }
     }
 }
 ```
@@ -175,12 +218,12 @@ that only those functions are supported that return strings, byte strings or
 booleans and accept one, two or more (only *S_LS* and *B_LS*) string arguments
 or one byte string.
 
-In this example nine custom haskell functions are exported: *toUpper*, *takeN*,
+In this example 10 custom haskell functions are exported: *toUpper*, *takeN*,
 *reverse* (which is normal *reverse* imported from *Prelude*), *matches*
 (which requires module *Text.Regex.PCRE*), *firstNotEmpty*, *isInList*,
-*isJSONListOfInts*, *jSONListOfIntsTakeN* and *urlDecode*. As soon as probably
-this code won't compile due to ambiguity involved by presence of the two
-packages *regex-pcre* and *regex-pcre-builtin*, I had to add an extra *ghc*
+*isJSONListOfInts*, *jSONListOfIntsTakeN*, *urlDecode* and *toYesNo*. As soon as
+probably this code won't compile due to ambiguity involved by presence of the
+two packages *regex-pcre* and *regex-pcre-builtin*, I had to add an extra *ghc*
 compilation flag *-hide-package regex-pcre* with directive *haskell
 ghc_extra_flags*. Another flag *-XFlexibleInstances* passed into the directive
 allows declaration of *instance UrlDecodable String*. Class *UrlDecodable*
@@ -208,6 +251,17 @@ clauses. In this example all returned strings are stored in the same variable
 *hs_a* which is not a good habit for nginx configuration files. I only wanted to
 show that upper nginx configuration levels being merged with lower levels behave
 as normally expected.
+
+There is another haskell directive *haskell_content* which accepts a haskell
+function to generate the HTTP response. The function may have one of the two
+types: *strictByteString-to-lazyByteString* and
+*strictByteString-to-3tuple(lazyByteString-String-Int)*. It must be exported
+with *NGX_EXPORT_DEF_HANDLER* in the first case and *NGX_EXPORT_HANDLER* in the
+second case. The part *String-Int* in the second case corresponds to desired
+content type and HTTP status. In the location */content* from the above example
+the directive *haskell_content* makes use of the function *fromMd* to generate
+HTML response from a markdown text. Function *fromMd* translates a markdown
+text to HTML using Pandoc library.
 
 What about doing some tests? Let's first start nginx.
 
@@ -255,6 +309,33 @@ jSONListOfIntsTakeN ([10,20,30,40], 3) = [10,20,30]
 jSONListOfIntsTakeN ([10,20,30,40], undefined) = []
 ```
 
+Let's try location */content* (in a browser it will look great!)
+
+```ShellSession
+# curl -D- 'http://localhost:8010/content?n=%5B10%2C20%2C30%2C40%5D&take=3'
+HTTP/1.1 200 OK
+Server: nginx/1.8.0
+Date: Fri, 04 Mar 2016 15:17:44 GMT
+Content-Type: text/html
+Content-Length: 323
+Connection: keep-alive
+
+<html>
+<body>
+<h2 id="do-some-json-parsing">Do some JSON parsing</h2>
+<h3 id="given-10203040">Given <code>[10,20,30,40]</code></h3>
+<ul>
+<li><p>Is this list of integer numbers?</p>
+<ul>
+<li><em>Yes</em></li>
+</ul></li>
+<li><p>Take 3 elements</p>
+<ul>
+<li><em><code>[10,20,30]</code></em></li>
+</ul></li>
+</ul></body></html>
+```
+
 Some facts about efficiency
 ---------------------------
 
@@ -270,9 +351,12 @@ Some facts about efficiency
     + (This does not refer to *byte strings*.) Haskell strings are simple lists,
       they are not contiguously allocated (but on the other hand they are lazy,
       which usually means efficient).
-    + Haskell exported functions of types *S_S*, *S_SS*, *S_LS* and *Y_Y*
-      allocate new strings with *malloc()* which get freed upon the request
-      termination.
+    + Haskell exported functions of types *S_S*, *S_SS*, *S_LS* and *Y_Y* and
+      content handlers allocate new strings with *malloc()* which get freed upon
+      the request termination.
+    + Haskell content handlers are not suspendable so you cannot use
+      long-running haskell functions without making significant harm to the
+      overall nginx performance.
 
 Some facts about exceptions
 ---------------------------
