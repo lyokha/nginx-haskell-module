@@ -309,7 +309,7 @@ jSONListOfIntsTakeN ([10,20,30,40], 3) = [10,20,30]
 jSONListOfIntsTakeN ([10,20,30,40], undefined) = []
 ```
 
-Let's try location */content* (in a browser it will look great!)
+Let's try location */content* (in a browser it looks great!)
 
 ```ShellSession
 # curl -D- 'http://localhost:8010/content?n=%5B10%2C20%2C30%2C40%5D&take=3'
