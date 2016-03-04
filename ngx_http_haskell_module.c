@@ -87,7 +87,7 @@ static const char  haskell_module_code_head[] =
 "AUX_NGX.CString -> AUX_NGX.CInt -> "
 "\\\n    AUX_NGX.Ptr (AUX_NGX.Ptr AUX_NGX_STR_TYPE) -> "
 "AUX_NGX.Ptr AUX_NGX.CInt -> \\\n    AUX_NGX.Ptr AUX_NGX.CString -> "
-"AUX_NGX.Ptr AUX_NGX.CInt -> \\\n    IO AUX_NGX.CInt; \\\n"
+"AUX_NGX.Ptr AUX_NGX.CSize -> \\\n    IO AUX_NGX.CInt; \\\n"
 "type_ngx_hs_ ## F = return $ fromIntegral $ fromEnum $ AUX_NGX_HANDLER F; \\\n"
 "foreign export ccall type_ngx_hs_ ## F :: IO AUX_NGX.CInt\n\n"
 "#define NGX_EXPORT_DEF_HANDLER(F) ngx_hs_ ## F = aux_ngx_hs_def_handler $ "
@@ -275,7 +275,7 @@ static const char  haskell_module_code_tail[] =
 "    AUX_NGX.CString -> AUX_NGX.CInt ->\n"
 "    AUX_NGX.Ptr (AUX_NGX.Ptr AUX_NGX_STR_TYPE) -> AUX_NGX.Ptr AUX_NGX.CInt ->"
 "\n"
-"    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CInt ->\n"
+"    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CSize ->\n"
 "    IO AUX_NGX.CInt\n"
 "aux_ngx_hs_handler (AUX_NGX_HANDLER f) x (fromIntegral -> n) ps pls pt plt = "
 "do\n"
@@ -386,6 +386,13 @@ typedef struct {
 } ngx_http_haskell_code_var_data_t;
 
 
+typedef struct {
+    ngx_str_t                            *bufs;
+    ngx_int_t                             size;
+    ngx_str_t                             content_type;
+} ngx_http_haskell_ch_cleanup_data_t;
+
+
 static char *ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_http_haskell_write_code(ngx_conf_t *cf, ngx_str_t source_name,
     ngx_str_t fragment);
@@ -406,7 +413,8 @@ static void ngx_http_haskell_exit(ngx_cycle_t *cycle);
 static ngx_int_t ngx_http_haskell_run_handler(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_haskell_content_handler(ngx_http_request_t *r);
-static void ngx_http_haskell_request_cleanup(void *data);
+static void ngx_http_haskell_variable_cleanup(void *data);
+static void ngx_http_haskell_content_handler_cleanup(void *data);
 
 
 static ngx_command_t  ngx_http_haskell_module_commands[] = {
@@ -424,7 +432,7 @@ static ngx_command_t  ngx_http_haskell_module_commands[] = {
       0,
       NULL },
     { ngx_string("haskell_content"),
-      NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE12,
+      NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE12,
       ngx_http_haskell_content,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
@@ -1364,7 +1372,7 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
                 ngx_free(res);
                 return NGX_ERROR;
             }
-            cln->handler = ngx_http_haskell_request_cleanup;
+            cln->handler = ngx_http_haskell_variable_cleanup;
             cln->data = res;
         }
         break;
@@ -1392,18 +1400,21 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
 static ngx_int_t
 ngx_http_haskell_content_handler(ngx_http_request_t *r)
 {
-    ngx_int_t                          i;
-    ngx_http_haskell_main_conf_t      *mcf;
-    ngx_http_haskell_loc_conf_t       *lcf;
-    ngx_http_haskell_handler_t        *handlers;
-    ngx_http_complex_value_t          *args;
-    ngx_str_t                          arg = ngx_string("");
-    ngx_str_t                         *res = NULL;
-    ngx_str_t                          ct = { 10, (u_char *) "text/plain" };
-    ngx_int_t                          len = 0, st = NGX_HTTP_OK;
-    ngx_chain_t                       *out, *out_cur;
-    ngx_buf_t                         *b;
-    ngx_int_t                          rc;
+    ngx_int_t                            i;
+    ngx_http_haskell_main_conf_t        *mcf;
+    ngx_http_haskell_loc_conf_t         *lcf;
+    ngx_http_haskell_handler_t          *handlers;
+    ngx_http_complex_value_t            *args;
+    ngx_str_t                            arg = ngx_string("");
+    ngx_str_t                            ct = { 10, (u_char *) "text/plain" };
+    ngx_int_t                            len = 0, st = NGX_HTTP_OK;
+    ngx_str_t                           *res = NULL;
+    ngx_chain_t                         *out, *out_cur;
+    ngx_buf_t                           *b;
+    ngx_pool_cleanup_t                  *cln;
+    ngx_http_haskell_ch_cleanup_data_t  *clnd;
+    ngx_uint_t                           def_handler = 0;
+    ngx_int_t                            rc;
 
     if (ngx_http_discard_request_body(r) != NGX_OK) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
@@ -1425,6 +1436,7 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
         len = ((ngx_http_haskell_handler_dch)
                handlers[lcf->content_handler->handler].self)
                     (arg.data, arg.len, &res);
+        def_handler = 1;
         break;
     case ngx_http_haskell_handler_type_ch:
         st = ((ngx_http_haskell_handler_ch)
@@ -1435,11 +1447,11 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    if (len == -1) {
+    if (len == -1 || ct.data == NULL) {
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
                       "memory allocation error while running "
                       "haskell content handler");
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        goto cleanup;
     }
 
     if (res == NULL) {
@@ -1449,9 +1461,24 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
             ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
                           "impossible branch while running "
                           "haskell content handler");
-            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            goto cleanup;
         }
     }
+
+    cln = ngx_pool_cleanup_add(r->pool, 0);
+    if (cln == NULL) {
+        goto cleanup;
+    }
+    clnd = ngx_pnalloc(r->pool, sizeof(ngx_http_haskell_ch_cleanup_data_t));
+    if (clnd == NULL) {
+        goto cleanup;
+    }
+    clnd->bufs = res;
+    clnd->size = len;
+    clnd->content_type.len = def_handler ? 0 : ct.len;
+    clnd->content_type.data = def_handler ? NULL : ct.data;
+    cln->handler = ngx_http_haskell_content_handler_cleanup;
+    cln->data = clnd;
 
     r->headers_out.content_type_len = ct.len;
     r->headers_out.content_type = ct;
@@ -1491,10 +1518,38 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
     }
 
     return ngx_http_output_filter(r, out);
+
+cleanup:
+
+    if (res != NULL) {
+        for (i = 0; i < len; i++) {
+            ngx_free(res[i].data);
+        }
+        ngx_free(res);
+    }
+    ngx_free(def_handler ? NULL : ct.data);
+
+    return NGX_HTTP_INTERNAL_SERVER_ERROR;
 }
 
-static void ngx_http_haskell_request_cleanup(void *data)
+
+static void ngx_http_haskell_variable_cleanup(void *data)
 {
     ngx_free(data);
+}
+
+
+static void ngx_http_haskell_content_handler_cleanup(void *data)
+{
+    ngx_int_t                            i;
+    ngx_http_haskell_ch_cleanup_data_t  *clnd = data;
+
+    if (clnd->bufs != NULL) {
+        for (i = 0; i < clnd->size; i++) {
+            ngx_free(clnd->bufs[i].data);
+        }
+        ngx_free(clnd->bufs);
+    }
+    ngx_free(clnd->content_type.data);
 }
 
