@@ -102,9 +102,6 @@ instance UrlDecodable L.ByteString where
 urlDecode = fromMaybe "" . doURLDecode
 NGX_EXPORT_S_S (urlDecode)
 
-defHtmlWriterOptions = def { writerStandalone = True, writerTemplate = tmpl }
-    where tmpl = "<html>\\n<body>\\n$body$</body></html>"
-
 fromMd (C8.unpack -> x) = uncurry (, "text/html", ) $
     case readMarkdown def x of
         Right p -> (writeHtml p, 200)
@@ -113,6 +110,9 @@ fromMd (C8.unpack -> x) = uncurry (, "text/html", ) $
                       ParsecError _ e -> show e
     where writeHtml = C8L.pack . writeHtmlString defHtmlWriterOptions
           writeError = writeHtml . doc . para . singleton . Str
+          defHtmlWriterOptions = def
+              { writerStandalone = True,
+                writerTemplate = "<html>\\n<body>\\n$body$</body></html>" }
 NGX_EXPORT_HANDLER (fromMd)
 
 toYesNo "0" = "No"
@@ -253,15 +253,18 @@ show that upper nginx configuration levels being merged with lower levels behave
 as normally expected.
 
 There is another haskell directive *haskell_content* which accepts a haskell
-function to generate the HTTP response. The function may have one of the two
-types: *strictByteString-to-lazyByteString* and
-*strictByteString-to-3tuple(lazyByteString-String-Int)*. It must be exported
-with *NGX_EXPORT_DEF_HANDLER* in the first case and *NGX_EXPORT_HANDLER* in the
-second case. The part *String-Int* in the second case corresponds to desired
-content type and HTTP status. In the location */content* from the above example
-the directive *haskell_content* makes use of the function *fromMd* to generate
-HTML response from a markdown text. Function *fromMd* translates a markdown
-text to HTML using Pandoc library.
+function to generate HTTP response. The function may have one of the two types:
+*strictByteString-to-lazyByteString* and
+*strictByteString-to-3tuple(lazyByteString,String,Int)*. It must be exported
+with *NGX_EXPORT_DEF_HANDLER* (*default* content handler) in the first case and
+*NGX_EXPORT_HANDLER* in the second case. The elements in the *3tuple* correspond
+to returned content, its type (e.g. *text/html* etc.) and HTTP status. Default
+content handler sets content type to *text/plain* and HTTP status to *200*.
+Directive *haskell_content* is allowed in *location* and *location-if* clauses
+of the nginx configuration. In the location */content* from the above example
+the directive *haskell_content* makes use of a haskell function *fromMd* to
+generate HTML response from a markdown text. Function *fromMd* translates a
+markdown text to HTML using Pandoc library.
 
 What about doing some tests? Let's first start nginx.
 
@@ -355,8 +358,8 @@ Some facts about efficiency
       content handlers allocate new strings with *malloc()* which get freed upon
       the request termination.
     + Haskell content handlers are not suspendable so you cannot use
-      long-running haskell functions without making significant harm to the
-      overall nginx performance.
+      long-running haskell functions without hitting the overall nginx
+      performance.
 
 Some facts about exceptions
 ---------------------------
