@@ -253,7 +253,8 @@ show that upper nginx configuration levels being merged with lower levels behave
 as normally expected.
 
 There is another haskell directive *haskell_content* which accepts a haskell
-function to generate HTTP response. The function may have one of the two types:
+function to generate HTTP response and an optional string that will be passed to
+the function. The function may have one of the two types:
 *strictByteString-to-lazyByteString* and
 *strictByteString-to-3tuple(lazyByteString,String,Int)*. It must be exported
 with *NGX_EXPORT_DEF_HANDLER* (*default* content handler) in the first case and
