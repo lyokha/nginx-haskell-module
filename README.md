@@ -340,6 +340,42 @@ Connection: keep-alive
 </ul></body></html>
 ```
 
+Static files contents in HTTP responses
+---------------------------------------
+
+Reading files in runtime inescapably drops nginx performance. Fortunately there
+is a haskell module [file-embed](http://hackage.haskell.org/package/file-embed)
+that makes it possible to embed files during *ghc* compilation time. Consider
+the following haskell content handler
+
+```haskell
+fromFile (C8.unpack -> "content.html") =
+    (L.fromStrict $(embedFile "/usr/local/share/web-server/content.html"),
+                    "text/html", 200)
+fromFile (C8.unpack -> "content.txt") =
+    (L.fromStrict $(embedFile "/usr/local/share/web-server/content.txt"),
+                    "text/plain", 200)
+fromFile _ = (C8L.pack "Unknown file", "text/plain", 500)
+NGX_EXPORT_HANDLER (fromFile)
+```
+
+(to make it compile another option *-XTemplateHaskell* must be added into the
+directive *haskell ghc_extra_flags* and the module *Data.FileEmbed* must be
+imported too). Now with a new location
+
+```nginx
+        location /static {
+            haskell_content fromFile "content.html";
+            if ($arg_a) {
+                haskell_content fromFile "content.txt";
+            }
+        }
+```
+
+HTTP requests with *URIs* that start with */static* will be responded with
+contents of files listed in the clauses of the function *fromFile* that have
+been embedded into the function during *ghc* compilation.
+
 Some facts about efficiency
 ---------------------------
 
@@ -349,6 +385,9 @@ Some facts about efficiency
       loaded with *dlopen()* in every nginx worker process.
     + Nginx strings are passed to haskell exported functions as strings with
       lengths, no extra allocations are needed.
+    + *Template Haskell* makes it possible to read files into the haskell code
+      during *ghc* compilation time (see section [Static files contents in HTTP
+      responses](#Static-files-contents-in-HTTP-responses)).
 
 - Pitfalls
 
