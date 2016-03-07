@@ -386,8 +386,8 @@ Some facts about efficiency
     + Nginx strings are passed to haskell exported functions as strings with
       lengths, no extra allocations are needed.
     + *Template Haskell* makes it possible to read files into the haskell code
-      during *ghc* compilation time (see section [Static files contents in HTTP
-      responses](#Static-files-contents-in-HTTP-responses)).
+      during *ghc* compilation (see section [Static files contents in HTTP
+      responses](#static-files-contents-in-HTTP-responses)).
 
 - Pitfalls
 
