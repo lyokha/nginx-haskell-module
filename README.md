@@ -385,9 +385,9 @@ Some facts about efficiency
       loaded with *dlopen()* in every nginx worker process.
     + Nginx strings are passed to haskell exported functions as strings with
       lengths, no extra allocations are needed.
-    + *Template Haskell* makes it possible to read files into the haskell code
-      during *ghc* compilation (see section [Static files contents in HTTP
-      responses](#static-files-contents-in-HTTP-responses)).
+    + *Template Haskell* extension makes it possible to read files into the
+      haskell code during *ghc* compilation (see section [Static files contents
+      in HTTP responses](#static-files-contents-in-http-responses)).
 
 - Pitfalls
 
