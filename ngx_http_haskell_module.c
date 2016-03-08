@@ -346,51 +346,55 @@ typedef enum {
 
 
 typedef struct {
-    ngx_uint_t                            code_loaded;
-    ngx_str_t                             ghc_extra_flags;
-    ngx_str_t                             lib_path;
-    ngx_array_t                           handlers;
-    void                                 *dl_handle;
-    void                                (*hs_init)(int *, char ***);
-    void                                (*hs_exit)(void);
-    void                                (*hs_add_root)(void (*)(void));
-    void                                (*init_HsModule)(void);
+    ngx_uint_t                                 code_loaded;
+    ngx_str_t                                  ghc_extra_flags;
+    ngx_str_t                                  lib_path;
+    ngx_array_t                                handlers;
+    void                                      *dl_handle;
+    void                                     (*hs_init)(int *, char ***);
+    void                                     (*hs_exit)(void);
+    void                                     (*hs_add_root)(void (*)(void));
+    void                                     (*init_HsModule)(void);
 } ngx_http_haskell_main_conf_t;
 
 
 typedef struct {
-    ngx_int_t                             handler;
-    ngx_http_complex_value_t             *args;
+    ngx_int_t                                  handler;
+    ngx_http_complex_value_t                  *args;
 } ngx_http_haskell_content_handler_t;
 
 
 typedef struct {
-    ngx_array_t                           code_vars;
-    ngx_http_haskell_content_handler_t   *content_handler;
+    ngx_str_t                                 *bufs;
+    ngx_int_t                                  size;
+    ngx_str_t                                  content_type;
+    ngx_int_t                                  status;
+} ngx_http_haskell_content_handler_data_t;
+
+
+typedef struct {
+    ngx_array_t                                code_vars;
+    ngx_pool_t                                *pool;
+    ngx_http_haskell_content_handler_t        *content_handler;
+    ngx_http_haskell_content_handler_data_t   *content_handler_data;
+    ngx_uint_t                                 static_content;
 } ngx_http_haskell_loc_conf_t;
 
 
 typedef struct {
-    void                                 *self;
-    ngx_http_haskell_handler_type_e       type;
-    ngx_http_haskell_handler_role_e       role;
-    ngx_str_t                             name;
-    ngx_uint_t                            n_args[3];
+    void                                      *self;
+    ngx_http_haskell_handler_type_e            type;
+    ngx_http_haskell_handler_role_e            role;
+    ngx_str_t                                  name;
+    ngx_uint_t                                 n_args[3];
 } ngx_http_haskell_handler_t;
 
 
 typedef struct {
-    ngx_int_t                             index;
-    ngx_int_t                             handler;
-    ngx_array_t                           args;
+    ngx_int_t                                  index;
+    ngx_int_t                                  handler;
+    ngx_array_t                                args;
 } ngx_http_haskell_code_var_data_t;
-
-
-typedef struct {
-    ngx_str_t                            *bufs;
-    ngx_int_t                             size;
-    ngx_str_t                             content_type;
-} ngx_http_haskell_ch_cleanup_data_t;
 
 
 static char *ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
@@ -403,6 +407,8 @@ static void ngx_http_haskell_unload(ngx_cycle_t *cycle);
 static char *ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
+static char *ngx_http_haskell_static_content(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static void *ngx_http_haskell_create_main_conf(ngx_conf_t *cf);
 static void *ngx_http_haskell_create_loc_conf(ngx_conf_t *cf);
@@ -434,6 +440,12 @@ static ngx_command_t  ngx_http_haskell_module_commands[] = {
     { ngx_string("haskell_content"),
       NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE12,
       ngx_http_haskell_content,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      NULL },
+    { ngx_string("haskell_static_content"),
+      NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE12,
+      ngx_http_haskell_static_content,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
@@ -1229,6 +1241,18 @@ ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
+static char *
+ngx_http_haskell_static_content(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_haskell_loc_conf_t       *lcf = conf;
+
+    lcf->static_content = 1;
+    lcf->pool = cf->pool;
+
+    return ngx_http_haskell_content(cf, cmd, conf);
+}
+
+
 static ngx_int_t
 ngx_http_haskell_run_handler(ngx_http_request_t *r,
                              ngx_http_variable_value_t *v, uintptr_t  data)
@@ -1400,30 +1424,45 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
 static ngx_int_t
 ngx_http_haskell_content_handler(ngx_http_request_t *r)
 {
-    ngx_int_t                            i;
-    ngx_http_haskell_main_conf_t        *mcf;
-    ngx_http_haskell_loc_conf_t         *lcf;
-    ngx_http_haskell_handler_t          *handlers;
-    ngx_http_complex_value_t            *args;
-    ngx_str_t                            arg = ngx_string("");
-    ngx_str_t                            ct = { 10, (u_char *) "text/plain" };
-    ngx_int_t                            len = 0, st = NGX_HTTP_OK;
-    ngx_str_t                           *res = NULL;
-    ngx_chain_t                         *out, *out_cur;
-    ngx_buf_t                           *b;
-    ngx_pool_cleanup_t                  *cln;
-    ngx_http_haskell_ch_cleanup_data_t  *clnd;
-    ngx_uint_t                           def_handler = 0;
-    ngx_int_t                            rc;
+    ngx_int_t                                 i;
+    ngx_http_haskell_main_conf_t             *mcf;
+    ngx_http_haskell_loc_conf_t              *lcf;
+    ngx_http_haskell_handler_t               *handlers;
+    ngx_http_complex_value_t                 *args;
+    ngx_str_t                                 arg = ngx_string("");
+    ngx_str_t                                 ct = { 10,
+                                                     (u_char *) "text/plain" };
+    ngx_int_t                                 len = 0, st = NGX_HTTP_OK;
+    ngx_str_t                                *res = NULL;
+    ngx_chain_t                              *out, *out_cur;
+    ngx_buf_t                                *b;
+    ngx_pool_cleanup_t                       *cln;
+    ngx_http_haskell_content_handler_data_t  *clnd;
+    ngx_pool_t                               *pool;
+    ngx_uint_t                                def_handler;
+    ngx_int_t                                 rc;
 
     if (ngx_http_discard_request_body(r) != NGX_OK) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
+    lcf = ngx_http_get_module_loc_conf(r, ngx_http_haskell_module);
+
     mcf = ngx_http_get_module_main_conf(r, ngx_http_haskell_module);
     handlers = mcf->handlers.elts;
 
-    lcf = ngx_http_get_module_loc_conf(r, ngx_http_haskell_module);
+    def_handler = handlers[lcf->content_handler->handler].type ==
+                                ngx_http_haskell_handler_type_y_y ? 1 : 0;
+
+    if (lcf->static_content && lcf->content_handler_data != NULL) {
+        res = lcf->content_handler_data->bufs;
+        len = lcf->content_handler_data->size;
+        if (!def_handler) {
+            ct = lcf->content_handler_data->content_type;
+        }
+        st = lcf->content_handler_data->status;
+        goto send_response;
+    }
 
     args = lcf->content_handler->args;
 
@@ -1436,7 +1475,6 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
         len = ((ngx_http_haskell_handler_dch)
                handlers[lcf->content_handler->handler].self)
                     (arg.data, arg.len, &res);
-        def_handler = 1;
         break;
     case ngx_http_haskell_handler_type_ch:
         st = ((ngx_http_haskell_handler_ch)
@@ -1465,20 +1503,32 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
         }
     }
 
-    cln = ngx_pool_cleanup_add(r->pool, 0);
-    if (cln == NULL) {
-        goto cleanup;
+    pool = lcf->static_content ? lcf->pool : r->pool;
+
+    if (!lcf->static_content || lcf->content_handler_data == NULL) {
+        cln = ngx_pool_cleanup_add(pool, 0);
+        if (cln == NULL) {
+            goto cleanup;
+        }
+        clnd = ngx_pnalloc(pool,
+                           sizeof(ngx_http_haskell_content_handler_data_t));
+        if (clnd == NULL) {
+            goto cleanup;
+        }
+        clnd->bufs = res;
+        clnd->size = len;
+        clnd->content_type.len = def_handler ? 0 : ct.len;
+        clnd->content_type.data = def_handler ? NULL : ct.data;
+        clnd->status = st;
+        cln->handler = ngx_http_haskell_content_handler_cleanup;
+        cln->data = clnd;
     }
-    clnd = ngx_pnalloc(r->pool, sizeof(ngx_http_haskell_ch_cleanup_data_t));
-    if (clnd == NULL) {
-        goto cleanup;
+
+    if (lcf->static_content && lcf->content_handler_data == NULL) {
+        lcf->content_handler_data = clnd;
     }
-    clnd->bufs = res;
-    clnd->size = len;
-    clnd->content_type.len = def_handler ? 0 : ct.len;
-    clnd->content_type.data = def_handler ? NULL : ct.data;
-    cln->handler = ngx_http_haskell_content_handler_cleanup;
-    cln->data = clnd;
+
+send_response:
 
     r->headers_out.content_type_len = ct.len;
     r->headers_out.content_type = ct;
@@ -1541,8 +1591,8 @@ static void ngx_http_haskell_variable_cleanup(void *data)
 
 static void ngx_http_haskell_content_handler_cleanup(void *data)
 {
-    ngx_int_t                            i;
-    ngx_http_haskell_ch_cleanup_data_t  *clnd = data;
+    ngx_int_t                                 i;
+    ngx_http_haskell_content_handler_data_t  *clnd = data;
 
     if (clnd->bufs != NULL) {
         for (i = 0; i < clnd->size; i++) {

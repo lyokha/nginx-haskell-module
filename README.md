@@ -364,16 +364,21 @@ imported too). Now with a new location
 
 ```nginx
         location /static {
-            haskell_content fromFile "content.html";
+            haskell_static_content fromFile "content.html";
             if ($arg_a) {
-                haskell_content fromFile "content.txt";
+                haskell_static_content fromFile "content.txt";
             }
         }
 ```
 
 HTTP requests with *URIs* that start with */static* will be responded with
 contents of files listed in the clauses of the function *fromFile* that have
-been embedded into the function during *ghc* compilation.
+been embedded into the function during *ghc* compilation. Directive
+*haskell_static_content* runs its haskell handler and allocates response data
+only once in nginx worker's lifetime when the first request arrives and is
+processed in the location. On further requests these data are sent back without
+running the haskell handler. This makes directive *haskell_static_content* more
+optimal for returning static data comparing with *haskell_content*.
 
 Some facts about efficiency
 ---------------------------
