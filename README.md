@@ -350,12 +350,11 @@ the following haskell content handler
 
 ```haskell
 fromFile (C8.unpack -> "content.html") =
-    (L.fromStrict $(embedFile "/usr/local/share/web-server/content.html"),
-                    "text/html", 200)
+    (L.fromStrict $(embedFile "/path/to/content.html"), "text/html", 200)
 fromFile (C8.unpack -> "content.txt") =
-    (L.fromStrict $(embedFile "/usr/local/share/web-server/content.txt"),
-                    "text/plain", 200)
-fromFile _ = (C8L.pack "Unknown file", "text/plain", 500)
+    (L.fromStrict $(embedFile "/path/to/content.txt"), "text/plain", 200)
+fromFile _ =
+    (C8L.pack "File not found", "text/plain", 500)
 NGX_EXPORT_HANDLER (fromFile)
 ```
 
