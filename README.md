@@ -380,6 +380,28 @@ processed in the location. On further requests these data are sent back without
 running the haskell handler. This makes directive *haskell_static_content* more
 optimal for returning static data comparing with *haskell_content*.
 
+Reloading of haskell code and static content
+--------------------------------------------
+
+When nginx master process receives signal *HUP* it loads new configuration,
+starts new worker processes and shuts down the old workers gracefully. If the
+configuration has been changed then there are 3 possible scenarios with regard
+to the new haskell code.
+
+1. *Haskell code compiles.* The new workers will start, the old workers will
+   shut down.
+2. *Haskell code fails to compile.* The new workers won't start, the old workers
+   will proceed.
+3. *Haskell code compiles but type check of handlers fails.* (For example a
+   haskell function that had been exported as content handler was passed to a
+   *haskell_run* directive in some location.) The new workers will start but
+   fail the module init phase and shut down, the old workers will shut down. No
+   live workers will exist.
+
+All errors will be logged, so the best way to find out if errors occurred during
+reloading of the nginx configuration (and at the start of nginx too) is to refer
+to the logs.
+
 Some facts about efficiency
 ---------------------------
 
