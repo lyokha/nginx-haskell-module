@@ -1186,7 +1186,7 @@ ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                    "haskell handler \"%V\" was already "
-                                   "declared as a vaiable handler", &value[1]);
+                                   "declared as a variable handler", &value[1]);
                 return NGX_CONF_ERROR;
             }
             lcf->content_handler->handler = i;
