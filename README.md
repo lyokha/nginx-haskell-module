@@ -400,7 +400,7 @@ to the new haskell code.
   the module initialization and shut down, the old workers will shut down. No
   live workers will exist.
 
-All errors will be logged, so the best way to find out if errors occurred during
+All errors are logged, so the best way to find out if errors occurred during
 reloading of the nginx configuration (and at the start of nginx too) is to refer
 to the logs.
 
