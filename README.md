@@ -276,7 +276,10 @@ Linking /tmp/ngx_haskell.so ...
 ```
 
 Nginx compiles haskell code at its start. Had compilation failed and nginx would
-not have started! But in this case the code is OK and we are moving forward.
+not have started (see details about starting nginx in section [Reloading of
+haskell code and static
+content](#reloading-of-haskell-code-and-static-content)). In this case the code
+is OK and we are moving forward.
 
 ```ShellSession
 # curl 'http://localhost:8010/?a=hello_world'
@@ -340,8 +343,8 @@ Connection: keep-alive
 </ul></body></html>
 ```
 
-Static files contents in HTTP responses
----------------------------------------
+Static content in HTTP responses
+--------------------------------
 
 Reading files in runtime inescapably drops nginx performance. Fortunately there
 is a haskell module [file-embed](http://hackage.haskell.org/package/file-embed)
@@ -380,6 +383,9 @@ processed in the location. On further requests these data are sent back without
 running the haskell handler. This makes directive *haskell_static_content* more
 optimal for returning static data comparing with *haskell_content*.
 
+Directive *haskell_static_content* is useful not only for returning files but
+for any content that can be evaluated only once in nginx worker's lifetime.
+
 Reloading of haskell code and static content
 --------------------------------------------
 
@@ -404,6 +410,9 @@ All errors are logged, so the best way to find out if errors occurred during
 reloading of the nginx configuration (and at the start of nginx too) is to refer
 to the logs.
 
+Besides haskell code reloading, restart of workers makes data loaded by
+directive *haskell_static_content* reload too.
+
 Some facts about efficiency
 ---------------------------
 
@@ -414,8 +423,8 @@ Some facts about efficiency
     + Nginx strings are passed to haskell exported functions as strings with
       lengths, no extra allocations are needed.
     + *Template Haskell* extension makes it possible to read files into the
-      haskell code during *ghc* compilation (see section [Static files contents
-      in HTTP responses](#static-files-contents-in-http-responses)).
+      haskell code during *ghc* compilation (see section [Static content in HTTP
+      responses](#static-content-in-http-responses)).
 
 - Pitfalls
 
