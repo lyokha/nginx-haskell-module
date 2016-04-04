@@ -31,7 +31,8 @@ static const size_t  haskell_module_type_checker_prefix_len =
     STRLEN(haskell_module_type_checker_prefix);
 
 static const char  haskell_module_code_head[] =
-"{-# LANGUAGE ForeignFunctionInterface, CPP, ViewPatterns #-}""\n\n"
+"{-# OPTIONS_GHC -pgmPcpphs -optP--cpp #-}\n"
+"{-# LANGUAGE ForeignFunctionInterface, CPP, ViewPatterns #-}\n\n"
 "#define NGX_EXPORT_S_S(F) ngx_hs_ ## F = aux_ngx_hs_s_s $ AUX_NGX_S_S F; \\\n"
 "foreign export ccall ngx_hs_ ## F :: \\\n    "
 "AUX_NGX.CString -> AUX_NGX.CInt -> \\\n    AUX_NGX.Ptr AUX_NGX.CString -> "
@@ -298,8 +299,7 @@ static const char  haskell_module_code_tail[] =
 "    return $ fromIntegral l\n";
 
 static const char  haskell_compile_cmd[] =
-    "ghc --make -O2 -shared -dynamic -no-hs-main -pgmP cpp"
-    " -optl-Wl,-rpath,$(ghc --print-libdir)/rts"
+    "ghc -O2 -shared -dynamic -optl-Wl,-rpath,$(ghc --print-libdir)/rts"
     " -lHSrts-ghc$(ghc --numeric-version) -o ";
 
 
