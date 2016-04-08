@@ -460,7 +460,7 @@ it looks that there is no guarantee even for the string literals, only common
 sense and looking through generated assembly codes convinced me that using
 references to static data must be reliable (yes, [*CAFs* are subjects to garbage
 collection](http://ghc.haskell.org/trac/ghc/wiki/Commentary/Rts/Storage/GC/CAFs),
-but we refer not to the *CAFs*, i.e. haskell byte string objects, but rather to
+but we refer not to *CAFs*, i.e. haskell byte string objects, but rather to
 underlying static data &mdash; string literals that are placed inside *.rodata*
 sections in assembly codes). Additionally, massive *Tsung* stress tests based on
 the above example (their scenarios are shipped with the module) have not
