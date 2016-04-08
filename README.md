@@ -454,14 +454,14 @@ NGX_EXPORT_UNSAFE_HANDLER (fromFile)
 
 The *unsafe* handler returns *3tuple(strictByteString,strictByteString,Int)*.
 The two strict byte strings in it must correspond to the *really* static data
---- string literals like *"File not found"*, *"text/plain"* and those embedded
-by the *file-embed*, otherwise nasty things may happen! To be precise, it looks
-that there is no guarantee even for the string literals, only common sense and
-looking through generated assembly codes convinced me that using references to
-static data must be reliable (yes, [*CAFs* are subjects to garbage
+&mdash; string literals like *"File not found"*, *"text/plain"* and those
+embedded by the *file-embed*, otherwise nasty things may happen! To be precise,
+it looks that there is no guarantee even for the string literals, only common
+sense and looking through generated assembly codes convinced me that using
+references to static data must be reliable (yes, [*CAFs* are subjects to garbage
 collection](http://ghc.haskell.org/trac/ghc/wiki/Commentary/Rts/Storage/GC/CAFs),
 but we refer not to the *CAFs*, i.e. haskell byte string objects, but rather to
-underlying static data --- string literals that are placed inside *.rodata*
+underlying static data &mdash; string literals that are placed inside *.rodata*
 sections in assembly codes). Additionally, massive *Tsung* stress tests based on
 the above example (their scenarios are shipped with the module) have not
 revealed any errors or discrepancies.
