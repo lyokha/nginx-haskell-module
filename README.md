@@ -386,6 +386,86 @@ optimal for returning static data comparing with *haskell_content*.
 Directive *haskell_static_content* is useful not only for returning files but
 for any content that can be evaluated only once in nginx worker's lifetime.
 
+Optimized unsafe content handler
+--------------------------------
+
+Let's go back to the example from the previous section. All the content handlers
+we met so far receive a copy of data produced in haskell handlers. Using
+references to the original data would lead to nasty things after haskell's
+garbage collector wakeup so the only *safe* choice seems to be copying the
+original data. Handler *fromFile* from the example takes static data embedded
+into the haskell library by *file-embed*, makes a copy of this and passes it to
+the C code. It runs once per location during location configuration lifetime
+thanks to the directive *haskell_static_content* implementation. Nonetheless
+there are two duplicate static data copies in the program during its run which
+looks wasteful. It can get even worse when using *haskell_static_content* is not
+an option.
+
+Here is an example. Module *Data.FileEmbed* allows embedding all files in a
+directory recursively using template function *embedDir*. This make it possible
+to emulate nginx static files delivery feature. The following is a quick and
+dirty implementation.
+
+*Haskell content handler.*
+
+```haskell
+fromFile (C8.unpack -> f) =
+    case lookup (tail f) $(embedDir "/rootpath") of
+        Just p  -> (L.fromStrict p,            "text/plain", 200)
+        Nothing -> (C8L.pack "File not found", "text/plain", 404)
+NGX_EXPORT_HANDLER (fromFile)
+```
+
+*Corresponding nginx location.*
+
+```nginx
+        location /static {
+            haskell_content fromFile $uri;
+        }
+```
+
+In this example the files are expected in the directory */rootpath/static*. As
+soon as the target file is parameterized by the value of the *``$uri``*, the
+directive *haskell_content* in place of *haskell_static_content* must be used.
+It means that now files contents will be copied and freed on every single
+request to location */static*.
+
+To address unnecessary copying of static data, a new directive
+*haskell_unsafe_content* is introduced. With it the above example can be
+rewritten as follows.
+
+*Haskell content handler.*
+
+```haskell
+fromFile (C8.unpack -> f) =
+    case lookup (tail f) $(embedDir "/rootpath") of
+        Just p  -> (p,                        C8.pack "text/plain", 200)
+        Nothing -> (C8.pack "File not found", C8.pack "text/plain", 404)
+NGX_EXPORT_UNSAFE_HANDLER (fromFile)
+```
+
+*Corresponding nginx location.*
+
+```nginx
+        location /static {
+            haskell_unsafe_content fromFile $uri;
+        }
+```
+
+The *unsafe* handler returns *3tuple(strictByteString,strictByteString,Int)*.
+The two strict byte strings in it must correspond to the *really* static data
+--- string literals like *"File not found"*, *"text/plain"* and those embedded
+by the *file-embed*, otherwise nasty things may happen! To be precise, it looks
+that there is no guarantee even for the string literals, only common sense and
+looking through generated assembly codes convinced me that using references to
+static data must be reliable (yes, [*CAFs* are subjects to garbage
+collection](http://ghc.haskell.org/trac/ghc/wiki/Commentary/Rts/Storage/GC/CAFs),
+but we refer not to the *CAFs*, i.e. haskell byte string objects, but rather to
+underlying static data --- string literals that are placed inside *.rodata*
+sections in assembly codes). Additionally, massive *Tsung* stress tests based on
+the above example (their scenarios are shipped with the module) have not
+revealed any errors or discrepancies.
+
 Reloading of haskell code and static content
 --------------------------------------------
 
@@ -432,8 +512,9 @@ Some facts about efficiency
       they are not contiguously allocated (but on the other hand they are lazy,
       which usually means efficient).
     + Haskell exported functions of types *S_S*, *S_SS*, *S_LS* and *Y_Y* and
-      content handlers allocate new strings with *malloc()* which get freed upon
-      the request termination.
+      *safe* content handlers allocate new strings with *malloc()* which get
+      freed upon the request termination (or when the location configuration
+      gets reloaded in case of *haskell_static_content* handler).
     + Haskell content handlers are not suspendable so you cannot use
       long-running haskell functions without hitting the overall nginx
       performance.
