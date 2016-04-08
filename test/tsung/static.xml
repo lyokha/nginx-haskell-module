@@ -1,0 +1,81 @@
+<?xml version="1.0"?>
+<!DOCTYPE tsung SYSTEM "/usr/share/tsung/tsung-1.0.dtd">
+<tsung loglevel="notice" version="1.0">
+
+    <!-- Client side setup -->
+    <clients>
+        <client host="localhost"/>
+    </clients>
+
+    <!-- Server side setup -->
+    <servers>
+        <server host="127.0.0.1" port="8010" type="tcp"></server>
+    </servers>
+
+    <!-- to start os monitoring (cpu, network, memory). Use an erlang
+    agent on the remote machine or SNMP. erlang is the default -->
+    <monitoring>
+        <monitor host="127.0.0.1" type="snmp"/>
+    </monitoring>
+
+    <load>
+        <!-- several arrival phases can be set: for each phase, you can set
+        the mean inter-arrival time between new clients and the phase
+        duration -->
+        <arrivalphase phase="1" duration="5" unit="minute">
+            <users arrivalrate="200" unit="second"></users>
+        </arrivalphase>
+    </load>
+
+    <options>
+        <option type="ts_http" name="user_agent">
+            <user_agent probability="80">Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.7.8) Gecko/20050513 Galeon/1.3.21</user_agent>
+            <user_agent probability="20">Mozilla/5.0 (Windows; U; Windows NT 5.2; fr-FR; rv:1.7.8) Gecko/20050511 Firefox/1.0.4</user_agent>
+        </option>
+    </options>
+
+    <!-- start a session for a http user. the probability is the
+    frequency of this type os session. The sum of all session's
+    probabilities must be 100 -->
+
+    <!-- files to be created with
+         touch /usr/local/webdata/static/content-empty.txt
+         ./gen_files.pl -n1 -s50; mv test1.data /usr/local/webdata/static/content-small.txt
+         ./gen_files.pl -n1 -s100k; mv test1.data /usr/local/webdata/static/content-large.txt
+         ./gen_files.pl -n1 -s1M; mv test1.data /usr/local/webdata/static/content-huge.txt
+    calculate their md5sum and put it into the corresponding match tags -->
+
+    <sessions>
+        <session name="content-empty" probability="20" type="ts_http">
+            <request>
+                <match do="continue" when="match" skip_headers="http" apply_to_content='ts_digest:md5hex'>d41d8cd98f00b204e9800998ecf8427e</match>
+                <http url="/static/content-empty.txt" method="GET" version="1.0"/>
+            </request>
+        </session>
+        <session name="content-small" probability="20" type="ts_http">
+            <request>
+                <match do="continue" when="match" skip_headers="http" apply_to_content='ts_digest:md5hex'>c0141f34dd44c8ef543d069eea28ea86</match>
+                <http url="/static/content-small.txt" method="GET" version="1.0"/>
+            </request>
+        </session>
+        <session name="content-large" probability="20" type="ts_http">
+            <request>
+                <match do="continue" when="match" skip_headers="http" apply_to_content='ts_digest:md5hex'>ae953d0a6999e879b6c15dc776f220c4</match>
+                <http url="/static/content-large.txt" method="GET" version="1.0"/>
+            </request>
+        </session>
+        <session name="content-huge" probability="20" type="ts_http">
+            <request>
+                <match do="continue" when="match" skip_headers="http" apply_to_content='ts_digest:md5hex'>b53415b8f1f0adf7c49768e25d84c556</match>
+                <http url="/static/content-huge.txt" method="GET" version="1.0"/>
+            </request>
+        </session>
+        <session name="content-not-found" probability="20" type="ts_http">
+            <request>
+                <match do="continue" when="match" skip_headers="http">File not found</match>
+                <http url="/static/content-not-found.txt" method="GET" version="1.0"/>
+            </request>
+        </session>
+    </sessions>
+</tsung>
+
