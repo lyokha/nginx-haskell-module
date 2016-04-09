@@ -1,4 +1,5 @@
-To run tests prepare random files using auxiliary script *gen_files.pl*.
+To run tests prepare random files using auxiliary script *gen_files.pl* (you may
+need to be a superuser).
 
 ```ShellSession
 # mkdir -p /usr/local/webdata/static     # if needed
