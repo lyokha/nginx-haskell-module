@@ -9,9 +9,11 @@ To run tests prepare random files using auxiliary script *gen_files.pl*.
 # ./gen_files.pl -n1 -s1M; mv test1.data /usr/local/webdata/static/content-huge.txt
 ```
 
-Put actual *md5sum* values of generated files into *static.xml* and run tsung.
+Put actual *md5sum* values of generated files into *static.xml* and run nginx
+(you may need to *mkdir* logs to make nginx happy) and tsung.
 
 ```ShellSession
+# nginx -p. -cnginx.conf
 # tsung -f static.xml start
 ```
 
