@@ -426,7 +426,7 @@ NGX_EXPORT_HANDLER (fromFile)
 
 In this example the files are expected in the directory */rootpath/static*. As
 soon as the target file is parameterized by the value of the *``$uri``*, the
-directive *haskell_content* in place of *haskell_static_content* must be used.
+directive *haskell_content* must be used in place of *haskell_static_content*.
 It means that now files contents will be copied and freed on every single
 request to location */static*.
 
