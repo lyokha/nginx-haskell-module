@@ -10,10 +10,10 @@ To run tests prepare random files using auxiliary script *gen_files.pl*.
 ```
 
 Put actual *md5sum* values of generated files into *static.xml* and run nginx
-(you may need to *mkdir* logs to make nginx happy) and tsung.
+and tsung.
 
 ```ShellSession
-# nginx -p. -cnginx.conf
+# nginx -c`pwd`/nginx.conf
 # tsung -f static.xml start
 ```
 
