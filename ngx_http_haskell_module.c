@@ -232,7 +232,7 @@ static const char  haskell_module_code_tail[] =
 "                            return $ Just $ off + 1\n"
 "                        else do\n"
 "                            mapM_ (AUX_NGX.peekElemOff t AUX_NGX.>=>\n"
-"                                      \\(AUX_NGX_STR_TYPE n x) -> "
+"                                      \\(AUX_NGX_STR_TYPE _ x) -> "
 "AUX_NGX.free x)\n"
 "                                  [0 .. off - 1]    -- [0 .. -1] makes [],\n"
 "                                                    -- so wise!\n"
