@@ -343,8 +343,7 @@ static const char  haskell_module_code_tail[] =
 "    return st\n";
 
 static const char  haskell_compile_cmd[] =
-    "ghc -O2 -shared -dynamic -optl-Wl,-rpath,$(ghc --print-libdir)/rts"
-    " -lHSrts-ghc$(ghc --numeric-version) -o ";
+    "ghc -O2 -dynamic -shared -fPIC -lHSrts-ghc$(ghc --numeric-version) -o ";
 
 
 typedef HsInt32 (*ngx_http_haskell_handler_s_s)
