@@ -715,7 +715,7 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     if (load) {
         if (ngx_file_info(mcf->lib_path.data, &lib_info) == NGX_FILE_ERROR) {
             if (load_without_code) {
-                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno,
                         "haskell library cannot be loaded nor compiled");
                 return NGX_CONF_ERROR;
             }
@@ -734,6 +734,18 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             != NGX_CONF_OK)
         {
             return NGX_CONF_ERROR;
+        }
+
+        if (ngx_file_info(mcf->lib_path.data, &lib_info) == NGX_FILE_ERROR) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno,
+                               "haskell library cannot be loaded");
+            return NGX_CONF_ERROR;
+        }
+
+        lib_info.st_mode |= (S_IRGRP|S_IXGRP|S_IROTH|S_IXOTH);
+        if (chmod((const char *) mcf->lib_path.data, lib_info.st_mode) == -1) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno,
+                               "chmod() \"%V\" failed", &mcf->lib_path);
         }
     }
 
