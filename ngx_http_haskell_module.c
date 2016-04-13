@@ -742,7 +742,7 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             return NGX_CONF_ERROR;
         }
 
-        lib_info.st_mode |= (S_IRGRP|S_IXGRP|S_IROTH|S_IXOTH);
+        lib_info.st_mode |= S_IRGRP|S_IXGRP|S_IROTH|S_IXOTH;
         if (chmod((const char *) mcf->lib_path.data, lib_info.st_mode) == -1) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno,
                                "chmod() \"%V\" failed", &mcf->lib_path);
