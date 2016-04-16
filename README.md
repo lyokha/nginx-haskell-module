@@ -409,8 +409,8 @@ dirty implementation.
 *Haskell content handler.*
 
 ```haskell
-fromFile (C8.unpack -> f) =
-    case lookup (tail f) $(embedDir "/rootpath") of
+fromFile (tailDef "" . C8.unpack -> f) =
+    case lookup f $(embedDir "/rootpath") of
         Just p  -> (L.fromStrict p,            "text/plain", 200)
         Nothing -> (C8L.pack "File not found", "text/plain", 404)
 NGX_EXPORT_HANDLER (fromFile)
@@ -437,8 +437,8 @@ rewritten as follows.
 *Haskell content handler.*
 
 ```haskell
-fromFile (C8.unpack -> f) =
-    case lookup (tail f) $(embedDir "/rootpath") of
+fromFile (tailDef "" . C8.unpack -> f) =
+    case lookup f $(embedDir "/rootpath") of
         Just p  -> (p,                        C8.pack "text/plain", 200)
         Nothing -> (C8.pack "File not found", C8.pack "text/plain", 404)
 NGX_EXPORT_UNSAFE_HANDLER (fromFile)
@@ -560,6 +560,11 @@ Functions *compile* and *execute* expose IO monad: that is why the result of
 *System.IO.Unsafe*). There is nothing bad about that in this particular case:
 internally higher level API regex functions like *(=~)* and *match* do all the
 same.
+
+You may notice that function *jSONListOfIntsTakeN* is not safe too because of
+using of *B.tail* in it. However the way it is used in nginx rules gives a
+guarantee that the argument of *B.tail* will always have at least the *vertical
+bar* character (*|*) at its head.
 
 See also
 --------
