@@ -460,13 +460,15 @@ The two strict byte strings in it must correspond to the *really* static data,
 i.e. string literals like *"File not found"#*, *"text/plain"#* and those
 embedded by the *Data.FileEmbed*, otherwise the nasty things may happen! Literal
 strings that end with *hashes* (*#*) are actually addresses of compiled static
-byte arrays that do not change during runtime. To enable the hash literals an
+byte arrays that do not change during runtime. To enable the hash literals
 option *-XMagicHash* must be added into the directive *ghc_extra_flags*. Working
 on such a low level requires using functions *unsafePackAddressLen* and
 *unsafePerformIO* from modules *Data.ByteString.Unsafe* and *System.IO.Unsafe*
-respectively. Minimum requirements for using static byte arrays in the module
-*Data.FileEmbed* are: *file-embed* version *0.0.7*, *Template Haskell* version
-*2.5.0* (bundled with *ghc* since version *7.0.1*).
+respectively (in this example *unsafePerformIO* can be safely replaced with the
+fastest and the unsafest *IO unwrapper* *accursedUnutterablePerformIO* from
+module *Data.ByteString.Internal*). Minimum requirements for using static byte
+arrays in the module *Data.FileEmbed* are: *file-embed* version *0.0.7* and
+*Template Haskell* version *2.5.0* (bundled with *ghc* since version *7.0.1*).
 
 A working nginx configuration file with this unsafe content handler
 implementation can be found in directory *test/tsung* of the project tree.
