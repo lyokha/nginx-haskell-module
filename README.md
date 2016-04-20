@@ -347,9 +347,10 @@ Static content in HTTP responses
 --------------------------------
 
 Reading files in runtime inescapably drops nginx performance. Fortunately there
-is a haskell module [file-embed](http://hackage.haskell.org/package/file-embed)
-that makes it possible to embed files during *ghc* compilation time. Consider
-the following haskell content handler
+is a haskell module
+[Data.FileEmbed](http://hackage.haskell.org/package/file-embed) that makes it
+possible to embed files during *ghc* compilation time. Consider the following
+haskell content handler
 
 ```haskell
 fromFile (C8.unpack -> "content.html") =
@@ -394,8 +395,8 @@ we met so far receive a copy of data produced in haskell handlers. Using
 references to the original data would lead to nasty things after haskell's
 garbage collector wakeup so the only *safe* choice seems to be copying the
 original data. Handler *fromFile* from the example takes static data embedded
-into the haskell library by *file-embed*, makes a copy of this and passes it to
-the C code. It runs once per location during location configuration lifetime
+into the haskell library by *Data.FileEmbed*, makes a copy of this and passes it
+to the C code. It runs once per location during location configuration lifetime
 thanks to the directive *haskell_static_content* implementation. Nonetheless
 there are two duplicate static data copies in the program during its run which
 looks wasteful. It can get even worse when using *haskell_static_content* is not
@@ -439,8 +440,10 @@ rewritten as follows.
 ```haskell
 fromFile (tailDef "" . C8.unpack -> f) =
     case lookup f $(embedDir "/rootpath") of
-        Just p  -> (p,                        C8.pack "text/plain", 200)
-        Nothing -> (C8.pack "File not found", C8.pack "text/plain", 404)
+        Just p  -> (p,                         text_plain, 200)
+        Nothing -> (pack 14 "File not found"#, text_plain, 404)
+    where pack l s = unsafePerformIO $ unsafePackAddressLen l s
+          text_plain = pack 10 "text/plain"#
 NGX_EXPORT_UNSAFE_HANDLER (fromFile)
 ```
 
@@ -453,18 +456,17 @@ NGX_EXPORT_UNSAFE_HANDLER (fromFile)
 ```
 
 The *unsafe* handler returns *3tuple(strictByteString,strictByteString,Int)*.
-The two strict byte strings in it must correspond to the *really* static data
-&mdash; string literals like *"File not found"*, *"text/plain"* and those
-embedded by the *file-embed*, otherwise nasty things may happen! To be precise,
-it looks that there is no guarantee even for the string literals, only common
-sense and looking through generated assembly codes convinced me that using
-references to static data must be reliable (yes, [*CAFs* are subjects to garbage
-collection](http://ghc.haskell.org/trac/ghc/wiki/Commentary/Rts/Storage/GC/CAFs),
-but we refer not to *CAFs*, i.e. haskell byte string objects, but rather to
-underlying static data &mdash; string literals that are placed inside *.rodata*
-sections in assembly codes). Additionally, massive *Tsung* stress tests based on
-the above example (their scenarios are shipped with the module) have not
-revealed any errors or discrepancies.
+The two strict byte strings in it must correspond to the *really* static data,
+i.e. string literals like *"File not found"#*, *"text/plain"#* and those
+embedded by the *Data.FileEmbed*, otherwise the nasty things may happen! Literal
+strings that end with *hashes* (*#*) are actually addresses of compiled static
+byte arrays that do not change during runtime. To enable the hash literals an
+option *-XMagicHash* must be added into the directive *ghc_extra_flags*. Working
+on such a low level requires using functions *unsafePackAddressLen* and
+*unsafePerformIO* from modules *Data.ByteString.Unsafe* and *System.IO.Unsafe*
+respectively. Minimum requirements for using static byte arrays in the module
+*Data.FileEmbed* are: *file-embed* version *0.0.7*, *Template Haskell* version
+*2.5.0* (bundled with *ghc* since version *7.0.1*).
 
 Reloading of haskell code and static content
 --------------------------------------------
@@ -536,7 +538,7 @@ passing regular expressions but create and compile them in the haskell code
 instead. If it is not acceptable by some reasons and users still may send
 regular expressions in requests then they must at least be checked against
 compilation errors. To achieve this a lower level API functions *compile* and
-*execute* are required (they are exported from module *Text.Regex.PCRE.String*).
+*execute* are required (they are imported from module *Text.Regex.PCRE.String*).
 Below is a safe version of *matches*.
 
 ```haskell
@@ -556,7 +558,7 @@ matches = (fromMaybe False .) . liftM2 safeMatch `on`
 ```
 
 Functions *compile* and *execute* expose IO monad: that is why the result of
-*safeMatch* gets unwrapped with *unsafePerformIO* (exported from
+*safeMatch* gets unwrapped with *unsafePerformIO* (imported from
 *System.IO.Unsafe*). There is nothing bad about that in this particular case:
 internally higher level API regex functions like *(=~)* and *match* do all the
 same.
