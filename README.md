@@ -371,6 +371,7 @@ imported too). Now with a new location
             haskell_static_content fromFile "content.html";
             if ($arg_a) {
                 haskell_static_content fromFile "content.txt";
+                break;
             }
         }
 ```
