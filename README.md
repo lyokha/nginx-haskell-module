@@ -574,6 +574,20 @@ using of *B.tail* in it. However the way it is used in nginx rules gives a
 guarantee that the argument of *B.tail* will always have at least the *vertical
 bar* character (*|*) at its head.
 
+Troubleshooting
+---------------
+
+- *Haskell source code fails to compile with messages ``Not in scope: ‘<$>’``
+  and ``Not in scope: ‘<*>’``*.
+
+  This happens with *ghc* older than *7.10* and can be fixed by adding line
+
+    ```haskell
+  import Control.Applicative  
+    ```
+
+  in the import list inside the haskell source code.
+
 See also
 --------
 
