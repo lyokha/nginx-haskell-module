@@ -577,8 +577,8 @@ bar* character (*|*) at its head.
 Troubleshooting
 ---------------
 
-- *Haskell source code fails to compile with messages ``Not in scope: ‘<$>’``
-  and ``Not in scope: ‘<*>’``*.
+- _Haskell source code fails to compile with messages ``Not in scope: ‘<$>’``
+  and ``Not in scope: ‘<*>’``_.
 
   This happens with *ghc* older than *7.10* and can be fixed by adding line
 
