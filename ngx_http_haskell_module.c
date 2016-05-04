@@ -605,6 +605,9 @@ ngx_http_haskell_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 static ngx_int_t
 ngx_http_haskell_init(ngx_cycle_t *cycle)
 {
+    if (ngx_process == NGX_PROCESS_HELPER)
+        return NGX_OK;
+
     return ngx_http_haskell_load(cycle);
 }
 
@@ -612,6 +615,9 @@ ngx_http_haskell_init(ngx_cycle_t *cycle)
 static void
 ngx_http_haskell_exit(ngx_cycle_t *cycle)
 {
+    if (ngx_process == NGX_PROCESS_HELPER)
+        return;
+
     ngx_http_haskell_unload(cycle);
 }
 
