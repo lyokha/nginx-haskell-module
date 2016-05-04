@@ -859,7 +859,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
 
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
 
-    if (!mcf->code_loaded) {
+    if (mcf == NULL || !mcf->code_loaded) {
         return NGX_OK;
     }
 
@@ -1048,7 +1048,7 @@ ngx_http_haskell_unload(ngx_cycle_t *cycle)
 
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
 
-    if (!mcf->code_loaded) {
+    if (mcf == NULL || !mcf->code_loaded) {
         return;
     }
 
