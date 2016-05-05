@@ -411,7 +411,7 @@ dirty implementation.
 *Haskell content handler.*
 
 ```haskell
-fromFile (tailDef "" . C8.unpack -> f) =
+fromFile (tailSafe . C8.unpack -> f) =
     case lookup f $(embedDir "/rootpath") of
         Just p  -> (L.fromStrict p,            "text/plain", 200)
         Nothing -> (C8L.pack "File not found", "text/plain", 404)
@@ -439,7 +439,7 @@ rewritten as follows.
 *Haskell content handler.*
 
 ```haskell
-fromFile (tailDef "" . C8.unpack -> f) =
+fromFile (tailSafe . C8.unpack -> f) =
     case lookup f $(embedDir "/rootpath") of
         Just p  -> (p,                         text_plain, 200)
         Nothing -> (pack 14 "File not found"#, text_plain, 404)
