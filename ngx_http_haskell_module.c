@@ -31,7 +31,7 @@ static const size_t  haskell_module_type_checker_prefix_len =
     STRLEN(haskell_module_type_checker_prefix);
 
 static const char  haskell_module_code_head[] =
-"{-# LANGUAGE CPP #-}\n"
+"{-# LANGUAGE ForeignFunctionInterface, CPP #-}\n"
 "{-# OPTIONS_GHC -pgmPcpphs -optP--cpp #-}\n\n"
 "#define AUX_NGX_TYPECHECK(T, F) \\\n"
 "type_ngx_hs_ ## F = aux_ngx_exportType $ T F; \\\n"
@@ -109,7 +109,7 @@ static const char  haskell_module_code_head[] =
 "    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CSize -> \\\n"
 "    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CSize -> \\\n"
 "    IO AUX_NGX.CInt;\n\n"
-"{-# LANGUAGE ForeignFunctionInterface, ViewPatterns #-}\n\n"
+"{-# LANGUAGE ViewPatterns #-}\n\n"
 "module NgxHaskellUserRuntime where\n\n"
 "import qualified Foreign.C as AUX_NGX\n"
 "import qualified Foreign.Ptr as AUX_NGX\n"

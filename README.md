@@ -66,7 +66,7 @@ jSONListOfInts = (decode =<<) . doURLDecode . L.fromStrict
 isJSONListOfInts = isJust . jSONListOfInts
 NGX_EXPORT_B_Y (isJSONListOfInts)
 
-jSONListOfIntsTakeN x = encode $ take n $ fromMaybe [] $ jSONListOfInts y
+jSONListOfIntsTakeN x = encode $ maybe [] (take n) $ jSONListOfInts y
     where (readDef 0 . C8.unpack -> n, B.tail -> y) = B.break (== 124) x
 NGX_EXPORT_Y_Y (jSONListOfIntsTakeN)
 
