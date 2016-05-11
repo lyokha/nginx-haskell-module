@@ -70,7 +70,7 @@ ngxExportBY =
 ngxExportHandler =
     ngxExport 'Handler 'handler
     [t|CString -> CInt ->
-       Ptr (Ptr NgxStrType) -> CInt -> Ptr CString -> Ptr CSize -> IO CInt|]
+       Ptr (Ptr NgxStrType) -> Ptr CInt -> Ptr CString -> Ptr CSize -> IO CInt|]
 ngxExportDefHandler =
     ngxExport 'YY 'defHandler
     [t|CString -> CInt -> Ptr (Ptr NgxStrType) -> IO CInt|]
