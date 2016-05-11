@@ -1,0 +1,20 @@
+name:                ngx-export
+version:             0.1.0.0
+synopsis:            Export custom haskell functions into nginx configuration
+description:         Please see README.md
+homepage:            http://github.com/lyokha/nginx-haskell-module
+license:             BSD3
+license-file:        LICENSE
+author:              Alexey Radkov <alexey.radkov@gmail.com>
+maintainer:          Alexey Radkov <alexey.radkov@gmail.com>
+copyright:           2016 Alexey Radkov
+category:            Unclassified
+build-type:          Simple
+cabal-version:       >= 1.8
+
+library
+  build-depends:       base >= 4.7 && < 5
+                     , template-haskell
+                     , bytestring >= 0.10.0.0
+  exposed-modules:     NgxExport
+

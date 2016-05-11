@@ -118,6 +118,7 @@ static const char  haskell_module_code_head[] =
 "import qualified Foreign.Marshal.Utils as AUX_NGX\n"
 "import qualified System.IO.Error as AUX_NGX\n"
 "import qualified Control.Monad as AUX_NGX\n"
+"import qualified Data.Maybe as AUX_NGX\n"
 "import qualified Data.ByteString as AUX_NGX_BS\n"
 "import qualified Data.ByteString.Unsafe as AUX_NGX_BS\n"
 "import qualified Data.ByteString.Lazy as AUX_NGX_BSL\n\n"
@@ -140,7 +141,7 @@ static const char  haskell_module_code_tail[] =
 "                          (AUX_NGX_BS.ByteString, AUX_NGX_BS.ByteString, Int))"
 "\n\n"
 "instance Enum AUX_NGX_EXPORT where\n"
-"    toEnum _ = AUX_NGX_S_S id            -- not used\n"
+"    toEnum _ = AUX_NGX_S_S id    -- not used\n"
 "    fromEnum (AUX_NGX_S_S _)            = 1\n"
 "    fromEnum (AUX_NGX_S_SS _)           = 2\n"
 "    fromEnum (AUX_NGX_S_LS _)           = 3\n"
@@ -177,6 +178,9 @@ static const char  haskell_module_code_tail[] =
 "              ((AUX_NGX.peekElemOff x k >>=\n"
 "                  (\\(AUX_NGX_STR_TYPE (fromIntegral -> m) y) ->\n"
 "                      AUX_NGX.peekCStringLen (y, m))) :)) [] [0 .. n - 1]\n\n"
+"aux_ngx_pokeCStringLen :: AUX_NGX.CString -> AUX_NGX.CSize ->\n"
+"    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CSize -> IO ()\n"
+"aux_ngx_pokeCStringLen x n p s = AUX_NGX.poke p x >> AUX_NGX.poke s n\n\n"
 "aux_ngx_toSingleBuffer :: AUX_NGX_BSL.ByteString ->\n"
 "    IO (Maybe (AUX_NGX.CString, Int))\n"
 "aux_ngx_toSingleBuffer (AUX_NGX_BSL.uncons -> Nothing) =\n"
@@ -186,7 +190,7 @@ static const char  haskell_module_code_tail[] =
 "    t <- aux_ngx_catchAlloc $ AUX_NGX.mallocBytes l\n"
 "    if t /= AUX_NGX.nullPtr\n"
 "        then do\n"
-"            AUX_NGX_BSL.foldlChunks\n"
+"            AUX_NGX.void $ AUX_NGX_BSL.foldlChunks\n"
 "                (\\a s -> do\n"
 "                    off <- a\n"
 "                    let l = AUX_NGX_BS.length s\n"
@@ -265,7 +269,7 @@ static const char  haskell_module_code_tail[] =
 "aux_ngx_hs_y_y (AUX_NGX_Y_Y f)\n"
 "            x (fromIntegral -> n) p = do\n"
 "    s <- f <$> AUX_NGX_BS.unsafePackCStringLen (x, n)\n"
-"    (maybe (AUX_NGX.nullPtr, -1) id -> (t, fromIntegral -> l)) <-\n"
+"    (AUX_NGX.fromMaybe (AUX_NGX.nullPtr, -1) -> (t, fromIntegral -> l)) <-\n"
 "        aux_ngx_toSingleBuffer s\n"
 "    AUX_NGX.poke p t\n"
 "    return l\n\n"
@@ -305,13 +309,12 @@ static const char  haskell_module_code_tail[] =
 "            x (fromIntegral -> n) ps pls pt plt = do\n"
 "    (s, mt, fromIntegral -> st) <- f <$> AUX_NGX_BS.unsafePackCStringLen "
 "(x, n)\n"
-"    (maybe (AUX_NGX.nullPtr, -1) id -> (t, fromIntegral -> l)) <-\n"
+"    (AUX_NGX.fromMaybe (AUX_NGX.nullPtr, -1) -> (t, fromIntegral -> l)) <-\n"
 "        aux_ngx_toBuffers s\n"
 "    AUX_NGX.poke ps t\n"
 "    AUX_NGX.poke pls l\n"
 "    (smt, fromIntegral -> lmt) <- AUX_NGX.newCStringLen mt\n"
-"    AUX_NGX.poke pt smt\n"
-"    AUX_NGX.poke plt lmt\n"
+"    aux_ngx_pokeCStringLen smt lmt pt plt\n"
 "    return st\n\n"
 "aux_ngx_hs_def_handler :: AUX_NGX_EXPORT ->\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt ->\n"
@@ -319,7 +322,7 @@ static const char  haskell_module_code_tail[] =
 "aux_ngx_hs_def_handler (AUX_NGX_Y_Y f)\n"
 "            x (fromIntegral -> n) ps = do\n"
 "    s <- f <$> AUX_NGX_BS.unsafePackCStringLen (x, n)\n"
-"    (maybe (AUX_NGX.nullPtr, -1) id -> (t, fromIntegral -> l)) <-\n"
+"    (AUX_NGX.fromMaybe (AUX_NGX.nullPtr, -1) -> (t, fromIntegral -> l)) <-\n"
 "        aux_ngx_toBuffers s\n"
 "    AUX_NGX.poke ps t\n"
 "    return l\n\n"
@@ -333,11 +336,9 @@ static const char  haskell_module_code_tail[] =
 "    (s, mt, fromIntegral -> st) <- f <$> AUX_NGX_BS.unsafePackCStringLen "
 "(x, n)\n"
 "    (t, fromIntegral -> lt) <- AUX_NGX_BS.unsafeUseAsCStringLen s return\n"
-"    AUX_NGX.poke ps t\n"
-"    AUX_NGX.poke pls lt\n"
+"    aux_ngx_pokeCStringLen t lt ps pls\n"
 "    (smt, fromIntegral -> lmt) <- AUX_NGX_BS.unsafeUseAsCStringLen mt return\n"
-"    AUX_NGX.poke pt smt\n"
-"    AUX_NGX.poke plt lmt\n"
+"    aux_ngx_pokeCStringLen smt lmt pt plt\n"
 "    return st\n";
 
 static const char  haskell_compile_cmd[] =
@@ -368,6 +369,11 @@ typedef HsInt32 (*ngx_http_haskell_handler_uch)
     (HsPtr, HsInt32, HsPtr, HsPtr, HsPtr, HsPtr);
 
 typedef enum {
+    ngx_http_haskell_module_wrap_mode_modular = 0,
+    ngx_http_haskell_module_wrap_mode_standalone
+} ngx_http_haskell_module_wrap_mode_e;
+
+typedef enum {
     ngx_http_haskell_handler_type_uninitialized = 0,
     ngx_http_haskell_handler_type_s_s,
     ngx_http_haskell_handler_type_s_ss,
@@ -391,6 +397,7 @@ typedef enum {
 
 typedef struct {
     ngx_uint_t                                 code_loaded;
+    ngx_http_haskell_module_wrap_mode_e        wrap_mode;
     ngx_str_t                                  ghc_extra_flags;
     ngx_str_t                                  lib_path;
     ngx_array_t                                handlers;
@@ -444,8 +451,8 @@ typedef struct {
 
 
 static char *ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *ngx_http_haskell_write_code(ngx_conf_t *cf, ngx_str_t source_name,
-    ngx_str_t fragment);
+static char *ngx_http_haskell_write_code(ngx_conf_t *cf, void *conf,
+    ngx_str_t source_name, ngx_str_t fragment);
 static char *ngx_http_haskell_compile(ngx_conf_t *cf, void *conf,
     ngx_str_t source_name);
 static ngx_int_t ngx_http_haskell_load(ngx_cycle_t *cycle);
@@ -474,7 +481,7 @@ static void ngx_http_haskell_content_handler_cleanup(void *data);
 static ngx_command_t  ngx_http_haskell_module_commands[] = {
 
     { ngx_string("haskell"),
-      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE23,
+      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE23|NGX_CONF_TAKE4,
       ngx_http_haskell,
       NGX_HTTP_MAIN_CONF_OFFSET,
       0,
@@ -630,8 +637,10 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_int_t                      i;
     ngx_str_t                     *value, base_name;
     ngx_file_info_t                lib_info;
+    ngx_int_t                      idx;
     ngx_uint_t                     load = 0, load_without_code = 0;
     ngx_uint_t                     base_name_start = 0;
+    ngx_uint_t                     has_wrap_mode = 0;
 
     if (mcf->code_loaded) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -646,14 +655,13 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     {
         if (cf->args->nelts < 4) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                            "directive haskell compile requires 2 parameters");
+                        "directive haskell compile requires 2 parameters");
             return NGX_CONF_ERROR;
         }
     } else if (value[1].len == 4
                && ngx_strncmp(value[1].data, "load", 4) == 0)
     {
         load = 1;
-        load_without_code = cf->args->nelts < 4 ? 1 : 0;
     } else if (value[1].len == 15
                && ngx_strncmp(value[1].data, "ghc_extra_flags", 15) == 0)
     {
@@ -669,51 +677,81 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
         mcf->ghc_extra_flags = value[2];
         return NGX_CONF_OK;
-    } else
-    {
+    } else {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "unknown haskell directive \"%V\"", &value[1]);
         return NGX_CONF_ERROR;
     }
 
-    if (value[2].len < 3
-        || !(ngx_strncmp(value[2].data + value[2].len - 3, ".hs", 3) == 0
+    if (value[2].len == 10
+        && ngx_strncmp(value[2].data, "standalone", 10) == 0)
+    {
+        has_wrap_mode = 1;
+        mcf->wrap_mode = ngx_http_haskell_module_wrap_mode_standalone;
+    } else if (value[2].len == 7
+               && ngx_strncmp(value[2].data, "modular", 10) == 0)
+    {
+        has_wrap_mode = 1;
+    }
+
+    if (has_wrap_mode) {
+        if (cf->args->nelts < 4) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                        "directives haskell compile / load requires "
+                        "at least 2 parameters when wrap mode is specified");
+            return NGX_CONF_ERROR;
+        }
+        if (!load && cf->args->nelts < 5) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                        "directive haskell compile requires 3 parameters "
+                        "when wrap mode is specified");
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    if (load) {
+        load_without_code = cf->args->nelts < 4 + has_wrap_mode ? 1 : 0;
+    }
+    idx = 2 + has_wrap_mode;
+
+    if (value[idx].len < 3
+        || !(ngx_strncmp(value[idx].data + value[idx].len - 3, ".hs", 3) == 0
              || (load_without_code
-                 && ngx_strncmp(value[2].data + value[2].len - 3, ".so", 3)
+                 && ngx_strncmp(value[idx].data + value[idx].len - 3, ".so", 3)
                     == 0)))
     {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                         "haskell source code file must have extension \".hs\"");
         return NGX_CONF_ERROR;
     }
-    if (!ngx_path_separator(value[2].data[0])) {
+    if (!ngx_path_separator(value[idx].data[0])) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                         "haskell source code file path must be absolute");
         return NGX_CONF_ERROR;
     }
-    for (i = value[2].len - 4; i >= 0; i--) {
-        if (ngx_path_separator(value[2].data[i])) {
+    for (i = value[idx].len - 4; i >= 0; i--) {
+        if (ngx_path_separator(value[idx].data[i])) {
             base_name_start = i;
             break;
         }
     }
-    base_name.len = value[2].len - 4 - base_name_start;
-    base_name.data = value[2].data + base_name_start;
+    base_name.len = value[idx].len - 4 - base_name_start;
+    base_name.data = value[idx].data + base_name_start;
     if (base_name.len == 0) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                         "haskell source code file base name is empty");
         return NGX_CONF_ERROR;
     }
 
-    mcf->lib_path.len = value[2].len;
+    mcf->lib_path.len = value[idx].len;
     mcf->lib_path.data = ngx_pnalloc(cf->pool, mcf->lib_path.len + 1);
     if (mcf->lib_path.data == NULL) {
         return NGX_CONF_ERROR;
     }
 
-    ngx_memcpy(mcf->lib_path.data, value[2].data, value[2].len - 3);
-    ngx_memcpy(mcf->lib_path.data + value[2].len - 3, ".so", 3);
-    mcf->lib_path.data[value[2].len] = '\0';
+    ngx_memcpy(mcf->lib_path.data, value[idx].data, value[idx].len - 3);
+    ngx_memcpy(mcf->lib_path.data + value[idx].len - 3, ".so", 3);
+    mcf->lib_path.data[value[idx].len] = '\0';
 
     if (load) {
         if (ngx_file_info(mcf->lib_path.data, &lib_info) == NGX_FILE_ERROR) {
@@ -727,13 +765,13 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     if (!load) {
-        if (ngx_http_haskell_write_code(cf, value[2], value[3])
+        if (ngx_http_haskell_write_code(cf, conf, value[idx], value[idx + 1])
             != NGX_CONF_OK)
         {
             return NGX_CONF_ERROR;
         }
 
-        if (ngx_http_haskell_compile(cf, conf, value[2])
+        if (ngx_http_haskell_compile(cf, conf, value[idx])
             != NGX_CONF_OK)
         {
             return NGX_CONF_ERROR;
@@ -759,25 +797,33 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 
 static char *
-ngx_http_haskell_write_code(ngx_conf_t *cf, ngx_str_t source_name,
+ngx_http_haskell_write_code(ngx_conf_t *cf, void *conf, ngx_str_t source_name,
                             ngx_str_t fragment)
 {
-    ngx_file_t  out;
-    ngx_str_t   code;
+    ngx_http_haskell_main_conf_t  *mcf = conf;
 
-    code.len = STRLEN(haskell_module_code_head) + fragment.len +
-            STRLEN(haskell_module_code_tail);
+    ngx_file_t                     out;
+    ngx_str_t                      code;
+    ngx_int_t                      code_head_len = 0;
+    ngx_int_t                      code_tail_len = 0;
+
+    if (mcf->wrap_mode == ngx_http_haskell_module_wrap_mode_standalone) {
+        code_head_len = STRLEN(haskell_module_code_head);
+        code_tail_len = STRLEN(haskell_module_code_tail);
+    }
+
+    code.len = code_head_len + fragment.len + code_tail_len;
     code.data = ngx_pnalloc(cf->pool, code.len);
     if (code.data == NULL) {
         return NGX_CONF_ERROR;
     }
 
     ngx_memcpy(code.data,
-               haskell_module_code_head, STRLEN(haskell_module_code_head));
-    ngx_memcpy(code.data + STRLEN(haskell_module_code_head),
+               haskell_module_code_head, code_head_len);
+    ngx_memcpy(code.data + code_head_len,
                fragment.data, fragment.len);
-    ngx_memcpy(code.data + STRLEN(haskell_module_code_head) + fragment.len,
-               haskell_module_code_tail, STRLEN(haskell_module_code_tail));
+    ngx_memcpy(code.data + code_head_len + fragment.len,
+               haskell_module_code_tail, code_tail_len);
 
     ngx_memzero(&out, sizeof(ngx_file_t));
 

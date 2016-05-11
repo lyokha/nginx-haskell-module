@@ -22,7 +22,7 @@ http {
     haskell ghc_extra_flags
             '-hide-package regex-pcre -XFlexibleInstances -XTupleSections';
 
-    haskell compile /tmp/ngx_haskell.hs '
+    haskell compile standalone /tmp/ngx_haskell.hs '
 
 import qualified Data.Char as C
 import           Text.Regex.PCRE
