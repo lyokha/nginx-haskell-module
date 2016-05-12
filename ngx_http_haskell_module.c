@@ -25,10 +25,13 @@
 
 static const char  haskell_module_handler_prefix[] = "ngx_hs_";
 static const char  haskell_module_type_checker_prefix[] = "type_";
+static const char  template_haskell_option[] = " -XTemplateHaskell";
 static const size_t  haskell_module_handler_prefix_len =
     STRLEN(haskell_module_handler_prefix);
 static const size_t  haskell_module_type_checker_prefix_len =
     STRLEN(haskell_module_type_checker_prefix);
+static const size_t  template_haskell_option_len =
+    STRLEN(template_haskell_option);
 
 static const char  haskell_module_code_head[] =
 "{-# LANGUAGE ForeignFunctionInterface, CPP #-}\n"
@@ -804,8 +807,8 @@ ngx_http_haskell_write_code(ngx_conf_t *cf, void *conf, ngx_str_t source_name,
 
     ngx_file_t                     out;
     ngx_str_t                      code;
-    ngx_int_t                      code_head_len = 0;
-    ngx_int_t                      code_tail_len = 0;
+    ngx_uint_t                     code_head_len = 0;
+    ngx_uint_t                     code_tail_len = 0;
 
     if (mcf->wrap_mode == ngx_http_haskell_module_wrap_mode_standalone) {
         code_head_len = STRLEN(haskell_module_code_head);
@@ -861,13 +864,20 @@ ngx_http_haskell_compile(ngx_conf_t *cf, void *conf, ngx_str_t source_name)
     ngx_http_haskell_main_conf_t  *mcf = conf;
 
     char                          *compile_cmd;
-    ngx_uint_t                     extra_len = 0, passed_len, full_len;
+    ngx_uint_t                     extra_len = 0, th_len = 0;
+    ngx_uint_t                     passed_len, full_len;
+    ngx_uint_t                     compile_cmd_len;
+
+    compile_cmd_len = STRLEN(haskell_compile_cmd);
 
     if (mcf->ghc_extra_flags.len > 0) {
         extra_len = mcf->ghc_extra_flags.len + 1;
     }
-    full_len = STRLEN(haskell_compile_cmd) + mcf->lib_path.len +
-            source_name.len + extra_len + 2;
+    if (mcf->wrap_mode == ngx_http_haskell_module_wrap_mode_modular) {
+        th_len = template_haskell_option_len;
+    }
+    full_len = compile_cmd_len + mcf->lib_path.len + source_name.len +
+            extra_len + th_len + 2;
 
     compile_cmd = ngx_pnalloc(cf->pool, full_len);
     if (compile_cmd == NULL) {
@@ -875,12 +885,14 @@ ngx_http_haskell_compile(ngx_conf_t *cf, void *conf, ngx_str_t source_name)
     }
 
     ngx_memcpy(compile_cmd,
-               haskell_compile_cmd, STRLEN(haskell_compile_cmd));
-    ngx_memcpy(compile_cmd + STRLEN(haskell_compile_cmd), mcf->lib_path.data,
+               haskell_compile_cmd, compile_cmd_len);
+    ngx_memcpy(compile_cmd + compile_cmd_len, mcf->lib_path.data,
                mcf->lib_path.len);
-    ngx_memcpy(compile_cmd + STRLEN(haskell_compile_cmd) + mcf->lib_path.len,
+    ngx_memcpy(compile_cmd + compile_cmd_len + mcf->lib_path.len,
+               template_haskell_option, th_len);
+    ngx_memcpy(compile_cmd + compile_cmd_len + mcf->lib_path.len + th_len,
                " ", 1);
-    passed_len = STRLEN(haskell_compile_cmd) + mcf->lib_path.len + 1;
+    passed_len = compile_cmd_len + mcf->lib_path.len + th_len + 1;
     if (extra_len > 0) {
         ngx_memcpy(compile_cmd + passed_len,
                    mcf->ghc_extra_flags.data, mcf->ghc_extra_flags.len);

@@ -29,7 +29,7 @@ import qualified Data.ByteString.Lazy as L
 ngxExport :: Name -> Name -> Q Type -> Name -> Q [Dec]
 ngxExport e h t f = sequence
     [funD nameFt $ body [|exportType $ $eVar $fVar|],
-     fmap (ForeignD . ExportF CCall ftName nameFt) ftType,
+     fmap (ForeignD . ExportF CCall ftName nameFt) [t|IO CInt|],
      funD nameF $ body [|$hVar $ $eVar $fVar|],
      fmap (ForeignD . ExportF CCall fName nameF) t
     ]
@@ -40,7 +40,6 @@ ngxExport e h t f = sequence
           nameF  = mkName fName
           ftName = "type_" ++ fName
           nameFt = mkName ftName
-          ftType = [t|IO CInt|]
           body b = [clause [] (normalB b) []]
 
 ngxExportSS =
