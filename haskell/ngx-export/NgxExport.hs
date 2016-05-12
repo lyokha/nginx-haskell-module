@@ -28,14 +28,13 @@ import qualified Data.ByteString.Lazy as L
 
 ngxExport :: Name -> Name -> Q Type -> Name -> Q [Dec]
 ngxExport e h t f = sequence
-    [funD nameFt $ body [|exportType $ $eVar $fVar|],
+    [funD nameFt $ body [|exportType $efVar|],
      fmap (ForeignD . ExportF CCall ftName nameFt) [t|IO CInt|],
-     funD nameF $ body [|$hVar $ $eVar $fVar|],
+     funD nameF $ body [|$hVar $efVar|],
      fmap (ForeignD . ExportF CCall fName nameF) t
     ]
-    where eVar   = conE e
-          hVar   = varE h
-          fVar   = varE f
+    where hVar   = varE h
+          efVar  = conE e `appE` varE f
           fName  = "ngx_hs_" ++ nameBase f
           nameF  = mkName fName
           ftName = "type_" ++ fName
