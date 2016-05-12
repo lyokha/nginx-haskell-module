@@ -464,8 +464,8 @@ i.e. string literals like *"File not found"#*, *"text/plain"#* and those
 embedded by the *Data.FileEmbed*, otherwise the nasty things may happen! Literal
 strings that end with *hashes* (*#*) are actually addresses of compiled static
 byte arrays that do not change during runtime. To enable the hash literals
-option *-XMagicHash* must be added into the directive *ghc_extra_flags*. Working
-on such a low level requires using functions *unsafePackAddressLen* and
+option *-XMagicHash* must be added into the directive *haskell ghc_extra_flags*.
+Working on such a low level requires using functions *unsafePackAddressLen* and
 *unsafePerformIO* from modules *Data.ByteString.Unsafe* and *System.IO.Unsafe*
 respectively (in this example *unsafePerformIO* can be safely replaced with the
 fastest and the unsafest *IO unwrapper* *accursedUnutterablePerformIO* from
@@ -493,7 +493,7 @@ to the new haskell code.
 
 - *Haskell code compiles but type check of handlers fails.* (For example a
   haskell function that had been exported as content handler was passed to a
-  *haskell_run* directive in some location.) The new workers will start but fail
+  directive *haskell_run* in some location.) The new workers will start but fail
   the module initialization and shut down, the old workers will shut down. No
   live workers will exist.
 
@@ -515,9 +515,9 @@ a single file that contains a *standalone* module with name
 haskell code in the nginx configuration file, of which the most important is
 inability to use haskell *file-header* pragmas like *LANGUAGE* and
 *OPTIONS_GHC*. However this particular limitation can be worked around with
-*-X...* options in directive *ghc_extra_flags*. Standalone module wrapping
-approach also brings ghc extensions *ForeignFunctionInterface*, *CPP* and
-*ViewPatterns* into scope of the user's haskell code.
+*-X...* options in directive *haskell ghc_extra_flags*. Standalone module
+wrapping approach also brings ghc extensions *ForeignFunctionInterface*, *CPP*
+and *ViewPatterns* into scope of the user's haskell code.
 
 To fight limitations of the standalone module approach another *modular*
 approach was introduced. In it, the wrapping haskell code must be built in a
