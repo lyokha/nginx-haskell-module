@@ -522,9 +522,9 @@ approach also brings ghc extensions *ForeignFunctionInterface*, *CPP* and
 To fight limitations of the standalone module approach another *modular*
 approach was introduced. In it, the wrapping haskell code must be built in a
 separate haskell module *NgxExport* and installed in the system with *cabal*.
-The source code of the module is located in directory *haskell/ngx-export* of
-the project tree. The user's haskell code in this approach must import the
-module *NgxExport*.
+The source code of the module is located in directory
+[haskell/ngx-export](haskell/ngx-export) of the project tree. The user's haskell
+code in this approach must import the module *NgxExport*.
 
 The export macros in *modular* approach syntactically and semantically differ
 from the standalone approach's export macros! They are *template haskell*
@@ -542,7 +542,8 @@ In the modular approach the user's haskell code is compiled with option
 *-XTemplateHaskell* as soon as single quotes as names starters require it. The
 module must be declared explicitly. You can find an nginx configuration file
 equivalent to the example in the first section with the haskell code translated
-for the modular approach in directory *haskell/ngx-export* of the project tree.
+for the modular approach in directory [haskell/ngx-export](haskell/ngx-export)
+of the project tree.
 
 It's worth saying that the standalone module compilation gets enabled with
 keyword *standalone* passed as the first argument in directives *haskell
