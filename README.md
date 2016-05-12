@@ -232,11 +232,13 @@ adopted from [here](http://www.rosettacode.org/wiki/URL_decoding#Haskell). Byte
 string instance of *doURLDecode* makes use of *view patterns* in its clauses,
 however this extension does not have to be declared explicitly because it was
 already enabled in a pragma from the wrapping haskell code provided by this
-module. In several clauses of *doURLDecode* there are explicit characters
-wrapped inside single quotes which are in turn escaped with backslashes to not
-confuse nginx parser as the haskell code itself is wrapped inside single quotes.
-Exported function *urlDecode* is defined via the string instance of
-*doURLDecode*: if decoding fails it returns an empty string.
+module (see details in section [Wrapping haskell code
+organization](#wrapping-haskell-code-organization)). In several clauses of
+*doURLDecode* there are explicit characters wrapped inside single quotes which
+are in turn escaped with backslashes to not confuse nginx parser as the haskell
+code itself is wrapped inside single quotes. Exported function *urlDecode* is
+defined via the string instance of *doURLDecode*: if decoding fails it returns
+an empty string.
 
 Let's look inside the *server* clause, in *location /* where the exported
 haskell functions are used. Directive *haskell_run* takes three or more
@@ -501,6 +503,51 @@ to the logs.
 Besides haskell code reloading, restart of workers makes data loaded by
 directive *haskell_static_content* reload too.
 
+Wrapping haskell code organization
+----------------------------------
+
+Macros NGX_EXPORT_S_S and others are really *cpp* macros expanded by program
+*cpphs* during *ghc* compilation stage. The code where these macros and other
+auxiliary functions defined wraps the user's haskell code around thus producing
+a single file that contains a *standalone* module with name
+*NgxHaskellUserRuntime*. This implementation imposes limitations on the user's
+haskell code in the nginx configuration file, of which the most important is
+inability to use haskell *file-header* pragmas like *LANGUAGE* and
+*OPTIONS_GHC*. However this particular limitation can be worked around with
+*-X...* options in directive *ghc_extra_flags*. Standalone module wrapping
+approach also brings ghc extensions *ForeignFunctionInterface*, *CPP* and
+*ViewPatterns* into scope of the user's haskell code.
+
+To fight limitations of the standalone module approach another *modular*
+approach was introduced. In it, the wrapping haskell code must be built in a
+separate haskell module *NgxExport* and installed in the system with *cabal*.
+The source code of the module is located in directory *haskell/ngx-export* of
+the project tree. The user's haskell code in this approach must import the
+module *NgxExport*.
+
+The export macros in *modular* approach syntactically and semantically differ
+from the standalone approach's export macros! They are *template haskell*
+functions expanded by *ghc* during compilation. It means that their names must
+start with lower case letters and they must accept *names* rather than plain
+haskell functions. In *Template Haskell*, *names* can be constructed with a
+*single quote* placed before a normal function name. If the user's haskell code
+is wrapped inside single quotes, the single quote that starts an exported
+haskell handler must be escaped with a *backslash*. Altogether the standalone
+approach's declarations like *NGX_EXPORT_S_SS handler1* and *NGX_EXPORT_S_S
+handler2* are translated into corresponding modular approach's declarations
+*ngxExportSSS \'handler1* and *ngxExportSS \'handler2*.
+
+In the modular approach the user's haskell code is compiled with option
+*-XTemplateHaskell* as soon as single quotes as names starters require it. The
+module must be declared explicitly. You can find an nginx configuration file
+equivalent to the example in the first section with the haskell code translated
+for the modular approach in directory *haskell/ngx-export* of the project tree.
+
+It's worth saying that the standalone module compilation gets enabled with
+keyword *standalone* passed as the first argument in directives *haskell
+compile* and *haskell load* whereas the modular compilation gets enabled with
+keyword *modular* or without any keyword.
+
 Some facts about efficiency
 ---------------------------
 
@@ -580,7 +627,8 @@ Troubleshooting
 - _Haskell source code fails to compile with messages ``Not in scope: ‘<$>’``
   and ``Not in scope: ‘<*>’``_.
 
-  This happens with *ghc* older than *7.10* and can be fixed by adding line
+  This happens in *standalone module approach* with *ghc* older than *7.10* and
+  can be fixed by adding line
 
     ```haskell
   import Control.Applicative  
