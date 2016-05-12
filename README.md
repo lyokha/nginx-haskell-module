@@ -474,7 +474,8 @@ arrays in the module *Data.FileEmbed* are: *file-embed* version *0.0.7* and
 *Template Haskell* version *2.5.0* (bundled with *ghc* since version *7.0.1*).
 
 A working nginx configuration file with this unsafe content handler
-implementation can be found in directory *test/tsung* of the project tree.
+implementation can be found in directory [test/tsung](test/tsung) of the project
+tree.
 
 Reloading of haskell code and static content
 --------------------------------------------
