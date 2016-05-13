@@ -550,6 +550,19 @@ keyword *standalone* passed as the first argument in directives *haskell
 compile* and *haskell load* whereas the modular compilation gets enabled with
 keyword *modular* or without any keyword.
 
+Static linkage against basic haskell libraries
+----------------------------------------------
+
+By default *ghc* links the built haskell module against dynamic haskell
+libraries which means that basic haskell packages must have been installed on
+the target machine even if directive *haskell load* only loads an already
+compiled library. In principle *ghc* allows building an independent shared
+library with static linkage against other haskell libraries, but unfortunately
+the system linker will likely fail if those have been compiled without
+compilation flag *-fPIC* on vast majority of modern platforms, notably on
+*GNU/Linux x86_64*. If it is not the case, static linkage can be turned on by
+simply adding an option *-static* in directive *haskell ghc_extra_flags*.
+
 Some facts about efficiency
 ---------------------------
 
