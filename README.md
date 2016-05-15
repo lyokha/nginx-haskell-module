@@ -534,8 +534,8 @@ haskell functions. In *Template Haskell*, *names* can be constructed with a
 *single quote* placed before a normal function name. If the user's haskell code
 is wrapped inside single quotes, the single quote that starts an exported
 haskell handler must be escaped with a *backslash*. Altogether the standalone
-approach's declarations like *NGX_EXPORT_S_SS handler1* and *NGX_EXPORT_S_S
-handler2* are translated into corresponding modular approach's declarations
+approach's declarations like *NGX_EXPORT_S_SS (handler1)* and *NGX_EXPORT_S_S
+(handler2)* are translated into corresponding modular approach's declarations
 *ngxExportSSS \'handler1* and *ngxExportSS \'handler2*.
 
 In the modular approach the user's haskell code is compiled with option
