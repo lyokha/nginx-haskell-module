@@ -934,12 +934,12 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     }
 
     mcf->dl_handle = dlopen((char *) mcf->lib_path.data, RTLD_LAZY);
+    dl_error = dlerror();
     if (mcf->dl_handle == NULL) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                      "failed to load compiled haskell library");
+                      "failed to load compiled haskell library: %s", dl_error);
         return NGX_ERROR;
     }
-    dlerror();
 
     mcf->hs_init = (void (*)(int *, char ***)) dlsym(mcf->dl_handle, "hs_init");
     dl_error = dlerror();
