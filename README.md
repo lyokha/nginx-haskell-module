@@ -640,9 +640,10 @@ static libraries contain relocations.
 # readelf --relocs dist/build/libHSrts.a | egrep '(GOT|PLT|JU?MP_SLOT)'
 ```
 
-If these commands produced long outputs then the libraries are good. Now we must
+(This method was found [here](http://stackoverflow.com/a/1351771/5655455)). If
+these commands produced long outputs then the libraries are good. Now we must
 put them in a directory that will be passed to *ghc* while compiling the final
-library. Let the directory be located in a system path related to *ghc*. The
+library. Let the directory be located in a related to *ghc* system path. The
 following commands must be executed with a superuser privileges.
 
 ```ShellSession
