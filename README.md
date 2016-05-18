@@ -570,7 +570,7 @@ repository](http://copr.fedorainfracloud.org/coprs/petersen/ghc-7.10.2/).
 First of all, building of such a library is only possible from command-line as
 soon as it requires tuning of some *ghc* options not available from directive
 *haskell ghc_extra_flags*. Therefore the haskell code must be extracted in a
-separate file, say NgxHaskellUserRuntime.hs. Here it is.
+separate file, say *NgxHaskellUserRuntime.hs*. Here it is.
 
 ```haskell
 {-# LANGUAGE TemplateHaskell, MagicHash, ViewPatterns #-}
