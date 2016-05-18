@@ -284,44 +284,44 @@ content](#reloading-of-haskell-code-and-static-content)). In this case the code
 is OK and we are moving forward.
 
 ```ShellSession
-# curl 'http://localhost:8010/?a=hello_world'
+$ curl 'http://localhost:8010/?a=hello_world'
 toUpper (hello_world) = HELLO_WORLD
-# curl 'http://localhost:8010/?a=hello_world&b=4'
+$ curl 'http://localhost:8010/?a=hello_world&b=4'
 takeN (hello_world, 4) = hell
-# curl 'http://localhost:8010/?a=hello_world&b=oops'
+$ curl 'http://localhost:8010/?a=hello_world&b=oops'
 takeN (hello_world, oops) = 
-# curl 'http://localhost:8010/?c=intelligence'
+$ curl 'http://localhost:8010/?c=intelligence'
 reverse (intelligence) = ecnegilletni
-# curl 'http://localhost:8010/?d=intelligence&a=%5Ei'              # URL-encoded ^i
+$ curl 'http://localhost:8010/?d=intelligence&a=%5Ei'              # URL-encoded ^i
 matches (intelligence, ^i) = 1
-# curl 'http://localhost:8010/?d=intelligence&a=%5EI'              # URL-encoded ^I
+$ curl 'http://localhost:8010/?d=intelligence&a=%5EI'              # URL-encoded ^I
 matches (intelligence, ^I) = 0
-# curl 'http://localhost:8010/?e=1&g=intelligence&a=smart'
+$ curl 'http://localhost:8010/?e=1&g=intelligence&a=smart'
 firstNotEmpty (, intelligence, smart) = intelligence
-# curl 'http://localhost:8010/?e=1&g=intelligence&f=smart'
+$ curl 'http://localhost:8010/?e=1&g=intelligence&f=smart'
 firstNotEmpty (smart, intelligence, ) = smart
-# curl 'http://localhost:8010/?e=1'
+$ curl 'http://localhost:8010/?e=1'
 firstNotEmpty (, , ) = 
-# curl 'http://localhost:8010/?l=1'
+$ curl 'http://localhost:8010/?l=1'
 isInList (, <secret words>) = 0
-# curl 'http://localhost:8010/?l=1&a=s'
+$ curl 'http://localhost:8010/?l=1&a=s'
 isInList (s, <secret words>) = 0
-# curl 'http://localhost:8010/?l=1&a=secret2'
+$ curl 'http://localhost:8010/?l=1&a=secret2'
 isInList (secret2, <secret words>) = 1
-# curl 'http://localhost:8010/?m=%5B1%2C2%2C3%5D'                  # URL-encoded [1,2,3]
+$ curl 'http://localhost:8010/?m=%5B1%2C2%2C3%5D'                  # URL-encoded [1,2,3]
 isJSONListOfInts ([1,2,3]) = 1
-# curl 'http://localhost:8010/?m=unknown'
+$ curl 'http://localhost:8010/?m=unknown'
 isJSONListOfInts (unknown) = 0
-# curl 'http://localhost:8010/?n=%5B10%2C20%2C30%2C40%5D&take=3'   # URL-encoded [10,20,30,40]
+$ curl 'http://localhost:8010/?n=%5B10%2C20%2C30%2C40%5D&take=3'   # URL-encoded [10,20,30,40]
 jSONListOfIntsTakeN ([10,20,30,40], 3) = [10,20,30]
-# curl 'http://localhost:8010/?n=%5B10%2C20%2C30%2C40%5D&take=undefined'
+$ curl 'http://localhost:8010/?n=%5B10%2C20%2C30%2C40%5D&take=undefined'
 jSONListOfIntsTakeN ([10,20,30,40], undefined) = []
 ```
 
 Let's try location */content* (in a browser it looks great!)
 
 ```ShellSession
-# curl -D- 'http://localhost:8010/content?n=%5B10%2C20%2C30%2C40%5D&take=3'
+$ curl -D- 'http://localhost:8010/content?n=%5B10%2C20%2C30%2C40%5D&take=3'
 HTTP/1.1 200 OK
 Server: nginx/1.8.0
 Date: Fri, 04 Mar 2016 15:17:44 GMT
@@ -606,15 +606,15 @@ of *ghc*, therefore we have to get *ghc* sources from a branch that corresponds
 to the version of the system *ghc*.
 
 ```ShellSession
-# git clone -b ghc-7.10.2-release --recursive git://git.haskell.org/ghc.git ghc-7.10.2
+$ git clone -b ghc-7.10.2-release --recursive git://git.haskell.org/ghc.git ghc-7.10.2
 ```
 
 Now *cd* to the source directory and perform the first usual steps.
 
 ```ShellSession
-# cd ghc-7.10.2
-# ./boot
-# ./configure
+$ cd ghc-7.10.2
+$ ./boot
+$ ./configure
 ```
 
 Here we are going to do a trick. Static FFI library must be compiled with
@@ -622,22 +622,22 @@ Here we are going to do a trick. Static FFI library must be compiled with
 into the *CFLAGS* declaration in *libffi/ghc.mk* manually.
 
 ```ShellSession
-# sed -i 's/CFLAGS="/&-fPIC /' libffi/ghc.mk
+$ sed -i 's/CFLAGS="/&-fPIC /' libffi/ghc.mk
 ```
 
 Now we are ready to compile *rts*.
 
 ```ShellSession
-# cd rts
-# make EXTRA_HC_OPTS=-fPIC
+$ cd rts
+$ make EXTRA_HC_OPTS=-fPIC
 ```
 
 Making *rts* takes a long time. After it's done we can check that the built
 static libraries contain relocations.
 
 ```ShellSession
-# readelf --relocs dist/build/libCffi.a | egrep '(GOT|PLT|JU?MP_SLOT)'
-# readelf --relocs dist/build/libHSrts.a | egrep '(GOT|PLT|JU?MP_SLOT)'
+$ readelf --relocs dist/build/libCffi.a | egrep '(GOT|PLT|JU?MP_SLOT)'
+$ readelf --relocs dist/build/libHSrts.a | egrep '(GOT|PLT|JU?MP_SLOT)'
 ```
 
 (This method was found [here](http://stackoverflow.com/a/1351771/5655455)). If
@@ -658,12 +658,12 @@ packages that we're going to use: *base*, *file-embed*, *template-haskell*,
 installed packages command *ghc-pkg field* can be used. For example
 
 ```ShellSession
-# ghc-pkg field base version,depends
+$ ghc-pkg field base version,depends
 version: 4.8.1.0
 depends:
     builtin_rts ghc-prim-0.4.0.0-af16264bc80979d06e37ac63e3ba9a21
     integer-gmp-1.0.0.0-8e0f14d0262184533b417ca1f8b44482
-# ghc-pkg field bytestring version,depends
+$ ghc-pkg field bytestring version,depends
 version: 0.10.6.0
 depends:
     base-4.8.1.0-4f7206fd964c629946bb89db72c80011
@@ -688,19 +688,19 @@ because they must be built in a different way).
 Let's first build and install package *base*.
 
 ```ShellSession
-# cabal get base-4.8.1.0
-# cd base-4.8.1.0
-# cabal configure --ghc-options=-fPIC -finteger-gmp2
-# cabal build
-# sudo cp -r dist/build $(ghc --print-libdir)/static-fpic/base
-# cd -
+$ cabal get base-4.8.1.0
+$ cd base-4.8.1.0
+$ cabal configure --ghc-options=-fPIC -finteger-gmp2
+$ cabal build
+$ sudo cp -r dist/build $(ghc --print-libdir)/static-fpic/base
+$ cd -
 ```
 
 Then build and install the libraries from the dependency list shown above.
 
 ```ShellSession
-# export DEPPACKS=$(for p in ghc-prim integer-gmp deepseq array bytestring directory filepath template-haskell time unix pretty safe ; do ghc-pkg field $p version | head -1 | cut -d' ' -f2 | sed "s/^/$p-/" ; done)
-# for p in $DEPPACKS ; do cabal get $p ; cd $p ; cabal configure --ghc-options=-fPIC ; cabal build ; cd - ; done
+$ export DEPPACKS=$(for p in ghc-prim integer-gmp deepseq array bytestring directory filepath template-haskell time unix pretty safe ; do ghc-pkg field $p version | head -1 | cut -d' ' -f2 | sed "s/^/$p-/" ; done)
+$ for p in $DEPPACKS ; do cabal get $p ; cd $p ; cabal configure --ghc-options=-fPIC ; cabal build ; cd - ; done
 ```
 
 The next command requires a superuser privileges.
@@ -712,24 +712,24 @@ The next command requires a superuser privileges.
 Now *cd* to the *ngx-export* source directory and do all the same.
 
 ```ShellSession
-# cd haskell/ngx-export
-# cabal configure --ghc-options=-fPIC
-# cabal build
-# sudo cp -r dist/build $(ghc --print-libdir)/static-fpic/ngx-export
+$ cd haskell/ngx-export
+$ cabal configure --ghc-options=-fPIC
+$ cabal build
+$ sudo cp -r dist/build $(ghc --print-libdir)/static-fpic/ngx-export
 ```
 
 At this moment all dependent libraries have been installed. Let's build
 *ngx_haskell.so*
 
 ```ShellSession
-# GHCSTATICLIBS=$(find $(ghc --print-libdir)/static-fpic -maxdepth 1 | sed 's/^/-L/')
-# ghc -O2 -shared -fPIC -o ngx_haskell.so $GHCSTATICLIBS -lHSrts -lCffi -lrt NgxHaskellUserRuntime.hs
+$ GHCSTATICLIBS=$(find $(ghc --print-libdir)/static-fpic -maxdepth 1 | sed 's/^/-L/')
+$ ghc -O2 -shared -fPIC -o ngx_haskell.so $GHCSTATICLIBS -lHSrts -lCffi -lrt NgxHaskellUserRuntime.hs
 ```
 
 Test that *ngx_haskell.so* does not depend on haskell libraries.
 
 ```ShellSession
-# ldd ngx_haskell.so 
+$ ldd ngx_haskell.so 
 	linux-vdso.so.1 (0x00007ffca784d000)
 	librt.so.1 => /lib64/librt.so.1 (0x00007f51e0681000)
 	libutil.so.1 => /lib64/libutil.so.1 (0x00007f51e047d000)
@@ -743,7 +743,7 @@ Test that *ngx_haskell.so* does not depend on haskell libraries.
 Yes, *ldd* shows only system *C* libraries. Install the library.
 
 ```ShellSession
-# cp ngx_haskell.so /tmp
+$ cp ngx_haskell.so /tmp
 ```
 
 Replace directive *haskell compile* in *nginx.conf* with directive
