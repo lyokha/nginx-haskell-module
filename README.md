@@ -4,6 +4,20 @@ Nginx Haskell module
 This Nginx module allows compiling and running Haskell source code found in a
 configuration file or an existing shared library.
 
+Table of contents
+-----------------
+
+- [Motivational example](#motivational-example)
+- [Static content in HTTP responses](#static-content-in-http-responses)
+- [Optimized unsafe content handler](#optimized-unsafe-content-handler)
+- [Reloading of haskell code and static content](#reloading-of-haskell-code-and-static-content)
+- [Wrapping haskell code organization](#wrapping-haskell-code-organization)
+- [Static linkage against basic haskell libraries](#static-linkage-against-basic-haskell-libraries)
+- [Some facts about efficiency](#some-facts-about-efficiency)
+- [Some facts about exceptions](#some-facts-about-exceptions)
+- [Troubleshooting](#troubleshooting)
+- [See also](#see-also)
+
 Motivational example
 --------------------
 
