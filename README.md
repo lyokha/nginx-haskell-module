@@ -509,17 +509,18 @@ Wrapping haskell code organization
 
 Macros NGX_EXPORT_S_S and others are really *cpp* macros expanded by program
 *cpphs* during *ghc* compilation stage. The code where these macros and other
-auxiliary functions defined wraps the user's haskell code around thus producing
-a single file that contains a *standalone* module with name
+auxiliary functions are defined wraps the user's haskell code around thus
+producing a single source file that contains a *standalone* module with name
 *NgxHaskellUserRuntime*. This implementation imposes limitations on the user's
 haskell code in the nginx configuration file, of which the most important is
 inability to use haskell *file-header* pragmas like *LANGUAGE* and
 *OPTIONS_GHC*. However this particular limitation can be worked around with
 *-X...* options in directive *haskell ghc_extra_flags*. Standalone module
 wrapping approach also brings ghc extensions *ForeignFunctionInterface*, *CPP*
-and *ViewPatterns* into scope of the user's haskell code.
+and *ViewPatterns* into scope of the user's haskell code. Building the module
+from scratch for later loading with directive *haskell load* is also difficult.
 
-To fight limitations of the standalone module approach another *modular*
+To address limitations of the standalone module approach, another *modular*
 approach was introduced. In it, the wrapping haskell code must be built in a
 separate haskell module *NgxExport* and installed in the system with *cabal*.
 The source code of the module is located in directory
@@ -569,8 +570,9 @@ repository](http://copr.fedorainfracloud.org/coprs/petersen/ghc-7.10.2/).
 
 First of all, building of such a library is only possible from command-line as
 soon as it requires tuning of some *ghc* options not available from directive
-*haskell ghc_extra_flags*. Therefore the haskell code must be extracted in a
-separate file, say *NgxHaskellUserRuntime.hs*. Here it is.
+*haskell ghc_extra_flags*. Therefore the haskell code from the configuration
+file must be extracted in a separate source file,
+say *NgxHaskellUserRuntime.hs*. Here it is.
 
 ```haskell
 {-# LANGUAGE TemplateHaskell, MagicHash, ViewPatterns #-}
@@ -602,8 +604,8 @@ archived in static libraries. This is not an easy task considering that we do
 not aim to replace the whole system *ghc* and installed packages.
 
 So let's start with *rts*. The *rts* is not a haskell package but rather a part
-of *ghc*, therefore we have to get *ghc* sources from a branch that corresponds
-to the version of the system *ghc*.
+of *ghc*, therefore we have to retrieve *ghc* sources from a branch that
+corresponds to the version of the system *ghc*.
 
 ```ShellSession
 $ git clone -b ghc-7.10.2-release --recursive git://git.haskell.org/ghc.git ghc-7.10.2
@@ -641,10 +643,10 @@ $ readelf --relocs dist/build/libHSrts.a | egrep '(GOT|PLT|JU?MP_SLOT)'
 ```
 
 (This method was found [here](http://stackoverflow.com/a/1351771/5655455)). If
-these commands produced long outputs then the libraries are good. Now we must
-put them in a directory that will be passed to *ghc* while compiling the final
-library. Let the directory be located in a related to *ghc* system path. The
-following commands must be executed with a superuser privileges.
+these commands have produced long outputs then the libraries are good. Now we
+must put them in a directory that will be passed to *ghc* while compiling the
+final library. Let the directory be located in a related to *ghc* system path.
+The following commands must be executed with a superuser privileges.
 
 ```ShellSession
 # mkdir $(ghc --print-libdir)/static-fpic
@@ -675,15 +677,15 @@ depends:
 Package *base* in my system has version *4.8.1.0* and depends on packages
 *ghc-prim* and *integer-gmp*, package *bytestring* has version *0.10.6.0* and
 depends on packages *base*, *deepseq*, *ghc-prim* and *integer-gmp*. There could
-be multiple *version* and *depends* clauses per package: the safest way to
-choose versions an dependencies is taking clauses with the latest version. We
-must track dependencies down and collect all sub-dependencies recursively
+be multiple *version* and *depends* clauses per single package: the safest way
+to choose versions and dependencies is taking clauses with the latest version.
+We must track dependencies down and collect all sub-dependencies recursively
 (*deepseq* and its dependencies and sub-dependencies etc.). It looks boring and
-I wish I knew an automatic way for such dependency tracking. Finally I collected
-the following list of libraries to build: *ghc-prim*, *integer-gmp*, *deepseq*,
-*array*, *bytestring*, *directory*, *filepath*, *template-haskell*, *time*,
-*unix*, *pretty* and *safe* (I excluded *base* and *ngx-export* from the list
-because they must be built in a different way).
+I wish I knew an automatic way for such dependency tracking. Finally the
+following list of libraries to build was collected: *ghc-prim*, *integer-gmp*,
+*deepseq*, *array*, *bytestring*, *directory*, *filepath*, *template-haskell*,
+*time*, *unix*, *pretty* and *safe* (I excluded *base* and *ngx-export* from the
+list because they differ in the way how they are built).
 
 Let's first build and install package *base*.
 
@@ -726,7 +728,7 @@ $ GHCSTATICLIBS=$(find $(ghc --print-libdir)/static-fpic -maxdepth 1 | sed 's/^/
 $ ghc -O2 -shared -fPIC -o ngx_haskell.so $GHCSTATICLIBS -lHSrts -lCffi -lrt NgxHaskellUserRuntime.hs
 ```
 
-Test that *ngx_haskell.so* does not depend on haskell libraries.
+Check that *ngx_haskell.so* does not depend on haskell libraries.
 
 ```ShellSession
 $ ldd ngx_haskell.so 
@@ -752,8 +754,8 @@ Replace directive *haskell compile* in *nginx.conf* with directive
     haskell load /tmp/ngx_haskell.so;
 ```
 
-and run nginx with haskell code inside but without external dependencies on
-*ghc* and haskell libraries!
+and finally run nginx with haskell code inside but without external dependencies
+on *ghc* and haskell libraries!
 
 Some facts about efficiency
 ---------------------------
