@@ -26,15 +26,15 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Unsafe as B
 import qualified Data.ByteString.Lazy as L
 
-data NgxExport = SS (String -> String)
-               | SSS (String -> String -> String)
-               | SLS ([String] -> String)
-               | BS (String -> Bool)
-               | BSS (String -> String -> Bool)
-               | BLS ([String] -> Bool)
-               | YY (B.ByteString -> L.ByteString)
-               | BY (B.ByteString -> Bool)
-               | Handler (B.ByteString -> (L.ByteString, String, Int))
+data NgxExport = SS            (String -> String)
+               | SSS           (String -> String -> String)
+               | SLS           ([String] -> String)
+               | BS            (String -> Bool)
+               | BSS           (String -> String -> Bool)
+               | BLS           ([String] -> Bool)
+               | YY            (B.ByteString -> L.ByteString)
+               | BY            (B.ByteString -> Bool)
+               | Handler       (B.ByteString -> (L.ByteString, String, Int))
                | UnsafeHandler (B.ByteString ->
                                     (B.ByteString, B.ByteString, Int))
 
