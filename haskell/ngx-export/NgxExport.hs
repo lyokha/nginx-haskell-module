@@ -26,6 +26,26 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Unsafe as B
 import qualified Data.ByteString.Lazy as L
 
+data NgxExport = SS (String -> String)
+               | SSS (String -> String -> String)
+               | SLS ([String] -> String)
+               | BS (String -> Bool)
+               | BSS (String -> String -> Bool)
+               | BLS ([String] -> Bool)
+               | YY (B.ByteString -> L.ByteString)
+               | BY (B.ByteString -> Bool)
+               | Handler (B.ByteString -> (L.ByteString, String, Int))
+               | UnsafeHandler (B.ByteString ->
+                                    (B.ByteString, B.ByteString, Int))
+
+let name = mkName "exportType" in sequence
+    [sigD name [t|NgxExport -> IO CInt|],
+     funD name $
+         map (\(c, i) -> clause [conP c [wildP]] (normalB [|return i|]) [])
+             (zip ['SS, 'SSS, 'SLS, 'BS, 'BSS, 'BLS, 'YY, 'BY,
+                   'Handler, 'UnsafeHandler] [1 ..] :: [(Name, Int)])
+    ]
+
 ngxExport :: Name -> Name -> Q Type -> Name -> Q [Dec]
 ngxExport e h t f = sequence
     [funD nameFt $ body [|exportType $efVar|],
@@ -76,34 +96,6 @@ ngxExportUnsafeHandler =
     ngxExport 'UnsafeHandler 'unsafeHandler
     [t|CString -> CInt ->
        Ptr CString -> Ptr CSize -> Ptr CString -> Ptr CSize -> IO CInt|]
-
-data NgxExport = SS (String -> String)
-               | SSS (String -> String -> String)
-               | SLS ([String] -> String)
-               | BS (String -> Bool)
-               | BSS (String -> String -> Bool)
-               | BLS ([String] -> Bool)
-               | YY (B.ByteString -> L.ByteString)
-               | BY (B.ByteString -> Bool)
-               | Handler (B.ByteString -> (L.ByteString, String, Int))
-               | UnsafeHandler (B.ByteString ->
-                                    (B.ByteString, B.ByteString, Int))
-
-instance Enum NgxExport where
-    toEnum _ = SS id    -- not used
-    fromEnum (SS _)            = 1
-    fromEnum (SSS _)           = 2
-    fromEnum (SLS _)           = 3
-    fromEnum (BS _)            = 4
-    fromEnum (BSS _)           = 5
-    fromEnum (BLS _)           = 6
-    fromEnum (YY _)            = 7
-    fromEnum (BY _)            = 8
-    fromEnum (Handler _)       = 9
-    fromEnum (UnsafeHandler _) = 10
-
-exportType :: NgxExport -> IO CInt
-exportType = return . fromIntegral . fromEnum
 
 data NgxStrType = NgxStrType CSize CString
 
