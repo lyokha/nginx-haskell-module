@@ -568,12 +568,12 @@ keyword *modular* or without any keyword.
 Static linkage against basic haskell libraries
 ----------------------------------------------
 
-By default *ghc* links the built haskell module against dynamic haskell
-libraries which means that basic haskell packages must have been installed on
-the target machine even when directive *haskell load* only loads an already
-compiled library. In principle *ghc* allows building an independent all-in-one
-shared library with static linkage against other haskell libraries, but
-unfortunately the system linker will likely fail if those have been compiled
+By default *ghc* is configured to link the built haskell module against dynamic
+haskell libraries which means that basic haskell packages must have been
+installed on the target machine even when directive *haskell load* only loads an
+already compiled library. In principle *ghc* permits building an independent
+all-in-one shared library with static linkage against other haskell libraries,
+but unfortunately the system linker will likely fail if those have been compiled
 without compilation flag *-fPIC* on vast majority of modern platforms, notably
 on *GNU/Linux x86_64*.
 
@@ -585,8 +585,8 @@ repository](http://copr.fedorainfracloud.org/coprs/petersen/ghc-7.10.2/).
 First of all, building of such a library is only possible from command-line as
 soon as it requires tuning of some *ghc* options not available from directive
 *haskell ghc_extra_flags*. Therefore the haskell code from the configuration
-file must be extracted in a separate source file,
-say *NgxHaskellUserRuntime.hs*. Here it is.
+file must be extracted in a separate source file, say
+*NgxHaskellUserRuntime.hs*. Here it is.
 
 ```haskell
 {-# LANGUAGE TemplateHaskell, MagicHash, ViewPatterns #-}
