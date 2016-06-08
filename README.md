@@ -777,13 +777,13 @@ all dependencies can be extracted from a shared library. Let's first make a
 shared library with name, say *libtmp.so*.
 
 ```ShellSession
-ghc -O2 -dynamic -shared -fPIC -lHSrts-ghc$(ghc --numeric-version) -o libtmp.so NgxHaskellUserRuntime.hs
+$ ghc -O2 -dynamic -shared -fPIC -lHSrts-ghc$(ghc --numeric-version) -o libtmp.so NgxHaskellUserRuntime.hs
 ```
 
 Now we can extract the list of all dependencies with a simple command
 
 ```ShellSession
-DEPS=$(ldd libtmp.so | grep -P 'libHS(?!rts|base|ngx-export)' | sed -r 's/^\s*libHS(.+)-([0-9]+\.){2,}.* => .*$/\1/')
+$ DEPS=$(ldd libtmp.so | grep -P 'libHS(?!rts|base|ngx-export)' | sed -r 's/^\s*libHS(.+)-([0-9]+\.){2,}.* => .*$/\1/')
 ```
 
 Some facts about efficiency
