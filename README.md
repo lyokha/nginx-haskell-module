@@ -771,7 +771,7 @@ Replace directive *haskell compile* in *nginx.conf* with directive
 and finally run nginx with haskell code inside but without external dependencies
 on *ghc* and haskell libraries!
 
-<br><a name="fn1">**1**</a>&nbsp;&nbsp; There is a way! As it was suggested
+<br><a name="fn1"><sup>**1**</sup></a>&nbsp; There is a way! As it was suggested
 [here](https://www.reddit.com/r/haskell/comments/4my2cn/a_story_of_how_i_built_static_haskell_libraries/d4047uz),
 all dependencies can be extracted from a shared library. Let's first make a
 shared library with name, say *libtmp.so*.
