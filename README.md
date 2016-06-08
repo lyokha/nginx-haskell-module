@@ -695,7 +695,7 @@ be multiple *version* and *depends* clauses per single package: the safest way
 to choose versions and dependencies is taking clauses with the latest version.
 We must track dependencies down and collect all sub-dependencies recursively
 (*deepseq* and its dependencies and sub-dependencies etc.). It looks boring and
-I wish I knew an automatic way for such dependency tracking. Finally the
+I wish I knew an automatic way for such dependency tracking[^1]. Finally the
 following list of libraries to build was collected: *ghc-prim*, *integer-gmp*,
 *deepseq*, *array*, *bytestring*, *directory*, *filepath*, *template-haskell*,
 *time*, *unix*, *pretty* and *safe* (I excluded *base* and *ngx-export* from the
@@ -864,4 +864,19 @@ See also
 
 [*An article*](http://lin-techdet.blogspot.com/2015/12/nginx-module-to-enable-haskell-binding.html)
 about the module in my blog.
+
+[^1]: There is a way! As it was suggested
+[here](https://www.reddit.com/r/haskell/comments/4my2cn/a_story_of_how_i_built_static_haskell_libraries/d4047uz),
+all dependencies can be extracted from a shared library. Let's first make a
+shared library with name, say *libtmp.so*.
+
+```ShellSession
+ghc -O2 -dynamic -shared -fPIC -lHSrts-ghc$(ghc --numeric-version) -o libtmp.so NgxHaskellUserRuntime.hs
+```
+
+Now we can extract the list of all dependencies with a simple command
+
+```ShellSession
+DEPS=$(ldd libtmp.so | grep -P 'libHS(?!rts|base|ngx-export)' | sed -r 's/^\s*libHS(.+)-([0-9]+\.){2,}.* => .*$/\1/')
+```
 
