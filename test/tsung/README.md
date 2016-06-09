@@ -15,7 +15,7 @@ Put actual *md5sum* values of generated files into *static.xml*,
 ```ShellSession
 # for f in /usr/local/webdata/static/content* ; do
 >     NAME=$(basename $f) ; MD5HEX=$(md5sum $f | cut -d' ' -f 1) ;
->     sed -r -i "/md5hex/N;s/(md5hex'>).*(<\\/match>.*$NAME.*\$)/\\1$MD5HEX\\2/" static.xml
+>     sed -r -i "/md5hex/N; s/(md5hex'>).*(<\\/match>.*$NAME.*\$)/\\1$MD5HEX\\2/" static.xml
 > done
 ```
 
