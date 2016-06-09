@@ -706,17 +706,20 @@ Let's first build and install package *base*.
 ```ShellSession
 $ cabal get base-4.8.1.0
 $ cd base-4.8.1.0
-$ cabal configure --ghc-options=-fPIC -finteger-gmp2
+$ cabal configure --ghc-options=-fPIC --ipid=$(ghc-pkg field base id | head -1 | cut -d' ' -f2) -finteger-gmp2
 $ cabal build
 $ sudo cp -r dist/build $(ghc --print-libdir)/static-fpic/base
 $ cd -
 ```
 
+Value of *ipid* must be extracted from the system package as soon as a different
+value may cause undefined symbol errors when linking the final library.
+
 Then build and install the libraries from the dependency list shown above.
 
 ```ShellSession
 $ export DEPPACKS=$(for p in ghc-prim integer-gmp deepseq array bytestring directory filepath template-haskell time unix pretty safe ; do ghc-pkg field $p version | head -1 | cut -d' ' -f2 | sed "s/^/$p-/" ; done)
-$ for p in $DEPPACKS ; do cabal get $p ; cd $p ; cabal configure --ghc-options=-fPIC ; cabal build ; cd - ; done
+$ for p in $DEPPACKS ; do cabal get $p ; cd $p ; cabal configure --ghc-options=-fPIC --ipid=$(ghc-pkg field $p id | head -1 | cut -d' ' -f2) ; cabal build ; cd - ; done
 ```
 
 The next command requires a superuser privileges.
@@ -729,13 +732,13 @@ Now *cd* to the *ngx-export* source directory and do all the same.
 
 ```ShellSession
 $ cd haskell/ngx-export
-$ cabal configure --ghc-options=-fPIC
+$ cabal configure --ghc-options=-fPIC --ipid=$(ghc-pkg field ngx-export id | head -1 | cut -d' ' -f2)
 $ cabal build
 $ sudo cp -r dist/build $(ghc --print-libdir)/static-fpic/ngx-export
 ```
 
 At this moment all dependent libraries have been installed. Let's build
-*ngx_haskell.so*
+*ngx_haskell.so*.
 
 ```ShellSession
 $ GHCSTATICLIBS=$(find $(ghc --print-libdir)/static-fpic -maxdepth 1 | sed 's/^/-L/')
