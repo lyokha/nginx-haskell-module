@@ -777,14 +777,14 @@ on *ghc* and haskell libraries!
 <br><hr><a name="fn1"><sup>**1**</sup></a>&nbsp; There is a way! As it was
 suggested
 [here](https://www.reddit.com/r/haskell/comments/4my2cn/a_story_of_how_i_built_static_haskell_libraries/d4047uz),
-all dependencies can be extracted from a shared library. Let's first make a
-shared library with name, say *libtmp.so*.
+all dependencies can be extracted from a shared library with command *ldd*.
+Let's first make a shared library with name, say *libtmp.so*.
 
 ```ShellSession
 $ ghc -O2 -dynamic -shared -fPIC -lHSrts-ghc$(ghc --numeric-version) -o libtmp.so NgxHaskellUserRuntime.hs
 ```
 
-Now we can extract the list of all dependencies with a simple command
+Now we can extract the list of all dependencies in a variable, say *DEPS*.
 
 ```ShellSession
 $ DEPS=$(ldd libtmp.so | grep -P 'libHS(?!rts|base|ngx-export)' | sed -r 's/^\s*libHS(.+)-([0-9]+\.){2,}.* => .*$/\1/')
