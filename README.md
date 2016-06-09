@@ -701,25 +701,22 @@ Finally the following list of libraries to build was collected: *ghc-prim*,
 *template-haskell*, *time*, *unix*, *pretty* and *safe* (I excluded *base* and
 *ngx-export* from the list because they differ in the way how they are built).
 
-Let's first build and install package *base*.
+Let's first build and install package *base*<sup>[2](#fn2)</sup>.
 
 ```ShellSession
 $ cabal get base-4.8.1.0
 $ cd base-4.8.1.0
-$ cabal configure --ghc-options=-fPIC --ipid=$(ghc-pkg field base id | head -1 | cut -d' ' -f2) -finteger-gmp2
+$ cabal configure --ghc-options=-fPIC -finteger-gmp2
 $ cabal build
 $ sudo cp -r dist/build $(ghc --print-libdir)/static-fpic/base
 $ cd -
 ```
 
-Value of *ipid* must be extracted from the system package as soon as a different
-value may cause undefined symbol errors when linking the final library.
-
 Then build and install the libraries from the dependency list shown above.
 
 ```ShellSession
 $ export DEPPACKS=$(for p in ghc-prim integer-gmp deepseq array bytestring directory filepath template-haskell time unix pretty safe ; do ghc-pkg field $p version | head -1 | cut -d' ' -f2 | sed "s/^/$p-/" ; done)
-$ for p in $DEPPACKS ; do cabal get $p ; cd $p ; cabal configure --ghc-options=-fPIC --ipid=$(ghc-pkg field $p id | head -1 | cut -d' ' -f2) ; cabal build ; cd - ; done
+$ for p in $DEPPACKS ; do cabal get $p ; cd $p ; cabal configure --ghc-options=-fPIC ; cabal build ; cd - ; done
 ```
 
 The next command requires a superuser privileges.
@@ -732,7 +729,7 @@ Now *cd* to the *ngx-export* source directory and do all the same.
 
 ```ShellSession
 $ cd haskell/ngx-export
-$ cabal configure --ghc-options=-fPIC --ipid=$(ghc-pkg field ngx-export id | head -1 | cut -d' ' -f2)
+$ cabal configure --ghc-options=-fPIC
 $ cabal build
 $ sudo cp -r dist/build $(ghc --print-libdir)/static-fpic/ngx-export
 ```
@@ -743,9 +740,30 @@ At this moment all dependent libraries have been installed. Let's build
 ```ShellSession
 $ GHCSTATICLIBS=$(find $(ghc --print-libdir)/static-fpic -maxdepth 1 | sed 's/^/-L/')
 $ ghc -O2 -shared -fPIC -o ngx_haskell.so $GHCSTATICLIBS -lHSrts -lCffi -lrt NgxHaskellUserRuntime.hs
+[1 of 1] Compiling NgxHaskellUserRuntime ( NgxHaskellUserRuntime.hs, NgxHaskellUserRuntime.o )
+ghc: panic! (the 'impossible' happened)
+  (GHC version 7.10.2 for x86_64-unknown-linux):
+	Loading archives not supported
+
+Please report this as a GHC bug:  http://www.haskell.org/ghc/reportabug
 ```
 
-Check that *ngx_haskell.so* does not depend on haskell libraries.
+Pull in the reins! Being unable to load archives seems too restrictive,
+especially when it is cheatable.
+
+```ShellSession
+$ ghc -O2 -shared -fPIC -o ngx_haskell.so $GHCSTATICLIBS NgxHaskellUserRuntime.hs
+[1 of 1] Compiling NgxHaskellUserRuntime ( NgxHaskellUserRuntime.hs, NgxHaskellUserRuntime.o )
+Linking ngx_haskell.so ...
+/usr/bin/ld: NgxHaskellUserRuntime.o: relocation R_X86_64_PC32 against undefined symbol `stg_newMutVarzh' can not be used when making a shared object; recompile with -fPIC
+/usr/bin/ld: final link failed: Bad value
+collect2: error: ld returned 1 exit status
+$ ghc -O2 -shared -fPIC -o ngx_haskell.so $GHCSTATICLIBS -lHSrts -lCffi -lrt NgxHaskellUserRuntime.hs
+Linking ngx_haskell.so ...
+```
+
+The library was built. Check that *ngx_haskell.so* does not depend on shared
+haskell libraries.
 
 ```ShellSession
 $ ldd ngx_haskell.so 
@@ -789,6 +807,13 @@ Now we can extract the list of all dependencies in a variable, say *DEPS*.
 ```ShellSession
 $ DEPS=$(ldd libtmp.so | grep -P 'libHS(?!rts|base|ngx-export)' | sed -r 's/^\s*libHS(.+)-([0-9]+\.){2,}.* => .*$/\1/')
 ```
+
+<a name="fn2"><sup>**2**</sup></a>&nbsp; When using newer *ghc 8.0.1* *cabal
+configure* may require an additional option *``--ipid=$(ghc-pkg field ngx-export
+id | head -1 | cut -d' ' -f2)``*. This also refers to building other dependent
+libraries and *ngx-export*. Values of *ipid* must be extracted from system
+packages because different values may cause *undefined symbol* errors when
+linking the final library.
 
 Some facts about efficiency
 ---------------------------
