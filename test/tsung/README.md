@@ -10,8 +10,16 @@ need to be a superuser).
 # ./gen_files.pl -n1 -s1M; mv test1.data /usr/local/webdata/static/content-huge.txt
 ```
 
-Put actual *md5sum* values of generated files into *static.xml* and run nginx
-and tsung.
+Put actual *md5sum* values of generated files into *static.xml*,
+
+```ShellSession
+# for f in /usr/local/webdata/static/content* ; do
+>     NAME=$(basename $f) ; MD5HEX=$(md5sum $f | cut -d' ' -f 1) ;
+>     sed -r -i "/md5hex/N;s/(md5hex'>).*(<\\/match>.*$NAME.*\$)/\\1$MD5HEX\\2/" static.xml
+> done
+```
+
+and run nginx and tsung.
 
 ```ShellSession
 # nginx -c`pwd`/nginx.conf
