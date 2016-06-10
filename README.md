@@ -833,8 +833,8 @@ $ DEPS=$(ldd libtmp.so | grep -P 'libHS(?!rts|base|ngx-export|template-haskell)'
 base id | head -1 | cut -d' ' -f2)``*. This also refers to building other
 dependent libraries and *ngx-export*. Values of *ipid* must be extracted from
 system packages because different values will cause loading of the system
-packages in place of the built ones and consequently relocation errors when
-linking the final library.
+packages in place of their built counterparts, and consequently symbol
+relocation errors when linking the final library.
 
 Some facts about efficiency
 ---------------------------
