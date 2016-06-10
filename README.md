@@ -670,6 +670,8 @@ The following commands must be executed with a superuser privileges.
 *Template-haskell* must also be built from here as soon as ghc seems to apply
 some magic when building it and I do not manage to get a compatible static
 archive when building from the list of dependent libraries as shown hereinafter.
+Make sure that version to build corresponds to that of the system
+*template-haskell* package (it holds true for most cases)!
 
 ```ShellSession
 $ cd ../libraries/template-haskell
@@ -826,12 +828,13 @@ Now we can extract the list of all dependencies in a variable, say *DEPS*.
 $ DEPS=$(ldd libtmp.so | grep -P 'libHS(?!rts|base|ngx-export|template-haskell)' | sed -r 's/^\s*libHS(.+)-([0-9]+\.){2,}.* => .*$/\1/')
 ```
 
-<br><a name="fn2"><sup>**2**</sup></a>&nbsp; When using newer *ghc 8.0.1*,
+<br><a name="fn2"><sup>**2**</sup></a>&nbsp; When using the newer *ghc 8.0.1*,
 *cabal configure* may require an additional option *``--ipid=$(ghc-pkg field
 base id | head -1 | cut -d' ' -f2)``*. This also refers to building other
 dependent libraries and *ngx-export*. Values of *ipid* must be extracted from
-system packages because different values may cause *undefined symbol* errors
-when linking the final library.
+system packages because different values will cause loading of the system
+packages in place of the built ones and consequently relocation errors when
+linking the final library.
 
 Some facts about efficiency
 ---------------------------
