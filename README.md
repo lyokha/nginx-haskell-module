@@ -667,11 +667,28 @@ The following commands must be executed with a superuser privileges.
 # cp -r dist/build/ $(ghc --print-libdir)/static-fpic/rts
 ```
 
+*Template-haskell* must also be built from here as soon as ghc seems to apply
+some magic when building it and I do not manage to get a compatible static
+archive when building from the list of dependent libraries as shown hereinafter.
+
+```ShellSession
+$ cd ../libraries/template-haskell
+$ make EXTRA_HC_OPTS=-fPIC
+```
+
+Wait a bit and then copy the built artifacts to the directory *static-fpic*
+(being a superuser).
+
+```ShellSession
+# cp -r dist-install/build/ $(ghc --print-libdir)/static-fpic/template-haskell
+```
+
 Now let's turn to haskell packages and their dependencies. *Cd* to a new
 directory and try to track down all dependencies and sub-dependencies of
-packages that we're going to use: *base*, *file-embed*, *template-haskell*,
-*bytestring*, *safe* and *ngx-export*. To see versions and dependencies of the
-installed packages command *ghc-pkg field* can be used. For example
+packages that we're going to use: *base*, *file-embed*, *template-haskell* (only
+dependencies, not itself), *bytestring*, *safe* and *ngx-export*. To see
+versions and dependencies of the installed packages command *ghc-pkg field* can
+be used. For example
 
 ```ShellSession
 $ ghc-pkg field base version,depends
@@ -696,10 +713,11 @@ to choose versions and dependencies is taking clauses with the latest version.
 We must track dependencies down and collect all sub-dependencies recursively
 (*deepseq* and its dependencies and sub-dependencies etc.). It looks boring and
 I wish I knew an automatic way for such dependency tracking<sup>[1](#fn1)</sup>.
-Finally the following list of libraries to build was collected: *ghc-prim*,
-*integer-gmp*, *deepseq*, *array*, *bytestring*, *directory*, *filepath*,
-*template-haskell*, *time*, *unix*, *pretty* and *safe* (I excluded *base* and
-*ngx-export* from the list because they differ in the way how they are built).
+Finally the following list of libraries to build was collected (in an arbitrary
+order): *ghc-prim*, *integer-gmp*, *deepseq*, *array*, *bytestring*,
+*directory*, *filepath*, *file-embed*, *time*, *unix*, *pretty* and *safe* (I
+excluded *base* and *ngx-export* from the list because they differ in the way
+how they are built).
 
 Let's first build and install package *base*<sup>[2](#fn2)</sup>.
 
@@ -715,7 +733,7 @@ $ cd -
 Then build and install the libraries from the dependency list shown above.
 
 ```ShellSession
-$ export DEPPACKS=$(for p in ghc-prim integer-gmp deepseq array bytestring directory filepath template-haskell time unix pretty safe ; do ghc-pkg field $p version | head -1 | cut -d' ' -f2 | sed "s/^/$p-/" ; done)
+$ export DEPPACKS=$(for p in ghc-prim integer-gmp deepseq array bytestring directory filepath file-embed time unix pretty safe ; do ghc-pkg field $p version | head -1 | cut -d' ' -f2 | sed "s/^/$p-/" ; done)
 $ for p in $DEPPACKS ; do cabal get $p ; cd $p ; cabal configure --ghc-options=-fPIC ; cabal build ; cd - ; done
 ```
 
@@ -805,7 +823,7 @@ $ ghc -O2 -dynamic -shared -fPIC -lHSrts-ghc$(ghc --numeric-version) -o libtmp.s
 Now we can extract the list of all dependencies in a variable, say *DEPS*.
 
 ```ShellSession
-$ DEPS=$(ldd libtmp.so | grep -P 'libHS(?!rts|base|ngx-export)' | sed -r 's/^\s*libHS(.+)-([0-9]+\.){2,}.* => .*$/\1/')
+$ DEPS=$(ldd libtmp.so | grep -P 'libHS(?!rts|base|ngx-export|template-haskell)' | sed -r 's/^\s*libHS(.+)-([0-9]+\.){2,}.* => .*$/\1/')
 ```
 
 <br><a name="fn2"><sup>**2**</sup></a>&nbsp; When using newer *ghc 8.0.1*,

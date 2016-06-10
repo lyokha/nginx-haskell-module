@@ -108,9 +108,9 @@ instance Storable NgxStrType where
         n <- peekByteOff p 0
         s <- peekByteOff p $ alignment (undefined :: NgxStrType)
         return $ NgxStrType n s
-    poke p a@(NgxStrType n s) = do
+    poke p x@(NgxStrType n s) = do
         poke (castPtr p) n
-        poke (plusPtr p $ alignment a) s
+        poke (plusPtr p $ alignment x) s
 
 catchAlloc :: IO (Ptr a) -> IO (Ptr a)
 catchAlloc = (`catchIOError` const (return nullPtr))
