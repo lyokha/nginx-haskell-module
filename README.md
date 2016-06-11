@@ -825,7 +825,7 @@ $ ghc -O2 -dynamic -shared -fPIC -lHSrts-ghc$(ghc --numeric-version) -o libtmp.s
 Now we can extract the list of all dependencies in a variable, say *DEPS*.
 
 ```ShellSession
-$ DEPS=$(ldd libtmp.so | grep -P 'libHS(?!rts|base|ngx-export|template-haskell)' | sed -r 's/^\s*libHS(.+)-([0-9]+\.){2,}.* => .*$/\1/')
+$ DEPS=$(ldd libtmp.so | sed -r '/^\s*libHS/!d; s/^\s*libHS//; /^(rts|base|ngx-export|template-haskell)-/d; s/^(\S+)-([0-9]+\.){2,}.*/\1/')
 ```
 
 <br><a name="fn2"><sup>**2**</sup></a>&nbsp; When using the newer *ghc 8.0.1*,
