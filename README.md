@@ -768,7 +768,7 @@ ghc: panic! (the 'impossible' happened)
 Please report this as a GHC bug:  http://www.haskell.org/ghc/reportabug
 ```
 
-Pull in the reins! Being unable to load archives seems too restrictive,
+Pull in the reins! Being unable to load static archives seems too restrictive,
 especially when it is cheatable.
 
 ```ShellSession
