@@ -1,8 +1,19 @@
-Module *NgxExport*. Build and install as a superuser with commands
+Module *NgxExport*. Configure and build with commands
 
 ```ShellSession
-# cabal configure
-# cabal build
+$ cabal configure
+$ cabal build
+```
+
+Install with command
+
+```ShellSession
+$ cabal install
+```
+
+, or globally, being a superuser
+
+```ShellSession
 # cabal install --global
 ```
 
