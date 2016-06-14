@@ -11,7 +11,7 @@ Install with command
 $ cabal install
 ```
 
-, or globally, being a superuser
+or globally, being a superuser
 
 ```ShellSession
 # cabal install --global
