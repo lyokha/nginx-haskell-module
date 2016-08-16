@@ -700,7 +700,7 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     if (has_wrap_mode) {
         if (cf->args->nelts < 4) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                        "directives haskell compile / load requires "
+                        "directives haskell compile / load require "
                         "at least 2 parameters when wrap mode is specified");
             return NGX_CONF_ERROR;
         }
