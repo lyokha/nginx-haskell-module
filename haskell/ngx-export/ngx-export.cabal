@@ -1,7 +1,8 @@
 name:                ngx-export
-version:             0.1.0.0
-synopsis:            Export custom haskell functions into nginx configuration
-description:         Please see README.md
+version:             0.1.1.0
+synopsis:            Helper module for Nginx haskell module
+description:         Helper module for
+        <http://github.com/lyokha/nginx-haskell-module Nginx haskell module>
 homepage:            http://github.com/lyokha/nginx-haskell-module
 license:             BSD3
 license-file:        LICENSE
