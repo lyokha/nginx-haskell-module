@@ -20,20 +20,16 @@
 #include <dlfcn.h>
 #include <HsFFI.h>
 
-#define STRLEN(X) (sizeof(X) - 1)
 
+static const ngx_str_t  haskell_module_handler_prefix =
+ngx_string("ngx_hs_");
+static const ngx_str_t  haskell_module_type_checker_prefix =
+ngx_string("type_");
+static const ngx_str_t  template_haskell_option =
+ngx_string(" -XTemplateHaskell");
 
-static const char  haskell_module_handler_prefix[] = "ngx_hs_";
-static const char  haskell_module_type_checker_prefix[] = "type_";
-static const char  template_haskell_option[] = " -XTemplateHaskell";
-static const size_t  haskell_module_handler_prefix_len =
-    STRLEN(haskell_module_handler_prefix);
-static const size_t  haskell_module_type_checker_prefix_len =
-    STRLEN(haskell_module_type_checker_prefix);
-static const size_t  template_haskell_option_len =
-    STRLEN(template_haskell_option);
-
-static const char  haskell_module_code_head[] =
+static const ngx_str_t  haskell_module_code_head =
+ngx_string(
 "{-# LANGUAGE ForeignFunctionInterface, CPP #-}\n"
 "{-# OPTIONS_GHC -pgmPcpphs -optP--cpp #-}\n\n"
 "#define AUX_NGX_TYPECHECK(T, F) \\\n"
@@ -125,9 +121,11 @@ static const char  haskell_module_code_head[] =
 "import qualified Data.ByteString as AUX_NGX_BS\n"
 "import qualified Data.ByteString.Unsafe as AUX_NGX_BS\n"
 "import qualified Data.ByteString.Lazy as AUX_NGX_BSL\n\n"
-"-- START OF USER HASKELL CODE\n";
+"-- START OF USER HASKELL CODE\n"
+);
 
-static const char  haskell_module_code_tail[] =
+static const ngx_str_t  haskell_module_code_tail =
+ngx_string(
 "\n-- END OF USER HASKELL CODE\n\n"
 "data AUX_NGX_EXPORT = AUX_NGX_S_S (String -> String)\n"
 "                    | AUX_NGX_S_SS (String -> String -> String)\n"
@@ -342,10 +340,13 @@ static const char  haskell_module_code_tail[] =
 "    aux_ngx_pokeCStringLen t lt ps pls\n"
 "    (smt, fromIntegral -> lmt) <- AUX_NGX_BS.unsafeUseAsCStringLen mt return\n"
 "    aux_ngx_pokeCStringLen smt lmt pt plt\n"
-"    return st\n";
+"    return st\n"
+);
 
-static const char  haskell_compile_cmd[] =
-    "ghc -O2 -dynamic -shared -fPIC -lHSrts-ghc$(ghc --numeric-version) -o ";
+static const ngx_str_t  haskell_compile_cmd =
+ngx_string(
+"ghc -O2 -dynamic -shared -fPIC -lHSrts-ghc$(ghc --numeric-version) -o "
+);
 
 
 typedef HsInt32 (*ngx_http_haskell_handler_s_s)
@@ -472,8 +473,8 @@ static void *ngx_http_haskell_create_main_conf(ngx_conf_t *cf);
 static void *ngx_http_haskell_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_haskell_merge_loc_conf(ngx_conf_t *cf, void *parent,
     void *child);
-static ngx_int_t ngx_http_haskell_init(ngx_cycle_t *cycle);
-static void ngx_http_haskell_exit(ngx_cycle_t *cycle);
+static ngx_int_t ngx_http_haskell_init_worker(ngx_cycle_t *cycle);
+static void ngx_http_haskell_exit_worker(ngx_cycle_t *cycle);
 static ngx_int_t ngx_http_haskell_run_handler(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_haskell_content_handler(ngx_http_request_t *r);
@@ -540,10 +541,10 @@ ngx_module_t  ngx_http_haskell_module = {
     NGX_HTTP_MODULE,                         /* module type */
     NULL,                                    /* init master */
     NULL,                                    /* init module */
-    ngx_http_haskell_init,                   /* init process */
+    ngx_http_haskell_init_worker,            /* init process */
     NULL,                                    /* init thread */
     NULL,                                    /* exit thread */
-    ngx_http_haskell_exit,                   /* exit process */
+    ngx_http_haskell_exit_worker,            /* exit process */
     NULL,                                    /* exit master */
     NGX_MODULE_V1_PADDING
 };
@@ -613,7 +614,7 @@ ngx_http_haskell_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
 
 static ngx_int_t
-ngx_http_haskell_init(ngx_cycle_t *cycle)
+ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
 {
     if (ngx_process == NGX_PROCESS_HELPER)
         return NGX_OK;
@@ -623,7 +624,7 @@ ngx_http_haskell_init(ngx_cycle_t *cycle)
 
 
 static void
-ngx_http_haskell_exit(ngx_cycle_t *cycle)
+ngx_http_haskell_exit_worker(ngx_cycle_t *cycle)
 {
     if (ngx_process == NGX_PROCESS_HELPER)
         return;
@@ -811,8 +812,8 @@ ngx_http_haskell_write_code(ngx_conf_t *cf, void *conf, ngx_str_t source_name,
     ngx_uint_t                     code_tail_len = 0;
 
     if (mcf->wrap_mode == ngx_http_haskell_module_wrap_mode_standalone) {
-        code_head_len = STRLEN(haskell_module_code_head);
-        code_tail_len = STRLEN(haskell_module_code_tail);
+        code_head_len = haskell_module_code_head.len;
+        code_tail_len = haskell_module_code_tail.len;
     }
 
     code.len = code_head_len + fragment.len + code_tail_len;
@@ -822,11 +823,11 @@ ngx_http_haskell_write_code(ngx_conf_t *cf, void *conf, ngx_str_t source_name,
     }
 
     ngx_memcpy(code.data,
-               haskell_module_code_head, code_head_len);
+               haskell_module_code_head.data, code_head_len);
     ngx_memcpy(code.data + code_head_len,
                fragment.data, fragment.len);
     ngx_memcpy(code.data + code_head_len + fragment.len,
-               haskell_module_code_tail, code_tail_len);
+               haskell_module_code_tail.data, code_tail_len);
 
     ngx_memzero(&out, sizeof(ngx_file_t));
 
@@ -868,13 +869,13 @@ ngx_http_haskell_compile(ngx_conf_t *cf, void *conf, ngx_str_t source_name)
     ngx_uint_t                     passed_len, full_len;
     ngx_uint_t                     compile_cmd_len;
 
-    compile_cmd_len = STRLEN(haskell_compile_cmd);
+    compile_cmd_len = haskell_compile_cmd.len;
 
     if (mcf->ghc_extra_flags.len > 0) {
         extra_len = mcf->ghc_extra_flags.len + 1;
     }
     if (mcf->wrap_mode == ngx_http_haskell_module_wrap_mode_modular) {
-        th_len = template_haskell_option_len;
+        th_len = template_haskell_option.len;
     }
     full_len = compile_cmd_len + mcf->lib_path.len + source_name.len +
             extra_len + th_len + 2;
@@ -885,11 +886,11 @@ ngx_http_haskell_compile(ngx_conf_t *cf, void *conf, ngx_str_t source_name)
     }
 
     ngx_memcpy(compile_cmd,
-               haskell_compile_cmd, compile_cmd_len);
+               haskell_compile_cmd.data, compile_cmd_len);
     ngx_memcpy(compile_cmd + compile_cmd_len, mcf->lib_path.data,
                mcf->lib_path.len);
     ngx_memcpy(compile_cmd + compile_cmd_len + mcf->lib_path.len,
-               template_haskell_option, th_len);
+               template_haskell_option.data, th_len);
     ngx_memcpy(compile_cmd + compile_cmd_len + mcf->lib_path.len + th_len,
                " ", 1);
     passed_len = compile_cmd_len + mcf->lib_path.len + th_len + 1;
@@ -987,18 +988,18 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         char         *type_checker_name = NULL;
         ngx_uint_t    wrong_n_args = 0;
 
-        if (handlers[i].name.len <= haskell_module_handler_prefix_len
+        if (handlers[i].name.len <= haskell_module_handler_prefix.len
             || ngx_strncmp(handlers[i].name.data,
-                           haskell_module_handler_prefix,
-                           haskell_module_handler_prefix_len) != 0)
+                           haskell_module_handler_prefix.data,
+                           haskell_module_handler_prefix.len) != 0)
         {
             continue;
         }
 
         handler_name.len = handlers[i].name.len -
-                haskell_module_handler_prefix_len;
+                haskell_module_handler_prefix.len;
         handler_name.data = handlers[i].name.data +
-                haskell_module_handler_prefix_len;
+                haskell_module_handler_prefix.len;
 
         handlers[i].self = dlsym(mcf->dl_handle,
                                  (char *) handlers[i].name.data);
@@ -1012,7 +1013,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         }
 
         type_checker_name = ngx_alloc(
-            haskell_module_type_checker_prefix_len + handlers[i].name.len + 1,
+            haskell_module_type_checker_prefix.len + handlers[i].name.len + 1,
             cycle->log);
         if (type_checker_name == NULL) {
             ngx_http_haskell_unload(cycle);
@@ -1020,9 +1021,9 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         }
 
         ngx_memcpy(type_checker_name,
-                   haskell_module_type_checker_prefix,
-                   haskell_module_type_checker_prefix_len);
-        ngx_memcpy(type_checker_name + haskell_module_type_checker_prefix_len,
+                   haskell_module_type_checker_prefix.data,
+                   haskell_module_type_checker_prefix.len);
+        ngx_memcpy(type_checker_name + haskell_module_type_checker_prefix.len,
                    handlers[i].name.data, handlers[i].name.len + 1);
 
         type_checker = dlsym(mcf->dl_handle, type_checker_name);
@@ -1165,16 +1166,16 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     value[2].len--;
     value[2].data++;
 
-    handler_name.len = value[1].len + haskell_module_handler_prefix_len;
+    handler_name.len = value[1].len + haskell_module_handler_prefix.len;
     handler_name.data = ngx_pnalloc(cf->pool, handler_name.len + 1);
     if (handler_name.data == NULL) {
         return NGX_CONF_ERROR;
     }
 
     ngx_memcpy(handler_name.data,
-               haskell_module_handler_prefix,
-               haskell_module_handler_prefix_len);
-    ngx_memcpy(handler_name.data + haskell_module_handler_prefix_len,
+               haskell_module_handler_prefix.data,
+               haskell_module_handler_prefix.len);
+    ngx_memcpy(handler_name.data + haskell_module_handler_prefix.len,
                value[1].data, value[1].len);
     handler_name.data[handler_name.len] ='\0';
 
@@ -1299,16 +1300,16 @@ ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
-    handler_name.len = value[1].len + haskell_module_handler_prefix_len;
+    handler_name.len = value[1].len + haskell_module_handler_prefix.len;
     handler_name.data = ngx_pnalloc(cf->pool, handler_name.len + 1);
     if (handler_name.data == NULL) {
         return NGX_CONF_ERROR;
     }
 
     ngx_memcpy(handler_name.data,
-               haskell_module_handler_prefix,
-               haskell_module_handler_prefix_len);
-    ngx_memcpy(handler_name.data + haskell_module_handler_prefix_len,
+               haskell_module_handler_prefix.data,
+               haskell_module_handler_prefix.len);
+    ngx_memcpy(handler_name.data + haskell_module_handler_prefix.len,
                value[1].data, value[1].len);
     handler_name.data[handler_name.len] ='\0';
 
