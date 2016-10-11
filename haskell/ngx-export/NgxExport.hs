@@ -9,6 +9,7 @@ module NgxExport (module Foreign.C
                  ,ngxExportBLS
                  ,ngxExportYY
                  ,ngxExportBY
+                 ,ngxExportAsyncIOYY
                  ,ngxExportHandler
                  ,ngxExportDefHandler
                  ,ngxExportUnsafeHandler) where
@@ -20,7 +21,9 @@ import           Foreign.Storable
 import           Foreign.Marshal.Alloc
 import           Foreign.Marshal.Utils
 import           System.IO.Error
+import           System.Posix.IO
 import           Control.Monad
+import           Control.Concurrent.Async
 import           Data.Maybe
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Unsafe as B
@@ -34,6 +37,7 @@ data NgxExport = SS            (String -> String)
                | BLS           ([String] -> Bool)
                | YY            (B.ByteString -> L.ByteString)
                | BY            (B.ByteString -> Bool)
+               | IOYY          (B.ByteString -> IO L.ByteString)
                | Handler       (B.ByteString -> (L.ByteString, String, Int))
                | UnsafeHandler (B.ByteString ->
                                     (B.ByteString, B.ByteString, Int))
@@ -42,7 +46,7 @@ let name = mkName "exportType" in sequence
     [sigD name [t|NgxExport -> IO CInt|],
      funD name $
          map (\(c, i) -> clause [conP c [wildP]] (normalB [|return i|]) [])
-             (zip ['SS, 'SSS, 'SLS, 'BS, 'BSS, 'BLS, 'YY, 'BY,
+             (zip ['SS, 'SSS, 'SLS, 'BS, 'BSS, 'BLS, 'YY, 'BY, 'IOYY,
                    'Handler, 'UnsafeHandler] [1 ..] :: [(Name, Int)])
     ]
 
@@ -85,6 +89,10 @@ ngxExportYY =
 ngxExportBY =
     ngxExport 'BY 'bY
     [t|CString -> CInt -> IO CUInt|]
+ngxExportAsyncIOYY =
+    ngxExport 'IOYY 'ioyY
+    [t|CString -> CInt ->
+        CInt -> Ptr CString -> Ptr CInt -> Ptr CUInt -> IO ()|]
 ngxExportHandler =
     ngxExport 'Handler 'handler
     [t|CString -> CInt ->
@@ -200,6 +208,28 @@ yY (YY f) x (fromIntegral -> n) p = do
     (fromMaybe (nullPtr, -1) -> (t, fromIntegral -> l)) <- toSingleBuffer s
     poke p t
     return l
+
+ioyY :: NgxExport -> CString -> CInt ->
+    CInt -> Ptr CString -> Ptr CInt -> Ptr CUInt -> IO ()
+ioyY (IOYY f) x (fromIntegral -> n) (fromIntegral -> fd) p pl r =
+    void . async $ do
+    s <- (Right <$> (B.unsafePackCStringLen (x, n) >>= f))
+        `catchIOError` (return . Left . show)
+    either
+        (\s -> do
+            (x, fromIntegral -> l) <- newCStringLen s
+            poke p x
+            poke pl l
+            poke r 1
+        )
+        (\s -> do
+            (fromMaybe (nullPtr, -1) -> (t, fromIntegral -> l)) <-
+                toSingleBuffer s
+            poke p t
+            poke pl l
+            poke r 0
+        ) s
+    (fdWrite fd "0" >> closeFd fd) `catchIOError` const (return ())
 
 bS :: NgxExport -> CString -> CInt -> IO CUInt
 bS (BS f) x (fromIntegral -> n) =

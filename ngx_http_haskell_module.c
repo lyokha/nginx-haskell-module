@@ -92,7 +92,7 @@ ngx_string(
 "foreign export ccall ngx_hs_ ## F :: \\\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt -> \\\n"
 "    IO AUX_NGX.CUInt;\n\n"
-"#define NGX_EXPORT_ASYNC_Y_Y(F) \\\n"
+"#define NGX_EXPORT_ASYNC_IOY_Y(F) \\\n"
 "AUX_NGX_TYPECHECK(AUX_NGX_IOY_Y, F) \\\n"
 "ngx_hs_ ## F = aux_ngx_hs_ioy_y $ AUX_NGX_IOY_Y F; \\\n"
 "foreign export ccall ngx_hs_ ## F :: \\\n"
