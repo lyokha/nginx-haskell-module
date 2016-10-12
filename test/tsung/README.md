@@ -1,3 +1,5 @@
+#### Static content handlers
+
 To run tests prepare random files using auxiliary script *gen_files.pl* (you may
 need to be a superuser).
 
@@ -24,5 +26,14 @@ and run nginx and tsung.
 ```ShellSession
 # nginx -c`pwd`/nginx-static.conf
 # tsung -f static.xml start
+```
+
+#### Asynchronous tasks
+
+Run
+
+```ShellSession
+# nginx -c`pwd`/nginx-async.conf
+# tsung -f async.xml start
 ```
 
