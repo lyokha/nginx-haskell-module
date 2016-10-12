@@ -10,6 +10,7 @@ Table of contents
 - [Motivational example](#motivational-example)
 - [Static content in HTTP responses](#static-content-in-http-responses)
 - [Optimized unsafe content handler](#optimized-unsafe-content-handler)
+- [Asynchronous tasks with side effects](#asynchronous-tasks-with-side-effects)
 - [Reloading of haskell code and static content](#reloading-of-haskell-code-and-static-content)
 - [Wrapping haskell code organization](#wrapping-haskell-code-organization)
 - [Static linkage against basic haskell libraries](#static-linkage-against-basic-haskell-libraries)
@@ -491,6 +492,159 @@ A working nginx configuration file with this unsafe content handler
 implementation can be found in directory [test/tsung](test/tsung) of the project
 tree.
 
+Asynchronous tasks with side effects
+------------------------------------
+
+All variable handlers we met so far were *pure* haskell functions without side
+effects. Inability to put side effects into pure functions has a great
+significance in the sense that it gives strong guarantees about the time the
+function runs. In haskell, functions that may produce side effects are normally
+wrapped inside IO monad. They can do various non-deterministic IO *computations*
+like reading or writing files, connecting to network servers etc., which, in
+principle, may last unpredictably long or even eternally. Despite this, having
+IO functions as nginx variable handlers are extremely tempting as it makes
+possible to perform arbitrary IO tasks during an HTTP request. To eliminate
+their non-probabilistic duration downside, they could be run *asynchronously* in
+*green threads* provided by the haskell *RTS* library, and somehow signal the
+nginx worker's main thread after their computation finish. This is exactly what
+happens in special handler *NGX_EXPORT_ASYNC_IOY_Y*. Consider the following
+example.
+
+```nginx
+user                    nobody;
+worker_processes        2;
+
+events {
+    worker_connections  1024;
+}
+
+http {
+    default_type        application/octet-stream;
+    sendfile            on;
+
+    haskell compile threaded standalone /tmp/ngx_haskell.hs '
+
+import qualified Data.ByteString.Char8 as C8
+import qualified Data.ByteString.Lazy.Char8 as C8L
+import           Network.HTTP.Client
+import           Control.Concurrent
+import           Control.Exception
+import           Safe
+
+getUrl url = do
+    man <- newManager defaultManagerSettings
+    fmap responseBody (parseRequest (C8.unpack url) >>= flip httpLbs man)
+        `catch` \e -> return $ C8L.pack $
+        "HTTP EXCEPTION: " ++ show (e :: HttpException)
+NGX_EXPORT_ASYNC_IOY_Y (getUrl)
+
+delay x = threadDelay ((1000000 *) v) >> return (C8L.pack $ show v)
+    where v = readDef 0 $ C8.unpack x
+NGX_EXPORT_ASYNC_IOY_Y (delay)
+
+    ';
+
+    server {
+        listen       8010;
+        server_name  main;
+        error_log    /tmp/nginx-test-haskell-error.log;
+        access_log   /tmp/nginx-test-haskell-access.log;
+
+        location / {
+            haskell_run_async getUrl $hs_async_ya
+                    "http://ya.ru";
+            haskell_run_async getUrl $hs_async_httpbin
+                    "http://httpbin.org";
+            haskell_run_async getUrl $hs_async_hackage
+                    "http://hackage.haskell.org";
+            echo -n "------> YA.RU:\n\n$hs_async_ya\n\n";
+            echo -n "------> HTTPBIN.ORG:\n\n$hs_async_httpbin\n\n";
+            echo    "------> HACKAGE.HASKELL.ORG:\n\n$hs_async_hackage";
+        }
+
+        location /rewrite {
+            rewrite ^ / last;
+        }
+
+        location /delay {
+            haskell_run_async delay $hs_async_elapsed $arg_a;
+            echo "Elapsed $hs_async_elapsed seconds";
+        }
+    }
+}
+```
+
+Notice that the haskell code was compiled with flag *threaded* which is
+important for running asynchronous tasks. Function *getUrl* is an HTTP client
+that returns the response body or a special message if an HTTP exception has
+happened. Inside *location /* there are 3 directives *haskell_run_async* which
+spawn 3 asynchronous tasks run by *getUrl*, and bind future results to 3
+different variables accessed later by directives *echo* in the nginx *content
+phase*. Async variable handlers are very special. In fact, the IO task gets
+spawned even if the bound variable is not accessed anywhere. All the tasks are
+spawned during early nginx *rewrite phase* (before all rewrite directives) or
+late *rewrite phase* (when all location rewrites are done: this ensures that all
+tasks in the final rewritten location will run). The request won't proceed to
+later phases until all async tasks are done. Technically, an async task signals
+the main nginx thread when it finishes by writing a byte into the *write-end*
+file descriptor of a dedicated *self-pipe*. The *read-end* file descriptor of
+the pipe are polled by the nginx event poller (normally *epoll* in Linux). When
+a task is finished, the poller calls a special callback that checks if there are
+more async tasks for this request and spawn the next one, or finally finishes
+the rewrite phase handler by returning *NGX_DECLINED*.
+
+All IO *exceptions* are caught inside async handlers. If an IO exception has
+happened, the async handler writes its message in the bound variable's data,
+whereas the variable handler logs it when accessed. You *may* catch IO
+exceptions for better control. You *must* catch other types of exceptions (like
+*HttpException* in this example), otherwise there is a risk that async task
+will never write to the pipe, the main nginx thread will never read anything,
+and the request will *hang* (but not in sense of nginx responsiveness) with at
+least 2 file descriptors leak!
+
+Let's do some tests.
+
+```ShellSession
+$ curl 'http://localhost:8010/'
+```
+
+Here you will see too long output with the 3 http sites content, I don't show it
+here. Let's run 20 requests simultaneously.
+
+```ShellSession
+$ for i in {1..20} ; do curl -s 'http://localhost:8010/' & done
+```
+
+20 times longer output! Let's make a timer for 20 seconds from 20 parallel
+requests.
+
+```ShellSession
+$ for i in {1..20} ; do curl -s "http://localhost:8010/delay?a=$i" & done
+Elapsed 1 seconds
+Elapsed 2 seconds
+Elapsed 3 seconds
+Elapsed 4 seconds
+Elapsed 5 seconds
+Elapsed 6 seconds
+Elapsed 7 seconds
+Elapsed 8 seconds
+Elapsed 9 seconds
+Elapsed 10 seconds
+Elapsed 11 seconds
+Elapsed 12 seconds
+Elapsed 13 seconds
+Elapsed 14 seconds
+Elapsed 15 seconds
+Elapsed 16 seconds
+Elapsed 17 seconds
+Elapsed 18 seconds
+Elapsed 19 seconds
+Elapsed 20 seconds
+```
+
+Make sure it prints out every one second: this marks that requests are processed
+asynchronously!
+
 Reloading of haskell code and static content
 --------------------------------------------
 
@@ -861,7 +1015,8 @@ Some facts about efficiency
       gets reloaded in case of *haskell_static_content* handler).
     + Haskell content handlers are not suspendable so you cannot use
       long-running haskell functions without hitting the overall nginx
-      performance.
+      performance. Fortunately this does not refer to [asynchronous
+      handlers](#asynchronous-tasks-with-side-effects).
 
 Some facts about exceptions
 ---------------------------
