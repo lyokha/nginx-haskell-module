@@ -17,7 +17,6 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_http.h>
-#include <unistd.h>
 #include <dlfcn.h>
 #include <HsFFI.h>
 
@@ -442,8 +441,14 @@ typedef enum {
 } ngx_http_haskell_handler_role_e;
 
 
+typedef enum {
+    ngx_http_haskell_compile_mode_threaded = 0,
+    ngx_http_haskell_compile_mode_no_threaded,
+    ngx_http_haskell_compile_mode_load_existing
+} ngx_http_haskell_compile_mode_e;
+
+
 typedef struct {
-    ngx_uint_t                                 code_loaded;
     ngx_http_haskell_module_wrap_mode_e        wrap_mode;
     ngx_str_t                                  ghc_extra_flags;
     ngx_str_t                                  lib_path;
@@ -453,7 +458,8 @@ typedef struct {
     void                                     (*hs_exit)(void);
     void                                     (*hs_add_root)(void (*)(void));
     void                                     (*init_HsModule)(void);
-    ngx_uint_t                                 ghc_threaded;
+    ngx_http_haskell_compile_mode_e            compile_mode;
+    ngx_uint_t                                 code_loaded;
 } ngx_http_haskell_main_conf_t;
 
 
@@ -552,6 +558,7 @@ static ngx_int_t ngx_http_haskell_run_async_handler(ngx_http_request_t *r,
 static ngx_int_t ngx_http_haskell_content_handler(ngx_http_request_t *r);
 static void ngx_http_haskell_variable_cleanup(void *data);
 static void ngx_http_haskell_content_handler_cleanup(void *data);
+static void close_pipe(ngx_http_request_t *r, ngx_fd_t *fd);
 
 
 static ngx_command_t  ngx_http_haskell_module_commands[] = {
@@ -753,13 +760,13 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
         if (ctx == NULL) {
             ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_haskell_ctx_t));
             if (ctx == NULL) {
-                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                goto decline_phase_handler;
             }
             if (ngx_array_init(&ctx->async_data, r->pool, 1,
                                sizeof(ngx_http_haskell_async_data_t))
                 != NGX_OK)
             {
-                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                goto decline_phase_handler;
             }
             ngx_http_set_ctx(r, ctx, ngx_http_haskell_module);
         }
@@ -778,7 +785,7 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
 
         async_data = ngx_array_push(&ctx->async_data);
         if (async_data == NULL) {
-            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            goto decline_phase_handler;
         }
         async_data->index = code_vars[i].index;
         ngx_str_null(&async_data->result);
@@ -786,23 +793,37 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
 
         args = code_vars[i].args.elts;
         if (ngx_http_complex_value(r, &args[0], &arg1) != NGX_OK) {
-            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "Failed to compile complex value for "
+                          "future async result, skipping IO task");
+            continue;
         }
 
         if (pipe2(fd, O_NONBLOCK) == -1) {
-            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, ngx_errno,
+                          "Failed to create pipe for "
+                          "future async result, skipping IO task");
+            continue;
         }
 
         hev = ngx_pcalloc(r->pool, sizeof(ngx_http_haskell_async_event_t));
         if (hev == NULL) {
-            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "Failed to allocate memory for "
+                          "future async result, skipping IO task");
+            close_pipe(r, fd);
+            continue;
         }
         hev->fd = fd[0];
         hev->r = r;
 
         event = ngx_pcalloc(r->pool, sizeof(ngx_event_t));
         if (event== NULL) {
-            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "Failed to allocate memory for "
+                          "future async result, skipping IO task");
+            close_pipe(r, fd);
+            continue;
         }
         event->data = hev;
         event->handler = ngx_http_haskell_async_event;
@@ -810,7 +831,11 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
         hev->read = event;
         hev->write = event;     /* to make ngx_add_event() happy */
         if (ngx_add_event(event, NGX_READ_EVENT, 0) != NGX_OK) {
-            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "Failed to add event for "
+                          "future async result, skipping IO task");
+            close_pipe(r, fd);
+            continue;
         }
 
         ((ngx_http_haskell_handler_ioy_y)
@@ -820,7 +845,7 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
 
         cln = ngx_pool_cleanup_add(r->pool, 0);
         if (cln == NULL) {
-            ngx_log_error(NGX_LOG_CRIT, hev->r->connection->log, ngx_errno,
+            ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
                           "Failed to register future async result in request "
                           " cleanup handler");
             return NGX_DONE;
@@ -830,6 +855,13 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
 
         return NGX_DONE;
     }
+
+    return NGX_DECLINED;
+
+decline_phase_handler:
+
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                  "Failed to create an async task, declining phase handler");
 
     return NGX_DECLINED;
 }
@@ -881,7 +913,7 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_str_t                     *value, base_name;
     ngx_file_info_t                lib_info;
     ngx_int_t                      idx;
-    ngx_uint_t                     load = 0, load_without_code = 0;
+    ngx_uint_t                     load = 0, load_existing = 0;
     ngx_uint_t                     base_name_start = 0;
     ngx_uint_t                     has_wrap_mode = 0, has_threaded = 0;
 
@@ -929,7 +961,6 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     if (value[2].len == 8 && ngx_strncmp(value[2].data, "threaded", 8) == 0)
     {
         has_threaded = 1;
-        mcf->ghc_threaded = 1;
     }
 
     idx = 2 + has_threaded;
@@ -961,14 +992,14 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     if (load) {
-        load_without_code =
+        load_existing =
                 cf->args->nelts < 4 + has_threaded + has_wrap_mode ? 1 : 0;
     }
     idx += has_wrap_mode;
 
     if (value[idx].len < 3
         || !(ngx_strncmp(value[idx].data + value[idx].len - 3, ".hs", 3) == 0
-             || (load_without_code
+             || (load_existing
                  && ngx_strncmp(value[idx].data + value[idx].len - 3, ".so", 3)
                     == 0)))
     {
@@ -1007,7 +1038,7 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (load) {
         if (ngx_file_info(mcf->lib_path.data, &lib_info) == NGX_FILE_ERROR) {
-            if (load_without_code) {
+            if (load_existing) {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno,
                         "haskell library cannot be loaded nor compiled");
                 return NGX_CONF_ERROR;
@@ -1016,10 +1047,12 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
         else {
             if (has_threaded) {
-                ngx_conf_log_error(NGX_LOG_NOTICE, cf, ngx_errno,
+                ngx_conf_log_error(NGX_LOG_NOTICE, cf, 0,
                         "haskell library exist but asked to be compiled as "
                         "threaded, please make sure that it was indeed "
-                        "compiled as threaded");
+                        "compiled as threaded, otherwise async tasks may "
+                        "stall in runtime");
+                mcf->compile_mode = ngx_http_haskell_compile_mode_load_existing;
             }
         }
     }
@@ -1031,6 +1064,9 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             return NGX_CONF_ERROR;
         }
 
+        mcf->compile_mode = has_threaded ?
+                ngx_http_haskell_compile_mode_threaded :
+                ngx_http_haskell_compile_mode_no_threaded;
         if (ngx_http_haskell_compile(cf, conf, value[idx])
             != NGX_CONF_OK)
         {
@@ -1128,7 +1164,8 @@ ngx_http_haskell_compile(ngx_conf_t *cf, void *conf, ngx_str_t source_name)
 
     compile_cmd_len = haskell_compile_cmd.len;
 
-    rtslib = mcf->ghc_threaded ? ghc_rtslib_thr : ghc_rtslib;
+    rtslib = mcf->compile_mode == ngx_http_haskell_compile_mode_threaded ?
+            ghc_rtslib_thr : ghc_rtslib;
     if (mcf->ghc_extra_flags.len > 0) {
         extra_len = mcf->ghc_extra_flags.len + 1;
     }
@@ -1459,6 +1496,23 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     async = cmd->name.len == 17
             && ngx_strncmp(cmd->name.data, "haskell_run_async", 17) == 0;
+
+    if (async) {
+        if (mcf->compile_mode == ngx_http_haskell_compile_mode_no_threaded) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "haskell module was compiled without thread "
+                               "support, using async tasks will inevitably "
+                               "cause stalls of requests in runtime");
+            return NGX_CONF_ERROR;
+        }
+        if (mcf->compile_mode == ngx_http_haskell_compile_mode_no_threaded) {
+            ngx_conf_log_error(NGX_LOG_NOTICE, cf, 0,
+                               "haskell module was loaded from existing "
+                               "library, please make sure that it was compiled "
+                               "as threaded, otherwise async tasks may stall "
+                               "in runtime");
+        }
+    }
 
     handlers = mcf->handlers.elts;
     for (i = 0; i < mcf->handlers.nelts; i++) {
@@ -2139,5 +2193,17 @@ static void ngx_http_haskell_content_handler_cleanup(void *data)
         ngx_free(clnd->bufs);
     }
     ngx_free(clnd->content_type.data);
+}
+
+
+static void close_pipe(ngx_http_request_t *r, ngx_fd_t *fd) {
+    ngx_int_t  i;
+
+    for (i = 0; i < 2; i++) {
+        if (close(fd[i]) == -1) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, ngx_errno,
+                          "Failed to close file descriptor of pipe");
+        }
+    }
 }
 

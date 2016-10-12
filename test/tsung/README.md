@@ -22,7 +22,7 @@ Put actual *md5sum* values of generated files into *static.xml*,
 and run nginx and tsung.
 
 ```ShellSession
-# nginx -c`pwd`/nginx.conf
+# nginx -c`pwd`/nginx-static.conf
 # tsung -f static.xml start
 ```
 
