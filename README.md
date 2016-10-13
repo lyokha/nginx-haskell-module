@@ -498,7 +498,7 @@ Asynchronous tasks with side effects
 All variable handlers we met so far were *pure* haskell functions without side
 effects. Inability to put side effects into pure functions has a great
 significance in the sense that it gives strong guarantees about the time the
-function runs. In haskell, functions that may produce side effects are normally
+functions run. In haskell, functions that may produce side effects are normally
 wrapped inside IO monad. They can do various non-deterministic IO *computations*
 like reading or writing files, connecting to network servers etc., which, in
 principle, may last unpredictably long or even eternally. Despite this, having
@@ -506,7 +506,7 @@ IO functions as nginx variable handlers are extremely tempting as it makes
 possible to perform arbitrary IO tasks during an HTTP request. To eliminate
 their non-probabilistic duration downside, they could be run *asynchronously* in
 *green threads* provided by the haskell *RTS* library, and somehow signal the
-nginx worker's main thread after their computation finish. This is exactly what
+nginx worker's main thread after their computations finish. This is exactly what
 happens in special handler *NGX_EXPORT_ASYNC_IOY_Y*. Consider the following
 example.
 
@@ -590,7 +590,7 @@ the main nginx thread when it finishes by writing a byte into the *write-end*
 file descriptor of a dedicated *self-pipe*. The *read-end* file descriptor of
 the pipe are polled by the nginx event poller (normally *epoll* in Linux). When
 a task is finished, the poller calls a special callback that checks if there are
-more async tasks for this request and spawn the next one, or finally finishes
+more async tasks for this request and spawns the next one, or finally finishes
 the rewrite phase handler by returning *NGX_DECLINED*.
 
 All IO *exceptions* are caught inside async handlers. If an IO exception has
@@ -599,8 +599,8 @@ whereas the variable handler logs it when accessed. You *may* catch IO
 exceptions for better control. You *must* catch other types of exceptions (like
 *HttpException* in this example), otherwise there is a risk that async task
 will never write to the pipe, the main nginx thread will never read anything,
-and the request will *hang* (but not in sense of nginx responsiveness) with at
-least 2 file descriptors leak!
+and the request will *hang* (but not in the sense of nginx responsiveness) with
+at least 2 file descriptors leak!
 
 Let's do some tests.
 
