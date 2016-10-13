@@ -590,7 +590,7 @@ the main nginx thread when it finishes by writing a byte into the *write-end*
 file descriptor of a dedicated *self-pipe*. The *read-end* file descriptor of
 the pipe are polled by the nginx event poller (normally *epoll* in Linux). When
 a task is finished, the poller calls a special callback that checks if there are
-more async tasks for this request and spawns the next one, or finally finishes
+more async tasks for this request and spawns the next one or finally finishes
 the rewrite phase handler by returning *NGX_DECLINED*.
 
 All IO *exceptions* are caught inside async handlers. If an IO exception has
