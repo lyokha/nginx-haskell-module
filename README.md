@@ -645,6 +645,52 @@ Elapsed 20 seconds
 Make sure it prints out every one second: this marks that requests are processed
 asynchronously!
 
+Starting an async task that normally returns identical result in every new
+request may be unnecessarily expensive. In the above example function *getUrl*
+must presumably return the same value during a long period of time (days,
+months or even years). For this case there is another handler
+*NGX_EXPORT_SERVICE_IOY_Y* that runs an async task as a service. Let's put the
+following service function inside our haskell code.
+
+```haskell
+getUrlService url firstRun = do
+    when (not firstRun) $ threadDelay delay
+    man <- newManager defaultManagerSettings
+    fmap responseBody (parseRequest (C8.unpack url) >>= flip httpLbs man)
+        `catch` \e -> when (not firstRun) (threadDelay delay) >> return
+            (C8L.pack $ "HTTP EXCEPTION: " ++ show (e :: HttpException))
+    where delay = 20000000   -- 20 sec
+NGX_EXPORT_SERVICE_IOY_Y (getUrlService)
+```
+
+(For function *when* module *Control.Monad* must be additionally imported.)
+Function *getUrlService* accepts two arguments, the second is a boolean value
+that denotes whether the service runs for the first time: it is supposed to be
+used to skip *threadDelay* on the first run. Using *threadDelay* in a service
+task is very important, because without any delay nginx will restart it very
+often.
+
+Let's start *getUrlService*.
+
+```nginx
+    haskell_run_service getUrlService $hs_service_ya "http://ya.ru";
+    haskell_run_service getUrlService $hs_service_httpbin "http://httpbin.org";
+```
+
+Directives *haskell_run_service* must locate in the *http* clause of the nginx
+configuration after directive *haskell compile*. Put locations for showing data
+collected by the services and we are done.
+
+```nginx
+        location /ya {
+            echo $hs_service_ya;
+        }
+
+        location /httpbin {
+            echo $hs_service_httpbin;
+        }
+```
+
 Reloading of haskell code and static content
 --------------------------------------------
 
