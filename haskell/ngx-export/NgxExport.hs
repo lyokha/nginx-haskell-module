@@ -10,6 +10,7 @@ module NgxExport (module Foreign.C
                  ,ngxExportYY
                  ,ngxExportBY
                  ,ngxExportAsyncIOYY
+                 ,ngxExportServiceIOYY
                  ,ngxExportHandler
                  ,ngxExportDefHandler
                  ,ngxExportUnsafeHandler) where
@@ -37,7 +38,7 @@ data NgxExport = SS            (String -> String)
                | BLS           ([String] -> Bool)
                | YY            (B.ByteString -> L.ByteString)
                | BY            (B.ByteString -> Bool)
-               | IOYY          (B.ByteString -> IO L.ByteString)
+               | IOYY          (B.ByteString -> Bool -> IO L.ByteString)
                | Handler       (B.ByteString -> (L.ByteString, String, Int))
                | UnsafeHandler (B.ByteString ->
                                     (B.ByteString, B.ByteString, Int))
@@ -50,20 +51,26 @@ let name = mkName "exportType" in sequence
                    'Handler, 'UnsafeHandler] [1 ..] :: [(Name, Int)])
     ]
 
-ngxExport :: Name -> Name -> Q Type -> Name -> Q [Dec]
-ngxExport e h t f = sequence
+ngxExport' :: (Name -> Q Exp) -> Name -> Name -> Q Type -> Name -> Q [Dec]
+ngxExport' m e h t f = sequence
     [funD nameFt $ body [|exportType $efVar|],
      ForeignD . ExportF CCall ftName nameFt <$> [t|IO CInt|],
      funD nameF $ body [|$hVar $efVar|],
      ForeignD . ExportF CCall fName nameF <$> t
     ]
     where hVar   = varE h
-          efVar  = conE e `appE` varE f
+          efVar  = conE e `appE` m f
           fName  = "ngx_hs_" ++ nameBase f
           nameF  = mkName fName
           ftName = "type_" ++ fName
           nameFt = mkName ftName
           body b = [clause [] (normalB b) []]
+
+ngxExport :: Name -> Name -> Q Type -> Name -> Q [Dec]
+ngxExport = ngxExport' varE
+
+ngxExportC :: Name -> Name -> Q Type -> Name -> Q [Dec]
+ngxExportC = ngxExport' $ infixE (Just $ varE 'const) (varE '(.)) . Just . varE
 
 ngxExportSS =
     ngxExport 'SS 'sS
@@ -90,9 +97,13 @@ ngxExportBY =
     ngxExport 'BY 'bY
     [t|CString -> CInt -> IO CUInt|]
 ngxExportAsyncIOYY =
+    ngxExportC 'IOYY 'ioyY
+    [t|CString -> CInt ->
+        CInt -> CUInt -> Ptr CString -> Ptr CInt -> Ptr CUInt -> IO ()|]
+ngxExportServiceIOYY =
     ngxExport 'IOYY 'ioyY
     [t|CString -> CInt ->
-        CInt -> Ptr CString -> Ptr CInt -> Ptr CUInt -> IO ()|]
+        CInt -> CUInt -> Ptr CString -> Ptr CInt -> Ptr CUInt -> IO ()|]
 ngxExportHandler =
     ngxExport 'Handler 'handler
     [t|CString -> CInt ->
@@ -210,10 +221,11 @@ yY (YY f) x (fromIntegral -> n) p = do
     return l
 
 ioyY :: NgxExport -> CString -> CInt ->
-    CInt -> Ptr CString -> Ptr CInt -> Ptr CUInt -> IO ()
-ioyY (IOYY f) x (fromIntegral -> n) (fromIntegral -> fd) p pl r =
+    CInt -> CUInt -> Ptr CString -> Ptr CInt -> Ptr CUInt -> IO ()
+ioyY (IOYY f) x (fromIntegral -> n) (fromIntegral -> fd)
+        ((/= 0) -> fstRun) p pl r =
     void . async $ do
-    s <- (Right <$> (B.unsafePackCStringLen (x, n) >>= f))
+    s <- (Right <$> (B.unsafePackCStringLen (x, n) >>= flip f fstRun))
         `catchIOError` (return . Left . show)
     either
         (\s -> do
