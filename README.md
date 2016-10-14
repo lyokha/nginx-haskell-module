@@ -678,8 +678,12 @@ Let's start *getUrlService*.
 ```
 
 Directives *haskell_run_service* must locate in the *http* clause of the nginx
-configuration after directive *haskell compile*. Put locations for showing data
-collected by the services and we are done.
+configuration after directive *haskell compile*. In contrast with other types of
+handlers, service handlers cannot refer to variables in their arguments as soon
+as nginx variables handlers always refer to a request which is not possible
+here.
+
+Put locations for showing data collected by the services and we are done.
 
 ```nginx
         location /ya {
