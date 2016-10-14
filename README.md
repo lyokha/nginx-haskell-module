@@ -645,7 +645,7 @@ Elapsed 20 seconds
 Make sure it prints out every one second: this marks that requests are processed
 asynchronously!
 
-Starting an async task that normally returns identical result in every new
+Starting an async task that normally returns identical result on every new
 request may be unnecessarily expensive. In the above example function *getUrl*
 must presumably return the same value during a long period of time (days,
 months or even years). For this case there is another handler
