@@ -493,8 +493,7 @@ typedef struct {
     ngx_pool_t                                *pool;
     ngx_http_haskell_content_handler_t        *content_handler;
     ngx_http_haskell_content_handler_data_t   *content_handler_data;
-    ngx_uint_t                                 static_content:1;
-    ngx_uint_t                                 unsafe_handler:1;
+    ngx_uint_t                                 static_content;
 } ngx_http_haskell_loc_conf_t;
 
 
@@ -571,10 +570,6 @@ static char *ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
-static char *ngx_http_haskell_static_content(ngx_conf_t *cf, ngx_command_t *cmd,
-    void *conf);
-static char *ngx_http_haskell_unsafe_content(ngx_conf_t *cf, ngx_command_t *cmd,
-    void *conf);
 static ngx_int_t ngx_http_haskell_init(ngx_conf_t *cf);
 static void *ngx_http_haskell_create_main_conf(ngx_conf_t *cf);
 static void *ngx_http_haskell_create_loc_conf(ngx_conf_t *cf);
@@ -632,13 +627,13 @@ static ngx_command_t  ngx_http_haskell_module_commands[] = {
       NULL },
     { ngx_string("haskell_static_content"),
       NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE12,
-      ngx_http_haskell_static_content,
+      ngx_http_haskell_content,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
     { ngx_string("haskell_unsafe_content"),
       NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE12,
-      ngx_http_haskell_unsafe_content,
+      ngx_http_haskell_content,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
@@ -1580,8 +1575,10 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_uint_t                                *v_idx_ptr;
     ngx_uint_t                                 async, service;
 
-    service = cmd->name.len == 19
-            && ngx_strncmp(cmd->name.data, "haskell_run_service", 19) == 0;
+    value = cf->args->elts;
+
+    service = value[0].len == 19
+            && ngx_strncmp(value[0].data, "haskell_run_service", 19) == 0;
 
     mcf = service ? conf :
             ngx_http_conf_get_module_main_conf(cf, ngx_http_haskell_module);
@@ -1590,8 +1587,6 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "haskell code was not loaded");
         return NGX_CONF_ERROR;
     }
-
-    value = cf->args->elts;
 
     if (cf->args->nelts < 4) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "too few arguments");
@@ -1645,8 +1640,8 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     code_var_data->handler = NGX_ERROR;
 
-    async = service ? 1 : cmd->name.len == 17
-            && ngx_strncmp(cmd->name.data, "haskell_run_async", 17) == 0;
+    async = service ? 1 : value[0].len == 17
+            && ngx_strncmp(value[0].data, "haskell_run_async", 17) == 0;
 
     if (async) {
         if (mcf->compile_mode == ngx_http_haskell_compile_mode_no_threaded) {
@@ -1780,6 +1775,7 @@ ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_str_t                          handler_name;
     ngx_http_haskell_handler_t        *handlers;
     ngx_http_core_loc_conf_t          *clcf;
+    ngx_uint_t                         unsafe = 0;
 
     mcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_haskell_module);
 
@@ -1796,6 +1792,17 @@ ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     value = cf->args->elts;
+
+    if (value[0].len == 22
+        && ngx_strncmp(value[0].data, "haskell_static_content", 22) == 0)
+    {
+        lcf->static_content = 1;
+        lcf->pool = cf->pool;
+    } else if (value[0].len == 22
+        && ngx_strncmp(value[0].data, "haskell_unsafe_content", 22) == 0)
+    {
+        unsafe = 1;
+    }
 
     handler_name.len = value[1].len + haskell_module_handler_prefix.len;
     handler_name.data = ngx_pnalloc(cf->pool, handler_name.len + 1);
@@ -1836,7 +1843,7 @@ ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                                    "declared as a variable handler", &value[1]);
                 return NGX_CONF_ERROR;
             }
-            if (handlers[i].unsafe != lcf->unsafe_handler)
+            if (handlers[i].unsafe != unsafe)
             {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                    "haskell handler \"%V\" was already "
@@ -1861,7 +1868,7 @@ ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         handler->name = handler_name;
         ngx_memzero(&handler->n_args, sizeof(handler->n_args));
         handler->role = ngx_http_haskell_handler_role_content_handler;
-        handler->unsafe = lcf->unsafe_handler;
+        handler->unsafe = unsafe;
 
         handlers = mcf->handlers.elts;
         lcf->content_handler->handler = mcf->handlers.nelts - 1;
@@ -1894,29 +1901,6 @@ ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     clcf->handler = ngx_http_haskell_content_handler;
 
     return NGX_CONF_OK;
-}
-
-
-static char *
-ngx_http_haskell_static_content(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-    ngx_http_haskell_loc_conf_t       *lcf = conf;
-
-    lcf->static_content = 1;
-    lcf->pool = cf->pool;
-
-    return ngx_http_haskell_content(cf, cmd, conf);
-}
-
-
-static char *
-ngx_http_haskell_unsafe_content(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-    ngx_http_haskell_loc_conf_t       *lcf = conf;
-
-    lcf->unsafe_handler = 1;
-
-    return ngx_http_haskell_content(cf, cmd, conf);
 }
 
 
