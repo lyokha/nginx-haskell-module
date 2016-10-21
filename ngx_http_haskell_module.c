@@ -138,6 +138,7 @@ ngx_string(
 "import qualified System.IO.Error as AUX_NGX\n"
 "import qualified System.Posix.IO as AUX_NGX\n"
 "import qualified Control.Monad as AUX_NGX\n"
+"import qualified Control.Exception as AUX_NGX\n"
 "import qualified Control.Concurrent.Async as AUX_NGX\n"
 "import qualified Data.Maybe as AUX_NGX\n"
 "import qualified Data.ByteString as AUX_NGX_BS\n"
@@ -184,7 +185,7 @@ ngx_string(
 "instance AUX_NGX.Storable AUX_NGX_STR_TYPE where\n"
 "    alignment _ = max (AUX_NGX.alignment (undefined :: AUX_NGX.CSize))\n"
 "                      (AUX_NGX.alignment (undefined :: AUX_NGX.CString))\n"
-"    sizeOf = (* 2) . AUX_NGX.alignment   -- must always be correct for\n"
+"    sizeOf = (2 *) . AUX_NGX.alignment   -- must always be correct for\n"
 "                                         -- aligned struct ngx_str_t\n"
 "    peek p = do\n"
 "        n <- AUX_NGX.peekByteOff p 0\n"
@@ -306,10 +307,12 @@ ngx_string(
 "aux_ngx_hs_ioy_y (AUX_NGX_IOY_Y f)\n"
 "            x (fromIntegral -> n) (fromIntegral -> fd)\n"
 "                    ((/= 0) -> fstRun) p pl r =\n"
-"    AUX_NGX.void . AUX_NGX.async $ do\n"
+"    AUX_NGX.void . AUX_NGX.async $\n"
+"    (do\n"
 "    s <- (Right <$> (AUX_NGX_BS.unsafePackCStringLen (x, n) >>= "
 "flip f fstRun))\n"
-"        `AUX_NGX.catchIOError` (return . Left . show)\n"
+"        `AUX_NGX.catch` \\e -> return $ Left $ "
+"show (e :: AUX_NGX.SomeException)\n"
 "    either\n"
 "        (\\s -> do\n"
 "            (x, fromIntegral -> l) <- AUX_NGX.newCStringLen s\n"
@@ -324,8 +327,10 @@ ngx_string(
 "            AUX_NGX.poke pl l\n"
 "            AUX_NGX.poke r 0\n"
 "        ) s\n"
-"    (AUX_NGX.fdWrite fd \"0\" >> AUX_NGX.closeFd fd)\n"
-"        `AUX_NGX.catchIOError` const (return ())\n\n"
+"    )\n"
+"    `AUX_NGX.finally`\n"
+"    ((AUX_NGX.fdWrite fd \"0\" >> AUX_NGX.closeFd fd)\n"
+"        `AUX_NGX.catchIOError` const (return ()))\n\n"
 "aux_ngx_hs_b_s :: AUX_NGX_EXPORT ->\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt ->\n"
 "    IO AUX_NGX.CUInt\n"
@@ -2112,14 +2117,17 @@ ngx_http_haskell_run_async_handler(ngx_http_request_t *r,
     if (async_data_elts[found_idx].result.len == (ngx_uint_t) -1) {
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
                       "there was memory allocation error while getting "
-                      "value of variable \"%V\" asynchronously", &vars[i].name);
+                      "value of variable \"%V\" asynchronously",
+                      &vars[*index].name);
         return NGX_ERROR;
     }
 
     if (async_data_elts[found_idx].error) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "there was an IO exception while getting "
-                      "value of variable \"%V\" asynchronously", &vars[i].name);
+                      "an exception was caught while getting "
+                      "value of variable \"%V\" asynchronously: \"%V\"",
+                      &vars[*index].name,
+                      &async_data_elts[found_idx].result);
     }
 
     v->len = async_data_elts[found_idx].result.len;
@@ -2169,14 +2177,17 @@ ngx_http_haskell_run_service_handler(ngx_http_request_t *r,
     if (service_code_vars[found_idx].async_data.result.len == (ngx_uint_t) -1) {
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
                       "there was memory allocation error while getting "
-                      "value of variable \"%V\" asynchronously", &vars[i].name);
+                      "value of variable \"%V\" asynchronously",
+                      &vars[*index].name);
         return NGX_ERROR;
     }
 
     if (service_code_vars[found_idx].async_data.error) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "there was an IO exception while getting "
-                      "value of variable \"%V\" asynchronously", &vars[i].name);
+                      "an exception was caught while getting "
+                      "value of variable \"%V\" asynchronously: \"%V\"",
+                      &vars[*index].name,
+                      &service_code_vars[found_idx].async_data.result);
     }
 
     v->len = service_code_vars[found_idx].async_data.result.len;

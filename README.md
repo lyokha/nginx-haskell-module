@@ -593,14 +593,10 @@ a task is finished, the poller calls a special callback that checks if there are
 more async tasks for this request and spawns the next one or finally finishes
 the rewrite phase handler by returning *NGX_DECLINED*.
 
-All IO *exceptions* are caught inside async handlers. If an IO exception has
+All types of *exceptions* are caught inside async handlers. If an exception has
 happened, the async handler writes its message in the bound variable's data,
-whereas the variable handler logs it when accessed. You *may* catch IO
-exceptions for better control. You *must* catch other types of exceptions (like
-*HttpException* in this example), otherwise there is a risk that async task
-will never write to the pipe, the main nginx thread will never read anything,
-and the request will *hang* (but not in the sense of nginx responsiveness) with
-at least 2 file descriptors leak!
+whereas the variable handler logs it when accessed. However, for better control,
+you may want to catch exceptions inside your code like in the *getUrl*.
 
 Let's do some tests.
 
@@ -654,16 +650,16 @@ following service function inside our haskell code.
 
 ```haskell
 getUrlService url firstRun = do
-    when (not firstRun) $ threadDelay delay
+    delay
     man <- newManager defaultManagerSettings
     fmap responseBody (parseRequest (C8.unpack url) >>= flip httpLbs man)
-        `catch` \e -> when (not firstRun) (threadDelay delay) >> return
-            (C8L.pack $ "HTTP EXCEPTION: " ++ show (e :: HttpException))
-    where delay = 20000000   -- 20 sec
+        `catch` \e -> delay >>
+            return (C8L.pack $ "HTTP EXCEPTION: " ++ show (e :: HttpException))
+    where delay = unless firstRun $ threadDelay 20000000   -- 20 sec
 NGX_EXPORT_SERVICE_IOY_Y (getUrlService)
 ```
 
-(For function *when* module *Control.Monad* must be additionally imported.)
+(For function *unless* module *Control.Monad* must be additionally imported.)
 Function *getUrlService* accepts two arguments, the second is a boolean value
 that denotes whether the service runs for the first time: it is supposed to be
 used to skip *threadDelay* on the first run. Using *threadDelay* in a service
@@ -1070,6 +1066,9 @@ Some facts about efficiency
 
 Some facts about exceptions
 ---------------------------
+
+(The following does not refer to exceptions in async and service handlers as
+they catch them all.)
 
 Haskell source code must preferably be pure and safe as soon as C code is known
 to be unfamiliar with catching Haskell exceptions. That is why I used functions

@@ -24,6 +24,7 @@ import           Foreign.Marshal.Utils
 import           System.IO.Error
 import           System.Posix.IO
 import           Control.Monad
+import           Control.Exception hiding (Handler)
 import           Control.Concurrent.Async
 import           Data.Maybe
 import qualified Data.ByteString as B
@@ -121,7 +122,7 @@ data NgxStrType = NgxStrType CSize CString
 instance Storable NgxStrType where
     alignment _ = max (alignment (undefined :: CSize))
                       (alignment (undefined :: CString))
-    sizeOf = (* 2) . alignment  -- must always be correct for
+    sizeOf = (2 *) . alignment  -- must always be correct for
                                 -- aligned struct ngx_str_t
     peek p = do
         n <- peekByteOff p 0
@@ -224,9 +225,10 @@ ioyY :: NgxExport -> CString -> CInt ->
     CInt -> CUInt -> Ptr CString -> Ptr CInt -> Ptr CUInt -> IO ()
 ioyY (IOYY f) x (fromIntegral -> n) (fromIntegral -> fd)
         ((/= 0) -> fstRun) p pl r =
-    void . async $ do
+    void . async $
+    (do
     s <- (Right <$> (B.unsafePackCStringLen (x, n) >>= flip f fstRun))
-        `catchIOError` (return . Left . show)
+        `catch` \e -> return $ Left $ show (e :: SomeException)
     either
         (\s -> do
             (x, fromIntegral -> l) <- newCStringLen s
@@ -241,7 +243,8 @@ ioyY (IOYY f) x (fromIntegral -> n) (fromIntegral -> fd)
             poke pl l
             poke r 0
         ) s
-    (fdWrite fd "0" >> closeFd fd) `catchIOError` const (return ())
+    )
+    `finally` ((fdWrite fd "0" >> closeFd fd) `catchIOError` const (return ()))
 
 bS :: NgxExport -> CString -> CInt -> IO CUInt
 bS (BS f) x (fromIntegral -> n) =
