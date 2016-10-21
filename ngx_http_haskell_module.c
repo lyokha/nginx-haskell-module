@@ -844,14 +844,14 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
         args = code_vars[i].args.elts;
         if (ngx_http_complex_value(r, &args[0], &arg1) != NGX_OK) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                          "Failed to compile complex value for "
+                          "failed to compile complex value for "
                           "future async result, skipping IO task");
             continue;
         }
 
         if (pipe2(fd, O_NONBLOCK) == -1) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, ngx_errno,
-                          "Failed to create pipe for "
+                          "failed to create pipe for "
                           "future async result, skipping IO task");
             continue;
         }
@@ -859,7 +859,7 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
         hev = ngx_pcalloc(r->pool, sizeof(ngx_http_haskell_async_event_t));
         if (hev == NULL) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                          "Failed to allocate memory for "
+                          "failed to allocate memory for "
                           "future async result, skipping IO task");
             close_pipe(r->connection->log, fd);
             continue;
@@ -870,7 +870,7 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
         event = ngx_pcalloc(r->pool, sizeof(ngx_event_t));
         if (event== NULL) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                          "Failed to allocate memory for "
+                          "failed to allocate memory for "
                           "future async result, skipping IO task");
             close_pipe(r->connection->log, fd);
             continue;
@@ -882,7 +882,7 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
         hev->s.write = event;   /* to make ngx_add_event() happy */
         if (ngx_add_event(event, NGX_READ_EVENT, 0) != NGX_OK) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                          "Failed to add event for "
+                          "failed to add event for "
                           "future async result, skipping IO task");
             close_pipe(r->connection->log, fd);
             continue;
@@ -896,7 +896,7 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
         cln = ngx_pool_cleanup_add(r->pool, 0);
         if (cln == NULL) {
             ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
-                          "Failed to register future async result in request "
+                          "failed to register future async result in request "
                           "cleanup handler");
             return NGX_DONE;
         }
@@ -911,7 +911,7 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
 decline_phase_handler:
 
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                  "Failed to create an async task, declining phase handler");
+                  "failed to create an async task, declining phase handler");
 
     return NGX_DECLINED;
 }
@@ -1508,7 +1508,7 @@ ngx_http_haskell_run_service(ngx_cycle_t *cycle,
 
     if (pipe2(fd, O_NONBLOCK) == -1) {
         ngx_log_error(NGX_LOG_ERR, cycle->log, ngx_errno,
-                      "Failed to create pipe for "
+                      "failed to create pipe for "
                       "future async result, skipping IO task");
         return NGX_ERROR;
     }
@@ -1517,7 +1517,7 @@ ngx_http_haskell_run_service(ngx_cycle_t *cycle,
                       sizeof(ngx_http_haskell_service_async_event_t));
     if (hev == NULL) {
         ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
-                      "Failed to allocate memory for "
+                      "failed to allocate memory for "
                       "future async result, skipping IO task");
         close_pipe(cycle->log, fd);
         return NGX_ERROR;
@@ -1529,7 +1529,7 @@ ngx_http_haskell_run_service(ngx_cycle_t *cycle,
     event = ngx_pcalloc(cycle->pool, sizeof(ngx_event_t));
     if (event== NULL) {
         ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
-                      "Failed to allocate memory for "
+                      "failed to allocate memory for "
                       "future async result, skipping IO task");
         close_pipe(cycle->log, fd);
         return NGX_ERROR;
@@ -1541,7 +1541,7 @@ ngx_http_haskell_run_service(ngx_cycle_t *cycle,
     hev->s.write = event;   /* to make ngx_add_event() happy */
     if (ngx_add_event(event, NGX_READ_EVENT, 0) != NGX_OK) {
         ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
-                      "Failed to add event for "
+                      "failed to add event for "
                       "future async result, skipping IO task");
         close_pipe(cycle->log, fd);
         return NGX_ERROR;
@@ -1916,8 +1916,10 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
     ngx_uint_t                         i;
     ngx_http_haskell_main_conf_t      *mcf;
     ngx_http_haskell_loc_conf_t       *lcf;
+    ngx_http_core_main_conf_t         *cmcf;
     ngx_int_t                         *index = (ngx_int_t *) data;
     ngx_int_t                          found_idx = NGX_ERROR;
+    ngx_http_variable_t               *vars;
     ngx_http_haskell_handler_t        *handlers;
     ngx_http_haskell_code_var_data_t  *code_vars;
     ngx_http_complex_value_t          *args;
@@ -2026,12 +2028,19 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
         return NGX_ERROR;
     }
 
+    cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
+    vars = cmcf->variables.elts;
+
     switch (handlers[code_vars[found_idx].handler].type) {
     case ngx_http_haskell_handler_type_y_y:
         if (len == -1) {
             ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
                           "memory allocation error while running "
                           "haskell handler");
+            ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
+                          "memory allocation error while getting "
+                          "value of variable \"%V\"",
+                          &vars[*index].name);
             return NGX_ERROR;
         }
     case ngx_http_haskell_handler_type_s_s:
@@ -2116,7 +2125,7 @@ ngx_http_haskell_run_async_handler(ngx_http_request_t *r,
     vars = cmcf->variables.elts;
     if (async_data_elts[found_idx].result.len == (ngx_uint_t) -1) {
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
-                      "there was memory allocation error while getting "
+                      "memory allocation error while getting "
                       "value of variable \"%V\" asynchronously",
                       &vars[*index].name);
         return NGX_ERROR;
@@ -2176,7 +2185,7 @@ ngx_http_haskell_run_service_handler(ngx_http_request_t *r,
     vars = cmcf->variables.elts;
     if (service_code_vars[found_idx].async_data.result.len == (ngx_uint_t) -1) {
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
-                      "there was memory allocation error while getting "
+                      "memory allocation error while getting "
                       "value of variable \"%V\" asynchronously",
                       &vars[*index].name);
         return NGX_ERROR;
@@ -2399,7 +2408,7 @@ ngx_http_haskell_async_event(ngx_event_t *ev)
 
     if (close(hev->s.fd) == -1) {
         ngx_log_error(NGX_LOG_CRIT, hev->r->connection->log, ngx_errno,
-                      "Failed to close reading end of pipe after async task "
+                      "failed to close reading end of pipe after async task "
                       "was finished");
     }
 
@@ -2416,7 +2425,7 @@ ngx_http_haskell_service_async_event(ngx_event_t *ev)
     service_code_var = hev->service_code_var;
     if (close(hev->s.fd) == -1) {
         ngx_log_error(NGX_LOG_CRIT, hev->cycle->log, ngx_errno,
-                      "Failed to close reading end of pipe after service task "
+                      "failed to close reading end of pipe after service task "
                       "was finished");
     }
 
@@ -2454,7 +2463,7 @@ static void close_pipe(ngx_log_t *log, ngx_fd_t *fd) {
     for (i = 0; i < 2; i++) {
         if (close(fd[i]) == -1) {
             ngx_log_error(NGX_LOG_CRIT, log, ngx_errno,
-                          "Failed to close file descriptor of pipe");
+                          "failed to close file descriptor of pipe");
         }
     }
 }
