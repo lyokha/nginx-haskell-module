@@ -593,7 +593,7 @@ a task is finished, the poller calls a special callback that checks if there are
 more async tasks for this request and spawns the next one or finally finishes
 the rewrite phase handler by returning *NGX_DECLINED*.
 
-All types of *exceptions* are caught inside async handlers. If an exception has
+All types of exceptions are caught inside async handlers. If an exception has
 happened, the async handler writes its message in the bound variable's data,
 whereas the variable handler logs it when accessed. However, for better control,
 you may want to catch exceptions inside your code like in the *getUrl*.
