@@ -947,9 +947,9 @@ ngx_http_haskell_exit_worker(ngx_cycle_t *cycle)
     if (ngx_process == NGX_PROCESS_HELPER)
         return;
 
-    ngx_http_haskell_stop_services(cycle);
-
     ngx_http_haskell_unload(cycle);
+
+    ngx_http_haskell_stop_services(cycle);
 }
 
 
