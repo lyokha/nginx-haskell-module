@@ -475,7 +475,8 @@ typedef struct {
     void                                     (*init_HsModule)(void);
     ngx_http_haskell_compile_mode_e            compile_mode;
     ngx_array_t                                service_code_vars;
-    ngx_uint_t                                 code_loaded;
+    ngx_uint_t                                 code_loaded:1;
+    ngx_uint_t                                 has_async_tasks:1;
 } ngx_http_haskell_main_conf_t;
 
 
@@ -682,9 +683,15 @@ static ngx_int_t
 ngx_http_haskell_init(ngx_conf_t *cf)
 {
     ngx_uint_t                     i;
+    ngx_http_haskell_main_conf_t  *mcf;
     ngx_http_core_main_conf_t     *cmcf;
     ngx_array_t                   *hs;
     ngx_http_handler_pt           *h, *hs_elts;
+
+    mcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_haskell_module);
+    if (mcf == NULL || !mcf->code_loaded || !mcf->has_async_tasks) {
+        return NGX_OK;
+    }
 
     cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
     hs = &cmcf->phases[NGX_HTTP_REWRITE_PHASE].handlers;
@@ -1257,7 +1264,6 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     char                          *dl_error;
 
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
-
     if (mcf == NULL || !mcf->code_loaded) {
         return NGX_OK;
     }
@@ -1453,7 +1459,6 @@ ngx_http_haskell_unload(ngx_cycle_t *cycle)
     ngx_http_haskell_main_conf_t    *mcf;
 
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
-
     if (mcf == NULL || !mcf->code_loaded) {
         return;
     }
@@ -1474,6 +1479,10 @@ ngx_http_haskell_init_services(ngx_cycle_t *cycle)
     ngx_http_haskell_service_code_var_data_t  *service_code_vars;
 
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
+    if (mcf == NULL || !mcf->code_loaded) {
+        return NGX_OK;
+    }
+
     service_code_vars = mcf->service_code_vars.elts;
 
     for (i = 0; i < mcf->service_code_vars.nelts; i++) {
@@ -1645,9 +1654,10 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     code_var_data->handler = NGX_ERROR;
 
-    async = service ? 1 : value[0].len == 17
-            && ngx_strncmp(value[0].data, "haskell_run_async", 17) == 0;
+    async = ngx_strncmp(value[0].data, "haskell_run_async", 17) == 0;
+    mcf->has_async_tasks = mcf->has_async_tasks ? 1 : async;
 
+    async = async ? 1 : service;
     if (async) {
         if (mcf->compile_mode == ngx_http_haskell_compile_mode_no_threaded) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
