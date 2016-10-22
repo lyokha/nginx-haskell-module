@@ -1542,16 +1542,13 @@ ngx_http_haskell_run_service(ngx_cycle_t *cycle,
 {
     ngx_http_haskell_main_conf_t              *mcf;
     ngx_http_haskell_handler_t                *handlers;
-    ngx_http_haskell_code_var_data_t          *code_var;
     ngx_event_t                               *event;
     ngx_http_haskell_service_async_event_t    *hev;
     ngx_http_complex_value_t                  *args;
     ngx_str_t                                  arg1;
     ngx_fd_t                                   fd[2];
 
-    mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
-    handlers = mcf->handlers.elts;
-    code_var = service_code_var->data;
+    service_code_var->event = NULL;
 
     if (pipe2(fd, O_NONBLOCK) == -1) {
         ngx_log_error(NGX_LOG_ERR, cycle->log, ngx_errno,
@@ -1586,7 +1583,6 @@ ngx_http_haskell_run_service(ngx_cycle_t *cycle,
     event->log = cycle->log;
     hev->s.read = event;
     hev->s.write = event;   /* to make ngx_add_event() happy */
-    service_code_var->event = NULL;
     if (ngx_add_event(event, NGX_READ_EVENT, 0) != NGX_OK) {
         ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
                       "failed to add event for "
@@ -1597,10 +1593,13 @@ ngx_http_haskell_run_service(ngx_cycle_t *cycle,
     service_code_var->event = event;
     service_code_var->fd = fd[0];
 
-    args = code_var->args.elts;
+    mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
+    handlers = mcf->handlers.elts;
+
+    args = service_code_var->data->args.elts;
     arg1 = args[0].value;
     ((ngx_http_haskell_handler_ioy_y)
-     handlers[code_var->handler].self)
+     handlers[service_code_var->data->handler].self)
             (arg1.data, arg1.len, fd[1], service_first_run,
              &service_code_var->future_async_data.result.data,
              &service_code_var->future_async_data.result.len,
