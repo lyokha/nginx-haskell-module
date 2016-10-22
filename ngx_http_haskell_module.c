@@ -531,6 +531,8 @@ typedef struct {
     ngx_http_haskell_code_var_data_t          *data;
     ngx_http_haskell_async_data_t              future_async_data;
     ngx_http_haskell_async_data_t              async_data;
+    ngx_event_t                               *event;
+    ngx_fd_t                                   fd;
 } ngx_http_haskell_service_code_var_data_t;
 
 
@@ -569,6 +571,7 @@ static char *ngx_http_haskell_compile(ngx_conf_t *cf, void *conf,
 static ngx_int_t ngx_http_haskell_load(ngx_cycle_t *cycle);
 static void ngx_http_haskell_unload(ngx_cycle_t *cycle);
 static ngx_int_t ngx_http_haskell_init_services(ngx_cycle_t *cycle);
+static void ngx_http_haskell_stop_services(ngx_cycle_t *cycle);
 static ngx_int_t ngx_http_haskell_run_service(ngx_cycle_t *cycle,
                     ngx_http_haskell_service_code_var_data_t *service_code_var,
                     ngx_uint_t service_first_run);
@@ -943,6 +946,8 @@ ngx_http_haskell_exit_worker(ngx_cycle_t *cycle)
 {
     if (ngx_process == NGX_PROCESS_HELPER)
         return;
+
+    ngx_http_haskell_stop_services(cycle);
 
     ngx_http_haskell_unload(cycle);
 }
@@ -1497,6 +1502,39 @@ ngx_http_haskell_init_services(ngx_cycle_t *cycle)
 }
 
 
+static void
+ngx_http_haskell_stop_services(ngx_cycle_t *cycle)
+{
+    ngx_uint_t                                 i;
+    ngx_http_haskell_main_conf_t              *mcf;
+    ngx_http_haskell_service_code_var_data_t  *service_code_vars;
+
+    mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
+    if (mcf == NULL || !mcf->code_loaded) {
+        return;
+    }
+
+    service_code_vars = mcf->service_code_vars.elts;
+
+    for (i = 0; i < mcf->service_code_vars.nelts; i++) {
+        if (service_code_vars[i].event != NULL) {
+            if (ngx_del_event(service_code_vars[i].event, NGX_READ_EVENT, 0)
+                != NGX_OK)
+            {
+                ngx_log_error(NGX_LOG_CRIT, cycle->log, 0,
+                              "failed to delete event while stopping service");
+            }
+            if (close(service_code_vars[i].fd) == -1) {
+                ngx_log_error(NGX_LOG_CRIT, cycle->log, ngx_errno,
+                              "failed to close reading end of pipe while "
+                              "stopping service");
+            }
+            ngx_free(service_code_vars[i].async_data.result.data);
+        }
+    }
+}
+
+
 static ngx_int_t
 ngx_http_haskell_run_service(ngx_cycle_t *cycle,
                     ngx_http_haskell_service_code_var_data_t *service_code_var,
@@ -1548,6 +1586,7 @@ ngx_http_haskell_run_service(ngx_cycle_t *cycle,
     event->log = cycle->log;
     hev->s.read = event;
     hev->s.write = event;   /* to make ngx_add_event() happy */
+    service_code_var->event = NULL;
     if (ngx_add_event(event, NGX_READ_EVENT, 0) != NGX_OK) {
         ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
                       "failed to add event for "
@@ -1555,6 +1594,8 @@ ngx_http_haskell_run_service(ngx_cycle_t *cycle,
         close_pipe(cycle->log, fd);
         return NGX_ERROR;
     }
+    service_code_var->event = event;
+    service_code_var->fd = fd[0];
 
     args = code_var->args.elts;
     arg1 = args[0].value;
@@ -1639,6 +1680,8 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         if (code_var_data == NULL) {
             return NGX_CONF_ERROR;
         }
+        ngx_memzero(service_code_var_data,
+                    sizeof(ngx_http_haskell_service_code_var_data_t));
         service_code_var_data->data = code_var_data;
     } else {
         code_var_data = ngx_array_push(&lcf->code_vars);
