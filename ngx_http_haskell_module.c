@@ -1674,8 +1674,8 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         if (service_code_var_data == NULL) {
             return NGX_CONF_ERROR;
         }
-        code_var_data = ngx_pnalloc(cf->pool,
-                                    sizeof(ngx_http_haskell_code_var_data_t));
+        code_var_data = ngx_palloc(cf->pool,
+                                   sizeof(ngx_http_haskell_code_var_data_t));
         if (code_var_data == NULL) {
             return NGX_CONF_ERROR;
         }
@@ -2020,8 +2020,8 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
         break;
     case ngx_http_haskell_handler_type_s_ls:
     case ngx_http_haskell_handler_type_b_ls:
-        argn = ngx_pnalloc(r->pool,
-                           sizeof(ngx_str_t) * code_vars[found_idx].args.nelts);
+        argn = ngx_palloc(r->pool,
+                          sizeof(ngx_str_t) * code_vars[found_idx].args.nelts);
         if (argn == NULL) {
             return NGX_ERROR;
         }
@@ -2352,8 +2352,8 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
         if (cln == NULL) {
             goto cleanup;
         }
-        clnd = ngx_pnalloc(pool,
-                           sizeof(ngx_http_haskell_content_handler_data_t));
+        clnd = ngx_palloc(pool,
+                          sizeof(ngx_http_haskell_content_handler_data_t));
         if (clnd == NULL) {
             goto cleanup;
         }
