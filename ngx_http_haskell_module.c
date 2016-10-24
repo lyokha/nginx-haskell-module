@@ -698,7 +698,6 @@ ngx_http_haskell_init(ngx_conf_t *cf)
 
     cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
     hs = &cmcf->phases[NGX_HTTP_REWRITE_PHASE].handlers;
-    hs_elts = hs->elts;
 
     h = ngx_array_push_n(hs, 2);
     if (h == NULL) {
@@ -1068,12 +1067,12 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
     }
     base_name.len = value[idx].len - 4 - base_name_start;
-    base_name.data = value[idx].data + base_name_start;
     if (base_name.len == 0) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                         "haskell source code file base name is empty");
         return NGX_CONF_ERROR;
     }
+    base_name.data = value[idx].data + base_name_start;
 
     mcf->lib_path.len = value[idx].len;
     mcf->lib_path.data = ngx_pnalloc(cf->pool, mcf->lib_path.len + 1);
@@ -1149,8 +1148,7 @@ ngx_http_haskell_write_code(ngx_conf_t *cf, void *conf, ngx_str_t source_name,
 
     ngx_file_t                     out;
     ngx_str_t                      code;
-    ngx_uint_t                     code_head_len = 0;
-    ngx_uint_t                     code_tail_len = 0;
+    ngx_uint_t                     code_head_len = 0, code_tail_len = 0;
 
     if (mcf->wrap_mode == ngx_http_haskell_module_wrap_mode_standalone) {
         code_head_len = haskell_module_code_head.len;
