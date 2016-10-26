@@ -641,10 +641,10 @@ Elapsed 20 seconds
 Make sure it prints out every one second: this marks that requests are processed
 asynchronously!
 
-In the first test we ran 20 HTTP requests simultaneously, but could run hundreds
-and thousands! Some servers may reject so many requests at once. Fortunately, we
-can limit number of simultaneous requests with *semaphores*. Let's make a
-semaphore that allows only 1 task at once.
+In the second test we ran 20 HTTP requests simultaneously, but could run
+hundreds and thousands! Some servers may reject so many requests at once.
+Fortunately, we can limit number of simultaneous requests with *semaphores*.
+Let's make a semaphore that allows only 1 task at once.
 
 ```haskell
 sem1 = unsafePerformIO $ new 1
@@ -670,13 +670,13 @@ delay1 x = with sem1 (threadDelay ((1000000 *) v)) >> return (C8L.pack $ show v)
 NGX_EXPORT_ASYNC_IOY_Y (delay1)
 ```
 
-Put the new handlers in locations */* and */delay* and make *20-requests* tests
-again to see how they change the async behavior. For example, responses from
-location */delay* must become so long as if they were not run asynchronously,
-however they must be finishing not in order. Be aware that *sem1* is shared
-between all async handlers that use it, it means that simultaneous requests to
-locations */* and */delay* will probably wait each other. Use different
-semaphore for different handlers if it is not desirable.
+Put the new handlers in locations */* and */delay* and make the *20-requests*
+tests again to see how they change the async behavior. For example, responses
+from location */delay* must become so long as if they were not run
+asynchronously, however they must be finishing not in order. Be aware that
+*sem1* is shared between all async handlers that use it, this means that
+simultaneous requests to locations */* and */delay* will probably wait for each
+other: use different semaphores for different handlers when it is not desirable.
 
 Starting an async task that normally returns identical result on every new
 request may be unnecessarily expensive. In the above example function *getUrl*
