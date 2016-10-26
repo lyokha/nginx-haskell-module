@@ -650,10 +650,10 @@ sem1 = unsafePerformIO $ new 1
 {-# NOINLINE sem1 #-}
 ```
 
-Functions *unsafePerformIO* and *new* must be imported from *System.IO.Unsafe*
-and *Control.Concurrent.MSem* respectively. This code looks ugly, nevertheless
-it is safe and will work as expected in our new async handlers *getUrl1* and
-*delay1*.
+Functions *unsafePerformIO* and *new* must be imported from modules
+*System.IO.Unsafe* and *Control.Concurrent.MSem* respectively. This code looks
+ugly, nevertheless it is safe and will work as expected in our new async
+handlers *getUrl1* and *delay1*.
 
 ```haskell
 getUrl1 url = do
