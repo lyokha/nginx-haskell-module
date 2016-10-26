@@ -662,7 +662,7 @@ getUrl1 url = do
     fmap responseBody (parseRequest (C8.unpack url) >>= getResponse man)
         `catch` \e -> return $ C8L.pack $
         "HTTP EXCEPTION: " ++ show (e :: HttpException)
-    where getResponse man = with sem1 . flip httpLbs man
+    where getResponse = (with sem1 .) . flip httpLbs
 NGX_EXPORT_ASYNC_IOY_Y (getUrl1)
 
 delay1 x = with sem1 (threadDelay ((1000000 *) v)) >> return (C8L.pack $ show v)
