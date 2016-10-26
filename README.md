@@ -488,9 +488,8 @@ module *Data.ByteString.Internal*). Minimum requirements for using static byte
 arrays in the module *Data.FileEmbed* are: *file-embed* version *0.0.7* and
 *Template Haskell* version *2.5.0* (bundled with *ghc* since version *7.0.1*).
 
-A working nginx configuration file with this unsafe content handler
-implementation can be found in directory [test/tsung](test/tsung) of the project
-tree.
+The unsafe content handler implementation from the above example can be found in
+file [test/tsung/nginx-static.conf](test/tsung/nginx-static.conf).
 
 Asynchronous tasks with side effects
 ------------------------------------
@@ -728,6 +727,9 @@ Put locations for showing data collected by the services and we are done.
         }
 ```
 
+You can find all the examples shown here in file
+[test/tsung/nginx-async.conf](test/tsung/nginx-async.conf).
+
 Reloading of haskell code and static content
 --------------------------------------------
 
@@ -815,8 +817,9 @@ without compilation flag *-fPIC* on vast majority of modern platforms, notably
 on *GNU/Linux x86_64*.
 
 Here I want to show how to build haskell code from
-[test/tsung/nginx.conf](test/tsung/nginx.conf) into an independent all-in-one
-shared library on *Fedora 23 x86_64* with *ghc 7.10.2* installed from a [copr
+[test/tsung/nginx-static.conf](test/tsung/nginx-static.conf) into an independent
+all-in-one shared library on *Fedora 23 x86_64* with *ghc 7.10.2* installed from
+a [copr
 repository](http://copr.fedorainfracloud.org/coprs/petersen/ghc-7.10.2/).
 
 First of all, building of such a library is only possible from command-line as
@@ -1040,7 +1043,7 @@ Yes, *ldd* shows only system *C* libraries. Install the library.
 $ cp ngx_haskell.so /tmp
 ```
 
-Replace directive *haskell compile* in *nginx.conf* with directive
+Replace directive *haskell compile* in the configuration file with directive
 
 ```nginx
     haskell load /tmp/ngx_haskell.so;
