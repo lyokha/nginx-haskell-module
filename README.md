@@ -646,14 +646,14 @@ Fortunately, we can limit number of simultaneous requests with *semaphores*.
 Let's make a semaphore that allows only 1 task at once.
 
 ```haskell
-sem1 = unsafePerformIO $ new 1
+sem1 = unsafePerformIO $ S.new 1
 {-# NOINLINE sem1 #-}
 ```
 
 Functions *unsafePerformIO* and *new* must be imported from modules
-*System.IO.Unsafe* and *Control.Concurrent.MSem* respectively. This code looks
-ugly, nevertheless it is safe and will work as expected in our new async
-handlers *getUrl1* and *delay1*.
+*System.IO.Unsafe* and *Control.Concurrent.MSem* (qualified as *S*)
+respectively. This code looks ugly, nevertheless it is safe and will work as
+expected in our new async handlers *getUrl1* and *delay1*.
 
 ```haskell
 getUrl1 url = do
@@ -661,10 +661,11 @@ getUrl1 url = do
     fmap responseBody (parseRequest (C8.unpack url) >>= getResponse man)
         `catch` \e ->
             return $ C8L.pack $ "HTTP EXCEPTION: " ++ show (e :: HttpException)
-    where getResponse = (with sem1 .) . flip httpLbs
+    where getResponse = (S.with sem1 .) . flip httpLbs
 NGX_EXPORT_ASYNC_IOY_Y (getUrl1)
 
-delay1 x = with sem1 (threadDelay $ (1000000 *) v) >> return (C8L.pack $ show v)
+delay1 x = S.with sem1 (threadDelay $ (1000000 *) v) >>
+        return (C8L.pack $ show v)
     where v = readDef 0 $ C8.unpack x
 NGX_EXPORT_ASYNC_IOY_Y (delay1)
 ```
