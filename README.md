@@ -687,12 +687,11 @@ following service function inside our haskell code.
 
 ```haskell
 getUrlService url firstRun = do
-    delay
+    unless firstRun $ threadDelay 20000000   -- 20 sec
     man <- newManager defaultManagerSettings
     fmap responseBody (parseRequest (C8.unpack url) >>= flip httpLbs man)
-        `catch` \e -> delay >>
-            return (C8L.pack $ "HTTP EXCEPTION: " ++ show (e :: HttpException))
-    where delay = unless firstRun $ threadDelay 20000000   -- 20 sec
+        `catch` \e ->
+            return $ C8L.pack $ "HTTP EXCEPTION: " ++ show (e :: HttpException)
 NGX_EXPORT_SERVICE_IOY_Y (getUrlService)
 ```
 
