@@ -556,9 +556,9 @@ NGX_EXPORT_ASYNC_IOY_Y (delay)
                     "http://httpbin.org";
             haskell_run_async getUrl $hs_async_hackage
                     "http://hackage.haskell.org";
-            echo -n "------> YA.RU:\n\n$hs_async_ya\n\n";
-            echo -n "------> HTTPBIN.ORG:\n\n$hs_async_httpbin\n\n";
-            echo    "------> HACKAGE.HASKELL.ORG:\n\n$hs_async_hackage";
+            echo "------> YA.RU:\n\n$hs_async_ya\n";
+            echo "------> HTTPBIN.ORG:\n\n$hs_async_httpbin\n";
+            echo "------> HACKAGE.HASKELL.ORG:\n\n$hs_async_hackage";
         }
 
         location /rewrite {
