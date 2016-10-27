@@ -533,8 +533,8 @@ import           Safe
 getUrl url = do
     man <- newManager defaultManagerSettings
     fmap responseBody (parseRequest (C8.unpack url) >>= flip httpLbs man)
-        `catch` \e -> return $ C8L.pack $
-        "HTTP EXCEPTION: " ++ show (e :: HttpException)
+        `catch` \e ->
+            return $ C8L.pack $ "HTTP EXCEPTION: " ++ show (e :: HttpException)
 NGX_EXPORT_ASYNC_IOY_Y (getUrl)
 
 delay x = threadDelay ((1000000 *) v) >> return (C8L.pack $ show v)
@@ -659,12 +659,12 @@ handlers *getUrl1* and *delay1*.
 getUrl1 url = do
     man <- newManager defaultManagerSettings
     fmap responseBody (parseRequest (C8.unpack url) >>= getResponse man)
-        `catch` \e -> return $ C8L.pack $
-        "HTTP EXCEPTION: " ++ show (e :: HttpException)
+        `catch` \e ->
+            return $ C8L.pack $ "HTTP EXCEPTION: " ++ show (e :: HttpException)
     where getResponse = (with sem1 .) . flip httpLbs
 NGX_EXPORT_ASYNC_IOY_Y (getUrl1)
 
-delay1 x = with sem1 (threadDelay ((1000000 *) v)) >> return (C8L.pack $ show v)
+delay1 x = with sem1 (threadDelay $ (1000000 *) v) >> return (C8L.pack $ show v)
     where v = readDef 0 $ C8.unpack x
 NGX_EXPORT_ASYNC_IOY_Y (delay1)
 ```
