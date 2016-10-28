@@ -533,7 +533,7 @@ import           Safe
 catchHttpException = (`catch` \e ->
         return $ C8L.pack $ "HTTP EXCEPTION: " ++ show (e :: HttpException))
 
-getResponse url = fmap responseBody . (parseRequest (C8.unpack url) >>=)
+getResponse (C8.unpack -> url) = fmap responseBody . (parseRequest url >>=)
 
 getUrl url = do
     man <- newManager defaultManagerSettings
