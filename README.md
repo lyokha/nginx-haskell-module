@@ -530,15 +530,20 @@ import           Control.Concurrent
 import           Control.Exception
 import           Safe
 
+catchHttpException = (`catch` \e ->
+        return $ C8L.pack $ "HTTP EXCEPTION: " ++ show (e :: HttpException))
+
+getResponse url = fmap responseBody . (parseRequest (C8.unpack url) >>=)
+
 getUrl url = do
     man <- newManager defaultManagerSettings
-    fmap responseBody (parseRequest (C8.unpack url) >>= flip httpLbs man)
-        `catch` \e ->
-            return $ C8L.pack $ "HTTP EXCEPTION: " ++ show (e :: HttpException)
+    catchHttpException $ getResponse url $ flip httpLbs man
 NGX_EXPORT_ASYNC_IOY_Y (getUrl)
 
-delay x = threadDelay ((1000000 *) v) >> return (C8L.pack $ show v)
-    where v = readDef 0 $ C8.unpack x
+threadDelaySec = threadDelay . (* 1000000)
+
+delay (readDef 0 . C8.unpack -> v) =
+    threadDelaySec v >> return (C8L.pack $ show v)
 NGX_EXPORT_ASYNC_IOY_Y (delay)
 
     ';
@@ -658,15 +663,12 @@ expected in our new async handlers *getUrl1* and *delay1*.
 ```haskell
 getUrl1 url = do
     man <- newManager defaultManagerSettings
-    fmap responseBody (parseRequest (C8.unpack url) >>= getResponse man)
-        `catch` \e ->
-            return $ C8L.pack $ "HTTP EXCEPTION: " ++ show (e :: HttpException)
-    where getResponse = (S.with sem1 .) . flip httpLbs
+    catchHttpException $ getResponse url $ withSem man
+    where withSem = (S.with sem1 .) . flip httpLbs
 NGX_EXPORT_ASYNC_IOY_Y (getUrl1)
 
-delay1 x = S.with sem1 (threadDelay $ (1000000 *) v) >>
-        return (C8L.pack $ show v)
-    where v = readDef 0 $ C8.unpack x
+delay1 (readDef 0 . C8.unpack -> v) =
+    S.with sem1 (threadDelaySec v) >> return (C8L.pack $ show v)
 NGX_EXPORT_ASYNC_IOY_Y (delay1)
 ```
 
@@ -687,11 +689,8 @@ following service function inside our haskell code.
 
 ```haskell
 getUrlService url firstRun = do
-    unless firstRun $ threadDelay 20000000   -- 20 sec
-    man <- newManager defaultManagerSettings
-    fmap responseBody (parseRequest (C8.unpack url) >>= flip httpLbs man)
-        `catch` \e ->
-            return $ C8L.pack $ "HTTP EXCEPTION: " ++ show (e :: HttpException)
+    unless firstRun $ threadDelaySec 20
+    getUrl url
 NGX_EXPORT_SERVICE_IOY_Y (getUrlService)
 ```
 
