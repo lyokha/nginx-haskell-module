@@ -100,11 +100,11 @@ ngxExportBY =
 ngxExportAsyncIOYY =
     ngxExportC 'IOYY 'ioyY
     [t|CString -> CInt ->
-        CInt -> CUInt -> Ptr CString -> Ptr CInt -> Ptr CUInt -> IO ()|]
+        CInt -> CUInt -> Ptr CString -> Ptr CSize -> Ptr CUInt -> IO ()|]
 ngxExportServiceIOYY =
     ngxExport 'IOYY 'ioyY
     [t|CString -> CInt ->
-        CInt -> CUInt -> Ptr CString -> Ptr CInt -> Ptr CUInt -> IO ()|]
+        CInt -> CUInt -> Ptr CString -> Ptr CSize -> Ptr CUInt -> IO ()|]
 ngxExportHandler =
     ngxExport 'Handler 'handler
     [t|CString -> CInt ->
@@ -222,7 +222,7 @@ yY (YY f) x (fromIntegral -> n) p = do
     return l
 
 ioyY :: NgxExport -> CString -> CInt ->
-    CInt -> CUInt -> Ptr CString -> Ptr CInt -> Ptr CUInt -> IO ()
+    CInt -> CUInt -> Ptr CString -> Ptr CSize -> Ptr CUInt -> IO ()
 ioyY (IOYY f) x (fromIntegral -> n) (fromIntegral -> fd)
         ((/= 0) -> fstRun) p pl r =
     void . async $
@@ -232,15 +232,13 @@ ioyY (IOYY f) x (fromIntegral -> n) (fromIntegral -> fd)
     either
         (\s -> do
             (x, fromIntegral -> l) <- newCStringLen s
-            poke p x
-            poke pl l
+            pokeCStringLen x l p pl
             poke r 1
         )
         (\s -> do
             (fromMaybe (nullPtr, -1) -> (t, fromIntegral -> l)) <-
                 toSingleBuffer s
-            poke p t
-            poke pl l
+            pokeCStringLen t l p pl
             poke r 0
         ) s
     )

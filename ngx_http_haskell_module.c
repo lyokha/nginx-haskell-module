@@ -96,14 +96,14 @@ ngx_string(
 "ngx_hs_ ## F = aux_ngx_hs_ioy_y $ AUX_NGX_IOY_Y (const . F); \\\n"
 "foreign export ccall ngx_hs_ ## F :: \\\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt -> AUX_NGX.CInt -> AUX_NGX.CUInt -> \\\n"
-"    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CInt -> \\\n"
+"    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CSize -> \\\n"
 "    AUX_NGX.Ptr AUX_NGX.CUInt -> IO ();\n\n"
 "#define NGX_EXPORT_SERVICE_IOY_Y(F) \\\n"
 "AUX_NGX_TYPECHECK(AUX_NGX_IOY_Y, F, F) \\\n"
 "ngx_hs_ ## F = aux_ngx_hs_ioy_y $ AUX_NGX_IOY_Y F; \\\n"
 "foreign export ccall ngx_hs_ ## F :: \\\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt -> AUX_NGX.CInt -> AUX_NGX.CUInt -> \\\n"
-"    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CInt -> \\\n"
+"    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CSize -> \\\n"
 "    AUX_NGX.Ptr AUX_NGX.CUInt -> IO ();\n\n"
 "#define NGX_EXPORT_HANDLER(F) \\\n"
 "AUX_NGX_TYPECHECK(AUX_NGX_HANDLER, F, F) \\\n"
@@ -302,7 +302,7 @@ ngx_string(
 "    return l\n\n"
 "aux_ngx_hs_ioy_y :: AUX_NGX_EXPORT ->\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt -> AUX_NGX.CInt -> AUX_NGX.CUInt ->\n"
-"    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CInt ->\n"
+"    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CSize ->\n"
 "    AUX_NGX.Ptr AUX_NGX.CUInt -> IO ()\n"
 "aux_ngx_hs_ioy_y (AUX_NGX_IOY_Y f)\n"
 "            x (fromIntegral -> n) (fromIntegral -> fd)\n"
@@ -316,15 +316,13 @@ ngx_string(
 "    either\n"
 "        (\\s -> do\n"
 "            (x, fromIntegral -> l) <- AUX_NGX.newCStringLen s\n"
-"            AUX_NGX.poke p x\n"
-"            AUX_NGX.poke pl l\n"
+"            aux_ngx_pokeCStringLen x l p pl\n"
 "            AUX_NGX.poke r 1\n"
 "        )\n"
 "        (\\s -> do\n"
 "            (AUX_NGX.fromMaybe (AUX_NGX.nullPtr, -1) ->\n"
 "                (t, fromIntegral -> l)) <- aux_ngx_toSingleBuffer s\n"
-"            AUX_NGX.poke p t\n"
-"            AUX_NGX.poke pl l\n"
+"            aux_ngx_pokeCStringLen t l p pl\n"
 "            AUX_NGX.poke r 0\n"
 "        ) s\n"
 "    )\n"
@@ -2271,6 +2269,7 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
     ngx_str_t                                 ct = { 10,
                                                      (u_char *) "text/plain" };
     ngx_int_t                                 len = 0, st = NGX_HTTP_OK;
+    size_t                                    slen;
     ngx_str_t                                *res = NULL;
     u_char                                   *sres = NULL;
     ngx_chain_t                              *out, *out_cur;
@@ -2323,7 +2322,8 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
     case ngx_http_haskell_handler_type_uch:
         st = ((ngx_http_haskell_handler_uch)
               handlers[lcf->content_handler->handler].self)
-                   (arg.data, arg.len, &sres, &len, &ct.data, &ct.len);
+                   (arg.data, arg.len, &sres, &slen, &ct.data, &ct.len);
+        len = slen;
         goto send_response;
     default:
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
