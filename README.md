@@ -649,14 +649,13 @@ In the second test we ran 20 HTTP requests simultaneously, but could run
 hundreds and thousands! Some servers may reject so many requests at once
 (despite the fact that the manager from the *Network.HTTP.Client* is so advanced
 that it can share a single connection to the same host between all requests
-provided it has been defined at the top level like
+provided it was defined at the top level like
 
 ```haskell
 httpManager = unsafePerformIO $ newManager defaultManagerSettings
 {-# NOINLINE httpManager #-}
 
 getUrl url = catchHttpException $ getResponse url $ flip httpLbs httpManager
-ngxExportAsyncIOYY \'getUrl
 ```
 
 ). Fortunately, we can limit number of simultaneous requests with *semaphores*.
