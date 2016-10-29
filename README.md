@@ -646,8 +646,20 @@ Make sure it prints out every one second: this marks that requests are processed
 asynchronously!
 
 In the second test we ran 20 HTTP requests simultaneously, but could run
-hundreds and thousands! Some servers may reject so many requests at once.
-Fortunately, we can limit number of simultaneous requests with *semaphores*.
+hundreds and thousands! Some servers may reject so many requests at once
+(despite the fact that the manager from the *Network.HTTP.Client* is so advanced
+that it can share a single connection to the same host between all requests
+provided it has been defined at the top level like
+
+```haskell
+httpManager = unsafePerformIO $ newManager defaultManagerSettings
+{-# NOINLINE httpManager #-}
+
+getUrl url = catchHttpException $ getResponse url $ flip httpLbs httpManager
+ngxExportAsyncIOYY \'getUrl
+```
+
+). Fortunately, we can limit number of simultaneous requests with *semaphores*.
 Let's make a semaphore that allows only 1 task at once.
 
 ```haskell
@@ -663,8 +675,7 @@ expected in our new async handlers *getUrl1* and *delay1*.
 ```haskell
 getUrl1 url = do
     man <- newManager defaultManagerSettings
-    catchHttpException $ getResponse url $ withSem man
-    where withSem = (S.with sem1 .) . flip httpLbs
+    catchHttpException $ getResponse url $ S.with sem1 . flip httpLbs man
 NGX_EXPORT_ASYNC_IOY_Y (getUrl1)
 
 delay1 (readDef 0 . C8.unpack -> v) =
