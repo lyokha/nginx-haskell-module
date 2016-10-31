@@ -540,7 +540,7 @@ getUrl url = do
     catchHttpException $ getResponse url $ flip httpLbs man
 NGX_EXPORT_ASYNC_IOY_Y (getUrl)
 
-threadDelaySec = threadDelay . (* 1000000)
+threadDelaySec = threadDelay . (* 10^6)
 
 delay (readDef 0 . C8.unpack -> v) =
     threadDelaySec v >> return (C8L.pack $ show v)
