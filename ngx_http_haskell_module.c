@@ -1179,13 +1179,13 @@ ngx_http_haskell_write_code(ngx_conf_t *cf, void *conf, ngx_str_t source_name,
 
     out.fd = ngx_open_file(out.name.data, NGX_FILE_WRONLY, NGX_FILE_TRUNCATE,
                            NGX_FILE_DEFAULT_ACCESS);
-    if (out.fd == NGX_INVALID_FILE) {
+    if (out.fd == NGX_INVALID_FILE
+        || ngx_write_file(&out, code.data, code.len, 0) == NGX_ERROR)
+    {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno,
                            "failed to write haskell source code file");
         return NGX_CONF_ERROR;
     }
-
-    (void) ngx_write_file(&out, code.data, code.len, 0);
 
     if (ngx_close_file(out.fd) == NGX_FILE_ERROR) {
         ngx_conf_log_error(NGX_LOG_ALERT, cf, ngx_errno,
@@ -2445,7 +2445,9 @@ cleanup:
         }
         ngx_free(res);
     }
-    ngx_free(def_handler ? NULL : ct.data);
+    if (!def_handler) {
+        ngx_free(ct.data);
+    }
 
     return NGX_HTTP_INTERNAL_SERVER_ERROR;
 }
@@ -2486,13 +2488,15 @@ ngx_http_haskell_service_async_event(ngx_event_t *ev)
 }
 
 
-static void ngx_http_haskell_variable_cleanup(void *data)
+static void
+ngx_http_haskell_variable_cleanup(void *data)
 {
     ngx_free(data);
 }
 
 
-static void ngx_http_haskell_content_handler_cleanup(void *data)
+static void
+ngx_http_haskell_content_handler_cleanup(void *data)
 {
     ngx_int_t                                 i;
     ngx_http_haskell_content_handler_data_t  *clnd = data;
@@ -2507,7 +2511,9 @@ static void ngx_http_haskell_content_handler_cleanup(void *data)
 }
 
 
-static void close_pipe(ngx_log_t *log, ngx_fd_t *fd) {
+static void
+close_pipe(ngx_log_t *log, ngx_fd_t *fd)
+{
     ngx_int_t  i;
 
     for (i = 0; i < 2; i++) {
