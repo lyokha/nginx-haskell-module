@@ -2265,7 +2265,7 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
     ngx_http_haskell_loc_conf_t              *lcf;
     ngx_http_haskell_handler_t               *handlers;
     ngx_http_complex_value_t                 *args;
-    ngx_str_t                                 arg = ngx_string("");
+    ngx_str_t                                 arg = ngx_null_string;
     ngx_str_t                                 ct = ngx_string("text/plain");
     ngx_int_t                                 len = 0, st = NGX_HTTP_OK;
     size_t                                    slen;
