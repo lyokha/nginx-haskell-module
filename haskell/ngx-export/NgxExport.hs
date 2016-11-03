@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell, ViewPatterns #-}
+{-# LANGUAGE TemplateHaskell, ViewPatterns, PatternSynonyms #-}
 
 module NgxExport (module Foreign.C
                  ,ngxExportSS
@@ -30,6 +30,10 @@ import           Data.Maybe
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Unsafe as B
 import qualified Data.ByteString.Lazy as L
+
+pattern I l <- (fromIntegral -> l)
+pattern PtrLen s l <- (s, I l)
+pattern PtrLenFromMaybe s l <- (fromMaybe (nullPtr, -1) -> PtrLen s l)
 
 data NgxExport = SS            (String -> String)
                | SSS           (String -> String -> String)
@@ -139,7 +143,7 @@ peekNgxStringArrayLen :: Ptr NgxStrType -> Int -> IO [String]
 peekNgxStringArrayLen x n = sequence $
     foldr (\k ->
               ((peekElemOff x k >>=
-                  (\(NgxStrType (fromIntegral -> m) y) ->
+                  (\(NgxStrType (I m) y) ->
                       peekCStringLen (y, m))) :)) [] [0 .. n - 1]
 
 pokeCStringLen :: CString -> CSize -> Ptr CString -> Ptr CSize -> IO ()
@@ -149,7 +153,7 @@ toSingleBuffer :: L.ByteString -> IO (Maybe (CString, Int))
 toSingleBuffer (L.uncons -> Nothing) =
     return $ Just (nullPtr, 0)
 toSingleBuffer s = do
-    let (fromIntegral -> l) = L.length s
+    let I l = L.length s
     t <- catchAlloc $ mallocBytes l
     if t /= nullPtr
         then do
@@ -193,51 +197,49 @@ toBuffers s = do
     return $ l >>= Just . (,) t
 
 sS :: NgxExport -> CString -> CInt -> Ptr CString -> IO CInt
-sS (SS f) x (fromIntegral -> n) p = do
-    (s, fromIntegral -> l) <- f <$> peekCStringLen (x, n)
-                                >>= newCStringLen
+sS (SS f) x (I n) p = do
+    PtrLen s l <- f <$> peekCStringLen (x, n)
+                    >>= newCStringLen
     poke p s
     return l
 
 sSS :: NgxExport -> CString -> CInt -> CString -> CInt -> Ptr CString -> IO CInt
-sSS (SSS f) x (fromIntegral -> n) y (fromIntegral -> m) p = do
-    (s, fromIntegral -> l) <- f <$> peekCStringLen (x, n)
-                                <*> peekCStringLen (y, m)
-                                >>= newCStringLen
+sSS (SSS f) x (I n) y (I m) p = do
+    PtrLen s l <- f <$> peekCStringLen (x, n)
+                    <*> peekCStringLen (y, m)
+                    >>= newCStringLen
     poke p s
     return l
 
 sLS :: NgxExport -> Ptr NgxStrType -> CInt -> Ptr CString -> IO CInt
-sLS (SLS f) x (fromIntegral -> n) p = do
-    (s, fromIntegral -> l) <- f <$> peekNgxStringArrayLen x n
-                                >>= newCStringLen
+sLS (SLS f) x (I n) p = do
+    PtrLen s l <- f <$> peekNgxStringArrayLen x n
+                    >>= newCStringLen
     poke p s
     return l
 
 yY :: NgxExport -> CString -> CInt -> Ptr CString -> IO CInt
-yY (YY f) x (fromIntegral -> n) p = do
+yY (YY f) x (I n) p = do
     s <- f <$> B.unsafePackCStringLen (x, n)
-    (fromMaybe (nullPtr, -1) -> (t, fromIntegral -> l)) <- toSingleBuffer s
+    PtrLenFromMaybe t l <- toSingleBuffer s
     poke p t
     return l
 
 ioyY :: NgxExport -> CString -> CInt ->
     CInt -> CUInt -> Ptr CString -> Ptr CSize -> Ptr CUInt -> IO ()
-ioyY (IOYY f) x (fromIntegral -> n) (fromIntegral -> fd)
-        ((/= 0) -> fstRun) p pl r =
+ioyY (IOYY f) x (I n) (I fd) ((/= 0) -> fstRun) p pl r =
     void . async $
     (do
     s <- (Right <$> (B.unsafePackCStringLen (x, n) >>= flip f fstRun))
         `catch` \e -> return $ Left $ show (e :: SomeException)
     either
         (\s -> do
-            (x, fromIntegral -> l) <- newCStringLen s
+            PtrLen x l <- newCStringLen s
             pokeCStringLen x l p pl
             poke r 1
         )
         (\s -> do
-            (fromMaybe (nullPtr, -1) -> (t, fromIntegral -> l)) <-
-                toSingleBuffer s
+            PtrLenFromMaybe t l <- toSingleBuffer s
             pokeCStringLen t l p pl
             poke r 0
         ) s
@@ -245,47 +247,47 @@ ioyY (IOYY f) x (fromIntegral -> n) (fromIntegral -> fd)
     `finally` ((fdWrite fd "0" >> closeFd fd) `catchIOError` const (return ()))
 
 bS :: NgxExport -> CString -> CInt -> IO CUInt
-bS (BS f) x (fromIntegral -> n) =
+bS (BS f) x (I n) =
     fromBool . f <$> peekCStringLen (x, n)
 
 bSS :: NgxExport -> CString -> CInt -> CString -> CInt -> IO CUInt
-bSS (BSS f) x (fromIntegral -> n) y (fromIntegral -> m) =
+bSS (BSS f) x (I n) y (I m) =
     (fromBool .) . f <$> peekCStringLen (x, n)
                      <*> peekCStringLen (y, m)
 
 bLS :: NgxExport -> Ptr NgxStrType -> CInt -> IO CUInt
-bLS (BLS f) x (fromIntegral -> n) =
+bLS (BLS f) x (I n) =
     fromBool . f <$> peekNgxStringArrayLen x n
 
 bY :: NgxExport -> CString -> CInt -> IO CUInt
-bY (BY f) x (fromIntegral -> n) =
+bY (BY f) x (I n) =
     fromBool . f <$> B.unsafePackCStringLen (x, n)
 
 handler :: NgxExport -> CString -> CInt ->
     Ptr (Ptr NgxStrType) -> Ptr CInt -> Ptr CString -> Ptr CSize -> IO CInt
-handler (Handler f) x (fromIntegral -> n) ps pls pt plt = do
-    (s, mt, fromIntegral -> st) <- f <$> B.unsafePackCStringLen (x, n)
-    (fromMaybe (nullPtr, -1) -> (t, fromIntegral -> l)) <- toBuffers s
+handler (Handler f) x (I n) ps pls pt plt = do
+    (s, mt, I st) <- f <$> B.unsafePackCStringLen (x, n)
+    PtrLenFromMaybe t l <- toBuffers s
     poke ps t
     poke pls l
-    (smt, fromIntegral -> lmt) <- newCStringLen mt
+    PtrLen smt lmt <- newCStringLen mt
     pokeCStringLen smt lmt pt plt
     return st
 
 defHandler :: NgxExport -> CString -> CInt -> Ptr (Ptr NgxStrType) -> IO CInt
-defHandler (YY f) x (fromIntegral -> n) ps = do
+defHandler (YY f) x (I n) ps = do
     s <- f <$> B.unsafePackCStringLen (x, n)
-    (fromMaybe (nullPtr, -1) -> (t, fromIntegral -> l)) <- toBuffers s
+    PtrLenFromMaybe t l <- toBuffers s
     poke ps t
     return l
 
 unsafeHandler :: NgxExport -> CString -> CInt ->
     Ptr CString -> Ptr CSize -> Ptr CString -> Ptr CSize -> IO CInt
-unsafeHandler (UnsafeHandler f) x (fromIntegral -> n) ps pls pt plt = do
-    (s, mt, fromIntegral -> st) <- f <$> B.unsafePackCStringLen (x, n)
-    (t, fromIntegral -> lt) <- B.unsafeUseAsCStringLen s return
+unsafeHandler (UnsafeHandler f) x (I n) ps pls pt plt = do
+    (s, mt, I st) <- f <$> B.unsafePackCStringLen (x, n)
+    PtrLen t lt <- B.unsafeUseAsCStringLen s return
     pokeCStringLen t lt ps pls
-    (smt, fromIntegral -> lmt) <- B.unsafeUseAsCStringLen mt return
+    PtrLen smt lmt <- B.unsafeUseAsCStringLen mt return
     pokeCStringLen smt lmt pt plt
     return st
 
