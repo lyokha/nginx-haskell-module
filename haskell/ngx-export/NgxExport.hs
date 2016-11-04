@@ -150,7 +150,7 @@ pokeCStringLen :: CString -> CSize -> Ptr CString -> Ptr CSize -> IO ()
 pokeCStringLen x n p s = poke p x >> poke s n
 
 toSingleBuffer :: L.ByteString -> IO (Maybe (CString, Int))
-toSingleBuffer (L.uncons -> Nothing) =
+toSingleBuffer (L.null -> True) =
     return $ Just (nullPtr, 0)
 toSingleBuffer s = do
     let I l = L.length s
@@ -168,7 +168,7 @@ toSingleBuffer s = do
         else return Nothing
 
 toBuffers :: L.ByteString -> IO (Maybe (Ptr NgxStrType, Int))
-toBuffers (L.uncons -> Nothing) =
+toBuffers (L.null -> True) =
     return $ Just (nullPtr, 0)
 toBuffers s = do
     t <- catchAlloc $ mallocBytes $
