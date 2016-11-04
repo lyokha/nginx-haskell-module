@@ -104,11 +104,11 @@ ngxExportBY =
 ngxExportAsyncIOYY =
     ngxExportC 'IOYY 'ioyY
     [t|CString -> CInt ->
-        CInt -> CUInt -> Ptr CString -> Ptr CSize -> Ptr CUInt -> IO ()|]
+       CInt -> CUInt -> Ptr CString -> Ptr CSize -> Ptr CUInt -> IO ()|]
 ngxExportServiceIOYY =
     ngxExport 'IOYY 'ioyY
     [t|CString -> CInt ->
-        CInt -> CUInt -> Ptr CString -> Ptr CSize -> Ptr CUInt -> IO ()|]
+       CInt -> CUInt -> Ptr CString -> Ptr CSize -> Ptr CUInt -> IO ()|]
 ngxExportHandler =
     ngxExport 'Handler 'handler
     [t|CString -> CInt ->
