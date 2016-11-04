@@ -179,7 +179,9 @@ toBuffers s = do
             maybe (return Nothing)
                 (\off -> do
                     let l = B.length s
-                    -- l cannot be zero at this point
+                    -- l cannot be zero at this point because intermediate
+                    -- chunks of a lazy ByteString cannot be empty which is
+                    -- the consequence of Monoid laws applied when it grows
                     dst <- catchAlloc $ mallocBytes l
                     if dst /= nullPtr
                         then do
