@@ -1,5 +1,20 @@
 {-# LANGUAGE TemplateHaskell, ViewPatterns, PatternSynonyms #-}
 
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  NgxExport
+-- Copyright   :  (c) Alexey Radkov 2016
+-- License     :  BSD-style
+--
+-- Maintainer  :  alexey.radkov@gmail.com
+-- Stability   :  experimental
+-- Portability :  non-portable (requires POSIX)
+--
+-- Export regular haskell functions for using in directives of
+-- <http://github.com/lyokha/nginx-haskell-module nginx-haskell-module>.
+--
+-----------------------------------------------------------------------------
+
 module NgxExport (module Foreign.C
                  ,ngxExportSS
                  ,ngxExportSSS
@@ -78,45 +93,109 @@ ngxExport = ngxExport' varE
 ngxExportC :: Name -> Name -> Q Type -> Name -> Q [Dec]
 ngxExportC = ngxExport' $ infixE (Just $ varE 'const) (varE '(.)) . Just . varE
 
+-- | Exports a function of type
+-- /'String' -> 'String'/
+-- for using in directive /haskell_run/.
 ngxExportSS =
     ngxExport 'SS 'sS
     [t|CString -> CInt -> Ptr CString -> IO CInt|]
+
+-- | Exports a function of type
+-- /'String' -> 'String' -> 'String'/
+-- for using in directive /haskell_run/.
 ngxExportSSS =
     ngxExport 'SSS 'sSS
     [t|CString -> CInt -> CString -> CInt -> Ptr CString -> IO CInt|]
+
+-- | Exports a function of type
+-- /['String'] -> 'String'/
+-- for using in directive /haskell_run/.
 ngxExportSLS =
     ngxExport 'SLS 'sLS
     [t|Ptr NgxStrType -> CInt -> Ptr CString -> IO CInt|]
+
+-- | Exports a function of type
+-- /'String' -> 'Bool'/
+-- for using in directive /haskell_run/.
 ngxExportBS =
     ngxExport 'BS 'bS
     [t|CString -> CInt -> IO CUInt|]
+
+-- | Exports a function of type
+-- /'String' -> 'String' -> 'Bool'/
+-- for using in directive /haskell_run/.
 ngxExportBSS =
     ngxExport 'BSS 'bSS
     [t|CString -> CInt -> CString -> CInt -> IO CUInt|]
+
+-- | Exports a function of type
+-- /['String'] -> 'Bool'/
+-- for using in directive /haskell_run/.
 ngxExportBLS =
     ngxExport 'BLS 'bLS
     [t|Ptr NgxStrType -> CInt -> IO CUInt|]
+
+-- | Exports a function of type
+-- /'B.ByteString' -> 'L.ByteString'/
+-- for using in directive /haskell_run/.
 ngxExportYY =
     ngxExport 'YY 'yY
     [t|CString -> CInt -> Ptr CString -> IO CInt|]
+
+-- | Exports a function of type
+-- /'B.ByteString' -> 'Bool'/
+-- for using in directive /haskell_run/.
 ngxExportBY =
     ngxExport 'BY 'bY
     [t|CString -> CInt -> IO CUInt|]
+
+-- | Exports a function of type
+-- /'B.ByteString' -> 'IO' 'L.ByteString'/
+-- for using in directive /haskell_run_async/.
 ngxExportAsyncIOYY =
     ngxExportC 'IOYY 'ioyY
     [t|CString -> CInt ->
        CInt -> CUInt -> Ptr CString -> Ptr CSize -> Ptr CUInt -> IO ()|]
+
+-- | Exports a function of type
+-- /'B.ByteString' -> 'Bool' -> 'IO' 'L.ByteString'/
+-- for using in directive /haskell_run_service/.
+--
+-- The boolean argument of the exported function marks that the service is
+-- being run for the first time.
 ngxExportServiceIOYY =
     ngxExport 'IOYY 'ioyY
     [t|CString -> CInt ->
        CInt -> CUInt -> Ptr CString -> Ptr CSize -> Ptr CUInt -> IO ()|]
+
+-- | Exports a function of type
+-- /'B.ByteString' -> ('L.ByteString', 'String', 'Int')/
+-- for using in directives /haskell_content/ and /haskell_static_content/.
+--
+-- The first element in the returned /3-tuple/ of the exported function is
+-- the /content/, the second is the /content type/, and the third is the
+-- /HTTP status/.
 ngxExportHandler =
     ngxExport 'Handler 'handler
     [t|CString -> CInt ->
        Ptr (Ptr NgxStrType) -> Ptr CInt -> Ptr CString -> Ptr CSize -> IO CInt|]
+
+-- | Exports a function of type
+-- /'B.ByteString' -> 'L.ByteString'/
+-- for using in directives /haskell_content/ and /haskell_static_content/.
 ngxExportDefHandler =
     ngxExport 'YY 'defHandler
     [t|CString -> CInt -> Ptr (Ptr NgxStrType) -> IO CInt|]
+
+-- | Exports a function of type
+-- /'B.ByteString' -> ('B.ByteString', 'B.ByteString', 'Int')/
+-- for using in directive /haskell_unsafe_content/.
+--
+-- The first element in the returned /3-tuple/ of the exported function is
+-- the /content/, the second is the /content type/, and the third is the
+-- /HTTP status/. Both the content and the content type are supposed to be
+-- referring to low-level string literals which do not need to be freed upon
+-- the request termination and must not be garbage-collected in the Haskell RTS.
 ngxExportUnsafeHandler =
     ngxExport 'UnsafeHandler 'unsafeHandler
     [t|CString -> CInt ->
