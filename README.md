@@ -786,8 +786,9 @@ To address limitations of the standalone module approach, another *modular*
 approach was introduced. In it, the wrapping haskell code must be built in a
 separate haskell module *NgxExport* and installed in the system with *cabal*.
 The source code of the module is located in directory
-[haskell/ngx-export](haskell/ngx-export) of the project tree. The user's haskell
-code in this approach must import the module *NgxExport*.
+[haskell/ngx-export](haskell/ngx-export) of the project tree. You can also find
+it on [hackage](http://hackage.haskell.org/package/ngx-export). The user's
+haskell code in this approach must import the module *NgxExport*.
 
 The export macros in *modular* approach syntactically and semantically differ
 from the standalone approach's export macros! They are *template haskell*
