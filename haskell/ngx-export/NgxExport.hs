@@ -15,7 +15,8 @@
 --
 -----------------------------------------------------------------------------
 
-module NgxExport (module Foreign.C
+module NgxExport (Foreign.C.CInt (..)   -- for marshalling in foreign calls
+                 ,Foreign.C.CUInt (..)  -- for marshalling in foreign calls
                  ,ngxExportSS
                  ,ngxExportSSS
                  ,ngxExportSLS
