@@ -15,9 +15,9 @@
 --
 -----------------------------------------------------------------------------
 
-module NgxExport (Foreign.C.CInt (..)   -- for marshalling in foreign calls
-                 ,Foreign.C.CUInt (..)  -- for marshalling in foreign calls
-                 ,ngxExportSS
+module NgxExport (
+    -- * Exporters
+                  ngxExportSS
                  ,ngxExportSSS
                  ,ngxExportSLS
                  ,ngxExportBS
@@ -29,7 +29,11 @@ module NgxExport (Foreign.C.CInt (..)   -- for marshalling in foreign calls
                  ,ngxExportServiceIOYY
                  ,ngxExportHandler
                  ,ngxExportDefHandler
-                 ,ngxExportUnsafeHandler) where
+                 ,ngxExportUnsafeHandler
+    -- * Re-exported data constructors from /"Foreign.C"/
+    --   (for marshalling in foreign calls)
+                 ,Foreign.C.CInt (..)
+                 ,Foreign.C.CUInt (..)) where
 
 import           Language.Haskell.TH
 import           Foreign.C
