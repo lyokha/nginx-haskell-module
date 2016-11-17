@@ -822,8 +822,7 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
                 goto decline_phase_handler;
             }
             if (ngx_array_init(&ctx->async_data, r->pool, 1,
-                               sizeof(ngx_http_haskell_async_data_t))
-                != NGX_OK)
+                               sizeof(ngx_http_haskell_async_data_t)) != NGX_OK)
             {
                 goto decline_phase_handler;
             }
@@ -1115,9 +1114,7 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         mcf->compile_mode = has_threaded ?
                 ngx_http_haskell_compile_mode_threaded :
                 ngx_http_haskell_compile_mode_no_threaded;
-        if (ngx_http_haskell_compile(cf, conf, value[idx])
-            != NGX_CONF_OK)
-        {
+        if (ngx_http_haskell_compile(cf, conf, value[idx]) != NGX_CONF_OK) {
             return NGX_CONF_ERROR;
         }
 
