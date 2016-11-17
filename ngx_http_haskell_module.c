@@ -623,7 +623,7 @@ static ngx_command_t  ngx_http_haskell_module_commands[] = {
       0,
       NULL },
     { ngx_string("haskell_run_service"),
-      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE3,
+      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE23,
       ngx_http_haskell_run,
       NGX_HTTP_MAIN_CONF_OFFSET,
       0,
@@ -1615,7 +1615,7 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_uint_t                                 i;
     ngx_http_haskell_main_conf_t              *mcf;
     ngx_str_t                                 *value;
-    ngx_uint_t                                 n_args;
+    ngx_uint_t                                 n_args, n_size;
     ngx_str_t                                  handler_name;
     ngx_http_haskell_handler_t                *handlers;
     ngx_http_compile_complex_value_t           ccv;
@@ -1640,11 +1640,12 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    if (cf->args->nelts < 4) {
+    if ((!service && cf->args->nelts < 4) || cf->args->nelts < 3) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "too few arguments");
         return NGX_CONF_ERROR;
     }
     n_args = cf->args->nelts - 3;
+    n_size = n_args == 0 ? 1 : n_args;
 
     if (value[2].len < 2 || value[2].data[0] != '$') {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -1686,7 +1687,7 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             return NGX_CONF_ERROR;
         }
     }
-    if (ngx_array_init(&code_var_data->args, cf->pool, 1,
+    if (ngx_array_init(&code_var_data->args, cf->pool, n_size,
                        sizeof(ngx_http_complex_value_t)) != NGX_OK)
     {
         return NGX_CONF_ERROR;
@@ -1767,7 +1768,7 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         code_var_data->handler = mcf->handlers.nelts - 1;
     }
 
-    ++handlers[code_var_data->handler].n_args[n_args > 2 ? 2 : n_args - 1];
+    ++handlers[code_var_data->handler].n_args[n_args > 2 ? 2 : n_size - 1];
 
     v = ngx_http_add_variable(cf, &value[2], NGX_HTTP_VAR_CHANGEABLE);
     if (v == NULL) {
@@ -1792,12 +1793,13 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             (async ? ngx_http_haskell_run_async_handler :
              ngx_http_haskell_run_handler);
 
-    if (ngx_array_push_n(&code_var_data->args, n_args) == NULL) {
+    if (ngx_array_push_n(&code_var_data->args, n_size) == NULL) {
         return NGX_CONF_ERROR;
     }
     args = code_var_data->args.elts;
 
     if (service) {
+        ngx_str_null(&args[0].value);
         for (i = 0; i < n_args; i++) {
             args[i].value = value[3 + i];
         }
