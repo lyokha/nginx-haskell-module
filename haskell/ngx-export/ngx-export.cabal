@@ -10,7 +10,7 @@ author:              Alexey Radkov <alexey.radkov@gmail.com>
 maintainer:          Alexey Radkov <alexey.radkov@gmail.com>
 stability:           experimental
 copyright:           2016 Alexey Radkov
-category:            Unclassified
+category:            Network
 build-type:          Simple
 cabal-version:       >= 1.8
 
