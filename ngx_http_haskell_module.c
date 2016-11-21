@@ -91,16 +91,22 @@ ngx_string(
 "foreign export ccall ngx_hs_ ## F :: \\\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt -> \\\n"
 "    IO AUX_NGX.CUInt;\n\n"
-"#define NGX_EXPORT_ASYNC_IOY_Y(F) \\\n"
+"#define NGX_EXPORT_IOY_Y(F) \\\n"
 "AUX_NGX_TYPECHECK(AUX_NGX_IOY_Y, F, (const . F)) \\\n"
 "ngx_hs_ ## F = aux_ngx_hs_ioy_y $ AUX_NGX_IOY_Y (const . F); \\\n"
+"foreign export ccall ngx_hs_ ## F :: \\\n"
+"    AUX_NGX.CString -> AUX_NGX.CInt -> \\\n"
+"    AUX_NGX.Ptr AUX_NGX.CString -> IO AUX_NGX.CInt;\n\n"
+"#define NGX_EXPORT_ASYNC_IOY_Y(F) \\\n"
+"AUX_NGX_TYPECHECK(AUX_NGX_IOY_Y, F, (const . F)) \\\n"
+"ngx_hs_ ## F = aux_ngx_hs_async_ioy_y $ AUX_NGX_IOY_Y (const . F); \\\n"
 "foreign export ccall ngx_hs_ ## F :: \\\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt -> AUX_NGX.CInt -> AUX_NGX.CUInt -> \\\n"
 "    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CSize -> \\\n"
 "    AUX_NGX.Ptr AUX_NGX.CUInt -> IO ();\n\n"
 "#define NGX_EXPORT_SERVICE_IOY_Y(F) \\\n"
 "AUX_NGX_TYPECHECK(AUX_NGX_IOY_Y, F, F) \\\n"
-"ngx_hs_ ## F = aux_ngx_hs_ioy_y $ AUX_NGX_IOY_Y F; \\\n"
+"ngx_hs_ ## F = aux_ngx_hs_async_ioy_y $ AUX_NGX_IOY_Y F; \\\n"
 "foreign export ccall ngx_hs_ ## F :: \\\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt -> AUX_NGX.CInt -> AUX_NGX.CUInt -> \\\n"
 "    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CSize -> \\\n"
@@ -144,6 +150,7 @@ ngx_string(
 "import qualified Data.ByteString as AUX_NGX_BS\n"
 "import qualified Data.ByteString.Unsafe as AUX_NGX_BS\n"
 "import qualified Data.ByteString.Lazy as AUX_NGX_BSL\n\n"
+"import qualified Data.ByteString.Lazy.Char8 as AUX_NGX_BSLC8\n\n"
 "-- START OF USER HASKELL CODE\n"
 );
 
@@ -208,6 +215,13 @@ ngx_string(
 "aux_ngx_pokeCStringLen :: AUX_NGX.CString -> AUX_NGX.CSize ->\n"
 "    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CSize -> IO ()\n"
 "aux_ngx_pokeCStringLen x n p s = AUX_NGX.poke p x >> AUX_NGX.poke s n\n\n"
+"aux_ngx_pokeLazyByteString :: AUX_NGX_BSL.ByteString ->\n"
+"    AUX_NGX.Ptr AUX_NGX.CString -> IO AUX_NGX.CInt\n"
+"aux_ngx_pokeLazyByteString s p = do\n"
+"    (AUX_NGX.fromMaybe (AUX_NGX.nullPtr, -1) -> (t, fromIntegral -> l)) <-\n"
+"        aux_ngx_toSingleBuffer s\n"
+"    AUX_NGX.poke p t\n"
+"    return l\n\n"
 "aux_ngx_toSingleBuffer :: AUX_NGX_BSL.ByteString ->\n"
 "    IO (Maybe (AUX_NGX.CString, Int))\n"
 "aux_ngx_toSingleBuffer (AUX_NGX_BSL.null -> True) =\n"
@@ -298,15 +312,21 @@ ngx_string(
 "aux_ngx_hs_y_y (AUX_NGX_Y_Y f)\n"
 "            x (fromIntegral -> n) p = do\n"
 "    s <- f <$> AUX_NGX_BS.unsafePackCStringLen (x, n)\n"
-"    (AUX_NGX.fromMaybe (AUX_NGX.nullPtr, -1) -> (t, fromIntegral -> l)) <-\n"
-"        aux_ngx_toSingleBuffer s\n"
-"    AUX_NGX.poke p t\n"
-"    return l\n\n"
+"    aux_ngx_pokeLazyByteString s p\n\n"
 "aux_ngx_hs_ioy_y :: AUX_NGX_EXPORT ->\n"
+"    AUX_NGX.CString -> AUX_NGX.CInt ->\n"
+"    AUX_NGX.Ptr AUX_NGX.CString -> IO AUX_NGX.CInt\n"
+"aux_ngx_hs_ioy_y (AUX_NGX_IOY_Y f)\n"
+"            x (fromIntegral -> n) p = do\n"
+"    s <- (AUX_NGX_BS.unsafePackCStringLen (x, n) >>= flip f False)\n"
+"        `AUX_NGX.catch` \\e -> return $ AUX_NGX_BSLC8.pack $\n"
+"            show (e :: AUX_NGX.SomeException)\n"
+"    aux_ngx_pokeLazyByteString s p\n\n"
+"aux_ngx_hs_async_ioy_y :: AUX_NGX_EXPORT ->\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt -> AUX_NGX.CInt -> AUX_NGX.CUInt ->\n"
 "    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CSize ->\n"
 "    AUX_NGX.Ptr AUX_NGX.CUInt -> IO ()\n"
-"aux_ngx_hs_ioy_y (AUX_NGX_IOY_Y f)\n"
+"aux_ngx_hs_async_ioy_y (AUX_NGX_IOY_Y f)\n"
 "            x (fromIntegral -> n) (fromIntegral -> fd)\n"
 "                    ((/= 0) -> fstRun) p pl r =\n"
 "    AUX_NGX.void . AUX_NGX.async $\n"
@@ -417,7 +437,7 @@ typedef HsInt32 (*ngx_http_haskell_handler_y_y)
     (HsPtr, HsInt32, HsPtr);
 typedef HsWord32 (*ngx_http_haskell_handler_b_y)
     (HsPtr, HsInt32);
-typedef void (*ngx_http_haskell_handler_ioy_y)
+typedef void (*ngx_http_haskell_handler_async_ioy_y)
     (HsPtr, HsInt32, HsInt32, HsWord32, HsPtr, HsPtr, HsPtr);
 typedef HsInt32 (*ngx_http_haskell_handler_ch)
     (HsPtr, HsInt32, HsPtr, HsPtr, HsPtr, HsPtr);
@@ -896,7 +916,7 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
             continue;
         }
 
-        ((ngx_http_haskell_handler_ioy_y)
+        ((ngx_http_haskell_handler_async_ioy_y)
          handlers[code_vars[i].handler].self)
                 (arg1.data, arg1.len, fd[1], 0, &async_data->result.data,
                  &async_data->result.len, &async_data->error);
@@ -1386,8 +1406,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
             ||
             (handlers[i].role == ngx_http_haskell_handler_role_variable
              && (handlers[i].type == ngx_http_haskell_handler_type_ch
-                 || handlers[i].type == ngx_http_haskell_handler_type_uch
-                 || handlers[i].type == ngx_http_haskell_handler_type_ioy_y))
+                 || handlers[i].type == ngx_http_haskell_handler_type_uch))
             ||
             ((handlers[i].role == ngx_http_haskell_handler_role_async_variable
               || handlers[i].role ==
@@ -1593,7 +1612,7 @@ ngx_http_haskell_run_service(ngx_cycle_t *cycle,
 
     args = service_code_var->data->args.elts;
     arg1 = args[0].value;
-    ((ngx_http_haskell_handler_ioy_y)
+    ((ngx_http_haskell_handler_async_ioy_y)
      handlers[service_code_var->data->handler].self)
             (arg1.data, arg1.len, fd[1], service_first_run,
              &service_code_var->future_async_data.result.data,
@@ -2011,6 +2030,7 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
     case ngx_http_haskell_handler_type_b_s:
     case ngx_http_haskell_handler_type_y_y:
     case ngx_http_haskell_handler_type_b_y:
+    case ngx_http_haskell_handler_type_ioy_y:
         if (ngx_http_complex_value(r, &args[0], &arg1) != NGX_OK) {
             return NGX_ERROR;
         }
@@ -2064,6 +2084,7 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
                     (argn, code_vars[found_idx].args.nelts);
         break;
     case ngx_http_haskell_handler_type_y_y:
+    case ngx_http_haskell_handler_type_ioy_y:
         len = ((ngx_http_haskell_handler_y_y)
                handlers[code_vars[found_idx].handler].self)
                     (arg1.data, arg1.len, &res);
@@ -2082,6 +2103,7 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
 
     switch (handlers[code_vars[found_idx].handler].type) {
     case ngx_http_haskell_handler_type_y_y:
+    case ngx_http_haskell_handler_type_ioy_y:
         if (len == -1) {
             ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
                           "memory allocation error while running "

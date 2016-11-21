@@ -25,6 +25,7 @@ module NgxExport (
                  ,ngxExportBLS
                  ,ngxExportYY
                  ,ngxExportBY
+                 ,ngxExportIOYY
                  ,ngxExportAsyncIOYY
                  ,ngxExportServiceIOYY
                  ,ngxExportHandler
@@ -50,6 +51,7 @@ import           Data.Maybe
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Unsafe as B
 import qualified Data.ByteString.Lazy as L
+import qualified Data.ByteString.Lazy.Char8 as C8L
 
 pattern I l <- (fromIntegral -> l)
 pattern PtrLen s l <- (s, I l)
@@ -156,9 +158,16 @@ ngxExportBY =
 
 -- | Exports a function of type
 -- /'B.ByteString' -> 'IO' 'L.ByteString'/
+-- for using in directive /haskell_run/.
+ngxExportIOYY =
+    ngxExportC 'IOYY 'ioyY
+    [t|CString -> CInt -> Ptr CString -> IO CInt|]
+
+-- | Exports a function of type
+-- /'B.ByteString' -> 'IO' 'L.ByteString'/
 -- for using in directive /haskell_run_async/.
 ngxExportAsyncIOYY =
-    ngxExportC 'IOYY 'ioyY
+    ngxExportC 'IOYY 'asyncIOYY
     [t|CString -> CInt ->
        CInt -> CUInt -> Ptr CString -> Ptr CSize -> Ptr CUInt -> IO ()|]
 
@@ -169,7 +178,7 @@ ngxExportAsyncIOYY =
 -- The boolean argument of the exported function marks that the service is
 -- being run for the first time.
 ngxExportServiceIOYY =
-    ngxExport 'IOYY 'ioyY
+    ngxExport 'IOYY 'asyncIOYY
     [t|CString -> CInt ->
        CInt -> CUInt -> Ptr CString -> Ptr CSize -> Ptr CUInt -> IO ()|]
 
@@ -233,6 +242,12 @@ peekNgxStringArrayLen x n = sequence $
 
 pokeCStringLen :: CString -> CSize -> Ptr CString -> Ptr CSize -> IO ()
 pokeCStringLen x n p s = poke p x >> poke s n
+
+pokeLazyByteString :: L.ByteString -> Ptr CString -> IO CInt
+pokeLazyByteString s p = do
+    PtrLenFromMaybe t l <- toSingleBuffer s
+    poke p t
+    return l
 
 toSingleBuffer :: L.ByteString -> IO (Maybe (CString, Int))
 toSingleBuffer EmptyLBS =
@@ -308,13 +323,17 @@ sLS (SLS f) x (I n) p = do
 yY :: NgxExport -> CString -> CInt -> Ptr CString -> IO CInt
 yY (YY f) x (I n) p = do
     s <- f <$> B.unsafePackCStringLen (x, n)
-    PtrLenFromMaybe t l <- toSingleBuffer s
-    poke p t
-    return l
+    pokeLazyByteString s p
 
-ioyY :: NgxExport -> CString -> CInt ->
+ioyY :: NgxExport -> CString -> CInt -> Ptr CString -> IO CInt
+ioyY (IOYY f) x (I n) p = do
+    s <- (B.unsafePackCStringLen (x, n) >>= flip f False)
+        `catch` \e -> return $ C8L.pack $ show (e :: SomeException)
+    pokeLazyByteString s p
+
+asyncIOYY :: NgxExport -> CString -> CInt ->
     CInt -> CUInt -> Ptr CString -> Ptr CSize -> Ptr CUInt -> IO ()
-ioyY (IOYY f) x (I n) (I fd) ((/= 0) -> fstRun) p pl r =
+asyncIOYY (IOYY f) x (I n) (I fd) ((/= 0) -> fstRun) p pl r =
     void . async $
     (do
     s <- (Right <$> (B.unsafePackCStringLen (x, n) >>= flip f fstRun))

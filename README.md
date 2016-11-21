@@ -721,8 +721,7 @@ Let's start *getUrlService*.
 Directives *haskell_run_service* must locate in the *http* clause of the nginx
 configuration after directive *haskell compile*. In contrast with other types of
 handlers, service handlers cannot refer to variables in their arguments as soon
-as nginx variables handlers always refer to a request which is not possible
-here.
+as nginx variable handlers always refer to a request which is not possible here.
 
 Put locations for showing data collected by the services and we are done.
 
@@ -734,6 +733,17 @@ Put locations for showing data collected by the services and we are done.
         location /httpbin {
             echo $hs_service_httpbin;
         }
+```
+
+Complex scenarios may require synchronous access to handlers with side effects.
+For example it could be an ad-hoc *error_page* redirection cycle: asynchronous
+handlers do not suit here at all because they run only at the early phases of a
+request. For such cases another handler *NGX_EXPORT_IOY_Y* may appear useful.
+Below is an example of a toy synchronous handler declaration.
+
+```haskell
+getIOValue = const $ return $ C8L.pack "HELLO WORLD!"
+NGX_EXPORT_IOY_Y (getIOValue)
 ```
 
 You can find all the examples shown here in file
