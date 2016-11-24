@@ -495,6 +495,8 @@ typedef struct {
     void                                     (*init_HsModule)(void);
     ngx_http_haskell_compile_mode_e            compile_mode;
     ngx_array_t                                service_code_vars;
+    ngx_array_t                                var_nocacheable;
+    ngx_array_t                                var_compensate_uri_changes;
     ngx_uint_t                                 code_loaded:1;
     ngx_uint_t                                 has_async_tasks:1;
 } ngx_http_haskell_main_conf_t;
@@ -583,6 +585,12 @@ typedef struct {
 } ngx_http_haskell_service_async_event_t;
 
 
+typedef struct {
+    ngx_str_t                                  name;
+    ngx_int_t                                  index;
+} ngx_http_haskell_var_handle_t;
+
+
 static char *ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_http_haskell_write_code(ngx_conf_t *cf, void *conf,
     ngx_str_t source_name, ngx_str_t fragment);
@@ -599,6 +607,10 @@ static char *ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_http_haskell_var_nocacheable(ngx_conf_t *cf,
+    ngx_command_t *cmd, void *conf);
+static char *ngx_http_haskell_var_compensate_uri_changes(ngx_conf_t *cf,
+    ngx_command_t *cmd, void *conf);
 static ngx_int_t ngx_http_haskell_init(ngx_conf_t *cf);
 static void *ngx_http_haskell_create_main_conf(ngx_conf_t *cf);
 static void *ngx_http_haskell_create_loc_conf(ngx_conf_t *cf);
@@ -664,6 +676,18 @@ static ngx_command_t  ngx_http_haskell_module_commands[] = {
       NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE12,
       ngx_http_haskell_content,
       NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      NULL },
+    { ngx_string("haskell_var_nocacheable"),
+      NGX_HTTP_MAIN_CONF|NGX_CONF_1MORE,
+      ngx_http_haskell_var_nocacheable,
+      NGX_HTTP_MAIN_CONF_OFFSET,
+      0,
+      NULL },
+    { ngx_string("haskell_var_compensate_uri_changes"),
+      NGX_HTTP_MAIN_CONF|NGX_CONF_1MORE,
+      ngx_http_haskell_var_compensate_uri_changes,
+      NGX_HTTP_MAIN_CONF_OFFSET,
       0,
       NULL },
 
@@ -948,8 +972,68 @@ decline_phase_handler:
 static ngx_int_t
 ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
 {
+    ngx_uint_t                         i, j;
+    ngx_http_haskell_main_conf_t      *mcf;
+    ngx_http_core_main_conf_t         *cmcf;
+    ngx_str_t                         *vars;
+    ngx_http_haskell_var_handle_t     *vars_comp;
+    ngx_http_variable_t               *cmvars;
+    ngx_uint_t                         found;
+
     if (ngx_process == NGX_PROCESS_HELPER)
         return NGX_OK;
+
+    mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
+    if (mcf == NULL || !mcf->code_loaded) {
+        return NGX_OK;
+    }
+
+    cmcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_core_module);
+    cmvars = cmcf->variables.elts;
+
+    vars = mcf->var_nocacheable.elts;
+    for (i = 0; i < mcf->var_nocacheable.nelts; i++) {
+        found = 0;
+        for (j = 0; j < cmcf->variables.nelts; j++) {
+            if (vars[i].len == cmvars[j].name.len
+                && ngx_strncmp(vars[i].data, cmvars[j].name.data,
+                               vars[i].len) == 0)
+            {
+                cmvars[j].flags |= NGX_HTTP_VAR_NOCACHEABLE;
+                found = 1;
+                break;
+            }
+        }
+        if (found == 0) {
+            ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
+                    "variable \"%V\" was not declared", &vars[i]);
+        }
+    }
+
+    vars_comp = mcf->var_compensate_uri_changes.elts;
+    for (i = 0; i < mcf->var_compensate_uri_changes.nelts; i++) {
+        found = 0;
+        for (j = 0; j < cmcf->variables.nelts; j++) {
+            if (vars_comp[i].name.len == cmvars[j].name.len
+                && ngx_strncmp(vars_comp[i].name.data, cmvars[j].name.data,
+                               vars_comp[i].name.len) == 0)
+            {
+                if (cmvars[j].get_handler != ngx_http_haskell_run_handler) {
+                    ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
+                                  "variable \"%V\" has incompatible "
+                                  "get handler", &vars_comp[i].name);
+                } else {
+                    vars_comp[i].index = cmvars[j].index;
+                }
+                found = 1;
+                break;
+            }
+        }
+        if (found == 0) {
+            ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
+                    "variable \"%V\" was not declared", &vars_comp[i].name);
+        }
+    }
 
     if (ngx_http_haskell_load(cycle) != NGX_OK) {
         return NGX_ERROR;
@@ -1977,6 +2061,90 @@ ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
+static char *
+ngx_http_haskell_var_nocacheable(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_haskell_main_conf_t      *mcf = conf;
+
+    ngx_uint_t                         i;
+    ngx_str_t                         *value;
+    ngx_str_t                         *vars;
+    ngx_uint_t                         n_vars;
+
+    if (mcf->var_nocacheable.nelts > 0) {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+    n_vars = cf->args->nelts - 1;
+
+    if (ngx_array_init(&mcf->var_nocacheable, cf->pool, n_vars,
+                       sizeof(ngx_str_t)) != NGX_OK
+        || ngx_array_push_n(&mcf->var_nocacheable, n_vars) == NULL)
+    {
+        return NGX_CONF_ERROR;
+    }
+
+    vars = mcf->var_nocacheable.elts;
+
+    for (i = 0; i < n_vars; i++) {
+        if (value[i + 1].len < 2 || value[i + 1].data[0] != '$') {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid variable name \"%V\"", &value[i + 1]);
+            return NGX_CONF_ERROR;
+        }
+        value[i + 1].len--;
+        value[i + 1].data++;
+        vars[i] = value[i + 1];
+    }
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_http_haskell_var_compensate_uri_changes(ngx_conf_t *cf, ngx_command_t *cmd,
+                                            void *conf)
+{
+    ngx_http_haskell_main_conf_t      *mcf = conf;
+
+    ngx_uint_t                         i;
+    ngx_str_t                         *value;
+    ngx_http_haskell_var_handle_t     *vars;
+    ngx_uint_t                         n_vars;
+
+    if (mcf->var_compensate_uri_changes.nelts > 0) {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+    n_vars = cf->args->nelts - 1;
+
+    if (ngx_array_init(&mcf->var_compensate_uri_changes, cf->pool, n_vars,
+                       sizeof(ngx_http_haskell_var_handle_t)) != NGX_OK
+        || ngx_array_push_n(&mcf->var_compensate_uri_changes, n_vars) == NULL)
+    {
+        return NGX_CONF_ERROR;
+    }
+
+    vars = mcf->var_compensate_uri_changes.elts;
+
+    for (i = 0; i < n_vars; i++) {
+        if (value[i + 1].len < 2 || value[i + 1].data[0] != '$') {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid variable name \"%V\"", &value[i + 1]);
+            return NGX_CONF_ERROR;
+        }
+        value[i + 1].len--;
+        value[i + 1].data++;
+        vars[i].name = value[i + 1];
+        vars[i].index = -1;
+    }
+
+    return NGX_CONF_OK;
+}
+
+
 static ngx_int_t
 ngx_http_haskell_run_handler(ngx_http_request_t *r,
                              ngx_http_variable_value_t *v, uintptr_t  data)
@@ -1988,6 +2156,7 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
     ngx_int_t                         *index = (ngx_int_t *) data;
     ngx_int_t                          found_idx = NGX_ERROR;
     ngx_http_variable_t               *vars;
+    ngx_http_haskell_var_handle_t     *vars_comp;
     ngx_http_haskell_handler_t        *handlers;
     ngx_http_haskell_code_var_data_t  *code_vars;
     ngx_http_complex_value_t          *args;
@@ -2145,6 +2314,17 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
         break;
     default:
         return NGX_ERROR;
+    }
+
+    if (r->internal) {
+        vars_comp = mcf->var_compensate_uri_changes.elts;
+        for (i = 0; i < mcf->var_compensate_uri_changes.nelts; i++) {
+            if (vars_comp[i].index == *index
+                && r->uri_changes < NGX_HTTP_MAX_URI_CHANGES + 1)
+            {
+                ++r->uri_changes;
+            }
+        }
     }
 
     v->len = len;
