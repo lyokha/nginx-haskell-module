@@ -999,6 +999,7 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
                 && ngx_strncmp(vars[i].data, cmvars[j].name.data,
                                vars[i].len) == 0)
             {
+                /* variables with any get handler are allowed here! */
                 cmvars[j].flags |= NGX_HTTP_VAR_NOCACHEABLE;
                 found = 1;
                 break;
@@ -2323,6 +2324,7 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
                 && r->uri_changes < NGX_HTTP_MAX_URI_CHANGES + 1)
             {
                 ++r->uri_changes;
+                break;
             }
         }
     }
