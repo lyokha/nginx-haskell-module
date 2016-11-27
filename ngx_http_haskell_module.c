@@ -560,6 +560,7 @@ typedef struct {
 
 typedef struct {
     ngx_array_t                                async_data;
+    ngx_array_t                                var_nocacheable_cache;
 } ngx_http_haskell_ctx_t;
 
 
@@ -589,6 +590,13 @@ typedef struct {
     ngx_str_t                                  name;
     ngx_int_t                                  index;
 } ngx_http_haskell_var_handle_t;
+
+
+typedef struct {
+    ngx_int_t                                  index;
+    ngx_str_t                                  value;
+    ngx_uint_t                                 checked;
+} ngx_http_haskell_var_cache_t;
 
 
 static char *ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
@@ -736,7 +744,9 @@ ngx_http_haskell_init(ngx_conf_t *cf)
     ngx_http_handler_pt           *h, *hs_elts;
 
     mcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_haskell_module);
-    if (mcf == NULL || !mcf->code_loaded || !mcf->has_async_tasks) {
+    if (mcf == NULL || !mcf->code_loaded
+        || !(mcf->has_async_tasks || mcf->var_nocacheable.nelts > 0))
+    {
         return NGX_OK;
     }
 
@@ -840,6 +850,8 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
     ngx_http_haskell_code_var_data_t  *code_vars;
     ngx_http_haskell_ctx_t            *ctx;
     ngx_http_haskell_async_data_t     *async_data, *async_data_elts;
+    ngx_http_haskell_var_handle_t     *var_nocacheable;
+    ngx_http_haskell_var_cache_t      *var_nocacheable_cache;
     ngx_int_t                          found_idx;
     ngx_event_t                       *event;
     ngx_http_haskell_async_event_t    *hev;
@@ -854,6 +866,33 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
     code_vars = lcf->code_vars.elts;
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_haskell_module);
+    if (mcf->var_nocacheable.nelts > 0 && ctx == NULL) {
+        ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_haskell_ctx_t));
+        if (ctx == NULL) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                "failed to create request context, declining phase handler");
+            return NGX_DECLINED;
+        }
+        if (ngx_array_init(&ctx->var_nocacheable_cache, r->pool,
+                           mcf->var_nocacheable.nelts,
+                           sizeof(ngx_http_haskell_var_cache_t)) != NGX_OK
+            || ngx_array_push_n(&ctx->var_nocacheable_cache,
+                                mcf->var_nocacheable.nelts) == NULL)
+        {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                "failed to create variable cache, declining phase handler");
+            return NGX_DECLINED;
+        }
+        var_nocacheable = mcf->var_nocacheable.elts;
+        var_nocacheable_cache = ctx->var_nocacheable_cache.elts;
+        for (i = 0; i < ctx->var_nocacheable_cache.nelts; i++) {
+            var_nocacheable_cache[i].index = var_nocacheable[i].index;
+            var_nocacheable_cache[i].checked = 0;
+            ngx_str_null(&var_nocacheable_cache[i].value);
+        }
+        ngx_http_set_ctx(r, ctx, ngx_http_haskell_module);
+    }
+
     for (i = 0; i < lcf->code_vars.nelts; i++) {
         if (handlers[code_vars[i].handler].role !=
             ngx_http_haskell_handler_role_async_variable)
@@ -865,12 +904,13 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
             if (ctx == NULL) {
                 goto decline_phase_handler;
             }
-            if (ngx_array_init(&ctx->async_data, r->pool, 1,
-                               sizeof(ngx_http_haskell_async_data_t)) != NGX_OK)
-            {
-                goto decline_phase_handler;
-            }
             ngx_http_set_ctx(r, ctx, ngx_http_haskell_module);
+        }
+        if (ctx->async_data.nalloc == 0
+            && ngx_array_init(&ctx->async_data, r->pool, 1,
+                              sizeof(ngx_http_haskell_async_data_t)) != NGX_OK)
+        {
+            goto decline_phase_handler;
         }
 
         found_idx = NGX_ERROR;
@@ -975,8 +1015,7 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
     ngx_uint_t                         i, j;
     ngx_http_haskell_main_conf_t      *mcf;
     ngx_http_core_main_conf_t         *cmcf;
-    ngx_str_t                         *vars;
-    ngx_http_haskell_var_handle_t     *vars_comp;
+    ngx_http_haskell_var_handle_t     *vars, *vars_comp;
     ngx_http_variable_t               *cmvars;
     ngx_uint_t                         found;
 
@@ -995,10 +1034,11 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
     for (i = 0; i < mcf->var_nocacheable.nelts; i++) {
         found = 0;
         for (j = 0; j < cmcf->variables.nelts; j++) {
-            if (vars[i].len == cmvars[j].name.len
-                && ngx_strncmp(vars[i].data, cmvars[j].name.data,
-                               vars[i].len) == 0)
+            if (vars[i].name.len == cmvars[j].name.len
+                && ngx_strncmp(vars[i].name.data, cmvars[j].name.data,
+                               vars[i].name.len) == 0)
             {
+                vars[i].index = cmvars[j].index;
                 /* variables with any get handler are allowed here! */
                 cmvars[j].flags |= NGX_HTTP_VAR_NOCACHEABLE;
                 found = 1;
@@ -2069,7 +2109,7 @@ ngx_http_haskell_var_nocacheable(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ngx_uint_t                         i;
     ngx_str_t                         *value;
-    ngx_str_t                         *vars;
+    ngx_http_haskell_var_handle_t     *vars;
     ngx_uint_t                         n_vars;
 
     if (mcf->var_nocacheable.nelts > 0) {
@@ -2080,7 +2120,7 @@ ngx_http_haskell_var_nocacheable(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     n_vars = cf->args->nelts - 1;
 
     if (ngx_array_init(&mcf->var_nocacheable, cf->pool, n_vars,
-                       sizeof(ngx_str_t)) != NGX_OK
+                       sizeof(ngx_http_haskell_var_handle_t)) != NGX_OK
         || ngx_array_push_n(&mcf->var_nocacheable, n_vars) == NULL)
     {
         return NGX_CONF_ERROR;
@@ -2096,7 +2136,8 @@ ngx_http_haskell_var_nocacheable(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
         value[i + 1].len--;
         value[i + 1].data++;
-        vars[i] = value[i + 1];
+        vars[i].name = value[i + 1];
+        vars[i].index = -1;
     }
 
     return NGX_CONF_OK;
@@ -2154,10 +2195,12 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
     ngx_http_haskell_main_conf_t      *mcf;
     ngx_http_haskell_loc_conf_t       *lcf;
     ngx_http_core_main_conf_t         *cmcf;
+    ngx_http_haskell_ctx_t            *ctx;
     ngx_int_t                         *index = (ngx_int_t *) data;
     ngx_int_t                          found_idx = NGX_ERROR;
     ngx_http_variable_t               *vars;
     ngx_http_haskell_var_handle_t     *vars_comp;
+    ngx_http_haskell_var_cache_t      *var_nocacheable_cache;
     ngx_http_haskell_handler_t        *handlers;
     ngx_http_haskell_code_var_data_t  *code_vars;
     ngx_http_complex_value_t          *args;
@@ -2168,6 +2211,24 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
 
     if (index == NULL) {
         return NGX_ERROR;
+    }
+
+    ctx = ngx_http_get_module_ctx(r, ngx_http_haskell_module);
+    if (ctx) {
+        var_nocacheable_cache = ctx->var_nocacheable_cache.elts;
+        for (i = 0; i < ctx->var_nocacheable_cache.nelts; i++) {
+            if (var_nocacheable_cache[i].index == *index
+                && var_nocacheable_cache[i].checked)
+            {
+                v->len = var_nocacheable_cache[i].value.len;
+                v->data = var_nocacheable_cache[i].value.data;
+                v->valid = 1;
+                v->no_cacheable = 0;
+                v->not_found = 0;
+
+                return NGX_OK;
+            }
+        }
     }
 
     lcf = ngx_http_get_module_loc_conf(r, ngx_http_haskell_module);
@@ -2324,6 +2385,18 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
                 && r->uri_changes < NGX_HTTP_MAX_URI_CHANGES + 1)
             {
                 ++r->uri_changes;
+                break;
+            }
+        }
+    }
+
+    if (ctx) {
+        var_nocacheable_cache = ctx->var_nocacheable_cache.elts;
+        for (i = 0; i < ctx->var_nocacheable_cache.nelts; i++) {
+            if (var_nocacheable_cache[i].index == *index) {
+                var_nocacheable_cache[i].checked = 1;
+                var_nocacheable_cache[i].value.len = len;
+                var_nocacheable_cache[i].value.data = (u_char *) res;
                 break;
             }
         }
