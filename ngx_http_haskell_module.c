@@ -485,7 +485,8 @@ typedef enum {
 
 typedef struct {
     ngx_http_haskell_module_wrap_mode_e        wrap_mode;
-    ngx_str_t                                  ghc_extra_flags;
+    ngx_str_t                                  ghc_extra_options;
+    ngx_array_t                                rts_options;
     ngx_str_t                                  lib_path;
     ngx_array_t                                handlers;
     void                                      *dl_handle;
@@ -643,7 +644,7 @@ static void close_pipe(ngx_log_t *log, ngx_fd_t *fd);
 static ngx_command_t  ngx_http_haskell_module_commands[] = {
 
     { ngx_string("haskell"),
-      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE23|NGX_CONF_TAKE4|NGX_CONF_TAKE5,
+      NGX_HTTP_MAIN_CONF|NGX_CONF_2MORE,
       ngx_http_haskell,
       NGX_HTTP_MAIN_CONF_OFFSET,
       0,
@@ -790,6 +791,14 @@ ngx_http_haskell_create_main_conf(ngx_conf_t *cf)
     {
         return NULL;
     }
+
+    if (ngx_array_init(&mcf->rts_options, cf->pool, 1,
+                       sizeof(char **)) != NGX_OK
+        || ngx_array_push(&mcf->rts_options) == NULL)
+    {
+        return NULL;
+    }
+    ((char **) mcf->rts_options.elts)[0] = "NgxHaskellUserRuntime";
 
     return mcf;
 }
@@ -1097,15 +1106,17 @@ ngx_http_haskell_exit_worker(ngx_cycle_t *cycle)
 static char *
 ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    ngx_http_haskell_main_conf_t  *mcf = conf;
+    ngx_http_haskell_main_conf_t   *mcf = conf;
 
-    ngx_int_t                      i;
-    ngx_str_t                     *value, base_name;
-    ngx_file_info_t                lib_info;
-    ngx_int_t                      idx;
-    ngx_uint_t                     load = 0, load_existing = 0;
-    ngx_uint_t                     base_name_start = 0;
-    ngx_uint_t                     has_wrap_mode = 0, has_threaded = 0;
+    ngx_int_t                       i;
+    ngx_str_t                      *value, base_name;
+    ngx_file_info_t                 lib_info;
+    ngx_int_t                       idx;
+    ngx_uint_t                      load = 0, load_existing = 0;
+    ngx_uint_t                      base_name_start = 0;
+    ngx_uint_t                      has_wrap_mode = 0, has_threaded = 0;
+    char                          **rts_options;
+    ngx_int_t                       len;
 
     if (mcf->code_loaded) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -1120,31 +1131,77 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     {
         if (cf->args->nelts < 4) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                        "directive haskell compile requires 2 parameters");
+                    "directive haskell compile requires 2 parameters");
             return NGX_CONF_ERROR;
         }
+
     } else if (value[1].len == 4
                && ngx_strncmp(value[1].data, "load", 4) == 0)
     {
         load = 1;
-    } else if (value[1].len == 15
-               && ngx_strncmp(value[1].data, "ghc_extra_flags", 15) == 0)
+
+    } else if (value[1].len == 17
+               && ngx_strncmp(value[1].data, "ghc_extra_options", 17) == 0)
     {
-        if (cf->args->nelts != 3) {
+        if (mcf->ghc_extra_options.len > 0) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                    "directive haskell ghc_extra_flags requires 1 parameter");
+                    "directive haskell ghc_extra_options was already set");
             return NGX_CONF_ERROR;
         }
-        if (mcf->ghc_extra_flags.len > 0) {
+        len = cf->args->nelts - 2;
+        for (i = 2; (ngx_uint_t) i < cf->args->nelts; i++) {
+            len += value[i].len;
+        }
+        mcf->ghc_extra_options.len = len;
+        mcf->ghc_extra_options.data = ngx_pnalloc(cf->pool, len + 1);
+        if (mcf->ghc_extra_options.data == NULL) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                    "directive haskell ghc_extra_flags was already set");
+                    "failed to allocate memory for ghc extra options");
             return NGX_CONF_ERROR;
         }
-        mcf->ghc_extra_flags = value[2];
+        len = 0;
+        for (i = 2; (ngx_uint_t) i < cf->args->nelts; i++) {
+            ngx_memcpy(mcf->ghc_extra_options.data + len, value[i].data,
+                       value[i].len);
+            len += value[i].len;
+            ngx_memcpy(mcf->ghc_extra_options.data + len++, " ", 1);
+        }
+
         return NGX_CONF_OK;
+
+    } else if (value[1].len == 11
+               && ngx_strncmp(value[1].data, "rts_options", 11) == 0)
+    {
+        if (mcf->rts_options.nelts > 1) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                    "directive haskell rts_options was already set");
+            return NGX_CONF_ERROR;
+        }
+        if (ngx_array_push_n(&mcf->rts_options, cf->args->nelts) == NULL)
+        {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                    "failed to allocate memory for ghc RTS options");
+            return NGX_CONF_ERROR;
+        }
+        rts_options = mcf->rts_options.elts;
+        rts_options[1] = "+RTS";
+        for (i = 2; (ngx_uint_t) i < cf->args->nelts; i++) {
+            rts_options[i] = (char *) value[i].data;
+        }
+        rts_options[cf->args->nelts] = "-RTS";
+
+        return NGX_CONF_OK;
+
     } else {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "unknown haskell directive \"%V\"", &value[1]);
+                    "unknown haskell directive \"%V\"", &value[1]);
+        return NGX_CONF_ERROR;
+    }
+
+    if (cf->args->nelts > 6) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                    "directives haskell compile / load do not accept "
+                    "more than 5 parameters");
         return NGX_CONF_ERROR;
     }
 
@@ -1353,8 +1410,8 @@ ngx_http_haskell_compile(ngx_conf_t *cf, void *conf, ngx_str_t source_name)
 
     rtslib = mcf->compile_mode == ngx_http_haskell_compile_mode_threaded ?
             ghc_rtslib_thr : ghc_rtslib;
-    if (mcf->ghc_extra_flags.len > 0) {
-        extra_len = mcf->ghc_extra_flags.len + 1;
+    if (mcf->ghc_extra_options.len > 0) {
+        extra_len = mcf->ghc_extra_options.len + 1;
     }
     if (mcf->wrap_mode == ngx_http_haskell_module_wrap_mode_modular) {
         th_len = template_haskell_option.len;
@@ -1380,8 +1437,8 @@ ngx_http_haskell_compile(ngx_conf_t *cf, void *conf, ngx_str_t source_name)
     passed_len = compile_cmd_len + mcf->lib_path.len + rtslib.len + th_len + 1;
     if (extra_len > 0) {
         ngx_memcpy(compile_cmd + passed_len,
-                   mcf->ghc_extra_flags.data, mcf->ghc_extra_flags.len);
-        ngx_memcpy(compile_cmd + passed_len + mcf->ghc_extra_flags.len,
+                   mcf->ghc_extra_options.data, mcf->ghc_extra_options.len);
+        ngx_memcpy(compile_cmd + passed_len + mcf->ghc_extra_options.len,
                    " ", 1);
         passed_len += extra_len;
     }
@@ -1401,10 +1458,13 @@ ngx_http_haskell_compile(ngx_conf_t *cf, void *conf, ngx_str_t source_name)
 static ngx_int_t
 ngx_http_haskell_load(ngx_cycle_t *cycle)
 {
-    ngx_uint_t                     i;
-    ngx_http_haskell_main_conf_t  *mcf;
-    ngx_http_haskell_handler_t    *handlers;
-    char                          *dl_error;
+    ngx_uint_t                      i;
+    ngx_http_haskell_main_conf_t   *mcf;
+    ngx_http_haskell_handler_t     *handlers;
+    char                           *dl_error;
+    char                          **rts_options = NULL;
+    int                             rts_options_n;
+    char                           *hs_init;
 
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
     if (mcf == NULL || !mcf->code_loaded) {
@@ -1425,11 +1485,13 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         return NGX_ERROR;
     }
 
-    mcf->hs_init = (void (*)(int *, char ***)) dlsym(mcf->dl_handle, "hs_init");
+    rts_options_n = mcf->rts_options.nelts;
+    hs_init = rts_options_n > 1 ? "hs_init_with_rtsopts" : "hs_init";
+    mcf->hs_init = (void (*)(int *, char ***)) dlsym(mcf->dl_handle, hs_init);
     dl_error = dlerror();
     if (dl_error != NULL) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                      "failed to load function \"hs_init\": %s", dl_error);
+                      "failed to load function \"%s\": %s", hs_init, dl_error);
         return NGX_ERROR;
     }
 
@@ -1460,7 +1522,17 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         return NGX_ERROR;
     }
 
-    mcf->hs_init(&ngx_argc, &ngx_argv);
+    rts_options = ngx_alloc(rts_options_n * sizeof(char *), cycle->log);
+    if (rts_options == NULL) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                      "failed to allocate artifacts for ghc RTS options");
+        return NGX_ERROR;
+    }
+    for (i = 0; i < (ngx_uint_t) rts_options_n; i++) {
+        rts_options[i] = ((char **) mcf->rts_options.elts)[i];
+    }
+    mcf->hs_init(&rts_options_n, &rts_options);
+    ngx_free(rts_options);
     mcf->hs_add_root(mcf->init_HsModule);
 
     handlers = mcf->handlers.elts;
@@ -1499,6 +1571,8 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
             haskell_module_type_checker_prefix.len + handlers[i].name.len + 1,
             cycle->log);
         if (type_checker_name == NULL) {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                          "failed to allocate artifacts for type checker");
             ngx_http_haskell_unload(cycle);
             return NGX_ERROR;
         }

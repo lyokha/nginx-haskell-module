@@ -34,8 +34,8 @@ http {
     default_type        application/octet-stream;
     sendfile            on;
 
-    haskell ghc_extra_flags
-            '-hide-package regex-pcre -XFlexibleInstances -XTupleSections';
+    haskell ghc_extra_options
+                -hide-package regex-pcre -XFlexibleInstances -XTupleSections;
 
     haskell compile standalone /tmp/ngx_haskell.hs '
 
@@ -240,7 +240,7 @@ In this example 10 custom haskell functions are exported: *toUpper*, *takeN*,
 probably this code won't compile due to ambiguity involved by presence of the
 two packages *regex-pcre* and *regex-pcre-builtin*, I had to add an extra *ghc*
 compilation flag *-hide-package regex-pcre* with directive *haskell
-ghc_extra_flags*. Another flag *-XFlexibleInstances* passed into the directive
+ghc_extra_options*. Another flag *-XFlexibleInstances* passed into the directive
 allows declaration of *instance UrlDecodable String*. Class *UrlDecodable*
 provides function *doURLDecode* for decoding strings and byte strings that was
 adopted from [here](http://www.rosettacode.org/wiki/URL_decoding#Haskell). Byte
@@ -380,7 +380,7 @@ NGX_EXPORT_HANDLER (fromFile)
 ```
 
 (to make it compile another option *-XTemplateHaskell* must be added into the
-directive *haskell ghc_extra_flags* and the module *Data.FileEmbed* must be
+directive *haskell ghc_extra_options* and the module *Data.FileEmbed* must be
 imported too). Now with a new location
 
 ```nginx
@@ -479,14 +479,15 @@ i.e. string literals like *"File not found"#*, *"text/plain"#* and those
 embedded by the *Data.FileEmbed*, otherwise the nasty things may happen! Literal
 strings that end with *hashes* (*#*) are actually addresses of compiled static
 byte arrays that do not change during runtime. To enable the hash literals
-option *-XMagicHash* must be added into the directive *haskell ghc_extra_flags*.
-Working on such a low level requires using functions *unsafePackAddressLen* and
-*unsafePerformIO* from modules *Data.ByteString.Unsafe* and *System.IO.Unsafe*
-respectively (in this example *unsafePerformIO* can be safely replaced with the
-fastest and the unsafest *IO unwrapper* *accursedUnutterablePerformIO* from
-module *Data.ByteString.Internal*). Minimum requirements for using static byte
-arrays in the module *Data.FileEmbed* are: *file-embed* version *0.0.7* and
-*Template Haskell* version *2.5.0* (bundled with *ghc* since version *7.0.1*).
+option *-XMagicHash* must be added into the directive *haskell
+ghc_extra_options*. Working on such a low level requires using functions
+*unsafePackAddressLen* and *unsafePerformIO* from modules
+*Data.ByteString.Unsafe* and *System.IO.Unsafe* respectively (in this example
+*unsafePerformIO* can be safely replaced with the fastest and the unsafest *IO
+unwrapper* *accursedUnutterablePerformIO* from module
+*Data.ByteString.Internal*). Minimum requirements for using static byte arrays
+in the module *Data.FileEmbed* are: *file-embed* version *0.0.7* and *Template
+Haskell* version *2.5.0* (bundled with *ghc* since version *7.0.1*).
 
 The unsafe content handler implementation from the above example can be found in
 file [test/tsung/nginx-static.conf](test/tsung/nginx-static.conf).
@@ -787,7 +788,7 @@ producing a single source file that contains a *standalone* module with name
 haskell code in the nginx configuration file, of which the most important is
 inability to use haskell *file-header* pragmas like *LANGUAGE* and
 *OPTIONS_GHC*. However this particular limitation can be worked around with
-*-X...* options in directive *haskell ghc_extra_flags*. Standalone module
+*-X...* options in directive *haskell ghc_extra_options*. Standalone module
 wrapping approach also brings ghc extensions *ForeignFunctionInterface*, *CPP*
 and *ViewPatterns* into scope of the user's haskell code. Building the module
 from scratch for later loading with directive *haskell load* is also difficult.
@@ -844,7 +845,7 @@ repository](http://copr.fedorainfracloud.org/coprs/petersen/ghc-7.10.2/).
 
 First of all, building of such a library is only possible from command-line as
 soon as it requires tuning of some *ghc* options not available from directive
-*haskell ghc_extra_flags*. Therefore the haskell code from the configuration
+*haskell ghc_extra_options*. Therefore the haskell code from the configuration
 file must be extracted in a separate source file, say
 *NgxHaskellUserRuntime.hs*. Here it is.
 
