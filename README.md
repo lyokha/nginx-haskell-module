@@ -754,14 +754,14 @@ You can find all the examples shown here in file
 Miscellaneous nginx directives
 ------------------------------
 
-- *haskell_var_nocacheable ``<list>``* --- Makes variables in the *<list>*
+- *haskell_var_nocacheable ``<list>``* --- Makes variables in the *``<list>``*
   no cacheable between internal redirections but cacheable inside a single
   redirection. Accepts all types of variables, not only defined with directives
   from this module, however foreign variables are not guaranteed to use cache
   within a single redirection.
 
 - *haskell_var_compensate_uri_changes ``<list>``* --- Makes variables in the
-  *<list>* compensate decrement of nginx internal *uri* counter on every
+  *``<list>``* compensate decrement of nginx internal *uri* counter on every
   internal redirection thus making it possible to enjoy unlimited redirection
   cycles. Accepts only variables defined with directive *haskell_run*.
 
@@ -769,8 +769,8 @@ The two directives above make internal redirections with *error_page*
 *Turing-complete* computations by allowing potentially infinite location loops
 with a no-cacheable condition test variable.
 
-- *haskell rts_options ``<list>``* --- Passes options from the *<list>* to the
-  haskell *RTS* when a worker starts.
+- *haskell rts_options ``<list>``* --- Passes options from the *``<list>``* to
+  the haskell *RTS* when a worker starts.
 
 Reloading of haskell code and static content
 --------------------------------------------
