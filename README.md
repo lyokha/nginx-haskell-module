@@ -738,10 +738,10 @@ Put locations for showing data collected by the services and we are done.
 ```
 
 Complex scenarios may require synchronous access to handlers with side effects.
-For example it could be an ad-hoc *error_page* redirection cycle: asynchronous
-handlers do not suit here at all because they run only at the early phases of a
-request. For such cases another handler *NGX_EXPORT_IOY_Y* may appear useful.
-Below is an example of a toy synchronous handler declaration.
+For example it could be an ad-hoc *error_page* redirection loop: asynchronous
+handlers do not suit here very well. For such cases another handler
+*NGX_EXPORT_IOY_Y* may appear useful. Below is an example of a toy synchronous
+handler declaration.
 
 ```haskell
 getIOValue = const $ return $ C8L.pack "HELLO WORLD!"
@@ -754,23 +754,23 @@ You can find all the examples shown here in file
 Miscellaneous nginx directives
 ------------------------------
 
-- *haskell_var_nocacheable ``<list>``* --- Makes variables in the *``<list>``*
-  no cacheable between internal redirections but cacheable inside a single
-  redirection. Accepts all types of variables, not only defined with directives
-  from this module, however foreign variables are not guaranteed to use cache
-  within a single redirection.
+- *haskell_var_nocacheable ``<list>``* &mdash; Makes variables in the
+  *``<list>``* no cacheable between internal redirections but cacheable inside a
+  single redirection. Accepts all types of variables, not only defined with
+  directives from this module, however foreign variables are not guaranteed to
+  use cache within a single redirection.
 
-- *haskell_var_compensate_uri_changes ``<list>``* --- Makes variables in the
+- *haskell_var_compensate_uri_changes ``<list>``* &mdash; Makes variables in the
   *``<list>``* compensate decrement of nginx internal *uri* counter on every
   internal redirection thus making it possible to enjoy unlimited redirection
-  cycles. Accepts only variables defined with directive *haskell_run*.
+  loops. Accepts only variables defined with directive *haskell_run*.
 
 The two directives above make internal redirections with *error_page*
 *Turing-complete* computations by allowing potentially infinite location loops
 with a no-cacheable condition test variable.
 
-- *haskell rts_options ``<list>``* --- Passes options from the *``<list>``* to
-  the haskell *RTS* when a worker starts.
+- *haskell rts_options ``<list>``* &mdash; Passes options from the *``<list>``*
+  to the haskell *RTS* when a worker starts.
 
 Reloading of haskell code and static content
 --------------------------------------------
