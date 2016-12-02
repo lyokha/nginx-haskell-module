@@ -772,6 +772,9 @@ with a no-cacheable condition test variable.
 - *haskell rts_options ``<list>``* &mdash; Passes options from the *``<list>``*
   to the haskell *RTS* when a worker starts.
 
+All the three directives above are allowed only in the *http* clause of the
+nginx configuration.
+
 Reloading of haskell code and static content
 --------------------------------------------
 
