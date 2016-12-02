@@ -772,7 +772,8 @@ ngx_http_haskell_init(ngx_conf_t *cf)
 static void *
 ngx_http_haskell_create_main_conf(ngx_conf_t *cf)
 {
-    ngx_http_haskell_main_conf_t  *mcf;
+    ngx_http_haskell_main_conf_t   *mcf;
+    char                          **arg;
 
     mcf = ngx_pcalloc(cf->pool, sizeof(ngx_http_haskell_main_conf_t));
     if (mcf == NULL) {
@@ -793,12 +794,17 @@ ngx_http_haskell_create_main_conf(ngx_conf_t *cf)
     }
 
     if (ngx_array_init(&mcf->rts_options, cf->pool, 1,
-                       sizeof(char **)) != NGX_OK
-        || ngx_array_push(&mcf->rts_options) == NULL)
+                       sizeof(char **)) != NGX_OK)
     {
         return NULL;
     }
-    ((char **) mcf->rts_options.elts)[0] = "NgxHaskellUserRuntime";
+
+    arg = ngx_array_push(&mcf->rts_options);
+    if (arg == NULL) {
+        return NULL;
+    }
+
+    *arg = "NgxHaskellUserRuntime";
 
     return mcf;
 }
@@ -1153,7 +1159,7 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             len += value[i].len;
         }
         mcf->ghc_extra_options.len = len;
-        mcf->ghc_extra_options.data = ngx_pnalloc(cf->pool, len + 1);
+        mcf->ghc_extra_options.data = ngx_pnalloc(cf->pool, len);
         if (mcf->ghc_extra_options.data == NULL) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                     "failed to allocate memory for ghc extra options");
@@ -1161,10 +1167,10 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
         len = 0;
         for (i = 2; (ngx_uint_t) i < cf->args->nelts; i++) {
+            ngx_memcpy(mcf->ghc_extra_options.data + len++, " ", 1);
             ngx_memcpy(mcf->ghc_extra_options.data + len, value[i].data,
                        value[i].len);
             len += value[i].len;
-            ngx_memcpy(mcf->ghc_extra_options.data + len++, " ", 1);
         }
 
         return NGX_CONF_OK;
@@ -1280,8 +1286,7 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     ngx_memcpy(mcf->lib_path.data, value[idx].data, value[idx].len - 3);
-    ngx_memcpy(mcf->lib_path.data + value[idx].len - 3, ".so", 3);
-    mcf->lib_path.data[value[idx].len] = '\0';
+    ngx_memcpy(mcf->lib_path.data + value[idx].len - 3, ".so", 4);
 
     if (load) {
         if (ngx_file_info(mcf->lib_path.data, &lib_info) == NGX_FILE_ERROR) {
@@ -1411,7 +1416,7 @@ ngx_http_haskell_compile(ngx_conf_t *cf, void *conf, ngx_str_t source_name)
     rtslib = mcf->compile_mode == ngx_http_haskell_compile_mode_threaded ?
             ghc_rtslib_thr : ghc_rtslib;
     if (mcf->ghc_extra_options.len > 0) {
-        extra_len = mcf->ghc_extra_options.len + 1;
+        extra_len = mcf->ghc_extra_options.len;
     }
     if (mcf->wrap_mode == ngx_http_haskell_module_wrap_mode_modular) {
         th_len = template_haskell_option.len;
@@ -1432,17 +1437,14 @@ ngx_http_haskell_compile(ngx_conf_t *cf, void *conf, ngx_str_t source_name)
                rtslib.data, rtslib.len);
     ngx_memcpy(compile_cmd + compile_cmd_len + mcf->lib_path.len + rtslib.len,
                template_haskell_option.data, th_len);
-    ngx_memcpy(compile_cmd + compile_cmd_len + mcf->lib_path.len + rtslib.len
-               + th_len, " ", 1);
-    passed_len = compile_cmd_len + mcf->lib_path.len + rtslib.len + th_len + 1;
+    passed_len = compile_cmd_len + mcf->lib_path.len + rtslib.len + th_len;
     if (extra_len > 0) {
         ngx_memcpy(compile_cmd + passed_len,
                    mcf->ghc_extra_options.data, mcf->ghc_extra_options.len);
-        ngx_memcpy(compile_cmd + passed_len + mcf->ghc_extra_options.len,
-                   " ", 1);
         passed_len += extra_len;
     }
-    ngx_memcpy(compile_cmd + passed_len, source_name.data, source_name.len);
+    ngx_memcpy(compile_cmd + passed_len, " ", 1);
+    ngx_memcpy(compile_cmd + passed_len + 1, source_name.data, source_name.len);
     compile_cmd[full_len - 1] = '\0';
 
     if (system(compile_cmd) != 0) {
