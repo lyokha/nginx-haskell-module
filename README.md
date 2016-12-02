@@ -740,7 +740,7 @@ Put locations for showing data collected by the services and we are done.
 Complex scenarios may require synchronous access to handlers with side effects.
 For example it could be an ad-hoc *error_page* redirection loop: asynchronous
 handlers do not suit here very well. For such cases another handler
-*NGX_EXPORT_IOY_Y* may appear useful. Below is an example of a toy synchronous
+*NGX_EXPORT_IOY_Y* may appear useful. Below is a toy example of a synchronous
 handler declaration.
 
 ```haskell
