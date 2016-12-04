@@ -1032,8 +1032,9 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
     ngx_http_variable_t               *cmvars;
     ngx_uint_t                         found;
 
-    if (ngx_process == NGX_PROCESS_HELPER)
+    if (ngx_process == NGX_PROCESS_HELPER) {
         return NGX_OK;
+    }
 
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
     if (mcf == NULL || !mcf->code_loaded) {
@@ -1100,8 +1101,9 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
 static void
 ngx_http_haskell_exit_worker(ngx_cycle_t *cycle)
 {
-    if (ngx_process == NGX_PROCESS_HELPER)
+    if (ngx_process == NGX_PROCESS_HELPER) {
         return;
+    }
 
     ngx_http_haskell_unload(cycle);
 
@@ -1183,8 +1185,7 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                     "directive haskell rts_options was already set");
             return NGX_CONF_ERROR;
         }
-        if (ngx_array_push_n(&mcf->rts_options, cf->args->nelts - 1) == NULL)
-        {
+        if (ngx_array_push_n(&mcf->rts_options, cf->args->nelts - 1) == NULL) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                     "failed to allocate memory for ghc RTS options");
             return NGX_CONF_ERROR;
@@ -1210,8 +1211,7 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    if (value[2].len == 8 && ngx_strncmp(value[2].data, "threaded", 8) == 0)
-    {
+    if (value[2].len == 8 && ngx_strncmp(value[2].data, "threaded", 8) == 0) {
         has_threaded = 1;
     }
 
@@ -2114,8 +2114,7 @@ ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                                    "declared as a variable handler", &value[1]);
                 return NGX_CONF_ERROR;
             }
-            if (handlers[i].unsafe != unsafe)
-            {
+            if (handlers[i].unsafe != unsafe) {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                    "haskell handler \"%V\" was already "
                                    "declared with a different unsafety "
