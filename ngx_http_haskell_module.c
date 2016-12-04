@@ -1183,7 +1183,7 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                     "directive haskell rts_options was already set");
             return NGX_CONF_ERROR;
         }
-        if (ngx_array_push_n(&mcf->rts_options, cf->args->nelts) == NULL)
+        if (ngx_array_push_n(&mcf->rts_options, cf->args->nelts - 1) == NULL)
         {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                     "failed to allocate memory for ghc RTS options");
@@ -1194,7 +1194,6 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         for (i = 2; (ngx_uint_t) i < cf->args->nelts; i++) {
             rts_options[i] = (char *) value[i].data;
         }
-        rts_options[cf->args->nelts] = "-RTS";
 
         return NGX_CONF_OK;
 
