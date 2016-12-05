@@ -1126,12 +1126,6 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     char                          **rts_options;
     ngx_int_t                       len;
 
-    if (mcf->code_loaded) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "only one haskell source code block is allowed");
-        return NGX_CONF_ERROR;
-    }
-
     value = cf->args->elts;
 
     if (value[1].len == 7
@@ -1151,6 +1145,12 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     } else if (value[1].len == 17
                && ngx_strncmp(value[1].data, "ghc_extra_options", 17) == 0)
     {
+        if (mcf->code_loaded) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                    "directive haskell ghc_extra_options must precede "
+                    "directives haskell compile / load");
+            return NGX_CONF_ERROR;
+        }
         if (mcf->ghc_extra_options.len > 0) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                     "directive haskell ghc_extra_options was already set");
@@ -1201,6 +1201,12 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     } else {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                     "unknown haskell directive \"%V\"", &value[1]);
+        return NGX_CONF_ERROR;
+    }
+
+    if (mcf->code_loaded) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "only one haskell source code block is allowed");
         return NGX_CONF_ERROR;
     }
 
@@ -1295,8 +1301,7 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 return NGX_CONF_ERROR;
             }
             load = 0;
-        }
-        else {
+        } else {
             if (has_threaded) {
                 ngx_conf_log_error(NGX_LOG_NOTICE, cf, 0,
                         "haskell library exist but asked to be compiled as "
