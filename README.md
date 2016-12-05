@@ -15,6 +15,7 @@ Table of contents
 - [Reloading of haskell code and static content](#reloading-of-haskell-code-and-static-content)
 - [Wrapping haskell code organization](#wrapping-haskell-code-organization)
 - [Static linkage against basic haskell libraries](#static-linkage-against-basic-haskell-libraries)
+- [Debugging and tracing of haskell code](#debugging-and-tracing-of-haskell-code) 
 - [Some facts about efficiency](#some-facts-about-efficiency)
 - [Some facts about exceptions](#some-facts-about-exceptions)
 - [Troubleshooting](#troubleshooting)
@@ -1121,6 +1122,36 @@ dependent libraries and *ngx-export*. Values of *ipid* must be extracted from
 system packages because different values will cause loading of the system
 packages in place of their built counterparts, and consequently symbol
 relocation errors when linking the final library.
+
+Debugging and tracing of haskell code
+-------------------------------------
+
+For tracing run of the haskell code and further analyzing the event log in
+*threadscope* or a similar tool, the user haskell library must be compiled with
+flag *-eventlog* and linked against a *debug* variant of the haskell *RTS*
+library. This is only available with the *modular* build approach. Say we have
+haskell source code with asynchronous tasks written in file *ngx_haskell.hs*
+that must be compiled into library */tmp/ngx_haskell.so*. Using asynchronous
+tasks means that we must use *threaded* RTS library (*libHSrts_thr_debug*) and
+*ghc* command-line will look as follows.
+
+```ShellSession
+$ ghc -O2 -dynamic -shared -fPIC -lHSrts_thr_debug-ghc$(ghc --numeric-version) ngx_haskell.hs -o /tmp/ngx_haskell.so -fforce-recomp -eventlog
+```
+
+Before running nginx we must make sure that nginx workers are allowed to write
+the event log into *current working directory* as there is no option for setting
+a specific path to it. Normally nginx worker's owner is set to be *nobody*. In
+modern Linux distributions there is a good promiscuous directory which suits
+well for *nobody*: */tmp*. Running nginx from command-line in directory */tmp*
+
+```ShellSession
+# cd /tmp
+# nginx -c /absolute/path/to/nginx.conf
+```
+
+and making requests that involve haskell handlers will create event log file
+*/tmp/NgxHaskellUserRuntime.eventlog* which can be analyzed by *threadscope*.
 
 Some facts about efficiency
 ---------------------------
