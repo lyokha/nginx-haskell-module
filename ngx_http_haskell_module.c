@@ -487,6 +487,7 @@ typedef struct {
     ngx_http_haskell_module_wrap_mode_e        wrap_mode;
     ngx_str_t                                  ghc_extra_options;
     ngx_array_t                                rts_options;
+    ngx_array_t                                program_options;
     ngx_str_t                                  lib_path;
     ngx_array_t                                handlers;
     void                                      *dl_handle;
@@ -772,8 +773,7 @@ ngx_http_haskell_init(ngx_conf_t *cf)
 static void *
 ngx_http_haskell_create_main_conf(ngx_conf_t *cf)
 {
-    ngx_http_haskell_main_conf_t   *mcf;
-    char                          **arg;
+    ngx_http_haskell_main_conf_t  *mcf;
 
     mcf = ngx_pcalloc(cf->pool, sizeof(ngx_http_haskell_main_conf_t));
     if (mcf == NULL) {
@@ -792,19 +792,6 @@ ngx_http_haskell_create_main_conf(ngx_conf_t *cf)
     {
         return NULL;
     }
-
-    if (ngx_array_init(&mcf->rts_options, cf->pool, 1,
-                       sizeof(char **)) != NGX_OK)
-    {
-        return NULL;
-    }
-
-    arg = ngx_array_push(&mcf->rts_options);
-    if (arg == NULL) {
-        return NULL;
-    }
-
-    *arg = "NgxHaskellUserRuntime";
 
     return mcf;
 }
@@ -1123,7 +1110,7 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_uint_t                      load = 0, load_existing = 0;
     ngx_uint_t                      base_name_start = 0;
     ngx_uint_t                      has_wrap_mode = 0, has_threaded = 0;
-    char                          **rts_options;
+    char                          **options;
     ngx_int_t                       len;
 
     value = cf->args->elts;
@@ -1185,15 +1172,42 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                     "directive haskell rts_options was already set");
             return NGX_CONF_ERROR;
         }
-        if (ngx_array_push_n(&mcf->rts_options, cf->args->nelts - 1) == NULL) {
+        if (ngx_array_init(&mcf->rts_options, cf->pool, cf->args->nelts - 2,
+                           sizeof(char *)) != NGX_OK
+            || ngx_array_push_n(&mcf->rts_options, cf->args->nelts - 2)
+            == NULL)
+        {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                     "failed to allocate memory for ghc RTS options");
             return NGX_CONF_ERROR;
         }
-        rts_options = mcf->rts_options.elts;
-        rts_options[1] = "+RTS";
+        options = mcf->rts_options.elts;
         for (i = 2; (ngx_uint_t) i < cf->args->nelts; i++) {
-            rts_options[i] = (char *) value[i].data;
+            options[i - 2] = (char *) value[i].data;
+        }
+
+        return NGX_CONF_OK;
+
+    } else if (value[1].len == 15
+               && ngx_strncmp(value[1].data, "program_options", 15) == 0)
+    {
+        if (mcf->program_options.nelts > 1) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                    "directive haskell program_options was already set");
+            return NGX_CONF_ERROR;
+        }
+        if (ngx_array_init(&mcf->program_options, cf->pool, cf->args->nelts - 2,
+                           sizeof(char *)) != NGX_OK
+            || ngx_array_push_n(&mcf->program_options, cf->args->nelts - 2)
+            == NULL)
+        {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                    "failed to allocate memory for program options");
+            return NGX_CONF_ERROR;
+        }
+        options = mcf->program_options.elts;
+        for (i = 2; (ngx_uint_t) i < cf->args->nelts; i++) {
+            options[i - 2] = (char *) value[i].data;
         }
 
         return NGX_CONF_OK;
@@ -1468,8 +1482,8 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     ngx_http_haskell_main_conf_t   *mcf;
     ngx_http_haskell_handler_t     *handlers;
     char                           *dl_error;
-    char                          **rts_options = NULL;
-    int                             rts_options_n;
+    char                          **argv = NULL;
+    int                             argc;
     char                           *hs_init;
 
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
@@ -1491,8 +1505,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         return NGX_ERROR;
     }
 
-    rts_options_n = mcf->rts_options.nelts;
-    hs_init = rts_options_n > 1 ? "hs_init_with_rtsopts" : "hs_init";
+    hs_init = mcf->rts_options.nelts > 0 ? "hs_init_with_rtsopts" : "hs_init";
     mcf->hs_init = (void (*)(int *, char ***)) dlsym(mcf->dl_handle, hs_init);
     dl_error = dlerror();
     if (dl_error != NULL) {
@@ -1528,17 +1541,29 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         return NGX_ERROR;
     }
 
-    rts_options = ngx_alloc(rts_options_n * sizeof(char *), cycle->log);
-    if (rts_options == NULL) {
+    argc = mcf->program_options.nelts + 1;
+    if (mcf->rts_options.nelts > 0) {
+        argc += mcf->rts_options.nelts + 1;
+    }
+    argv = ngx_alloc(argc * sizeof(char *), cycle->log);
+    if (argv == NULL) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                      "failed to allocate artifacts for ghc RTS options");
+                      "failed to allocate artifacts for haskell init options");
         return NGX_ERROR;
     }
-    for (i = 0; i < (ngx_uint_t) rts_options_n; i++) {
-        rts_options[i] = ((char **) mcf->rts_options.elts)[i];
+    argv[0] = "NgxHaskellUserRuntime";
+    for (i = 0; i < mcf->program_options.nelts; i++) {
+        argv[i + 1] = ((char **) mcf->program_options.elts)[i];
     }
-    mcf->hs_init(&rts_options_n, &rts_options);
-    ngx_free(rts_options);
+    if (mcf->rts_options.nelts > 0) {
+        argv[mcf->program_options.nelts + 1] = "+RTS";
+        for (i = 0; i < mcf->rts_options.nelts; i++) {
+            argv[mcf->program_options.nelts + 2 + i] =
+                    ((char **) mcf->rts_options.elts)[i];
+        }
+    }
+    mcf->hs_init(&argc, &argv);
+    ngx_free(argv);
     mcf->hs_add_root(mcf->init_HsModule);
 
     handlers = mcf->handlers.elts;

@@ -773,8 +773,13 @@ with a no-cacheable condition test variable.
 - *haskell rts_options ``<list>``* &mdash; Passes options from the *``<list>``*
   to the haskell *RTS* when a worker starts.
 
-All the three directives above are allowed only in the *http* clause of the
-nginx configuration.
+- *haskell program_options ``<list>``* &mdash; Passes options from the
+  *``<list>``* as program options. This is just another way to pass simple
+  static data to the user haskell library. Inside the library data can be
+  accessed with *cmdargs* or other tools that work with program options.
+
+All the four directives above are allowed only in the *http* clause of the nginx
+configuration.
 
 Reloading of haskell code and static content
 --------------------------------------------
