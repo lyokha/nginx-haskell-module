@@ -1484,7 +1484,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     char                           *dl_error;
     char                          **argv = NULL;
     int                             argc;
-    char                           *hs_init;
+    char                           *hs_init = "hs_init";
 
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
     if (mcf == NULL || !mcf->code_loaded) {
@@ -1505,7 +1505,18 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         return NGX_ERROR;
     }
 
-    hs_init = mcf->rts_options.nelts > 0 ? "hs_init_with_rtsopts" : "hs_init";
+    if (mcf->rts_options.nelts > 0) {
+        hs_init = "hs_init_with_rtsopts";
+    } else {
+        for (i = 0; i < mcf->program_options.nelts; i++) {
+            if (ngx_strcmp(((char **) mcf->program_options.elts)[i], "+RTS")
+                == 0)
+            {
+                hs_init = "hs_init_with_rtsopts";
+                break;
+            }
+        }
+    }
     mcf->hs_init = (void (*)(int *, char ***)) dlsym(mcf->dl_handle, hs_init);
     dl_error = dlerror();
     if (dl_error != NULL) {
