@@ -81,8 +81,10 @@ let name = mkName "exportType" in sequence
 
 ngxExport' :: (Name -> Q Exp) -> Name -> Name -> Q Type -> Name -> Q [Dec]
 ngxExport' m e h t f = sequence
-    [funD nameFt $ body [|exportType $efVar|],
-     ForeignD . ExportF CCall ftName nameFt <$> [t|IO CInt|],
+    [sigD nameFt typeFt,
+     funD nameFt $ body [|exportType $efVar|],
+     ForeignD . ExportF CCall ftName nameFt <$> typeFt,
+     sigD nameF t,
      funD nameF $ body [|$hVar $efVar|],
      ForeignD . ExportF CCall fName nameF <$> t
     ]
@@ -92,6 +94,7 @@ ngxExport' m e h t f = sequence
           nameF  = mkName fName
           ftName = "type_" ++ fName
           nameFt = mkName ftName
+          typeFt = [t|IO CInt|]
           body b = [clause [] (normalB b) []]
 
 ngxExport :: Name -> Name -> Q Type -> Name -> Q [Dec]
