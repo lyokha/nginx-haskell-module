@@ -128,8 +128,7 @@ fromMd (C8.unpack -> x) = uncurry (, "text/html", ) $
     where writeHtml = C8L.pack . writeHtmlString defHtmlWriterOptions
           writeError = writeHtml . doc . para . singleton . Str
           defHtmlWriterOptions = def
-              { writerStandalone = True,
-                writerTemplate = "<html>\\n<body>\\n$body$</body></html>" }
+              { writerTemplate = Just "<html>\\n<body>\\n$body$</body></html>" }
 NGX_EXPORT_HANDLER (fromMd)
 
 toYesNo "0" = "No"
