@@ -1262,6 +1262,10 @@ Troubleshooting
 See also
 --------
 
-[*An article*](http://lin-techdet.blogspot.com/2015/12/nginx-module-to-enable-haskell-binding.html)
-about the module in my blog.
+There are two articles about the module in my blog:
+
+1. [*nginx module to enable haskell binding to nginx configuration
+files*](http://lin-techdet.blogspot.com/2015/12/nginx-module-to-enable-haskell-binding.html).
+2. [*nginx-haskell-module: labeled media routing
+example*](http://lin-techdet.blogspot.com/2017/01/nginx-haskell-module-labeled-media.html).
 
