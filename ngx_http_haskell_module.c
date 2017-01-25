@@ -2361,13 +2361,11 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
     code_vars = lcf->code_vars.elts;
 
     for (i = 0; i < lcf->code_vars.nelts; i++) {
-        if (*index != code_vars[i].index) {
-            continue;
+        if (*index == code_vars[i].index) {
+            found_idx = i;
+            break;
         }
-        found_idx = i;
-        break;
     }
-
     if (found_idx == NGX_ERROR) {
         return NGX_ERROR;
     }
@@ -2561,13 +2559,11 @@ ngx_http_haskell_run_async_handler(ngx_http_request_t *r,
     async_data_elts = ctx->async_data.elts;
 
     for (i = 0; i < ctx->async_data.nelts; i++) {
-        if (*index != async_data_elts[i].index) {
-            continue;
+        if (*index == async_data_elts[i].index) {
+            found_idx = i;
+            break;
         }
-        found_idx = i;
-        break;
     }
-
     if (found_idx == NGX_ERROR) {
         return NGX_ERROR;
     }
@@ -2621,13 +2617,11 @@ ngx_http_haskell_run_service_handler(ngx_http_request_t *r,
     service_code_vars = mcf->service_code_vars.elts;
 
     for (i = 0; i < mcf->service_code_vars.nelts; i++) {
-        if (*index != service_code_vars[i].data->index) {
-            continue;
+        if (*index == service_code_vars[i].data->index) {
+            found_idx = i;
+            break;
         }
-        found_idx = i;
-        break;
     }
-
     if (found_idx == NGX_ERROR) {
         return NGX_ERROR;
     }
@@ -2893,12 +2887,11 @@ ngx_http_haskell_service_async_event(ngx_event_t *ev)
     service_var_ignore_empty = mcf->service_var_ignore_empty.elts;
 
     for (i = 0; i < mcf->service_var_ignore_empty.nelts; i++) {
-        if (service_var_ignore_empty[i].index != service_code_var->data->index)
+        if (service_var_ignore_empty[i].index == service_code_var->data->index)
         {
-            continue;
+            ignore_empty = 1;
+            break;
         }
-        ignore_empty = 1;
-        break;
     }
 
     if (ignore_empty && service_code_var->future_async_data.result.len == 0) {
