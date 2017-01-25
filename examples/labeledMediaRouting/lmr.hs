@@ -219,10 +219,12 @@ queryEndpoints (C8.unpack -> conf) firstRun = do
         newRoutes = toRoutes allbd
     atomicWriteIORef allBackends allbd
     oldRoutes <- fromRRRoutes . snd . snd <$> readIORef routes
-    when (newRoutes /= oldRoutes) $ do
-        rr <- mkRRRoutes newRoutes
-        atomicModifyIORef routes $ \((a, _), o) -> ((o, (a + 2, rr)), ())
-    return $ encode newRoutes
+    if newRoutes == oldRoutes 
+        then return C8L.empty
+        else do
+            rr <- mkRRRoutes newRoutes
+            atomicModifyIORef routes $ \((a, _), o) -> ((o, (a + 2, rr)), ())
+            return $ encode newRoutes
     where query u =
               runKleisli $
                   arr id &&&

@@ -499,6 +499,7 @@ typedef struct {
     ngx_array_t                                service_code_vars;
     ngx_array_t                                var_nocacheable;
     ngx_array_t                                var_compensate_uri_changes;
+    ngx_array_t                                service_var_ignore_empty;
     ngx_uint_t                                 code_loaded:1;
     ngx_uint_t                                 has_async_tasks:1;
 } ngx_http_haskell_main_conf_t;
@@ -693,6 +694,12 @@ static ngx_command_t  ngx_http_haskell_module_commands[] = {
       0,
       NULL },
     { ngx_string("haskell_var_compensate_uri_changes"),
+      NGX_HTTP_MAIN_CONF|NGX_CONF_1MORE,
+      ngx_http_haskell_var_configure,
+      NGX_HTTP_MAIN_CONF_OFFSET,
+      0,
+      NULL },
+    { ngx_string("haskell_service_var_ignore_empty"),
       NGX_HTTP_MAIN_CONF|NGX_CONF_1MORE,
       ngx_http_haskell_var_configure,
       NGX_HTTP_MAIN_CONF_OFFSET,
@@ -1015,7 +1022,7 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
     ngx_uint_t                         i, j;
     ngx_http_haskell_main_conf_t      *mcf;
     ngx_http_core_main_conf_t         *cmcf;
-    ngx_http_haskell_var_handle_t     *vars, *vars_comp;
+    ngx_http_haskell_var_handle_t     *vars;
     ngx_http_variable_t               *cmvars;
     ngx_uint_t                         found;
 
@@ -1048,24 +1055,24 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
         }
         if (found == 0) {
             ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
-                    "variable \"%V\" was not declared", &vars[i]);
+                          "variable \"%V\" was not declared", &vars[i]);
         }
     }
 
-    vars_comp = mcf->var_compensate_uri_changes.elts;
+    vars = mcf->var_compensate_uri_changes.elts;
     for (i = 0; i < mcf->var_compensate_uri_changes.nelts; i++) {
         found = 0;
         for (j = 0; j < cmcf->variables.nelts; j++) {
-            if (vars_comp[i].name.len == cmvars[j].name.len
-                && ngx_strncmp(vars_comp[i].name.data, cmvars[j].name.data,
-                               vars_comp[i].name.len) == 0)
+            if (vars[i].name.len == cmvars[j].name.len
+                && ngx_strncmp(vars[i].name.data, cmvars[j].name.data,
+                               vars[i].name.len) == 0)
             {
                 if (cmvars[j].get_handler != ngx_http_haskell_run_handler) {
                     ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
                                   "variable \"%V\" has incompatible "
-                                  "get handler", &vars_comp[i].name);
+                                  "get handler", &vars[i].name);
                 } else {
-                    vars_comp[i].index = cmvars[j].index;
+                    vars[i].index = cmvars[j].index;
                 }
                 found = 1;
                 break;
@@ -1073,7 +1080,34 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
         }
         if (found == 0) {
             ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
-                    "variable \"%V\" was not declared", &vars_comp[i].name);
+                          "variable \"%V\" was not declared", &vars[i].name);
+        }
+    }
+
+    vars = mcf->service_var_ignore_empty.elts;
+    for (i = 0; i < mcf->service_var_ignore_empty.nelts; i++) {
+        found = 0;
+        for (j = 0; j < cmcf->variables.nelts; j++) {
+            if (vars[i].name.len == cmvars[j].name.len
+                && ngx_strncmp(vars[i].name.data, cmvars[j].name.data,
+                               vars[i].name.len) == 0)
+            {
+                if (cmvars[j].get_handler
+                    != ngx_http_haskell_run_service_handler)
+                {
+                    ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
+                                  "variable \"%V\" has incompatible "
+                                  "get handler", &vars[i].name);
+                } else {
+                    vars[i].index = cmvars[j].index;
+                }
+                found = 1;
+                break;
+            }
+        }
+        if (found == 0) {
+            ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
+                          "variable \"%V\" was not declared", &vars[i].name);
         }
     }
 
@@ -2238,6 +2272,11 @@ ngx_http_haskell_var_configure(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         == 0)
     {
         data = &mcf->var_compensate_uri_changes;
+    } else if (value[0].len == 32
+        && ngx_strncmp(value[0].data, "haskell_service_var_ignore_empty", 32)
+        == 0)
+    {
+        data = &mcf->service_var_ignore_empty;
     } else {
         return NGX_CONF_ERROR;
     }
@@ -2834,8 +2873,13 @@ ngx_http_haskell_async_event(ngx_event_t *ev)
 static void
 ngx_http_haskell_service_async_event(ngx_event_t *ev)
 {
+    ngx_uint_t                                 i;
     ngx_http_haskell_service_async_event_t    *hev = ev->data;
+
+    ngx_http_haskell_main_conf_t              *mcf;
     ngx_http_haskell_service_code_var_data_t  *service_code_var;
+    ngx_http_haskell_var_handle_t             *service_var_ignore_empty;
+    ngx_uint_t                                 ignore_empty = 0;
 
     service_code_var = hev->service_code_var;
     if (close(hev->s.fd) == -1) {
@@ -2844,8 +2888,26 @@ ngx_http_haskell_service_async_event(ngx_event_t *ev)
                       "was finished");
     }
 
-    ngx_free(service_code_var->async_data.result.data);
-    service_code_var->async_data = service_code_var->future_async_data;
+    mcf = ngx_http_cycle_get_module_main_conf(hev->cycle,
+                                              ngx_http_haskell_module);
+    service_var_ignore_empty = mcf->service_var_ignore_empty.elts;
+
+    for (i = 0; i < mcf->service_var_ignore_empty.nelts; i++) {
+        if (service_var_ignore_empty[i].index != service_code_var->data->index)
+        {
+            continue;
+        }
+        ignore_empty = 1;
+        break;
+    }
+
+    if (ignore_empty && service_code_var->future_async_data.result.len == 0) {
+        /* newCStringLen allocates memory even for zero size! */
+        ngx_free(service_code_var->future_async_data.result.data);
+    } else {
+        ngx_free(service_code_var->async_data.result.data);
+        service_code_var->async_data = service_code_var->future_async_data;
+    }
 
     ngx_http_haskell_run_service(hev->cycle, service_code_var, 0);
 }

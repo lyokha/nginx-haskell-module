@@ -769,6 +769,10 @@ The two directives above make internal redirections with *error_page*
 *Turing-complete* computations by allowing potentially infinite location loops
 with a no-cacheable condition test variable.
 
+- *haskell_service_var_ignore_empty ``<list>``* &mdash; Makes variables in the
+  *``<list>``* do not update when related services return empty strings. Accepts
+  only variables defined with directive *haskell_run_service*.
+
 - *haskell rts_options ``<list>``* &mdash; Passes options from the *``<list>``*
   to the haskell *RTS* when a worker starts.
 
@@ -777,7 +781,7 @@ with a no-cacheable condition test variable.
   static data to the user haskell library. Inside the library data can be
   accessed with *cmdargs* or other tools that work with program options.
 
-All the four directives above are allowed only in the *http* clause of the nginx
+All the five directives above are allowed only in the *http* clause of the nginx
 configuration.
 
 Reloading of haskell code and static content
