@@ -219,7 +219,7 @@ queryEndpoints (C8.unpack -> conf) firstRun = do
         newRoutes = toRoutes allbd
     atomicWriteIORef allBackends allbd
     oldRoutes <- fromRRRoutes . snd . snd <$> readIORef routes
-    if newRoutes == oldRoutes 
+    if newRoutes == oldRoutes && not firstRun
         then return C8L.empty
         else do
             rr <- mkRRRoutes newRoutes
