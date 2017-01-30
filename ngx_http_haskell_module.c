@@ -3254,7 +3254,7 @@ cb_unlock_and_run_service:
     service_code_vars = mcf->service_code_vars.elts;
     for (i = 0; i < mcf->service_code_vars.nelts; i++) {
         if (service_code_vars[i].data->index == service_code_var->data->index
-            && service_code_vars[i].cb)
+            && service_code_vars[i].cb && service_code_vars[i].event == NULL)
         {
             args = service_code_vars[i].data->args.elts;
             args[0].value.len = var->len;
