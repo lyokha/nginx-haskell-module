@@ -589,6 +589,7 @@ typedef struct {
     ngx_http_haskell_async_event_stub_t        s;
     ngx_cycle_t                               *cycle;
     ngx_http_haskell_service_code_var_data_t  *service_code_var;
+    ngx_uint_t                                 first_run;
 } ngx_http_haskell_service_async_event_t;
 
 
@@ -1940,6 +1941,7 @@ ngx_http_haskell_run_service(ngx_cycle_t *cycle,
     hev->s.fd = fd[0];
     hev->service_code_var = service_code_var;
     hev->cycle = cycle;
+    hev->first_run = service_first_run;
 
     event = ngx_pcalloc(cycle->pool, sizeof(ngx_event_t));
     if (event== NULL) {
@@ -3145,10 +3147,13 @@ ngx_http_haskell_service_async_event(ngx_event_t *ev)
     ngx_str_t                                 *var;
     u_char                                    *var_data;
     ngx_http_complex_value_t                  *args;
+    ngx_uint_t                                 first_run;
     ngx_uint_t                                 ignore_empty = 0;
     ngx_int_t                                  found_idx = NGX_ERROR;
 
     service_code_var = hev->service_code_var;
+    first_run = hev->first_run;
+
     if (close(hev->s.fd) == -1) {
         ngx_log_error(NGX_LOG_CRIT, cycle->log, ngx_errno,
                       "failed to close reading end of pipe after service task "
@@ -3199,9 +3204,10 @@ ngx_http_haskell_service_async_event(ngx_event_t *ev)
 
     shpool = (ngx_slab_pool_t *) mcf->shm_zone->shm.addr;
     shm_vars = shpool->data;
-    var = &shm_vars[found_idx].data.result;
 
     ngx_shmtx_lock(&shpool->mutex);
+
+    var = &shm_vars[found_idx].data.result;
 
     shm_vars[found_idx].data.error = service_code_var->async_data.error;
 
@@ -3270,7 +3276,8 @@ cb_unlock_and_run_service:
                  }
                  ngx_memcpy(args[0].value.data, var->data, var->len);
             }
-            ngx_http_haskell_run_service(cycle, &service_code_vars[i], 0);
+            ngx_http_haskell_run_service(cycle, &service_code_vars[i],
+                                         first_run);
         }
     }
 
