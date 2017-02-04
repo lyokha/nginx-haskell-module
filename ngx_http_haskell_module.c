@@ -560,7 +560,8 @@ typedef struct {
     ngx_http_haskell_async_data_t              async_data;
     ngx_event_t                               *event;
     ngx_fd_t                                   fd;
-    ngx_uint_t                                 cb;
+    ngx_uint_t                                 cb:1;
+    ngx_uint_t                                 noarg:1;
 } ngx_http_haskell_service_code_var_data_t;
 
 
@@ -685,7 +686,7 @@ static ngx_command_t  ngx_http_haskell_module_commands[] = {
       0,
       NULL },
     { ngx_string("haskell_service_var_update_callback"),
-      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE2,
+      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE23,
       ngx_http_haskell_run,
       NGX_HTTP_MAIN_CONF_OFFSET,
       0,
@@ -2061,6 +2062,7 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                     sizeof(ngx_http_haskell_service_code_var_data_t));
         service_code_var_data->data = code_var_data;
         service_code_var_data->cb = service_cb ? 1 : 0;
+        service_code_var_data->noarg = n_args > 0 ? 0 : 1;
     } else {
         code_var_data = ngx_array_push(&lcf->code_vars);
         if (code_var_data == NULL) {
@@ -3167,9 +3169,11 @@ ngx_http_haskell_service_async_event(ngx_event_t *ev)
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
 
     if (service_code_var->cb) {
-        args = service_code_var->data->args.elts;
-        ngx_free(args[0].value.data);
-        args[0].value.len = 0;
+        if (service_code_var->noarg) {
+            args = service_code_var->data->args.elts;
+            ngx_free(args[0].value.data);
+            args[0].value.len = 0;
+        }
         ngx_free(service_code_var->future_async_data.result.data);
         return;
     }
@@ -3262,19 +3266,21 @@ cb_unlock_and_run_service:
         if (service_code_vars[i].data->index == service_code_var->data->index
             && service_code_vars[i].cb && service_code_vars[i].event == NULL)
         {
-            args = service_code_vars[i].data->args.elts;
-            args[0].value.len = var->len;
-            args[0].value.data = NULL;
-            if (var->len > 0) {
-                 args[0].value.data = ngx_alloc(var->len, cycle->log);
-                 if (args[0].value.data == NULL) {
-                     ngx_log_error(NGX_LOG_CRIT, cycle->log, 0,
-                                   "failed to allocate memory for haskell "
-                                   "callback argument");
-                     args[0].value.len = 0;
-                     continue;
-                 }
-                 ngx_memcpy(args[0].value.data, var->data, var->len);
+            if (service_code_vars[i].noarg) {
+                args = service_code_vars[i].data->args.elts;
+                args[0].value.len = var->len;
+                args[0].value.data = NULL;
+                if (var->len > 0) {
+                     args[0].value.data = ngx_alloc(var->len, cycle->log);
+                     if (args[0].value.data == NULL) {
+                         ngx_log_error(NGX_LOG_CRIT, cycle->log, 0,
+                                       "failed to allocate memory for haskell "
+                                       "callback argument");
+                         args[0].value.len = 0;
+                         continue;
+                     }
+                     ngx_memcpy(args[0].value.data, var->data, var->len);
+                }
             }
             ngx_http_haskell_run_service(cycle, &service_code_vars[i],
                                          first_run);
