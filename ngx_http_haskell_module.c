@@ -3225,8 +3225,8 @@ ngx_http_haskell_service_async_event(ngx_event_t *ev)
     }
 
     if (var->len == service_code_var->async_data.result.len
-        && ngx_strncmp(var->data, service_code_var->async_data.result.data,
-                       var->len) == 0)
+        && ngx_memcmp(var->data, service_code_var->async_data.result.data,
+                      var->len) == 0)
     {
         goto unlock_and_run_service;
     }
