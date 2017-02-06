@@ -48,13 +48,13 @@ data Op = Read
 
 data Possession = Own
                 | Remote Destination
-                deriving (Generic, Read, Show, Eq, Ord)
+                deriving (Generic, Eq, Ord)
 instance ToJSON Possession
 instance ToJSONKey Possession
 
 data Mode = RW
           | RO
-          deriving (Generic, Read, Show, Eq, Ord)
+          deriving (Generic, Eq, Ord)
 instance FromJSON Mode
 instance ToJSON Mode
 
@@ -88,17 +88,17 @@ data TimeInterval = Hr Int
                   | Sec Int
                   | HrMin (Int, Int)
                   | MinSec (Int, Int)
-                  deriving (Read)
+                  deriving Read
 
 data Conf = Conf { updateInterval    :: TimeInterval
                  , blacklistInterval :: TimeInterval
                  , backends          :: (Url, [Destination])
                  , partners          :: (Url, [Destination])
-                 } deriving (Read)
+                 } deriving Read
 
 data BackendData = BackendData { timestamp :: Timestamp
                                , labels    :: Map Label LabelData
-                               } deriving (Generic, Show)
+                               } deriving Generic
 instance FromJSON BackendData
 instance ToJSON BackendData
 
@@ -107,7 +107,7 @@ type CollectedData = Map Possession PartnerData
 
 data LabelData = LabelData { mode :: Mode
                            , hint :: [Hint]
-                           } deriving (Generic, Show)
+                           } deriving Generic
 instance ToJSON LabelData
 instance FromJSON LabelData
 
