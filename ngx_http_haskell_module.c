@@ -555,43 +555,9 @@ typedef struct {
 
 
 typedef struct {
-    ngx_http_haskell_code_var_data_t          *data;
-    ngx_http_haskell_async_data_t              future_async_data;
-    ngx_http_haskell_async_data_t              async_data;
-    ngx_event_t                               *event;
-    ngx_fd_t                                   fd;
-    ngx_uint_t                                 cb:1;
-    ngx_uint_t                                 noarg:1;
-} ngx_http_haskell_service_code_var_data_t;
-
-
-typedef struct {
     ngx_array_t                                async_data;
     ngx_array_t                                var_nocacheable_cache;
 } ngx_http_haskell_ctx_t;
-
-
-typedef struct {
-    /* ngx_connection_t stub to allow use c->fd as event ident */
-    void                                      *data;
-    ngx_event_t                               *read;
-    ngx_event_t                               *write;
-    ngx_fd_t                                   fd;
-} ngx_http_haskell_async_event_stub_t;
-
-
-typedef struct {
-    ngx_http_haskell_async_event_stub_t        s;
-    ngx_http_request_t                        *r;
-} ngx_http_haskell_async_event_t;
-
-
-typedef struct {
-    ngx_http_haskell_async_event_stub_t        s;
-    ngx_cycle_t                               *cycle;
-    ngx_http_haskell_service_code_var_data_t  *service_code_var;
-    ngx_uint_t                                 first_run;
-} ngx_http_haskell_service_async_event_t;
 
 
 typedef struct {
@@ -612,6 +578,44 @@ typedef struct {
     ngx_http_haskell_async_data_t              data;
     time_t                                     modified;
 } ngx_http_haskell_shm_var_handle_t;
+
+
+typedef struct {
+    /* ngx_connection_t stub to allow use c->fd as event ident */
+    void                                             *data;
+    ngx_event_t                                      *read;
+    ngx_event_t                                      *write;
+    ngx_fd_t                                          fd;
+} ngx_http_haskell_async_event_stub_t;
+
+
+typedef struct {
+    ngx_http_haskell_async_event_stub_t               s;
+    ngx_http_request_t                               *r;
+} ngx_http_haskell_async_event_t;
+
+
+typedef struct {
+    ngx_http_haskell_async_event_stub_t               s;
+    ngx_cycle_t                                      *cycle;
+    struct ngx_http_haskell_service_code_var_data_s  *service_code_var;
+    ngx_uint_t                                        first_run;
+} ngx_http_haskell_service_async_event_t;
+
+
+struct ngx_http_haskell_service_code_var_data_s {
+    ngx_http_haskell_code_var_data_t                 *data;
+    ngx_http_haskell_async_data_t                     future_async_data;
+    ngx_http_haskell_async_data_t                     async_data;
+    ngx_event_t                                       event;
+    ngx_http_haskell_service_async_event_t            hev;
+    ngx_uint_t                                        cb:1;
+    ngx_uint_t                                        noarg:1;
+    ngx_uint_t                                        running:1;
+};
+
+typedef struct ngx_http_haskell_service_code_var_data_s
+    ngx_http_haskell_service_code_var_data_t;
 
 
 static char *ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
@@ -1890,19 +1894,26 @@ ngx_http_haskell_stop_services(ngx_cycle_t *cycle)
     service_code_vars = mcf->service_code_vars.elts;
 
     for (i = 0; i < mcf->service_code_vars.nelts; i++) {
-        if (service_code_vars[i].event != NULL) {
-            if (ngx_del_event(service_code_vars[i].event, NGX_READ_EVENT, 0)
-                != NGX_OK)
-            {
-                ngx_log_error(NGX_LOG_CRIT, cycle->log, 0,
-                              "failed to delete event while stopping service");
+        if (!service_code_vars[i].running) {
+            continue;
+        }
+        ngx_free(service_code_vars[i].async_data.result.data);
+        if (service_code_vars[i].hev.s.fd == NGX_INVALID_FILE) {
+            if (service_code_vars[i].event.timer_set) {
+                ngx_del_timer(&service_code_vars[i].event);
             }
-            if (close(service_code_vars[i].fd) == -1) {
-                ngx_log_error(NGX_LOG_CRIT, cycle->log, ngx_errno,
-                              "failed to close reading end of pipe while "
-                              "stopping service");
-            }
-            ngx_free(service_code_vars[i].async_data.result.data);
+            continue;
+        }
+        if (ngx_del_event(&service_code_vars[i].event, NGX_READ_EVENT, 0)
+            != NGX_OK)
+        {
+            ngx_log_error(NGX_LOG_CRIT, cycle->log, 0,
+                          "failed to delete event while stopping service");
+        }
+        if (close(service_code_vars[i].hev.s.fd) == -1) {
+            ngx_log_error(NGX_LOG_CRIT, cycle->log, ngx_errno,
+                          "failed to close reading end of pipe while "
+                          "stopping service");
         }
     }
 }
@@ -1921,51 +1932,43 @@ ngx_http_haskell_run_service(ngx_cycle_t *cycle,
     ngx_str_t                                  arg1;
     ngx_fd_t                                   fd[2];
 
-    service_code_var->event = NULL;
+    event = &service_code_var->event;
+    hev = &service_code_var->hev;
 
-    if (pipe2(fd, O_NONBLOCK) == -1) {
-        ngx_log_error(NGX_LOG_ERR, cycle->log, ngx_errno,
-                      "failed to create pipe for "
-                      "future async result, skipping IO task");
-        return NGX_ERROR;
-    }
-
-    hev = ngx_pcalloc(cycle->pool,
-                      sizeof(ngx_http_haskell_service_async_event_t));
-    if (hev == NULL) {
-        ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
-                      "failed to allocate memory for "
-                      "future async result, skipping IO task");
-        close_pipe(cycle->log, fd);
-        return NGX_ERROR;
-    }
-    hev->s.fd = fd[0];
-    hev->service_code_var = service_code_var;
-    hev->cycle = cycle;
-    hev->first_run = service_first_run;
-
-    event = ngx_pcalloc(cycle->pool, sizeof(ngx_event_t));
-    if (event== NULL) {
-        ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
-                      "failed to allocate memory for "
-                      "future async result, skipping IO task");
-        close_pipe(cycle->log, fd);
-        return NGX_ERROR;
-    }
+    ngx_memzero(event, sizeof(ngx_event_t));
     event->data = hev;
     event->handler = ngx_http_haskell_service_async_event;
     event->log = cycle->log;
+
+    ngx_memzero(hev, sizeof(ngx_http_haskell_service_async_event_t));
+    hev->service_code_var = service_code_var;
     hev->s.read = event;
-    hev->s.write = event;   /* to make ngx_add_event() happy */
+    hev->s.write = event;   /* to make ngx_add_event() happy: */
+
+    hev->s.fd = NGX_INVALID_FILE;
+    hev->cycle = cycle;
+    hev->first_run = service_first_run;
+
+    service_code_var->running = 1;
+
+    if (pipe2(fd, O_NONBLOCK) == -1) {
+        ngx_log_error(NGX_LOG_ERR, cycle->log, ngx_errno,
+                      "failed to create pipe for future async result, "
+                      "postponing IO task for 0.5 sec");
+        ngx_add_timer(event, 500);
+        return NGX_OK;
+    }
+
+    hev->s.fd = fd[0];
+
     if (ngx_add_event(event, NGX_READ_EVENT, 0) != NGX_OK) {
         ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
-                      "failed to add event for "
-                      "future async result, skipping IO task");
+                      "failed to add event for future async result, "
+                      "postponing IO task for 5 sec");
         close_pipe(cycle->log, fd);
-        return NGX_ERROR;
+        ngx_add_timer(event, 5000);
+        return NGX_OK;
     }
-    service_code_var->event = event;
-    service_code_var->fd = fd[0];
 
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
     handlers = mcf->handlers.elts;
@@ -3149,22 +3152,23 @@ ngx_http_haskell_service_async_event(ngx_event_t *ev)
     ngx_str_t                                 *var;
     u_char                                    *var_data;
     ngx_http_complex_value_t                  *args;
-    ngx_uint_t                                 first_run;
     ngx_uint_t                                 ignore_empty = 0;
     ngx_int_t                                  found_idx = NGX_ERROR;
 
     service_code_var = hev->service_code_var;
-    first_run = hev->first_run;
+
+    if (hev->s.fd == NGX_INVALID_FILE) {
+        ngx_http_haskell_run_service(cycle, service_code_var, hev->first_run);
+        return;
+    }
 
     if (close(hev->s.fd) == -1) {
         ngx_log_error(NGX_LOG_CRIT, cycle->log, ngx_errno,
                       "failed to close reading end of pipe after service task "
                       "was finished");
-    } else {
-        ngx_pfree(cycle->pool, ev);
-        ngx_pfree(cycle->pool, hev);
-        service_code_var->event = NULL;
     }
+
+    service_code_var->running = 0;
 
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
 
@@ -3264,7 +3268,7 @@ cb_unlock_and_run_service:
     service_code_vars = mcf->service_code_vars.elts;
     for (i = 0; i < mcf->service_code_vars.nelts; i++) {
         if (service_code_vars[i].data->index == service_code_var->data->index
-            && service_code_vars[i].cb && service_code_vars[i].event == NULL)
+            && service_code_vars[i].cb && !service_code_vars[i].running)
         {
             if (service_code_vars[i].noarg) {
                 args = service_code_vars[i].data->args.elts;
@@ -3283,7 +3287,7 @@ cb_unlock_and_run_service:
                 }
             }
             ngx_http_haskell_run_service(cycle, &service_code_vars[i],
-                                         first_run);
+                                         hev->first_run);
         }
     }
 
