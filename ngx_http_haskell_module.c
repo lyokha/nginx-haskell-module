@@ -1951,21 +1951,25 @@ ngx_http_haskell_run_service(ngx_cycle_t *cycle,
     service_code_var->running = 1;
 
     if (pipe2(fd, O_NONBLOCK) == -1) {
-        ngx_log_error(NGX_LOG_ERR, cycle->log, ngx_errno,
-                      "failed to create pipe for future async result, "
-                      "postponing IO task for 0.5 sec");
-        ngx_add_timer(event, 500);
+        if (!ngx_exiting && !ngx_terminate) {
+            ngx_log_error(NGX_LOG_ERR, cycle->log, ngx_errno,
+                          "failed to create pipe for future async result, "
+                          "postponing IO task for 0.5 sec");
+            ngx_add_timer(event, 500);
+        }
         return NGX_OK;
     }
 
     hev->s.fd = fd[0];
 
     if (ngx_add_event(event, NGX_READ_EVENT, 0) != NGX_OK) {
-        ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
-                      "failed to add event for future async result, "
-                      "postponing IO task for 5 sec");
         close_pipe(cycle->log, fd);
-        ngx_add_timer(event, 5000);
+        if (!ngx_exiting && !ngx_terminate) {
+            ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
+                          "failed to add event for future async result, "
+                          "postponing IO task for 5 sec");
+            ngx_add_timer(event, 5000);
+        }
         return NGX_OK;
     }
 
