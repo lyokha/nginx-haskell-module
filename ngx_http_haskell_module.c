@@ -1931,6 +1931,12 @@ ngx_http_haskell_run_service(ngx_cycle_t *cycle,
     ngx_str_t                                  arg1;
     ngx_fd_t                                   fd[2];
 
+    if (ngx_terminate || ngx_exiting) {
+        return NGX_OK;
+    }
+
+    service_code_var->running = 1;
+
     event = &service_code_var->event;
     hev = &service_code_var->hev;
 
@@ -1948,15 +1954,11 @@ ngx_http_haskell_run_service(ngx_cycle_t *cycle,
     hev->cycle = cycle;
     hev->first_run = service_first_run;
 
-    service_code_var->running = 1;
-
     if (pipe2(fd, O_NONBLOCK) == -1) {
-        if (!ngx_exiting && !ngx_terminate) {
-            ngx_log_error(NGX_LOG_ERR, cycle->log, ngx_errno,
-                          "failed to create pipe for future async result, "
-                          "postponing IO task for 0.5 sec");
-            ngx_add_timer(event, 500);
-        }
+        ngx_log_error(NGX_LOG_ERR, cycle->log, ngx_errno,
+                      "failed to create pipe for future async result, "
+                      "postponing IO task for 0.5 sec");
+        ngx_add_timer(event, 500);
         return NGX_OK;
     }
 
@@ -1964,12 +1966,10 @@ ngx_http_haskell_run_service(ngx_cycle_t *cycle,
 
     if (ngx_add_event(event, NGX_READ_EVENT, 0) != NGX_OK) {
         close_pipe(cycle->log, fd);
-        if (!ngx_exiting && !ngx_terminate) {
-            ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
-                          "failed to add event for future async result, "
-                          "postponing IO task for 5 sec");
-            ngx_add_timer(event, 5000);
-        }
+        ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
+                      "failed to add event for future async result, "
+                      "postponing IO task for 2 sec");
+        ngx_add_timer(event, 2000);
         return NGX_OK;
     }
 
@@ -3159,6 +3159,7 @@ ngx_http_haskell_service_async_event(ngx_event_t *ev)
     ngx_int_t                                  found_idx = NGX_ERROR;
 
     service_code_var = hev->service_code_var;
+    service_code_var->running = 0;
 
     if (hev->s.fd == NGX_INVALID_FILE) {
         ngx_http_haskell_run_service(cycle, service_code_var, hev->first_run);
@@ -3170,8 +3171,6 @@ ngx_http_haskell_service_async_event(ngx_event_t *ev)
                       "failed to close reading end of pipe after service task "
                       "was finished");
     }
-
-    service_code_var->running = 0;
 
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
 
