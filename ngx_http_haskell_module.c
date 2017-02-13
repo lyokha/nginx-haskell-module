@@ -658,7 +658,6 @@ static ngx_int_t ngx_http_haskell_service_var_init_zone(
     ngx_shm_zone_t *shm_zone, void *data);
 static void ngx_http_haskell_async_event(ngx_event_t *ev);
 static void ngx_http_haskell_service_async_event(ngx_event_t *ev);
-static void ngx_http_haskell_variable_cleanup(void *data);
 static void ngx_http_haskell_content_handler_cleanup(void *data);
 static void close_pipe(ngx_log_t *log, ngx_fd_t *fd);
 
@@ -1031,7 +1030,7 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
                           "cleanup handler");
             return NGX_DONE;
         }
-        cln->handler = ngx_http_haskell_variable_cleanup;
+        cln->handler = ngx_free;
         cln->data = async_data->result.data;
 
         return NGX_DONE;
@@ -2649,7 +2648,7 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
                 ngx_free(res);
                 return NGX_ERROR;
             }
-            cln->handler = ngx_http_haskell_variable_cleanup;
+            cln->handler = ngx_free;
             cln->data = res;
         }
         break;
@@ -3298,13 +3297,6 @@ unlock_and_run_service:
 run_service:
 
     ngx_http_haskell_run_service(cycle, service_code_var, 0);
-}
-
-
-static void
-ngx_http_haskell_variable_cleanup(void *data)
-{
-    ngx_free(data);
 }
 
 
