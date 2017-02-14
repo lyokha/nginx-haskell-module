@@ -624,7 +624,7 @@ static char *ngx_http_haskell_write_code(ngx_conf_t *cf, void *conf,
 static char *ngx_http_haskell_compile(ngx_conf_t *cf, void *conf,
     ngx_str_t source_name);
 static ngx_int_t ngx_http_haskell_load(ngx_cycle_t *cycle);
-static void ngx_http_haskell_unload(ngx_cycle_t *cycle);
+static void ngx_http_haskell_unload(ngx_cycle_t *cycle, ngx_uint_t exiting);
 static ngx_int_t ngx_http_haskell_init_services(ngx_cycle_t *cycle);
 static void ngx_http_haskell_stop_services(ngx_cycle_t *cycle);
 static ngx_int_t ngx_http_haskell_run_service(ngx_cycle_t *cycle,
@@ -1213,7 +1213,7 @@ ngx_http_haskell_exit_worker(ngx_cycle_t *cycle)
         return;
     }
 
-    ngx_http_haskell_unload(cycle);
+    ngx_http_haskell_unload(cycle, 1);
 
     ngx_http_haskell_stop_services(cycle);
 }
@@ -1726,7 +1726,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                           "failed to load haskell handler \"%V\": %s",
                           &handler_name, dl_error);
-            ngx_http_haskell_unload(cycle);
+            ngx_http_haskell_unload(cycle, 0);
             return NGX_ERROR;
         }
 
@@ -1735,7 +1735,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         if (type_checker_name == NULL) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                           "failed to allocate artifacts for type checker");
-            ngx_http_haskell_unload(cycle);
+            ngx_http_haskell_unload(cycle, 0);
             return NGX_ERROR;
         }
 
@@ -1752,7 +1752,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                           "failed to load haskell handler type checker \"%V\": "
                           "%s", &handler_name, dl_error);
-            ngx_http_haskell_unload(cycle);
+            ngx_http_haskell_unload(cycle, 0);
             return NGX_ERROR;
         }
 
@@ -1775,7 +1775,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                           "haskell handler \"%V\" role and type mismatch",
                           &handler_name);
-            ngx_http_haskell_unload(cycle);
+            ngx_http_haskell_unload(cycle, 0);
             return NGX_ERROR;
         }
 
@@ -1788,7 +1788,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                           "haskell handler \"%V\" unsafety attribute mismatch",
                           &handler_name);
-            ngx_http_haskell_unload(cycle);
+            ngx_http_haskell_unload(cycle, 0);
             return NGX_ERROR;
         }
 
@@ -1814,7 +1814,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         case ngx_http_haskell_handler_type_b_ls:
             break;
         default:
-            ngx_http_haskell_unload(cycle);
+            ngx_http_haskell_unload(cycle, 0);
             return NGX_ERROR;
         }
 
@@ -1822,7 +1822,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                           "actual type of haskell handler \"%V\" "
                           "does not match call samples", &handler_name);
-            ngx_http_haskell_unload(cycle);
+            ngx_http_haskell_unload(cycle, 0);
             return NGX_ERROR;
         }
     }
@@ -1832,7 +1832,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
 
 
 static void
-ngx_http_haskell_unload(ngx_cycle_t *cycle)
+ngx_http_haskell_unload(ngx_cycle_t *cycle, ngx_uint_t exiting)
 {
     ngx_http_haskell_main_conf_t    *mcf;
 
@@ -1843,7 +1843,11 @@ ngx_http_haskell_unload(ngx_cycle_t *cycle)
 
     if (mcf->dl_handle != NULL) {
         mcf->hs_exit();
-        dlclose(mcf->dl_handle);
+        /* dlclose() may cause sigsegv when a haskell service wakes up
+         * during or after munmap() but before the worker exits */
+        if (!exiting) {
+            dlclose(mcf->dl_handle);
+        }
         mcf->dl_handle = NULL;
     }
 }
