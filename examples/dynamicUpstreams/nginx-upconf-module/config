@@ -1,0 +1,11 @@
+ngx_addon_name=ngx_http_upconf_module
+HTTP_MODULES="$HTTP_MODULES $ngx_addon_name"
+NGX_ADDON_SRCS="$NGX_ADDON_SRCS \
+                $ngx_addon_dir/$ngx_addon_name.c \
+                $ngx_addon_dir/ngx_inet_slab.c \
+                $ngx_addon_dir/ngx_http_upconf_hash.c"
+NGX_ADDON_DEPS="$NGX_ADDON_DEPS \
+                $ngx_addon_dir/$ngx_addon_name.h \
+                $ngx_addon_dir/ngx_inet_slab.h \
+                $ngx_addon_dir/ngx_http_upconf_hash.h"
+CORE_LIBS="$CORE_LIBS -ljsmn"

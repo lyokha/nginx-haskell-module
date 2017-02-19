@@ -12,6 +12,7 @@ Table of contents
 - [Optimized unsafe content handler](#optimized-unsafe-content-handler)
 - [Asynchronous tasks with side effects](#asynchronous-tasks-with-side-effects)
 - [Miscellaneous nginx directives](#miscellaneous-nginx-directives)
+- [Service variables in shared memory and integration with other nginx modules](#service-variables-in-shared-memory-and-integration-with-other-nginx-modules)
 - [Reloading of haskell code and static content](#reloading-of-haskell-code-and-static-content)
 - [Wrapping haskell code organization](#wrapping-haskell-code-organization)
 - [Static linkage against basic haskell libraries](#static-linkage-against-basic-haskell-libraries)
@@ -781,8 +782,37 @@ with a no-cacheable condition test variable.
   static data to the user haskell library. Inside the library data can be
   accessed with *cmdargs* or other tools that work with program options.
 
-All the five directives above are allowed only in the *http* clause of the nginx
-configuration.
+All directives in this section are allowed only in the *http* clause of the
+nginx configuration.
+
+Service variables in shared memory and integration with other nginx modules
+---------------------------------------------------------------------------
+
+There are other two nginx directives that allow organizing communication between
+the haskell module and other nginx modules by setting a special *callback*
+location with a handler from the other module bound to a haskell service
+variable. Here they are.
+
+- *haskell_service_var_in_shm ``shm_name`` ``shm_size`` ``<list>``* &mdash;
+  Makes variables in the *``<list>``* be stored in shared memory ``shm_name``
+  with size ``shm_size``. Accepts only variables defined with directive
+  *haskell_run_service*.
+
+- *haskell_service_var_update_callback ``service`` ``$var`` ``[value]``* &mdash;
+  This directive is similar to *haskell_run_service* and accepts a haskell
+  function ``service`` of the same type *NGX_EXPORT_SERVICE_IOY_Y*, however
+  other arguments ``$var`` and ``value`` have different meanings. Variable
+  ``$var`` must be listed in a directive *haskell_service_var_in_shm*. The
+  function ``service`` will run every time when value of the ``$var`` which is
+  allocated in a shared memory gets an update, ``service`` receives the new
+  value of the ``$var`` or the ``value`` if it was defined.
+
+This integration model requires that service variables are stored in a shared
+memory because there could be multiple nginx worker processes and any of them
+could receive a request for running the callback function.
+
+See an example of using this approach in
+[examples/dynamicUpstreams](examples/dynamicUpstreams).
 
 Reloading of haskell code and static content
 --------------------------------------------
