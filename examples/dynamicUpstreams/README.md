@@ -61,17 +61,17 @@ configuration and the backends must be run in separate nginx instances.
 Run some *curl* tests.
 
 ```ShellSession
-$ curl -s 'http://localhost:8010/'
+$ curl 'http://localhost:8010/'
 [30890] In 8020
-$ curl -s 'http://localhost:8010/'
+$ curl 'http://localhost:8010/'
 [30890] In 8030
-$ curl -s 'http://localhost:8010/'
+$ curl 'http://localhost:8010/'
 [30890] In 8040
-$ curl -s 'http://localhost:8010/hash?$a=hello'
+$ curl 'http://localhost:8010/hash?$a=hello'
 [30890] In 8030
-$ curl -s 'http://localhost:8010/hash?$a=hello'
+$ curl 'http://localhost:8010/hash?$a=hello'
 [30890] In 8030
-$ curl -s 'http://localhost:8010/hash?$a=hello'
+$ curl 'http://localhost:8010/hash?$a=hello'
 [30890] In 8030
 ```
 
