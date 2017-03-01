@@ -249,7 +249,7 @@ readMsg = readDef (Msg Read "" "" 0 0 0 0 "" NotReadable) . C8.unpack
 
 writeMsg = return . C8L.pack . show
 
-writeFinalMsg m = writeMsg $ m { backend = "STOP", status = NonExistent }
+writeFinalMsg m = writeMsg m { backend = "STOP", status = NonExistent }
 
 getMsg (readMsg -> m@Msg { status = NotReadable }) =
     writeFinalMsg m
