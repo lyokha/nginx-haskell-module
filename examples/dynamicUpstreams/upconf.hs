@@ -57,11 +57,11 @@ upconfAddr = unsafePerformIO $ newIORef ("", "")
 httpManager = unsafePerformIO $ newManager defaultManagerSettings
 {-# NOINLINE httpManager #-}
 
-getResponse (C8.unpack -> url) = fmap responseBody . (parseRequest url >>=)
+getResponse url = fmap responseBody . (parseRequest url >>=)
 
 getUrl url = getResponse url $ flip httpLbs httpManager
 
-query = ((fmap C8L.unpack . getUrl . C8.pack) .) . flip mkAddr
+query = (getUrl .) . flip mkAddr
     where mkAddr = (("http://" ++) .) . (++)
 
 getUpstreams (C8.unpack -> conf) firstRun = do
@@ -70,8 +70,7 @@ getUpstreams (C8.unpack -> conf) firstRun = do
     if firstRun
         then writeIORef upconfAddr (surl, saddr)
         else threadDelaySec upd
-    new <- catchBadResponse $
-        (fromMaybe M.empty . decode . C8L.pack) <$> query url addr
+    new <- catchBadResponse $ (fromMaybe M.empty . decode) <$> query url addr
     old <- readIORef collectedData
     if new == old
         then return C8L.empty
@@ -91,7 +90,7 @@ ngxExportServiceIOYY 'getUpstreams
 signalUpconf _ True = return C8L.empty
 signalUpconf _ _ = do
     (url, addr) <- readIORef upconfAddr
-    void $ handle (\(_ :: SomeException) -> return "") $ query url addr
+    void $ handle (\(_ :: SomeException) -> return C8L.empty) $ query url addr
     return C8L.empty
 ngxExportServiceIOYY 'signalUpconf
 

@@ -136,7 +136,7 @@ blInterval :: IORef Int
 blInterval = unsafePerformIO $ newIORef 60
 {-# NOINLINE blInterval #-}
 
-getResponse (C8.unpack -> url) = fmap responseBody . (parseRequest url >>=)
+getResponse url = fmap responseBody . (parseRequest url >>=)
 
 httpManager = unsafePerformIO $ newManager defaultManagerSettings
 {-# NOINLINE httpManager #-}
@@ -197,14 +197,14 @@ queryEndpoints (C8.unpack -> conf) firstRun = do
     (M.fromList -> obd) <-
         mapConcurrently
             (\d -> catchBadResponseOwn d $
-                second (fromMaybe (BackendData 0 M.empty) .
-                            decode . C8L.pack) <$> query url d
+                second (fromMaybe (BackendData 0 M.empty) . decode) <$>
+                    query url d
             ) own
     (M.fromList . ((Own, obd) :) . map (first Remote) -> abd) <-
         mapConcurrently
             (\d -> catchBadResponseRemote d $
-                second (fromMaybe M.empty .
-                            decode . C8L.pack) <$> query purl d
+                second (fromMaybe M.empty . decode) <$>
+                    query purl d
             ) remote
     oldbd <- readIORef allBackends
     let allbd =
@@ -225,10 +225,7 @@ queryEndpoints (C8.unpack -> conf) firstRun = do
             rr <- mkRRRoutes newRoutes
             atomicModifyIORef routes $ \((a, _), o) -> ((o, (a + 2, rr)), ())
             return $ encode newRoutes
-    where query u =
-              runKleisli $
-                  arr id &&&
-                  Kleisli (fmap C8L.unpack . getUrl . C8.pack . flip mkAddr u)
+    where query u = runKleisli $ arr id &&& Kleisli (getUrl . flip mkAddr u)
           mkAddr = (("http://" ++) .) . (++)
           catchBadResponse f d = handle $
               \(_ :: SomeException) -> ((d, ) . f d) <$> readIORef allBackends
