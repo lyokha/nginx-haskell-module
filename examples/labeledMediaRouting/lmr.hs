@@ -261,7 +261,8 @@ getMsg (readMsg -> m@(Msg op hnt label seqn key start idx b st)) = do
         Just ((n, fromJust -> d), (_, gr)) -> do
             (s, i, b) <- if st == NotFound
                              then return (0, 0, Nothing)
-                             else getNextInGroup start idx gr
+                             else getNextInGroup start
+                                      (advanceIdx start st idx) gr
             case b of
                 Nothing -> do
                     ((s, i, b), k) <- getNext (key + 1) d
@@ -277,17 +278,20 @@ getMsg (readMsg -> m@(Msg op hnt label seqn key start idx b st)) = do
                                            | otherwise = Nothing
           elemAt i m | i < M.size m = Just $ M.elemAt i m
                      | otherwise = Nothing
+          getNextInGroup _ 1 (_, Nothing) =
+              return (0, 0, Nothing)
           getNextInGroup _ _ (dst, Nothing) =
               (0, 0, ) <$> ckBl (head dst)  -- using head is safe here
                                             -- because dst cannot be []
           getNextInGroup s i (dst, Just rr) = do
-              (ns, j) <- if s == 0
-                             then (, 0) <$> select rr
-                             else return (s, i + 1)
+              ns <- if s == 0 then select rr else return s
               (length -> ni, headDef Nothing -> d) <-
                   span isNothing <$> mapM ckBl
-                        (take (length dst - j) $ drop (ns - 1 + j) $ cycle dst)
+                        (take (length dst - i) $ drop (ns - 1 + i) $ cycle dst)
               return (ns, ni, d)
+          advanceIdx 0 Ok = const 0
+          advanceIdx 0 _  = const 1
+          advanceIdx _ _  = succ
           ckBl d = do
               bl <- readIORef blacklist
               case M.lookup d bl of
