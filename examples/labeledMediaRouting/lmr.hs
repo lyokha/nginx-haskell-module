@@ -285,7 +285,7 @@ getMsg (readMsg -> m@(Msg op hnt label seqn key start idx b st)) = do
                                             -- because dst cannot be []
           getNextInGroup s i (dst, Just rr) = do
               ns <- if s == 0 then select rr else return s
-              (length -> ni, headDef Nothing -> d) <-
+              ((i +) . length -> ni, headDef Nothing -> d) <-
                   span isNothing <$> mapM ckBl
                         (take (length dst - i) $ drop (ns - 1 + i) $ cycle dst)
               return (ns, ni, d)
