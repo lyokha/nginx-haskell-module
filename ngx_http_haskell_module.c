@@ -2419,6 +2419,7 @@ ngx_http_haskell_var_configure(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
         value[j].len--;
         value[j].data++;
+        ngx_strlow(value[j].data, value[j].data, value[j].len);
         vars[i].name = value[j];
         vars[i].index = -1;
     }
