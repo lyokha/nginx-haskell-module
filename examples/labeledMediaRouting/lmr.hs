@@ -223,7 +223,7 @@ queryEndpoints (C8.unpack -> conf) firstRun = do
         then return C8L.empty
         else do
             rr <- mkRRRoutes newRoutes
-            atomicModifyIORef routes $ \((a, _), o) -> ((o, (a + 2, rr)), ())
+            atomicModifyIORef' routes $ \((a, _), o) -> ((o, (a + 2, rr)), ())
             return $ encode newRoutes
     where query u = runKleisli $ arr id &&& Kleisli (getUrl . flip mkAddr u)
           mkAddr = (("http://" ++) .) . (++)
@@ -252,7 +252,7 @@ getMsg (readMsg -> m@Msg { status = NotReadable }) =
     writeFinalMsg m
 getMsg (readMsg -> m@(Msg op hnt label seqn key start idx b st)) = do
     when (st == NotAccessible) $
-        getCurrentTime >>= modifyIORef blacklist . M.insert b
+        getCurrentTime >>= modifyIORef' blacklist . M.insert b
     (getRoutes seqn >=> return . rSelect op >=>
         return . second (M.lookup hnt >=> M.lookup label) -> r) <-
             readIORef routes
@@ -267,7 +267,9 @@ getMsg (readMsg -> m@(Msg op hnt label seqn key start idx b st)) = do
                 Nothing -> do
                     ((s, i, b), k) <- getNext (key + 1) d
                     case b of
-                        Nothing -> writeFinalMsg m { seqn = n }
+                        Nothing -> do
+                            unblacklistAll d
+                            writeFinalMsg m { seqn = n }
                         Just v -> writeMsg $ Msg op hnt label n k s i v Ok
                 Just v -> writeMsg $ Msg op hnt label n key s i v Ok
     where rSelect Read  = second fst
@@ -301,15 +303,16 @@ getMsg (readMsg -> m@(Msg op hnt label seqn key start idx b st)) = do
                       (fromIntegral -> bli) <- readIORef blInterval
                       if diffUTCTime now t > bli
                           then do
-                              modifyIORef blacklist $ M.delete d
+                              modifyIORef' blacklist $ M.delete d
                               return $ Just d
                           else return Nothing
           getNext k d = do
               (length -> nk, headDef (0, 0, Nothing) -> d) <-
                   span (\(_, _, b) -> isNothing b) <$>
-                      mapM (getNextInGroup 0 0 . snd)
-                                (M.toList $ snd $ M.splitAt k d)
+                      mapM (getNextInGroup 0 0) (M.elems $ M.drop k d)
               return (d, k + nk)
+          unblacklistAll = mapM_ $
+              mapM_ (modifyIORef' blacklist . M.delete) . fst
 ngxExportIOYY 'getMsg
 
 getOwnBackends = const $
