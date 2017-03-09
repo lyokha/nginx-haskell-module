@@ -251,8 +251,10 @@ writeFinalMsg m = writeMsg m { backend = "STOP", status = NonExistent }
 getMsg (readMsg -> m@Msg { status = NotReadable }) =
     writeFinalMsg m
 getMsg (readMsg -> m@(Msg op hnt label seqn key start idx b st)) = do
-    when (st == NotAccessible) $
-        getCurrentTime >>= modifyIORef' blacklist . M.insert b
+    when (st == NotAccessible) $ do
+        bl <- readIORef blacklist
+        when (b `M.notMember` bl) $
+            getCurrentTime >>= modifyIORef' blacklist . M.insert b
     (getRoutes seqn >=> return . rSelect op >=>
         return . second (M.lookup hnt >=> M.lookup label) -> r) <-
             readIORef routes
