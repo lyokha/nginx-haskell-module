@@ -1,10 +1,10 @@
-### Compile
+#### Compile
 
 ```ShellSession
 # ghc --make lmr-bench.hs
 ```
 
-### Run
+#### Run
 
 ```ShellSession
 # ./lmr-bench -o lmr-bench.html

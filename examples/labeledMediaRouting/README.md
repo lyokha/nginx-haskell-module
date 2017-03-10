@@ -9,5 +9,8 @@ Additional remarks.
   restored with directive *proxy_method* when needed.
 
 - The *Read*/*Show* serialization that used in *getMsg* proved to be very slow
-  due to expensive *ByteString* to *String* unpacking. *JSON* serialization
-  using *Aeson* should have much better performance.
+  due to expensive *ByteString* to *String* unpacking when *reading* into data.
+  *JSON* serialization using *Aeson* should have much better performance.
+  [Here](https://rawgit.com/lyokha/nginx-haskell-module/master/examples/labeledMediaRouting/test/lmr-bench.html)
+  is benchmarking results using Criterion.
+
