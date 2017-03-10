@@ -1,10 +1,10 @@
 {-# LANGUAGE DeriveGeneric #-}
 
-{- A tool for benchmarking encoding and decoding of data Msg.
- - It tests Read/Show and JSON Aeson encode/decode.
+{- A tool for benchmarking encoding and decoding of data Msg,
+ - it tests Read/Show and JSON Aeson encode/decode.
  -
  - Compile:
- - ghc --make lmr-bench.hs
+ - ghc --make -O2 lmr-bench.hs
  -
  - Run:
  - ./lmr-bench -o lmr-bench.html
@@ -52,17 +52,21 @@ data Msg = Msg { op      :: Op
 instance FromJSON Msg
 instance ToJSON Msg
 
--- encode  |  source:  msgo :: Msg                  |  result: C8L.Bytestring
--- decode  |  source:  msgs, msgb :: C8.ByteString  |  result: Msg
+
+--         |  input                        |  output          |
+--         ----------------------------------------------------
+-- encode  |  msgo       :: Msg            |  C8L.Bytestring  |
+-- decode  |  msgs, msgb :: C8.ByteString  |  (Maybe) Msg     |
+
 main = defaultMain
-    [ bench "Show encode" $ whnf (C8L.pack . show)
-                                msgo
-    , bench "Read decode" $ whnf (read . C8.unpack :: C8.ByteString -> Msg)
-                                msgs
-    , bench "JSON encode" $ whnf encode
-                                msgo
-    , bench "JSON decode" $ whnf (decodeStrict :: C8.ByteString -> Maybe Msg)
-                                msgb
+    [ bench "Show encode" $
+        whnf    (C8L.pack . show)                               msgo
+    , bench "Read decode" $
+        whnf    (read . C8.unpack :: C8.ByteString -> Msg)      msgs
+    , bench "JSON encode" $
+        whnf    encode                                          msgo
+    , bench "JSON decode" $
+        whnf    (decodeStrict :: C8.ByteString -> Maybe Msg)    msgb
     ]
     where msgo = Msg { op = Read
                      , hnt = "default"
