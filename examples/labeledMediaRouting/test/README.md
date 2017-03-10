@@ -1,7 +1,7 @@
 #### Compile
 
 ```ShellSession
-# ghc --make lmr-bench.hs
+# ghc --make -O2 lmr-bench.hs
 ```
 
 #### Run
