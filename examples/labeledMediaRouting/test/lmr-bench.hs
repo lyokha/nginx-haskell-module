@@ -53,10 +53,10 @@ instance FromJSON Msg
 instance ToJSON Msg
 
 
---         |  input                        |  output          |
---         ----------------------------------------------------
--- encode  |  msgo       :: Msg            |  C8L.Bytestring  |
--- decode  |  msgs, msgb :: C8.ByteString  |  (Maybe) Msg     |
+--   |          |  input                        |  output          |
+--   |----------|-------------------------------|------------------|
+--   |  encode  |  msgo       :: Msg            |  C8L.ByteString  |
+--   |  decode  |  msgs, msgb :: C8.ByteString  |  (Maybe) Msg     |
 
 main = defaultMain
     [ bench "Show encode" $
