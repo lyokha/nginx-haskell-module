@@ -52,15 +52,34 @@ data Msg = Msg { op      :: Op
 instance FromJSON Msg
 instance ToJSON Msg
 
+newtype PSMsg = PSMsg Msg
+instance Show PSMsg where
+    show (PSMsg (Msg op hnt label seqn key start idx backend status)) =
+        concat [ sToDir  op
+               , toDir   hnt
+               , toDir   label
+               , sToDir  seqn
+               , sToDir  key
+               , sToDir  start
+               , sToDir  idx
+               , toDir   backend
+               , sToDir  status
+               ]
+            where toDir  = ('/' :)
+                  sToDir :: Show a => a -> String
+                  sToDir = toDir . show
 
---   |          |  input                        |  output          |
---   |----------|-------------------------------|------------------|
---   |  encode  |  msgo       :: Msg            |  C8L.ByteString  |
---   |  decode  |  msgs, msgb :: C8.ByteString  |  (Maybe) Msg     |
+
+--   |          |  input                         |  output          |
+--   |----------|--------------------------------|------------------|
+--   |  encode  |  msgo       :: Msg (or PSMsg)  |  C8L.ByteString  |
+--   |  decode  |  msgs, msgb :: C8.ByteString   |  (Maybe) Msg     |
 
 main = defaultMain
     [ bench "Show encode" $
         whnf    (C8L.pack . show)                               msgo
+    , bench "Path-style Show encode" $
+        whnf    (C8L.pack . show)                       $ PSMsg msgo
     , bench "Read decode" $
         whnf    (read . C8.unpack :: C8.ByteString -> Msg)      msgs
     , bench "JSON encode" $
