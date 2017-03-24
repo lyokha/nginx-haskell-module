@@ -1,5 +1,5 @@
-{-# LANGUAGE TemplateHaskell, DeriveGeneric #-}
-{-# LANGUAGE ViewPatterns, TupleSections, NumDecimals, ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell, DeriveGeneric, ScopedTypeVariables #-}
+{-# LANGUAGE ViewPatterns, PatternSynonyms, TupleSections, NumDecimals #-}
 
 {- ghc -O2 -dynamic -shared -fPIC -lHSrts_thr-ghc$(ghc --numeric-version) \
  - lmr.hs -o /var/lib/nginx/lmr.so -fforce-recomp
@@ -36,6 +36,8 @@ import           Data.Maybe
 import           Data.Aeson
 import           GHC.Generics
 import           Safe
+
+pattern GroupFailed = (0, 0, Nothing)
 
 type Label = String
 type Hint = String
@@ -262,7 +264,7 @@ getMsg (readMsg -> m@(Msg op hnt label seqn key start idx b st)) = do
         Nothing -> writeFinalMsg m
         Just ((n, fromJust -> d), (_, gr)) -> do
             (s, i, b) <- if st == NotFound
-                             then return (0, 0, Nothing)
+                             then return GroupFailed
                              else getNextInGroup start
                                       (advanceIdx start st idx) gr
             case b of
@@ -283,7 +285,7 @@ getMsg (readMsg -> m@(Msg op hnt label seqn key start idx b st)) = do
           elemAt i m | i < M.size m = Just $ M.elemAt i m
                      | otherwise = Nothing
           getNextInGroup _ 1 (_, Nothing) =
-              return (0, 0, Nothing)
+              return GroupFailed
           getNextInGroup _ _ (dst, Nothing) =
               (0, 0, ) <$> ckBl (head dst)  -- using head is safe here
                                             -- because dst cannot be []
@@ -292,7 +294,7 @@ getMsg (readMsg -> m@(Msg op hnt label seqn key start idx b st)) = do
               ((i +) . length -> ni, headDef Nothing -> d) <-
                   span isNothing <$> mapM ckBl
                         (take (length dst - i) $ drop (ns - 1 + i) $ cycle dst)
-              return (ns, ni, d)
+              return (ns, ni, d)            -- group fails when d == Nothing
           advanceIdx 0 Ok = const 0
           advanceIdx 0 _  = const 1
           advanceIdx _ _  = succ
@@ -309,7 +311,7 @@ getMsg (readMsg -> m@(Msg op hnt label seqn key start idx b st)) = do
                               return $ Just d
                           else return Nothing
           getNext k d = do
-              (length -> nk, headDef (0, 0, Nothing) -> d) <-
+              (length -> nk, headDef GroupFailed -> d) <-
                   span (\(_, _, b) -> isNothing b) <$>
                       mapM (getNextInGroup 0 0) (M.elems $ M.drop k d)
               return (d, k + nk)
