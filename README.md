@@ -1293,6 +1293,17 @@ Troubleshooting
 
   in the import list inside the haskell source code.
 
+- _In the nginx error log there are many messages of *INFO* level with
+  ``epoll_wait() failed (4: Interrupted system call)``_.
+
+  This happens with *ghc* versions *8.0.1* and earlier (must be fixed in version
+  *8.2.1* with removal of *SIGVTALARM* signals in *rts*, see
+  [issue #10840](http://ghc.haskell.org/trac/ghc/ticket/10840)) when nginx error
+  log on the configuration top-level has severity *INFO* or less. This can be
+  fixed by setting higher severity on the top-level: these messages are harmless
+  and other messages on *http* configuration level or deeper are still
+  configurable with any severity level.
+
 See also
 --------
 
