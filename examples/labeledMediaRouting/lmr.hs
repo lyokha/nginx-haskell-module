@@ -211,12 +211,11 @@ queryEndpoints (C8.unpack -> conf) firstRun = do
     oldbd <- readIORef allBackends
     let allbd =
             M.mapWithKey
-                (\p -> M.mapWithKey
-                    (\d a -> case M.lookup p oldbd >>= M.lookup d of
+                (\p -> M.mapWithKey $
+                    \d a -> case M.lookup p oldbd >>= M.lookup d of
                         Just v@(BackendData ts _) ->
                             if ts > timestamp a then v else a
                         _ -> a
-                    )
                 ) abd
         newRoutes = toRoutes allbd
     atomicWriteIORef allBackends allbd
