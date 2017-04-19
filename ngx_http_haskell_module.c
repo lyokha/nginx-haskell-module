@@ -646,6 +646,8 @@ static char *ngx_http_haskell_merge_loc_conf(ngx_conf_t *cf, void *parent,
 static ngx_int_t ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r);
 static ngx_int_t ngx_http_haskell_init_worker(ngx_cycle_t *cycle);
 static void ngx_http_haskell_exit_worker(ngx_cycle_t *cycle);
+static void ngx_http_haskell_var_init(ngx_log_t *log, ngx_array_t *cmvar,
+    ngx_array_t *var, ngx_http_get_variable_pt get_handler);
 static ngx_int_t ngx_http_haskell_run_handler(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_haskell_run_async_handler(ngx_http_request_t *r,
@@ -1091,85 +1093,17 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
         }
     }
 
-    vars = mcf->var_compensate_uri_changes.elts;
-    for (i = 0; i < mcf->var_compensate_uri_changes.nelts; i++) {
-        found = 0;
-        for (j = 0; j < cmcf->variables.nelts; j++) {
-            if (vars[i].name.len == cmvars[j].name.len
-                && ngx_strncmp(vars[i].name.data, cmvars[j].name.data,
-                               vars[i].name.len) == 0)
-            {
-                if (cmvars[j].get_handler != ngx_http_haskell_run_handler) {
-                    ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
-                                  "variable \"%V\" has incompatible "
-                                  "get handler", &vars[i].name);
-                } else {
-                    vars[i].index = cmvars[j].index;
-                }
-                found = 1;
-                break;
-            }
-        }
-        if (found == 0) {
-            ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
-                          "variable \"%V\" was not declared", &vars[i].name);
-        }
-    }
-
-    vars = mcf->service_var_ignore_empty.elts;
-    for (i = 0; i < mcf->service_var_ignore_empty.nelts; i++) {
-        found = 0;
-        for (j = 0; j < cmcf->variables.nelts; j++) {
-            if (vars[i].name.len == cmvars[j].name.len
-                && ngx_strncmp(vars[i].name.data, cmvars[j].name.data,
-                               vars[i].name.len) == 0)
-            {
-                if (cmvars[j].get_handler
-                    != ngx_http_haskell_run_service_handler)
-                {
-                    ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
-                                  "variable \"%V\" has incompatible "
-                                  "get handler", &vars[i].name);
-                } else {
-                    vars[i].index = cmvars[j].index;
-                }
-                found = 1;
-                break;
-            }
-        }
-        if (found == 0) {
-            ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
-                          "variable \"%V\" was not declared", &vars[i].name);
-        }
-    }
+    ngx_http_haskell_var_init(cycle->log, &cmcf->variables,
+                              &mcf->var_compensate_uri_changes,
+                              ngx_http_haskell_run_handler);
+    ngx_http_haskell_var_init(cycle->log, &cmcf->variables,
+                              &mcf->service_var_ignore_empty,
+                              ngx_http_haskell_run_service_handler);
+    ngx_http_haskell_var_init(cycle->log, &cmcf->variables,
+                              &mcf->service_var_in_shm,
+                              ngx_http_haskell_run_service_handler);
 
     vars = mcf->service_var_in_shm.elts;
-    for (i = 0; i < mcf->service_var_in_shm.nelts; i++) {
-        found = 0;
-        for (j = 0; j < cmcf->variables.nelts; j++) {
-            if (vars[i].name.len == cmvars[j].name.len
-                && ngx_strncmp(vars[i].name.data, cmvars[j].name.data,
-                               vars[i].name.len) == 0)
-            {
-                if (cmvars[j].get_handler
-                    != ngx_http_haskell_run_service_handler)
-                {
-                    ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
-                                  "variable \"%V\" has incompatible "
-                                  "get handler", &vars[i].name);
-                } else {
-                    vars[i].index = cmvars[j].index;
-                }
-                found = 1;
-                break;
-            }
-        }
-        if (found == 0) {
-            ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
-                          "variable \"%V\" was not declared", &vars[i].name);
-        }
-    }
-
     service_code_vars = mcf->service_code_vars.elts;
     for (i = 0; i < mcf->service_code_vars.nelts; i++) {
         if (!service_code_vars[i].cb) {
@@ -1215,6 +1149,44 @@ ngx_http_haskell_exit_worker(ngx_cycle_t *cycle)
     ngx_http_haskell_unload(cycle, 1);
 
     ngx_http_haskell_stop_services(cycle);
+}
+
+
+static void
+ngx_http_haskell_var_init(ngx_log_t *log, ngx_array_t *cmvar, ngx_array_t *var,
+                          ngx_http_get_variable_pt get_handler)
+{
+    ngx_uint_t                                 i, j;
+    ngx_http_haskell_var_handle_t             *vars;
+    ngx_http_variable_t                       *cmvars;
+    ngx_uint_t                                 found;
+
+    cmvars = cmvar->elts;
+
+    vars = var->elts;
+    for (i = 0; i < var->nelts; i++) {
+        found = 0;
+        for (j = 0; j < cmvar->nelts; j++) {
+            if (vars[i].name.len == cmvars[j].name.len
+                && ngx_strncmp(vars[i].name.data, cmvars[j].name.data,
+                               vars[i].name.len) == 0)
+            {
+                if (cmvars[j].get_handler != get_handler) {
+                    ngx_log_error(NGX_LOG_ERR, log, 0,
+                                  "variable \"%V\" has incompatible "
+                                  "get handler", &vars[i].name);
+                } else {
+                    vars[i].index = cmvars[j].index;
+                }
+                found = 1;
+                break;
+            }
+        }
+        if (found == 0) {
+            ngx_log_error(NGX_LOG_ERR, log, 0,
+                          "variable \"%V\" was not declared", &vars[i].name);
+        }
+    }
 }
 
 
