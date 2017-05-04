@@ -252,7 +252,7 @@ pokeLazyByteString s p = do
     poke p t
     return l
 
-toSingleBuffer :: L.ByteString -> IO (Maybe (CString, Int))
+toSingleBuffer :: L.ByteString -> IO (Maybe CStringLen)
 toSingleBuffer EmptyLBS =
     return $ Just (nullPtr, 0)
 toSingleBuffer s = do
