@@ -551,6 +551,7 @@ typedef struct {
     ngx_int_t                                  index;
     ngx_str_t                                  result;
     ngx_uint_t                                 error;
+    ngx_uint_t                                 complete;
 } ngx_http_haskell_async_data_t;
 
 
@@ -592,6 +593,7 @@ typedef struct {
 typedef struct {
     ngx_http_haskell_async_event_stub_t               s;
     ngx_http_request_t                               *r;
+    ngx_uint_t                                       *complete;
 } ngx_http_haskell_async_event_t;
 
 
@@ -892,6 +894,7 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
     ngx_http_haskell_var_handle_t     *var_nocacheable;
     ngx_http_haskell_var_cache_t      *var_nocacheable_cache;
     ngx_int_t                          found_idx;
+    ngx_uint_t                         task_complete;
     ngx_event_t                       *event;
     ngx_http_haskell_async_event_t    *hev;
     ngx_http_complex_value_t          *args;
@@ -933,8 +936,8 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
     }
 
     for (i = 0; i < lcf->code_vars.nelts; i++) {
-        if (handlers[code_vars[i].handler].role !=
-            ngx_http_haskell_handler_role_async_variable)
+        if (handlers[code_vars[i].handler].role
+            != ngx_http_haskell_handler_role_async_variable)
         {
             continue;
         }
@@ -953,14 +956,19 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
         }
 
         found_idx = NGX_ERROR;
+        task_complete = 0;
         async_data_elts = ctx->async_data.elts;
         for (j = 0; j < ctx->async_data.nelts; j++) {
             if (async_data_elts[j].index == code_vars[i].index) {
                 found_idx = code_vars[i].index;
+                task_complete = async_data_elts[j].complete;
                 break;
             }
         }
         if (found_idx != NGX_ERROR) {
+            if (!task_complete) {
+                return NGX_DONE;
+            }
             continue;
         }
 
@@ -971,6 +979,7 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
         async_data->index = code_vars[i].index;
         ngx_str_null(&async_data->result);
         async_data->error = 0;
+        async_data->complete = 0;
 
         args = code_vars[i].args.elts;
         if (ngx_http_complex_value(r, &args[0], &arg1) != NGX_OK) {
@@ -997,6 +1006,7 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
         }
         hev->s.fd = fd[0];
         hev->r = r;
+        hev->complete = &async_data->complete;
 
         event = ngx_pcalloc(r->pool, sizeof(ngx_event_t));
         if (event== NULL) {
@@ -1731,16 +1741,16 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
 
         if ((handlers[i].role == ngx_http_haskell_handler_role_content_handler
              && (handlers[i].type != ngx_http_haskell_handler_type_ch
-                && handlers[i].type != ngx_http_haskell_handler_type_uch
-                && handlers[i].type != ngx_http_haskell_handler_type_y_y))
+                 && handlers[i].type != ngx_http_haskell_handler_type_uch
+                 && handlers[i].type != ngx_http_haskell_handler_type_y_y))
             ||
             (handlers[i].role == ngx_http_haskell_handler_role_variable
              && (handlers[i].type == ngx_http_haskell_handler_type_ch
                  || handlers[i].type == ngx_http_haskell_handler_type_uch))
             ||
             ((handlers[i].role == ngx_http_haskell_handler_role_async_variable
-              || handlers[i].role ==
-                    ngx_http_haskell_handler_role_service_variable)
+              || handlers[i].role
+              == ngx_http_haskell_handler_role_service_variable)
              && handlers[i].type != ngx_http_haskell_handler_type_ioy_y))
         {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
@@ -2085,21 +2095,21 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             && ngx_strncmp(handler_name.data, handlers[i].name.data,
                            handler_name.len) == 0)
         {
-            if (handlers[i].role ==
-                ngx_http_haskell_handler_role_content_handler)
+            if (handlers[i].role
+                == ngx_http_haskell_handler_role_content_handler)
             {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                    "haskell handler \"%V\" was already "
                                    "declared as content handler", &value[1]);
                 return NGX_CONF_ERROR;
             }
-            if ((handlers[i].role ==
-                 ngx_http_haskell_handler_role_variable && async)
-                || ((handlers[i].role ==
-                    ngx_http_haskell_handler_role_async_variable
-                   || handlers[i].role ==
-                        ngx_http_haskell_handler_role_service_variable)
-                        && !async))
+            if ((handlers[i].role
+                 == ngx_http_haskell_handler_role_variable && async)
+                || ((handlers[i].role
+                     == ngx_http_haskell_handler_role_async_variable
+                     || handlers[i].role
+                     == ngx_http_haskell_handler_role_service_variable)
+                    && !async))
             {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                    "haskell handler \"%V\" async attribute "
@@ -2125,7 +2135,7 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         handler->role = service ?
                 ngx_http_haskell_handler_role_service_variable :
                 (async ? ngx_http_haskell_handler_role_async_variable :
-                    ngx_http_haskell_handler_role_variable);
+                 ngx_http_haskell_handler_role_variable);
 
         handlers = mcf->handlers.elts;
         code_var_data->handler = mcf->handlers.nelts - 1;
@@ -2258,10 +2268,10 @@ ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                            handler_name.len) == 0)
         {
             if (handlers[i].role == ngx_http_haskell_handler_role_variable
-                || handlers[i].role ==
-                        ngx_http_haskell_handler_role_async_variable
-                || handlers[i].role ==
-                        ngx_http_haskell_handler_role_service_variable)
+                || handlers[i].role
+                == ngx_http_haskell_handler_role_async_variable
+                || handlers[i].role
+                == ngx_http_haskell_handler_role_service_variable)
             {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                    "haskell handler \"%V\" was already "
@@ -2889,8 +2899,8 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
     mcf = ngx_http_get_module_main_conf(r, ngx_http_haskell_module);
     handlers = mcf->handlers.elts;
 
-    def_handler = handlers[lcf->content_handler->handler].type ==
-                                ngx_http_haskell_handler_type_y_y ? 1 : 0;
+    def_handler = handlers[lcf->content_handler->handler].type
+                                == ngx_http_haskell_handler_type_y_y ? 1 : 0;
 
     if (lcf->static_content && lcf->content_handler_data != NULL) {
         res = lcf->content_handler_data->bufs;
@@ -2979,8 +2989,8 @@ send_response:
     out = NULL;
 
     if (len > 0) {
-        if (handlers[lcf->content_handler->handler].type ==
-            ngx_http_haskell_handler_type_uch)
+        if (handlers[lcf->content_handler->handler].type
+            == ngx_http_haskell_handler_type_uch)
         {
             out = ngx_pcalloc(r->pool, sizeof(ngx_chain_t));
             if (out == NULL) {
@@ -3106,6 +3116,8 @@ ngx_http_haskell_async_event(ngx_event_t *ev)
                       "failed to close reading end of pipe after async task "
                       "was finished");
     }
+
+    *hev->complete = 1;
 
     ngx_http_core_run_phases(hev->r);
 }
