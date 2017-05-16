@@ -27,6 +27,7 @@ module NgxExport (
                  ,ngxExportBY
                  ,ngxExportIOYY
                  ,ngxExportAsyncIOYY
+                 ,ngxExportAsyncOnReqBody
                  ,ngxExportServiceIOYY
                  ,ngxExportHandler
                  ,ngxExportDefHandler
@@ -67,6 +68,7 @@ data NgxExport = SS            (String -> String)
                | YY            (B.ByteString -> L.ByteString)
                | BY            (B.ByteString -> Bool)
                | IOYY          (B.ByteString -> Bool -> IO L.ByteString)
+               | IOYYY         (L.ByteString -> B.ByteString -> IO L.ByteString)
                | Handler       (B.ByteString -> (L.ByteString, String, Int))
                | UnsafeHandler (B.ByteString ->
                                     (B.ByteString, B.ByteString, Int))
@@ -75,7 +77,7 @@ let name = mkName "exportType" in sequence
     [sigD name [t|NgxExport -> IO CInt|],
      funD name $
          map (\(c, i) -> clause [conP c [wildP]] (normalB [|return i|]) [])
-             (zip ['SS, 'SSS, 'SLS, 'BS, 'BSS, 'BLS, 'YY, 'BY, 'IOYY,
+             (zip ['SS, 'SSS, 'SLS, 'BS, 'BSS, 'BLS, 'YY, 'BY, 'IOYY, 'IOYYY,
                    'Handler, 'UnsafeHandler] [1 ..] :: [(Name, Int)])
     ]
 
@@ -175,6 +177,14 @@ ngxExportAsyncIOYY =
        CInt -> CUInt -> Ptr CString -> Ptr CSize -> Ptr CUInt -> IO ()|]
 
 -- | Exports a function of type
+-- /'L.ByteString' -> 'B.ByteString' -> 'IO' 'L.ByteString'/
+-- for using in directive /haskell_run_async_on_request_body/.
+ngxExportAsyncOnReqBody =
+    ngxExport 'IOYYY 'asyncIOYYY
+    [t|Ptr NgxStrType -> CInt -> CString -> CInt ->
+       CInt -> Ptr CString -> Ptr CSize -> Ptr CUInt -> IO ()|]
+
+-- | Exports a function of type
 -- /'B.ByteString' -> 'Bool' -> 'IO' 'L.ByteString'/
 -- for using in directive /haskell_run_service/.
 --
@@ -243,6 +253,13 @@ peekNgxStringArrayLen x n = sequence $
                   (\(NgxStrType (I m) y) ->
                       peekCStringLen (y, m))) :)) [] [0 .. n - 1]
 
+peekNgxStringArrayLenY :: Ptr NgxStrType -> Int -> IO L.ByteString
+peekNgxStringArrayLenY x n = L.fromChunks <$> sequence
+    (foldr (\k ->
+              ((peekElemOff x k >>=
+                  (\(NgxStrType (I m) y) ->
+                      B.unsafePackCStringLen (y, m))) :)) [] [0 .. n - 1])
+
 pokeCStringLen :: CString -> CSize -> Ptr CString -> Ptr CSize -> IO ()
 pokeCStringLen x n p s = poke p x >> poke s n
 
@@ -251,6 +268,21 @@ pokeLazyByteString s p = do
     PtrLenFromMaybe t l <- toSingleBuffer s
     poke p t
     return l
+
+pokeAsyncIOResult :: Ptr CString -> Ptr CSize -> Ptr CUInt ->
+    Either String C8L.ByteString -> IO ()
+pokeAsyncIOResult p pl r =
+    either
+        (\s -> do
+            PtrLen x l <- newCStringLen s
+            pokeCStringLen x l p pl
+            poke r 1
+        )
+        (\s -> do
+            PtrLenFromMaybe t l <- toSingleBuffer s
+            pokeCStringLen t l p pl
+            poke r 0
+        )
 
 toSingleBuffer :: L.ByteString -> IO (Maybe CStringLen)
 toSingleBuffer EmptyLBS =
@@ -338,20 +370,22 @@ asyncIOYY :: NgxExport -> CString -> CInt ->
     CInt -> CUInt -> Ptr CString -> Ptr CSize -> Ptr CUInt -> IO ()
 asyncIOYY (IOYY f) x (I n) (I fd) ((/= 0) -> fstRun) p pl r =
     void . async $
-    (do
-    s <- (Right <$> (B.unsafePackCStringLen (x, n) >>= flip f fstRun))
-        `catch` \e -> return $ Left $ show (e :: SomeException)
-    either
-        (\s -> do
-            PtrLen x l <- newCStringLen s
-            pokeCStringLen x l p pl
-            poke r 1
-        )
-        (\s -> do
-            PtrLenFromMaybe t l <- toSingleBuffer s
-            pokeCStringLen t l p pl
-            poke r 0
-        ) s
+    ((Right <$> (B.unsafePackCStringLen (x, n) >>= flip f fstRun))
+        `catch` (\e -> return $ Left $ show (e :: SomeException)) >>=
+            pokeAsyncIOResult p pl r
+    )
+    `finally` ((fdWrite fd "0" >> closeFd fd) `catchIOError` const (return ()))
+
+asyncIOYYY :: NgxExport -> Ptr NgxStrType -> CInt -> CString -> CInt ->
+    CInt -> Ptr CString -> Ptr CSize -> Ptr CUInt -> IO ()
+asyncIOYYY (IOYYY f) b (I m) x (I n) (I fd) p pl r =
+    void . async $
+    ((Right <$> do
+        b' <- peekNgxStringArrayLenY b m
+        x' <- B.unsafePackCStringLen (x, n)
+        f b' x'
+     ) `catch` (\e -> return $ Left $ show (e :: SomeException)) >>=
+            pokeAsyncIOResult p pl r
     )
     `finally` ((fdWrite fd "0" >> closeFd fd) `catchIOError` const (return ()))
 
