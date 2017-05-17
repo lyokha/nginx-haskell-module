@@ -11,6 +11,7 @@ Table of contents
 - [Static content in HTTP responses](#static-content-in-http-responses)
 - [Optimized unsafe content handler](#optimized-unsafe-content-handler)
 - [Asynchronous tasks with side effects](#asynchronous-tasks-with-side-effects)
+- [Client request body handlers](#client-request-body-handlers)
 - [Miscellaneous nginx directives](#miscellaneous-nginx-directives)
 - [Service variables in shared memory and integration with other nginx modules](#service-variables-in-shared-memory-and-integration-with-other-nginx-modules)
 - [Reloading of haskell code and static content](#reloading-of-haskell-code-and-static-content)
@@ -229,7 +230,7 @@ accessible from nginx that are exported with special macros *NGX_EXPORT_S_S*,
 *returns-Bool-accepts-String-String*), their *list* counterparts
 *NGX_EXPORT_S_LS* and *NGX_EXPORT_B_LS* (*LS* stands for *List-of-Strings*) and
 two macros that deal with *byte strings*: *NGX_EXPORT_Y_Y* and *NGX_EXPORT_B_Y*
-(*Y* stands for *bYte*). For the sake of efficiency byte string macros accept
+(*Y* stands for *bYte*). For the sake of efficiency, byte string macros accept
 *strict* but return (only *Y_Y*) *lazy* byte strings. Effectively this means
 that only those functions are supported that return strings, byte strings or
 booleans and accept one, two or more (only *S_LS* and *B_LS*) string arguments
@@ -598,7 +599,9 @@ file descriptor of a dedicated *self-pipe*. The *read-end* file descriptor of
 the pipe are polled by the nginx event poller (normally *epoll* in Linux). When
 a task is finished, the poller calls a special callback that checks if there are
 more async tasks for this request and spawns the next one or finally finishes
-the rewrite phase handler by returning *NGX_DECLINED*.
+the rewrite phase handler by returning *NGX_DECLINED*. Sequencing of tasks makes
+it possible to use computed results of early tasks as input values in later
+ones.
 
 All types of exceptions are caught inside async handlers. If an exception has
 happened, the async handler writes its message in the bound variable's data,
@@ -752,6 +755,57 @@ NGX_EXPORT_IOY_Y (getIOValue)
 You can find all the examples shown here in file
 [test/tsung/nginx-async.conf](test/tsung/nginx-async.conf).
 
+Client request body handlers
+----------------------------
+
+There is another type of asynchronous handler declared with macro
+*NGX_EXPORT_ASYNC_ON_REQ_BODY*. It accepts two byte strings: the first, *lazy*
+byte string, is the client request's body buffers, the second, *strict* byte
+string, is the user parameter like in normal asynchronous handlers. The request
+body handler returns its result in a *lazy* byte string like normal asynchronous
+handlers. It is possible to declare multiple request body handlers and mix them
+with other asynchronous handlers on the same level (e.g. in one nginx *location*
+or *location-if*). Here is an example from
+[test/tsung/nginx-async.conf](test/tsung/nginx-async.conf).
+
+```haskell
+reqBody = const . return
+NGX_EXPORT_ASYNC_ON_REQ_BODY (reqBody)
+
+reqHead a n = return $ C8L.concat $ take (readDef 0 $ C8.unpack n) $
+    map (`C8L.append` C8L.pack "\\n") $ C8L.lines a
+NGX_EXPORT_ASYNC_ON_REQ_BODY (reqHead)
+
+reqFld a fld = return $ maybe C8L.empty C8L.tail $
+    lookup (C8L.fromStrict fld) $ map (C8L.break (== \'=\')) $
+    C8L.split \'&\' a
+NGX_EXPORT_ASYNC_ON_REQ_BODY (reqFld)
+```
+
+```nginx
+        location /rb {
+            client_body_buffer_size 100k;
+            haskell_run_async_on_request_body reqBody $hs_rb noarg;
+            haskell_run_async_on_request_body reqFld $hs_rb_fld $arg_a;
+            haskell_run_async_on_request_body reqHead $hs_rb_head $arg_a;
+            echo ">>> BODY\n";
+            echo $hs_rb;
+            echo ">>> BODY HEAD $arg_a\n";
+            echo $hs_rb_head;
+            echo ">>> FIELD $arg_a\n";
+            echo $hs_rb_fld;
+        }
+```
+
+In location */rb* three request body handlers are declared: *reqBody*, *reqFld*
+and *reqHead*. Handler *reqBody* returns the client request body as is, *reqFld*
+extracts a field value from a posted form, and *reqHead* extracts a given number
+of lines from the request body. This example is a bit artificial because after
+extraction of the whole request body in the first async handler, there is little
+sense in running other handlers in async way: calculation of head and extraction
+of a form field can be carried out by synchronous *pure* handlers on the
+calculated value of *hs_rb*.
+
 Miscellaneous nginx directives
 ------------------------------
 
@@ -763,7 +817,7 @@ Miscellaneous nginx directives
 
 - *haskell_var_compensate_uri_changes ``<list>``* &mdash; Makes variables in the
   *``<list>``* compensate decrement of nginx internal *uri* counter on every
-  internal redirection thus making it possible to enjoy unlimited redirection
+  internal redirection, thus making it possible to enjoy unlimited redirection
   loops. Accepts only variables defined with directive *haskell_run*.
 
 The two directives above make internal redirections with *error_page*
@@ -844,9 +898,9 @@ directive *haskell_static_content* reload too.
 Wrapping haskell code organization
 ----------------------------------
 
-Macros NGX_EXPORT_S_S and others are really *cpp* macros expanded by program
+Macro *NGX_EXPORT_S_S* and others are really *cpp* macros expanded by program
 *cpphs* during *ghc* compilation stage. The code where these macros and other
-auxiliary functions are defined wraps the user's haskell code around thus
+auxiliary functions are defined wraps the user's haskell code around, thus
 producing a single source file that contains a *standalone* module with name
 *NgxHaskellUserRuntime*. This implementation imposes limitations on the user's
 haskell code in the nginx configuration file, of which the most important is
