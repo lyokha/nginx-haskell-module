@@ -810,8 +810,8 @@ Returning a large client request body in a handler like *reqBody* is not very
 efficient because it requires extra copying of internal nginx buffers. When only
 the whole request body is needed, there is a more efficient way that makes use
 of a standard nginx variable ``$request_body`` and a simple haskell handler that
-returns an empty string, while nevertheless ensuring that the request body is
-read. Below is an example.
+returns an empty string, while nevertheless ensuring that reading of the request
+body is triggered. Below is an example.
 
 ```haskell
 reqBodyTouch = (return .) . const . return C8L.empty
