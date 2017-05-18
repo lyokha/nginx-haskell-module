@@ -268,9 +268,9 @@ nginx notion: it means that they may contain arbitrary number of variables and
 plain symbols) that correspond to the arguments of the exported function.
 Directive *haskell_run* is allowed in *server*, *location* and *location-if*
 clauses. In this example all returned strings are stored in the same variable
-*hs_a* which is not a good habit for nginx configuration files. I only wanted to
-show that upper nginx configuration levels being merged with lower levels behave
-as normally expected.
+``$hs_a`` which is not a good habit for nginx configuration files. I only wanted
+to show that upper nginx configuration levels being merged with lower levels
+behave as normally expected.
 
 There is another haskell directive *haskell_content* which accepts a haskell
 function to generate HTTP response and an optional string that will be passed to
@@ -804,7 +804,34 @@ of lines from the request body. This example is a bit artificial because after
 extraction of the whole request body in the first async handler, there is little
 sense in running other handlers in async way: calculation of head and extraction
 of a form field can be carried out by synchronous *pure* handlers on the
-calculated value of *hs_rb*.
+calculated value of ``$hs_rb``.
+
+Returning a large client request body in a handler like *reqBody* is not very
+efficient because it requires extra copying of internal nginx buffers. When only
+the whole request body is needed, there is a more efficient way that makes use
+of a standard nginx variable ``$request_body`` and a simple haskell handler that
+returns an empty string, while nevertheless ensuring that the request body is
+read. Below is an example.
+
+```haskell
+reqBodyTouch = (return .) . const . return C8L.empty
+NGX_EXPORT_ASYNC_ON_REQ_BODY (reqBodyTouch)
+```
+
+```nginx
+        location /rb/touch {
+            client_body_buffer_size 100k;
+            haskell_run_async_on_request_body reqBodyTouch $hs_dummy noarg;
+            if ($request_body) {
+                echo $request_body;
+                break;
+            }
+            echo Fail;
+        }
+```
+
+This example shows as well that ``$request_body`` is available in the nginx
+rewrite module directives such as *if* and *rewrite*.
 
 Miscellaneous nginx directives
 ------------------------------
