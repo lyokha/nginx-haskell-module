@@ -181,6 +181,9 @@ ngxExportAsyncIOYY =
 -- | Exports a function of type
 -- /'L.ByteString' -> 'B.ByteString' -> 'IO' 'L.ByteString'/
 -- for using in directive /haskell_run_async_on_request_body/.
+--
+-- The first argument of the exported function contains buffers of the client
+-- request body.
 ngxExportAsyncOnReqBody =
     ngxExport 'IOYYY 'asyncIOYYY
     [t|Ptr NgxStrType -> CInt -> CString -> CInt ->
