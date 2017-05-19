@@ -19,6 +19,7 @@
 #include <ngx_http.h>
 #include <dlfcn.h>
 #include <HsFFI.h>
+#include <ghcversion.h>
 
 
 static const ngx_str_t  haskell_module_handler_prefix =
@@ -538,8 +539,10 @@ typedef struct {
     void                                      *dl_handle;
     void                                     (*hs_init)(int *, char ***);
     void                                     (*hs_exit)(void);
+#if __GLASGOW_HASKELL__ < 702
     void                                     (*hs_add_root)(void (*)(void));
     void                                     (*init_HsModule)(void);
+#endif
     ngx_http_haskell_compile_mode_e            compile_mode;
     ngx_array_t                                service_code_vars;
     ngx_array_t                                var_nocacheable;
@@ -1807,6 +1810,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         return NGX_ERROR;
     }
 
+#if __GLASGOW_HASKELL__ < 702
     mcf->hs_add_root = (void (*)(void (*)(void))) dlsym(mcf->dl_handle,
                                                         "hs_add_root");
     dl_error = dlerror();
@@ -1825,6 +1829,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
                       "\"__stginit_NgxHaskellUserRuntime\": %s", dl_error);
         return NGX_ERROR;
     }
+#endif
 
     argc = mcf->program_options.nelts + 1;
     if (mcf->rts_options.nelts > 0) {
@@ -1849,7 +1854,10 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     }
     mcf->hs_init(&argc, &argv);
     ngx_pfree(cycle->pool, argv);
+
+#if __GLASGOW_HASKELL__ < 702
     mcf->hs_add_root(mcf->init_HsModule);
+#endif
 
     handlers = mcf->handlers.elts;
 
