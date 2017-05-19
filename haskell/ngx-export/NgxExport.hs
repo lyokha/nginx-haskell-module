@@ -73,13 +73,15 @@ data NgxExport = SS            (String -> String)
                | UnsafeHandler (B.ByteString ->
                                     (B.ByteString, B.ByteString, Int))
 
-let name = mkName "exportType" in sequence
-    [sigD name [t|NgxExport -> IO CInt|],
-     funD name $
-         map (\(c, i) -> clause [conP c [wildP]] (normalB [|return i|]) [])
-             (zip ['SS, 'SSS, 'SLS, 'BS, 'BSS, 'BLS, 'YY, 'BY, 'IOYY, 'IOYYY,
-                   'Handler, 'UnsafeHandler] [1 ..] :: [(Name, Int)])
-    ]
+let name = mkName "exportType" in do
+    TyConI (DataD _ _ _ _ cs _) <- reify ''NgxExport
+    let cons = map (\(NormalC con _) -> con) cs
+    sequence
+        [sigD name [t|NgxExport -> IO CInt|],
+         funD name $
+             map (\(c, i) -> clause [conP c [wildP]] (normalB [|return i|]) [])
+                 (zip cons [1 ..] :: [(Name, Int)])
+        ]
 
 ngxExport' :: (Name -> Q Exp) -> Name -> Name -> Q Type -> Name -> Q [Dec]
 ngxExport' m e h t f = sequence
