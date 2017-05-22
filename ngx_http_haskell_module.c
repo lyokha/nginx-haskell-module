@@ -1879,7 +1879,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
                           "bad API version of haskell library");
             goto unload_and_exit;
         }
-        if (version[0] != 0 && version[1] != 3) {
+        if (version[0] != 0 || version[1] != 3) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                           "bad API version of haskell library: %d.%d",
                           version[0], version[1]);
