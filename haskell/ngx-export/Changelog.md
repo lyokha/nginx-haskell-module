@@ -1,3 +1,7 @@
+### 0.3.1.0
+
+- added versioning support to test for compatibility in C code.
+
 ### 0.3.0.0
 
 - added an asynchronous client request body handler exported with

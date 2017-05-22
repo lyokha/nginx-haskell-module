@@ -1,4 +1,5 @@
-{-# LANGUAGE TemplateHaskell, ViewPatterns, PatternSynonyms #-}
+{-# LANGUAGE TemplateHaskell, ForeignFunctionInterface #-}
+{-# LANGUAGE ViewPatterns, PatternSynonyms #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -53,6 +54,8 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Unsafe as B
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Lazy.Char8 as C8L
+import           Paths_ngx_export (version)
+import           Data.Version
 
 pattern I l <- (fromIntegral -> l)
 pattern PtrLen s l <- (s, I l)
@@ -438,4 +441,11 @@ unsafeHandler (UnsafeHandler f) x (I n) ps pls pt plt = do
     PtrLen smt lmt <- B.unsafeUseAsCStringLen mt return
     pokeCStringLen smt lmt pt plt
     return st
+
+foreign export ccall ngxExportVersion :: Ptr CInt -> IO CInt
+
+ngxExportVersion :: Ptr CInt -> IO CInt
+ngxExportVersion x = fromIntegral <$>
+    foldM (\k (I v) -> pokeElemOff x k v >> return (k + 1)) 0
+        (take 4 $ versionBranch version)
 

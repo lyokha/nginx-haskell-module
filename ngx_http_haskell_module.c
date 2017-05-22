@@ -1762,6 +1762,8 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     char                          **argv = NULL;
     int                             argc;
     char                           *hs_init = "hs_init";
+    HsInt32                       (*version_f)(HsInt32 *) = NULL;
+    HsInt32                         version[4], version_len;
 
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
     if (mcf == NULL || !mcf->code_loaded) {
@@ -1782,6 +1784,17 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         return NGX_ERROR;
     }
 
+    if (mcf->wrap_mode == ngx_http_haskell_module_wrap_mode_modular) {
+        version_f = (int (*)(int *)) dlsym(mcf->dl_handle, "ngxExportVersion");
+        dl_error = dlerror();
+        if (version_f == NULL) {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                          "failed to get API version of haskell library: %s",
+                          dl_error);
+            goto unload_and_exit;
+        }
+    }
+
     if (mcf->rts_options.nelts > 0) {
         hs_init = "hs_init_with_rtsopts";
     } else {
@@ -1799,7 +1812,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     if (dl_error != NULL) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                       "failed to load function \"%s\": %s", hs_init, dl_error);
-        return NGX_ERROR;
+        goto unload_and_exit;
     }
 
     mcf->hs_exit = (void (*)(void)) dlsym(mcf->dl_handle, "hs_exit");
@@ -1807,7 +1820,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     if (dl_error != NULL) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                       "failed to load function \"hs_exit\": %s", dl_error);
-        return NGX_ERROR;
+        goto unload_and_exit;
     }
 
 #if __GLASGOW_HASKELL__ < 702
@@ -1817,7 +1830,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     if (dl_error != NULL) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                       "failed to load function \"hs_add_root\": %s", dl_error);
-        return NGX_ERROR;
+        goto unload_and_exit;
     }
 
     mcf->init_HsModule = (void (*)(void)) dlsym(mcf->dl_handle,
@@ -1827,7 +1840,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                       "failed to load function "
                       "\"__stginit_NgxHaskellUserRuntime\": %s", dl_error);
-        return NGX_ERROR;
+        goto unload_and_exit;
     }
 #endif
 
@@ -1839,7 +1852,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     if (argv == NULL) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                       "failed to allocate artifacts for haskell init options");
-        return NGX_ERROR;
+        goto unload_and_exit;
     }
     argv[0] = "NgxHaskellUserRuntime";
     for (i = 0; i < mcf->program_options.nelts; i++) {
@@ -1858,6 +1871,21 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
 #if __GLASGOW_HASKELL__ < 702
     mcf->hs_add_root(mcf->init_HsModule);
 #endif
+
+    if (mcf->wrap_mode == ngx_http_haskell_module_wrap_mode_modular) {
+        version_len = version_f(version);
+        if (version_len < 2) {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                          "bad API version of haskell library");
+            goto unload_and_exit;
+        }
+        if (version[0] != 0 && version[1] != 3) {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                          "bad API version of haskell library: %d.%d",
+                          version[0], version[1]);
+            goto unload_and_exit;
+        }
+    }
 
     handlers = mcf->handlers.elts;
 
@@ -1887,8 +1915,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                           "failed to load haskell handler \"%V\": %s",
                           &handler_name, dl_error);
-            ngx_http_haskell_unload(cycle, 0);
-            return NGX_ERROR;
+            goto unload_and_exit;
         }
 
         type_checker_name = ngx_palloc(cycle->pool,
@@ -1896,8 +1923,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         if (type_checker_name == NULL) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                           "failed to allocate artifacts for type checker");
-            ngx_http_haskell_unload(cycle, 0);
-            return NGX_ERROR;
+            goto unload_and_exit;
         }
 
         ngx_memcpy(type_checker_name,
@@ -1913,8 +1939,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                           "failed to load haskell handler type checker \"%V\": "
                           "%s", &handler_name, dl_error);
-            ngx_http_haskell_unload(cycle, 0);
-            return NGX_ERROR;
+            goto unload_and_exit;
         }
 
         handlers[i].type = type_checker();
@@ -1939,8 +1964,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                           "haskell handler \"%V\" role and type mismatch",
                           &handler_name);
-            ngx_http_haskell_unload(cycle, 0);
-            return NGX_ERROR;
+            goto unload_and_exit;
         }
 
         if (handlers[i].role == ngx_http_haskell_handler_role_content_handler
@@ -1952,8 +1976,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                           "haskell handler \"%V\" unsafety attribute mismatch",
                           &handler_name);
-            ngx_http_haskell_unload(cycle, 0);
-            return NGX_ERROR;
+            goto unload_and_exit;
         }
 
         switch (handlers[i].type) {
@@ -1979,20 +2002,24 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         case ngx_http_haskell_handler_type_b_ls:
             break;
         default:
-            ngx_http_haskell_unload(cycle, 0);
-            return NGX_ERROR;
+            goto unload_and_exit;
         }
 
         if (wrong_n_args) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                           "actual type of haskell handler \"%V\" "
                           "does not match call samples", &handler_name);
-            ngx_http_haskell_unload(cycle, 0);
-            return NGX_ERROR;
+            goto unload_and_exit;
         }
     }
 
     return NGX_OK;
+
+unload_and_exit:
+
+    ngx_http_haskell_unload(cycle, 0);
+
+    return NGX_ERROR;
 }
 
 
