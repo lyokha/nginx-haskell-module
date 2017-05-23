@@ -1755,6 +1755,9 @@ ngx_http_haskell_compile(ngx_conf_t *cf, void *conf, ngx_str_t source_name)
 static ngx_int_t
 ngx_http_haskell_load(ngx_cycle_t *cycle)
 {
+    typedef HsInt32               (*version_f_t)(HsInt32 *, HsInt32);
+    typedef HsInt32               (*type_checker_t)(void);
+
     ngx_uint_t                      i;
     ngx_http_haskell_main_conf_t   *mcf;
     ngx_http_haskell_handler_t     *handlers;
@@ -1762,7 +1765,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     char                          **argv = NULL;
     int                             argc;
     char                           *hs_init = "hs_init";
-    HsInt32                       (*version_f)(HsInt32 *, HsInt32) = NULL;
+    version_f_t                     version_f = NULL;
     HsInt32                         version[4], version_len;
 
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
@@ -1785,8 +1788,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     }
 
     if (mcf->wrap_mode == ngx_http_haskell_module_wrap_mode_modular) {
-        version_f = (HsInt32 (*)(HsInt32 *, HsInt32)) dlsym(mcf->dl_handle,
-                                                            "ngxExportVersion");
+        version_f = (version_f_t) dlsym(mcf->dl_handle, "ngxExportVersion");
         dl_error = dlerror();
         if (version_f == NULL) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
@@ -1891,10 +1893,10 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     handlers = mcf->handlers.elts;
 
     for (i = 0; i < mcf->handlers.nelts; i++) {
-        ngx_str_t     handler_name;
-        int         (*type_checker)(void);
-        char         *type_checker_name = NULL;
-        ngx_uint_t    wrong_n_args = 0;
+        ngx_str_t        handler_name;
+        type_checker_t   type_checker;
+        char            *type_checker_name = NULL;
+        ngx_uint_t       wrong_n_args = 0;
 
         if (handlers[i].name.len <= haskell_module_handler_prefix.len
             || ngx_strncmp(handlers[i].name.data,
@@ -1933,7 +1935,8 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         ngx_memcpy(type_checker_name + haskell_module_type_checker_prefix.len,
                    handlers[i].name.data, handlers[i].name.len + 1);
 
-        type_checker = dlsym(mcf->dl_handle, type_checker_name);
+        type_checker = (type_checker_t) dlsym(mcf->dl_handle,
+                                              type_checker_name);
         dl_error = dlerror();
         ngx_pfree(cycle->pool, type_checker_name);
         if (dl_error != NULL) {
