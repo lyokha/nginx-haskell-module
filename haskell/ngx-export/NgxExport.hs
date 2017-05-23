@@ -442,10 +442,10 @@ unsafeHandler (UnsafeHandler f) x (I n) ps pls pt plt = do
     pokeCStringLen smt lmt pt plt
     return st
 
-foreign export ccall ngxExportVersion :: Ptr CInt -> IO CInt
+foreign export ccall ngxExportVersion :: Ptr CInt -> CInt -> IO CInt
 
-ngxExportVersion :: Ptr CInt -> IO CInt
-ngxExportVersion x = fromIntegral <$>
+ngxExportVersion :: Ptr CInt -> CInt -> IO CInt
+ngxExportVersion x (I n) = fromIntegral <$>
     foldM (\k (I v) -> pokeElemOff x k v >> return (k + 1)) 0
-        (take 4 $ versionBranch version)
+        (take n $ versionBranch version)
 

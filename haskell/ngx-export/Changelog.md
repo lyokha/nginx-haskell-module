@@ -1,3 +1,7 @@
+### 0.3.2.0
+
+- versioning security: get number of required version parts from C code.
+
 ### 0.3.1.0
 
 - added versioning support to test for compatibility in C code.

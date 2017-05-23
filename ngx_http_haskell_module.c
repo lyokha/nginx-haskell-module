@@ -1762,7 +1762,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     char                          **argv = NULL;
     int                             argc;
     char                           *hs_init = "hs_init";
-    HsInt32                       (*version_f)(HsInt32 *) = NULL;
+    HsInt32                       (*version_f)(HsInt32 *, HsInt32) = NULL;
     HsInt32                         version[4], version_len;
 
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
@@ -1785,7 +1785,8 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     }
 
     if (mcf->wrap_mode == ngx_http_haskell_module_wrap_mode_modular) {
-        version_f = (int (*)(int *)) dlsym(mcf->dl_handle, "ngxExportVersion");
+        version_f = (HsInt32 (*)(HsInt32 *, HsInt32)) dlsym(mcf->dl_handle,
+                                                            "ngxExportVersion");
         dl_error = dlerror();
         if (version_f == NULL) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
@@ -1873,7 +1874,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
 #endif
 
     if (mcf->wrap_mode == ngx_http_haskell_module_wrap_mode_modular) {
-        version_len = version_f(version);
+        version_len = version_f(version, sizeof(version) / sizeof(version[0]));
         if (version_len < 2) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                           "bad API version of haskell library");
