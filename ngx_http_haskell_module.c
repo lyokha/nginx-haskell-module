@@ -539,7 +539,7 @@ typedef struct {
     void                                      *dl_handle;
     void                                     (*hs_init)(int *, char ***);
     void                                     (*hs_exit)(void);
-#if __GLASGOW_HASKELL__ < 702
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ < 702
     void                                     (*hs_add_root)(void (*)(void));
     void                                     (*init_HsModule)(void);
 #endif
@@ -1791,7 +1791,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                           "failed to get API version of haskell library: %s",
                           dl_error);
-            goto unload_and_exit;
+            goto dlclose_and_exit;
         }
     }
 
@@ -1812,7 +1812,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     if (dl_error != NULL) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                       "failed to load function \"%s\": %s", hs_init, dl_error);
-        goto unload_and_exit;
+        goto dlclose_and_exit;
     }
 
     mcf->hs_exit = (void (*)(void)) dlsym(mcf->dl_handle, "hs_exit");
@@ -1820,17 +1820,17 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     if (dl_error != NULL) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                       "failed to load function \"hs_exit\": %s", dl_error);
-        goto unload_and_exit;
+        goto dlclose_and_exit;
     }
 
-#if __GLASGOW_HASKELL__ < 702
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ < 702
     mcf->hs_add_root = (void (*)(void (*)(void))) dlsym(mcf->dl_handle,
                                                         "hs_add_root");
     dl_error = dlerror();
     if (dl_error != NULL) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                       "failed to load function \"hs_add_root\": %s", dl_error);
-        goto unload_and_exit;
+        goto dlclose_and_exit;
     }
 
     mcf->init_HsModule = (void (*)(void)) dlsym(mcf->dl_handle,
@@ -1840,7 +1840,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                       "failed to load function "
                       "\"__stginit_NgxHaskellUserRuntime\": %s", dl_error);
-        goto unload_and_exit;
+        goto dlclose_and_exit;
     }
 #endif
 
@@ -1852,7 +1852,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     if (argv == NULL) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                       "failed to allocate artifacts for haskell init options");
-        goto unload_and_exit;
+        goto dlclose_and_exit;
     }
     argv[0] = "NgxHaskellUserRuntime";
     for (i = 0; i < mcf->program_options.nelts; i++) {
@@ -1868,7 +1868,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     mcf->hs_init(&argc, &argv);
     ngx_pfree(cycle->pool, argv);
 
-#if __GLASGOW_HASKELL__ < 702
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ < 702
     mcf->hs_add_root(mcf->init_HsModule);
 #endif
 
@@ -2014,6 +2014,12 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     }
 
     return NGX_OK;
+
+dlclose_and_exit:
+
+    dlclose(mcf->dl_handle);
+
+    return NGX_ERROR;
 
 unload_and_exit:
 
