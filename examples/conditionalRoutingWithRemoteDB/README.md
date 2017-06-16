@@ -47,7 +47,7 @@ $ curl -d'a=some&user=max' 'http://localhost:8010/some/resource?user=pete'
 In failover backend!
 $ curl -d'a=some&user=max' 'http://localhost:8010/some/resource'
 In backend2!
-curl -b'dst=ubackend1' -d'a=some&user=max' 'http://localhost:8010/some/resource'
+$ curl -b'dst=ubackend1' -d'a=some&user=max' 'http://localhost:8010/some/resource'
 In backend1!
 ```
 
