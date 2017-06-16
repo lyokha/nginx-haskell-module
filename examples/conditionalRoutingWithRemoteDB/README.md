@@ -23,7 +23,7 @@ Here is the rule for searching in database.
                      , [ [""    , "$cookie_dst"    ]
                        , ["user", "$arg_user"      ]
                        , ["user", "$hs_rb_fld_user"]
-                       , [""    , "ufailover" ]
+                       , [""    , "ufailover"      ]
                        ]
                      ]';
 ```
@@ -53,11 +53,11 @@ In backend1!
 
 Notice that when argument *user* is present in *URI* but its value (e.g. *pete*)
 is not found in the database, then *fromRemoteDB* returns *ufailover* without
-checking against the next *key/value* pairs (e.g. *user=max* from the *POSTed*
-form). If you want that *fromRemoteDB* tries to check other pairs, then the
-database should return an empty string on not found data. This is easy to
-achieve: simply set the variable ``$failover`` in *nginx.conf* to empty string
-and then you'll get a different response.
+checking against the further *key/value* pairs (e.g. *user=max* from the
+*POSTed* form). If you want that *fromRemoteDB* tries to check further pairs,
+then the database should return an empty string when data is not found. This is
+easy to achieve: simply set the variable ``$failover`` in *nginx.conf* to empty
+string and then you'll get a different response.
 
 ```ShellSession
 $ curl -d'a=some&user=max' 'http://localhost:8010/some/resource?user=pete'
