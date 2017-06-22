@@ -1,5 +1,5 @@
 name:                ngx-export
-version:             0.3.2.1
+version:             0.3.2.2
 synopsis:            Helper module for Nginx haskell module
 description:         Helper module for
         <http://github.com/lyokha/nginx-haskell-module Nginx haskell module>
@@ -17,7 +17,7 @@ cabal-version:       >= 1.8
 
 library
   build-depends:       base >= 4.7 && < 5
-                     , template-haskell
+                     , template-haskell >= 2.11.0.0
                      , bytestring >= 0.10.0.0
                      , unix
                      , async >= 2.0
