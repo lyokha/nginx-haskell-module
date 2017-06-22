@@ -1,3 +1,8 @@
+### 0.3.2.2
+
+- stricter constraints for packages *base* (>= 4.8 && < 5) and
+  *template-haskell* (>= 2.11.0.0)
+
 ### 0.3.2.0
 
 - versioning security: get number of required version parts from C code.
