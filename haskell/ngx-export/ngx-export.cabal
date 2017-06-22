@@ -16,7 +16,7 @@ build-type:          Simple
 cabal-version:       >= 1.8
 
 library
-  build-depends:       base >= 4.7 && < 5
+  build-depends:       base >= 4.8 && < 5
                      , template-haskell >= 2.11.0.0
                      , bytestring >= 0.10.0.0
                      , unix
