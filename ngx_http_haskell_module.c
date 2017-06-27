@@ -113,7 +113,8 @@ ngx_string(
 "AUX_NGX_TYPECHECK(AUX_NGX_IOY_Y, F, (const . F)) \\\n"
 "ngx_hs_ ## F = aux_ngx_hs_async_ioy_y $ AUX_NGX_IOY_Y (const . F); \\\n"
 "foreign export ccall ngx_hs_ ## F :: \\\n"
-"    AUX_NGX.CString -> AUX_NGX.CInt -> AUX_NGX.CInt -> AUX_NGX.CUInt -> \\\n"
+"    AUX_NGX.CString -> AUX_NGX.CInt -> AUX_NGX.CInt -> \\\n"
+"    AUX_NGX.CUInt -> AUX_NGX.CUInt -> \\\n"
 "    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CSize -> \\\n"
 "    AUX_NGX.Ptr AUX_NGX.CUInt -> IO ();\n\n"
 
@@ -122,7 +123,7 @@ ngx_string(
 "ngx_hs_ ## F = aux_ngx_hs_async_ioy_yy $ AUX_NGX_IOY_YY F; \\\n"
 "foreign export ccall ngx_hs_ ## F :: \\\n"
 "    AUX_NGX.Ptr AUX_NGX_STR_TYPE -> AUX_NGX.CInt -> \\\n"
-"    AUX_NGX.CString -> AUX_NGX.CInt -> AUX_NGX.CInt -> \\\n"
+"    AUX_NGX.CString -> AUX_NGX.CInt -> AUX_NGX.CInt -> AUX_NGX.CUInt -> \\\n"
 "    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CSize -> \\\n"
 "    AUX_NGX.Ptr AUX_NGX.CUInt -> IO ();\n\n"
 
@@ -130,7 +131,8 @@ ngx_string(
 "AUX_NGX_TYPECHECK(AUX_NGX_IOY_Y, F, F) \\\n"
 "ngx_hs_ ## F = aux_ngx_hs_async_ioy_y $ AUX_NGX_IOY_Y F; \\\n"
 "foreign export ccall ngx_hs_ ## F :: \\\n"
-"    AUX_NGX.CString -> AUX_NGX.CInt -> AUX_NGX.CInt -> AUX_NGX.CUInt -> \\\n"
+"    AUX_NGX.CString -> AUX_NGX.CInt -> AUX_NGX.CInt -> \\\n"
+"    AUX_NGX.CUInt -> AUX_NGX.CUInt -> \\\n"
 "    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CSize -> \\\n"
 "    AUX_NGX.Ptr AUX_NGX.CUInt -> IO ();\n\n"
 
@@ -178,7 +180,8 @@ ngx_string(
 "import qualified Data.ByteString as AUX_NGX_BS\n"
 "import qualified Data.ByteString.Unsafe as AUX_NGX_BS\n"
 "import qualified Data.ByteString.Lazy as AUX_NGX_BSL\n"
-"import qualified Data.ByteString.Lazy.Char8 as AUX_NGX_BSLC8\n\n"
+"import qualified Data.ByteString.Lazy.Char8 as AUX_NGX_BSLC8\n"
+"import qualified Data.Binary.Put as AUX_NGX\n\n"
 
 "-- START OF USER HASKELL CODE\n"
 );
@@ -381,10 +384,14 @@ ngx_string(
 "            show (e :: AUX_NGX.SomeException)\n"
 "    aux_ngx_pokeLazyByteString s p\n\n"
 
+"aux_ngx_asyncIOMsg :: AUX_NGX_BS.ByteString\n"
+"aux_ngx_asyncIOMsg =\n"
+"    AUX_NGX_BSL.toStrict $ AUX_NGX.runPut $ AUX_NGX.putInt64host 1\n\n"
+
 "aux_ngx_asyncIOCommon :: IO AUX_NGX_BSL.ByteString ->\n"
-"    AUX_NGX.CInt -> AUX_NGX.Ptr AUX_NGX.CString ->\n"
+"    AUX_NGX.CInt -> Bool -> AUX_NGX.Ptr AUX_NGX.CString ->\n"
 "    AUX_NGX.Ptr AUX_NGX.CSize -> AUX_NGX.Ptr AUX_NGX.CUInt -> IO ()\n"
-"aux_ngx_asyncIOCommon a (fromIntegral -> fd) p pl r =\n"
+"aux_ngx_asyncIOCommon a (fromIntegral -> fd) efd p pl r =\n"
 "    AUX_NGX.void . AUX_NGX.async $\n"
 "    ((Right <$> a)\n"
 "        `AUX_NGX.catch`\n"
@@ -403,28 +410,37 @@ ngx_string(
 "                )\n"
 "    )\n"
 "    `AUX_NGX.finally`\n"
-"    ((AUX_NGX.fdWrite fd \"0\" >> AUX_NGX.closeFd fd)\n"
-"        `AUX_NGX.catchIOError` const (return ()))\n\n"
+"    (if efd\n"
+"         then AUX_NGX.void $ AUX_NGX_BS.unsafeUseAsCString aux_ngx_asyncIOMsg"
+"\n"
+"                 (\\(AUX_NGX.castPtr -> s) -> AUX_NGX.fdWriteBuf fd s 8)\n"
+"         else AUX_NGX.fdWrite fd \"0\" >> AUX_NGX.closeFd fd\n"
+"     `AUX_NGX.catchIOError` const (return ())\n"
+"    )\n\n"
 
 "aux_ngx_hs_async_ioy_y :: AUX_NGX_EXPORT ->\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt -> AUX_NGX.CInt -> AUX_NGX.CUInt ->\n"
-"    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CSize ->\n"
-"    AUX_NGX.Ptr AUX_NGX.CUInt -> IO ()\n"
-"aux_ngx_hs_async_ioy_y (AUX_NGX_IOY_Y f)\n"
-"            x (fromIntegral -> n) (fromIntegral -> fd) ((/= 0) -> fstRun) =\n"
-"    aux_ngx_asyncIOCommon\n"
-"        (AUX_NGX_BS.unsafePackCStringLen (x, n) >>= flip f fstRun) fd\n\n"
-
-"aux_ngx_hs_async_ioy_yy :: AUX_NGX_EXPORT -> AUX_NGX.Ptr AUX_NGX_STR_TYPE ->\n"
-"    AUX_NGX.CInt -> AUX_NGX.CString -> AUX_NGX.CInt ->\n"
-"    AUX_NGX.CInt -> AUX_NGX.Ptr AUX_NGX.CString ->\n"
+"    AUX_NGX.CUInt -> AUX_NGX.Ptr AUX_NGX.CString ->\n"
 "    AUX_NGX.Ptr AUX_NGX.CSize -> AUX_NGX.Ptr AUX_NGX.CUInt -> IO ()\n"
-"aux_ngx_hs_async_ioy_yy (AUX_NGX_IOY_YY f) b (fromIntegral -> m)\n"
-"            x (fromIntegral -> n) =\n"
-"    aux_ngx_asyncIOCommon $ do\n"
+"aux_ngx_hs_async_ioy_y (AUX_NGX_IOY_Y f)\n"
+"            x (fromIntegral -> n) (fromIntegral -> fd) ((/= 0) -> efd)\n"
+"            ((/= 0) -> fstRun) =\n"
+"    aux_ngx_asyncIOCommon\n"
+"        (AUX_NGX_BS.unsafePackCStringLen (x, n) >>= flip f fstRun) fd efd\n\n"
+
+"aux_ngx_hs_async_ioy_yy :: AUX_NGX_EXPORT ->\n"
+"    AUX_NGX.Ptr AUX_NGX_STR_TYPE ->\n"
+"    AUX_NGX.CInt -> AUX_NGX.CString -> AUX_NGX.CInt ->\n"
+"    AUX_NGX.CInt -> AUX_NGX.CUInt -> AUX_NGX.Ptr AUX_NGX.CString ->\n"
+"    AUX_NGX.Ptr AUX_NGX.CSize -> AUX_NGX.Ptr AUX_NGX.CUInt -> IO ()\n"
+"aux_ngx_hs_async_ioy_yy (AUX_NGX_IOY_YY f)\n"
+"            b (fromIntegral -> m) x (fromIntegral -> n) fd ((/= 0) -> efd) =\n"
+"    aux_ngx_asyncIOCommon\n"
+"    (do\n"
 "        b' <- aux_ngx_peekNgxStringArrayLenY b m\n"
 "        x' <- AUX_NGX_BS.unsafePackCStringLen (x, n)\n"
-"        f b' x'\n\n"
+"        f b' x'\n"
+"    ) fd efd\n\n"
 
 "aux_ngx_hs_b_s :: AUX_NGX_EXPORT ->\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt ->\n"
@@ -501,6 +517,13 @@ ngx_string(
 "    return st\n"
 );
 
+static const ngx_uint_t use_eventfd_channel =
+#if (NGX_HAVE_EVENTFD)
+    1;
+#else
+    0;
+#endif
+
 
 typedef HsInt32 (*ngx_http_haskell_handler_s_s)
     (HsPtr, HsInt32, HsPtr);
@@ -519,9 +542,9 @@ typedef HsInt32 (*ngx_http_haskell_handler_y_y)
 typedef HsWord32 (*ngx_http_haskell_handler_b_y)
     (HsPtr, HsInt32);
 typedef void (*ngx_http_haskell_handler_async_ioy_y)
-    (HsPtr, HsInt32, HsInt32, HsWord32, HsPtr, HsPtr, HsPtr);
+    (HsPtr, HsInt32, HsInt32, HsWord32, HsWord32, HsPtr, HsPtr, HsPtr);
 typedef void (*ngx_http_haskell_handler_async_ioy_yy)
-    (HsPtr, HsInt32, HsPtr, HsInt32, HsInt32, HsPtr, HsPtr, HsPtr);
+    (HsPtr, HsInt32, HsPtr, HsInt32, HsInt32, HsWord32, HsPtr, HsPtr, HsPtr);
 typedef HsInt32 (*ngx_http_haskell_handler_ch)
     (HsPtr, HsInt32, HsPtr, HsPtr, HsPtr, HsPtr);
 typedef HsInt32 (*ngx_http_haskell_handler_dch)
@@ -738,7 +761,7 @@ static char *ngx_http_haskell_merge_loc_conf(ngx_conf_t *cf, void *parent,
     void *child);
 static ngx_int_t ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r);
 static ngx_int_t ngx_http_haskell_create_async_task(ngx_http_request_t *r,
-    ngx_fd_t *fd, ngx_http_haskell_async_data_t *async_data);
+    ngx_fd_t fd[2], ngx_http_haskell_async_data_t *async_data);
 static void ngx_http_haskell_post_handler(ngx_http_request_t *r);
 static ngx_int_t ngx_http_haskell_init_worker(ngx_cycle_t *cycle);
 static void ngx_http_haskell_exit_worker(ngx_cycle_t *cycle);
@@ -756,7 +779,9 @@ static ngx_int_t ngx_http_haskell_service_var_init_zone(
 static void ngx_http_haskell_async_event(ngx_event_t *ev);
 static void ngx_http_haskell_service_async_event(ngx_event_t *ev);
 static void ngx_http_haskell_content_handler_cleanup(void *data);
-static void close_pipe(ngx_log_t *log, ngx_fd_t *fd);
+static ngx_int_t ngx_http_haskell_open_async_event_channel(ngx_fd_t fd[2]);
+static void ngx_http_haskell_close_async_event_channel(ngx_log_t *log,
+    ngx_fd_t fd[2]);
 
 
 static ngx_command_t  ngx_http_haskell_module_commands[] = {
@@ -1013,7 +1038,8 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
         ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_haskell_ctx_t));
         if (ctx == NULL) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                "failed to create request context, declining phase handler");
+                          "failed to create request context, "
+                          "declining phase handler");
             return NGX_DECLINED;
         }
         if (ngx_array_init(&ctx->var_nocacheable_cache, r->pool,
@@ -1023,7 +1049,8 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
                                 mcf->var_nocacheable.nelts) == NULL)
         {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                "failed to create variable cache, declining phase handler");
+                          "failed to create variable cache, "
+                          "declining phase handler");
             return NGX_DECLINED;
         }
         var_nocacheable = mcf->var_nocacheable.elts;
@@ -1129,13 +1156,15 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
             ((ngx_http_haskell_handler_async_ioy_yy)
              handlers[code_vars[i].handler].self)
                     (ctx->request_body.elts, ctx->request_body.nelts,
-                     arg1.data, arg1.len, fd[1], &async_data->result.data,
-                     &async_data->result.len, &async_data->error);
+                     arg1.data, arg1.len, fd[1], use_eventfd_channel,
+                     &async_data->result.data, &async_data->result.len,
+                     &async_data->error);
         } else {
             ((ngx_http_haskell_handler_async_ioy_y)
              handlers[code_vars[i].handler].self)
-                    (arg1.data, arg1.len, fd[1], 0, &async_data->result.data,
-                     &async_data->result.len, &async_data->error);
+                    (arg1.data, arg1.len, fd[1], use_eventfd_channel, 0,
+                     &async_data->result.data, &async_data->result.len,
+                     &async_data->error);
         }
 
         cln = ngx_pool_cleanup_add(r->pool, 0);
@@ -1163,16 +1192,16 @@ decline_phase_handler:
 
 
 static ngx_int_t
-ngx_http_haskell_create_async_task(ngx_http_request_t *r, ngx_fd_t *fd,
+ngx_http_haskell_create_async_task(ngx_http_request_t *r, ngx_fd_t fd[2],
                                    ngx_http_haskell_async_data_t *async_data)
 {
     ngx_http_haskell_async_event_t    *hev;
     ngx_event_t                       *event;
 
-    if (pipe2(fd, O_NONBLOCK) == -1) {
+    if (ngx_http_haskell_open_async_event_channel(fd) == NGX_ERROR) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, ngx_errno,
-                      "failed to create pipe for future async result, "
-                      "skipping IO task");
+                      "failed to create async event channel for future "
+                      "async result, skipping IO task");
         return NGX_ERROR;
     }
 
@@ -1181,9 +1210,10 @@ ngx_http_haskell_create_async_task(ngx_http_request_t *r, ngx_fd_t *fd,
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "failed to allocate memory for future async result, "
                       "skipping IO task");
-        close_pipe(r->connection->log, fd);
+        ngx_http_haskell_close_async_event_channel(r->connection->log, fd);
         return NGX_ERROR;
     }
+
     hev->s.fd = fd[0];
     hev->r = r;
     hev->complete = &async_data->complete;
@@ -1193,7 +1223,7 @@ ngx_http_haskell_create_async_task(ngx_http_request_t *r, ngx_fd_t *fd,
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "failed to allocate memory for future async result, "
                       "skipping IO task");
-        close_pipe(r->connection->log, fd);
+        ngx_http_haskell_close_async_event_channel(r->connection->log, fd);
         return NGX_ERROR;
     }
     event->data = hev;
@@ -1205,7 +1235,7 @@ ngx_http_haskell_create_async_task(ngx_http_request_t *r, ngx_fd_t *fd,
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "failed to add event for future async result, "
                       "skipping IO task");
-        close_pipe(r->connection->log, fd);
+        ngx_http_haskell_close_async_event_channel(r->connection->log, fd);
         return NGX_ERROR;
     }
 
@@ -1921,7 +1951,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
                           "bad API version of haskell library");
             goto unload_and_exit;
         }
-        if (version[0] != 0 || version[1] != 3) {
+        if (version[0] != 0 || version[1] != 4) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                           "bad API version of haskell library: %d.%d",
                           version[0], version[1]);
@@ -2156,8 +2186,8 @@ ngx_http_haskell_stop_services(ngx_cycle_t *cycle)
         }
         if (close(service_code_vars[i].hev.s.fd) == -1) {
             ngx_log_error(NGX_LOG_CRIT, cycle->log, ngx_errno,
-                          "failed to close reading end of pipe while "
-                          "stopping service");
+                          "failed to close async event channel "
+                          "while stopping service");
         }
     }
 }
@@ -2199,10 +2229,10 @@ ngx_http_haskell_run_service(ngx_cycle_t *cycle,
     hev->cycle = cycle;
     hev->first_run = service_first_run;
 
-    if (pipe2(fd, O_NONBLOCK) == -1) {
+    if (ngx_http_haskell_open_async_event_channel(fd) == NGX_ERROR) {
         ngx_log_error(NGX_LOG_ERR, cycle->log, ngx_errno,
-                      "failed to create pipe for future async result, "
-                      "postponing IO task for 0.5 sec");
+                      "failed to create async event channel for future "
+                      "async result, postponing IO task for 0.5 sec");
         ngx_add_timer(event, 500);
         return NGX_OK;
     }
@@ -2210,10 +2240,10 @@ ngx_http_haskell_run_service(ngx_cycle_t *cycle,
     hev->s.fd = fd[0];
 
     if (ngx_add_event(event, NGX_READ_EVENT, 0) != NGX_OK) {
-        close_pipe(cycle->log, fd);
         ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
                       "failed to add event for future async result, "
                       "postponing IO task for 2 sec");
+        ngx_http_haskell_close_async_event_channel(cycle->log, fd);
         ngx_add_timer(event, 2000);
         return NGX_OK;
     }
@@ -2225,7 +2255,7 @@ ngx_http_haskell_run_service(ngx_cycle_t *cycle,
     arg1 = args[0].value;
     ((ngx_http_haskell_handler_async_ioy_y)
      handlers[service_code_var->data->handler].self)
-            (arg1.data, arg1.len, fd[1], service_first_run,
+            (arg1.data, arg1.len, fd[1], use_eventfd_channel, service_first_run,
              &service_code_var->future_async_data.result.data,
              &service_code_var->future_async_data.result.len,
              &service_code_var->future_async_data.error);
@@ -3380,8 +3410,8 @@ ngx_http_haskell_async_event(ngx_event_t *ev)
 
     if (close(hev->s.fd) == -1) {
         ngx_log_error(NGX_LOG_CRIT, hev->r->connection->log, ngx_errno,
-                      "failed to close reading end of pipe after async task "
-                      "was finished");
+                      "failed to close async event channel "
+                      "after async task was finished");
     }
 
     *hev->complete = 1;
@@ -3419,8 +3449,8 @@ ngx_http_haskell_service_async_event(ngx_event_t *ev)
 
     if (close(hev->s.fd) == -1) {
         ngx_log_error(NGX_LOG_CRIT, cycle->log, ngx_errno,
-                      "failed to close reading end of pipe after service task "
-                      "was finished");
+                      "failed to close async event channel "
+                      "after service task was finished");
     }
 
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
@@ -3570,15 +3600,32 @@ ngx_http_haskell_content_handler_cleanup(void *data)
 }
 
 
+static ngx_int_t
+ngx_http_haskell_open_async_event_channel(ngx_fd_t fd[2])
+{
+#if (NGX_HAVE_EVENTFD)
+#if (NGX_HAVE_SYS_EVENTFD_H)
+    fd[0] = fd[1] = eventfd(0, O_NONBLOCK);
+#else
+    fd[0] = fd[1] = syscall(SYS_eventfd, O_NONBLOCK);
+#endif
+    return fd[0] == NGX_INVALID_FILE ? NGX_ERROR : NGX_OK;
+#else
+    return pipe2(fd, O_NONBLOCK) == -1 ? NGX_ERROR : NGX_OK;
+#endif
+}
+
+
 static void
-close_pipe(ngx_log_t *log, ngx_fd_t *fd)
+ngx_http_haskell_close_async_event_channel(ngx_log_t *log, ngx_fd_t fd[2])
 {
     ngx_int_t  i;
 
-    for (i = 0; i < 2; i++) {
+    for (i = 0; i < (fd[0] == fd[1] ? 1 : 2); i++) {
         if (close(fd[i]) == -1) {
             ngx_log_error(NGX_LOG_CRIT, log, ngx_errno,
-                          "failed to close file descriptor of pipe");
+                          "failed to close file descriptor of "
+                          "async event channel");
         }
     }
 }

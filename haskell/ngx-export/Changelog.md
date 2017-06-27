@@ -1,3 +1,8 @@
+### 0.4.0.0
+
+- all asynchronous handlers can now report events via eventfd channels
+- new dependency on package *binary* (>= 0.8.1.0)
+
 ### 0.3.2.2
 
 - stricter constraints for packages *base* (>= 4.8 && < 5) and

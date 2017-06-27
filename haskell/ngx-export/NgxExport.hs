@@ -54,6 +54,7 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Unsafe as B
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Lazy.Char8 as C8L
+import           Data.Binary.Put
 import           Paths_ngx_export (version)
 import           Data.Version
 
@@ -178,8 +179,8 @@ ngxExportIOYY =
 -- for using in directive /haskell_run_async/.
 ngxExportAsyncIOYY =
     ngxExportC 'IOYY 'asyncIOYY
-    [t|CString -> CInt ->
-       CInt -> CUInt -> Ptr CString -> Ptr CSize -> Ptr CUInt -> IO ()|]
+    [t|CString -> CInt -> CInt -> CUInt -> CUInt ->
+       Ptr CString -> Ptr CSize -> Ptr CUInt -> IO ()|]
 
 -- | Exports a function of type
 -- /'L.ByteString' -> 'B.ByteString' -> 'IO' 'L.ByteString'/
@@ -190,7 +191,7 @@ ngxExportAsyncIOYY =
 ngxExportAsyncOnReqBody =
     ngxExport 'IOYYY 'asyncIOYYY
     [t|Ptr NgxStrType -> CInt -> CString -> CInt ->
-       CInt -> Ptr CString -> Ptr CSize -> Ptr CUInt -> IO ()|]
+       CInt -> CUInt -> Ptr CString -> Ptr CSize -> Ptr CUInt -> IO ()|]
 
 -- | Exports a function of type
 -- /'B.ByteString' -> 'Bool' -> 'IO' 'L.ByteString'/
@@ -200,8 +201,8 @@ ngxExportAsyncOnReqBody =
 -- being run for the first time.
 ngxExportServiceIOYY =
     ngxExport 'IOYY 'asyncIOYY
-    [t|CString -> CInt ->
-       CInt -> CUInt -> Ptr CString -> Ptr CSize -> Ptr CUInt -> IO ()|]
+    [t|CString -> CInt -> CInt -> CUInt -> CUInt ->
+       Ptr CString -> Ptr CSize -> Ptr CUInt -> IO ()|]
 
 -- | Exports a function of type
 -- /'B.ByteString' -> ('L.ByteString', 'String', 'Int')/
@@ -359,9 +360,12 @@ ioyY (IOYY f) x (I n) p = do
         `catch` \e -> return $ C8L.pack $ show (e :: SomeException)
     pokeLazyByteString s p
 
+asyncIOMsg :: B.ByteString
+asyncIOMsg = L.toStrict $ runPut $ putInt64host 1
+
 asyncIOCommon :: IO C8L.ByteString ->
-    CInt -> Ptr CString -> Ptr CSize -> Ptr CUInt -> IO ()
-asyncIOCommon a (I fd) p pl r = void . async $
+    CInt -> Bool -> Ptr CString -> Ptr CSize -> Ptr CUInt -> IO ()
+asyncIOCommon a (I fd) efd p pl r = void . async $
     ((Right <$> a)
         `catch` (\e -> return $ Left $ show (e :: SomeException)) >>=
             either
@@ -376,20 +380,28 @@ asyncIOCommon a (I fd) p pl r = void . async $
                     poke r 0
                 )
     )
-    `finally` ((fdWrite fd "0" >> closeFd fd) `catchIOError` const (return ()))
+    `finally`
+    (if efd
+         then void $ B.unsafeUseAsCString asyncIOMsg
+                        (\(castPtr -> s) -> fdWriteBuf fd s 8)
+         else fdWrite fd "0" >> closeFd fd
+     `catchIOError` const (return ())
+    )
 
 asyncIOYY :: NgxExport -> CString -> CInt ->
-    CInt -> CUInt -> Ptr CString -> Ptr CSize -> Ptr CUInt -> IO ()
-asyncIOYY (IOYY f) x (I n) fd ((/= 0) -> fstRun) =
-    asyncIOCommon (B.unsafePackCStringLen (x, n) >>= flip f fstRun) fd
+    CInt -> CUInt -> CUInt -> Ptr CString -> Ptr CSize -> Ptr CUInt -> IO ()
+asyncIOYY (IOYY f) x (I n) fd ((/= 0) -> efd) ((/= 0) -> fstRun) =
+    asyncIOCommon (B.unsafePackCStringLen (x, n) >>= flip f fstRun) fd efd
 
 asyncIOYYY :: NgxExport -> Ptr NgxStrType -> CInt -> CString -> CInt ->
-    CInt -> Ptr CString -> Ptr CSize -> Ptr CUInt -> IO ()
-asyncIOYYY (IOYYY f) b (I m) x (I n) =
-    asyncIOCommon $ do
+    CInt -> CUInt -> Ptr CString -> Ptr CSize -> Ptr CUInt -> IO ()
+asyncIOYYY (IOYYY f) b (I m) x (I n) fd ((/= 0) -> efd) =
+    asyncIOCommon
+    (do
         b' <- peekNgxStringArrayLenY b m
         x' <- B.unsafePackCStringLen (x, n)
         f b' x'
+    ) fd efd
 
 bS :: NgxExport -> CString -> CInt -> IO CUInt
 bS (BS f) x (I n) =
