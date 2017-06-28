@@ -601,7 +601,8 @@ a task is finished, the poller calls a special callback that checks if there are
 more async tasks for this request and spawns the next one or finally finishes
 the rewrite phase handler by returning *NGX_DECLINED*. Sequencing of tasks makes
 it possible to use computed results of early tasks as input values in later
-ones.
+ones. *N.B.*: starting from version *1.1* the *self-pipe* technique is replaced
+with more efficient *eventfd* channels if possible.
 
 All types of exceptions are caught inside async handlers. If an exception has
 happened, the async handler writes its message in the bound variable's data,

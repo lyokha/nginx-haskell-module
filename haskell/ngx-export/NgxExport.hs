@@ -360,8 +360,11 @@ ioyY (IOYY f) x (I n) p = do
         `catch` \e -> return $ C8L.pack $ show (e :: SomeException)
     pokeLazyByteString s p
 
-asyncIOMsg :: B.ByteString
-asyncIOMsg = L.toStrict $ runPut $ putInt64host 1
+asyncIOFlag1b :: B.ByteString
+asyncIOFlag1b = L.toStrict $ runPut $ putInt8 1
+
+asyncIOFlag8b :: B.ByteString
+asyncIOFlag8b = L.toStrict $ runPut $ putInt64host 1
 
 asyncIOCommon :: IO C8L.ByteString ->
     CInt -> Bool -> Ptr CString -> Ptr CSize -> Ptr CUInt -> IO ()
@@ -381,11 +384,12 @@ asyncIOCommon a (I fd) efd p pl r = void . async $
                 )
     )
     `finally`
-    (if efd
-         then void $ B.unsafeUseAsCString asyncIOMsg
-                        (\(castPtr -> s) -> fdWriteBuf fd s 8)
-         else fdWrite fd "0" >> closeFd fd
-     `catchIOError` const (return ())
+    ((if efd
+          then void $ B.unsafeUseAsCString asyncIOFlag8b
+                         (\(castPtr -> s) -> fdWriteBuf fd s 8)
+          else B.unsafeUseAsCString asyncIOFlag1b
+                         (\(castPtr -> s) -> fdWriteBuf fd s 1) >> closeFd fd
+     ) `catchIOError` const (return ())
     )
 
 asyncIOYY :: NgxExport -> CString -> CInt ->
