@@ -58,10 +58,11 @@ import           Data.Binary.Put
 import           Paths_ngx_export (version)
 import           Data.Version
 
-pattern I l <- (fromIntegral -> l)
-pattern PtrLen s l <- (s, I l)
+pattern I i                 <- (fromIntegral -> i)
+pattern PtrLen s l          <- (s, I l)
 pattern PtrLenFromMaybe s l <- (fromMaybe (nullPtr, -1) -> PtrLen s l)
-pattern EmptyLBS <- (L.null -> True)
+pattern ToBool i            <- ((/= 0) -> i)
+pattern EmptyLBS            <- (L.null -> True)
 
 data NgxExport = SS            (String -> String)
                | SSS           (String -> String -> String)
@@ -394,12 +395,12 @@ asyncIOCommon a (I fd) efd p pl r = void . async $
 
 asyncIOYY :: NgxExport -> CString -> CInt ->
     CInt -> CUInt -> CUInt -> Ptr CString -> Ptr CSize -> Ptr CUInt -> IO ()
-asyncIOYY (IOYY f) x (I n) fd ((/= 0) -> efd) ((/= 0) -> fstRun) =
+asyncIOYY (IOYY f) x (I n) fd (ToBool efd) (ToBool fstRun) =
     asyncIOCommon (B.unsafePackCStringLen (x, n) >>= flip f fstRun) fd efd
 
 asyncIOYYY :: NgxExport -> Ptr NgxStrType -> CInt -> CString -> CInt ->
     CInt -> CUInt -> Ptr CString -> Ptr CSize -> Ptr CUInt -> IO ()
-asyncIOYYY (IOYYY f) b (I m) x (I n) fd ((/= 0) -> efd) =
+asyncIOYYY (IOYYY f) b (I m) x (I n) fd (ToBool efd) =
     asyncIOCommon
     (do
         b' <- peekNgxStringArrayLenY b m
