@@ -1,33 +1,37 @@
+### 0.4.1.0
+
+- Bugfix: keep calling *fdWriteBuf* until it writes complete buffer.
+
 ### 0.4.0.0
 
-- all asynchronous handlers can now report events via eventfd channels
-- new dependency on package *binary* (>= 0.8.1.0)
+- All asynchronous handlers can now report events via eventfd channels.
+- New dependency on package *binary* (>= 0.8.1.0).
 
 ### 0.3.2.2
 
-- stricter constraints for packages *base* (>= 4.8 && < 5) and
-  *template-haskell* (>= 2.11.0.0)
+- Stricter constraints for packages *base* (>= 4.8 && < 5) and
+  *template-haskell* (>= 2.11.0.0).
 
 ### 0.3.2.0
 
-- versioning security: get number of required version parts from C code.
+- Versioning security: get number of required version parts from C code.
 
 ### 0.3.1.0
 
-- added versioning support to test for compatibility in C code.
+- Added versioning support to test for compatibility in C code.
 
 ### 0.3.0.0
 
-- added an asynchronous client request body handler exported with
+- Added an asynchronous client request body handler exported with
   *ngxExportAsyncOnReqBody* for using in a new Nginx directive
   *haskell_run_async_on_request_body*.
 
 ### 0.2.5.1
 
-- added signatures for type-checkers and exporters to prevent warnings when
+- Added signatures for type-checkers and exporters to prevent warnings when
   reifying in a user code with *-Wmissing-signatures* or *-Wall* enabled.
 
 ### 0.2.5.0
 
-- added a synchronous handler in IO Monad exported with *ngxExportIOYY*.
+- Added a synchronous handler in IO Monad exported with *ngxExportIOYY*.
 

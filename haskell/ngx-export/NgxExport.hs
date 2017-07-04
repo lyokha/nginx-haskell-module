@@ -48,6 +48,7 @@ import           System.IO.Error
 import           System.Posix.IO
 import           Control.Monad
 import           Control.Exception hiding (Handler)
+import           GHC.IO.Exception (ioe_errno)
 import           Control.Concurrent.Async
 import           Data.Maybe
 import qualified Data.ByteString as B
@@ -385,12 +386,23 @@ asyncIOCommon a (I fd) efd p pl r = void . async $
                 )
     )
     `finally`
-    ((if efd
-          then void $ B.unsafeUseAsCString asyncIOFlag8b
-                         (\(castPtr -> s) -> fdWriteBuf fd s 8)
-          else B.unsafeUseAsCString asyncIOFlag1b
-                         (\(castPtr -> s) -> fdWriteBuf fd s 1) >> closeFd fd
-     ) `catchIOError` const (return ())
+    (let writeBufN n s w
+             | w < n = (w +) <$>
+                 fdWriteBuf fd (plusPtr s $ fromIntegral w) (n - w)
+                 `catchIOError`
+                 (\e -> return $
+                      if ioe_errno e == Just ((\(Errno e) -> e) eINTR)
+                          then 0
+                          else n
+                 ) >>= writeBufN n s
+             | otherwise = return w
+         writeFlag1b = void $
+             B.unsafeUseAsCString asyncIOFlag1b $ flip (writeBufN 1) 0
+         writeFlag8b = void $
+             B.unsafeUseAsCString asyncIOFlag8b $ flip (writeBufN 8) 0
+     in if efd
+            then writeFlag8b
+            else writeFlag1b >> closeFd fd `catchIOError` const (return ())
     )
 
 asyncIOYY :: NgxExport -> CString -> CInt ->
