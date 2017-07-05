@@ -62,7 +62,7 @@ import           Data.Version
 pattern I i                 <- (fromIntegral -> i)
 pattern PtrLen s l          <- (s, I l)
 pattern PtrLenFromMaybe s l <- (fromMaybe (nullPtr, -1) -> PtrLen s l)
-pattern ToBool i            <- ((/= 0) -> i)
+pattern ToBool i            <- (toBool -> i)
 pattern EmptyLBS            <- (L.null -> True)
 
 data NgxExport = SS            (String -> String)
