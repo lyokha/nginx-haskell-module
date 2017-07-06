@@ -254,8 +254,8 @@ instance Storable NgxStrType where
         poke (castPtr p) n
         poke (plusPtr p $ alignment x) s
 
-catchAlloc :: IO (Ptr a) -> IO (Ptr a)
-catchAlloc = (`catchIOError` const (return nullPtr))
+safeMallocBytes :: Int -> IO (Ptr a)
+safeMallocBytes = flip catchIOError (const $ return nullPtr) . mallocBytes
 
 peekNgxStringArrayLen :: Ptr NgxStrType -> Int -> IO [String]
 peekNgxStringArrayLen x n = sequence $
@@ -285,7 +285,7 @@ toSingleBuffer EmptyLBS =
     return $ Just (nullPtr, 0)
 toSingleBuffer s = do
     let I l = L.length s
-    t <- catchAlloc $ mallocBytes l
+    t <- safeMallocBytes l
     if t /= nullPtr
         then do
             void $ L.foldlChunks
@@ -302,7 +302,7 @@ toBuffers :: L.ByteString -> IO (Maybe (Ptr NgxStrType, Int))
 toBuffers EmptyLBS =
     return $ Just (nullPtr, 0)
 toBuffers s = do
-    t <- catchAlloc $ mallocBytes $
+    t <- safeMallocBytes $
         L.foldlChunks (const . succ) 0 s * sizeOf (undefined :: NgxStrType)
     l <- L.foldlChunks
         (\a s -> do
@@ -313,7 +313,7 @@ toBuffers s = do
                     -- l cannot be zero at this point because intermediate
                     -- chunks of a lazy ByteString cannot be empty which is
                     -- the consequence of Monoid laws applied when it grows
-                    dst <- catchAlloc $ mallocBytes l
+                    dst <- safeMallocBytes l
                     if dst /= nullPtr
                         then do
                             B.unsafeUseAsCString s $ flip (copyBytes dst) l
