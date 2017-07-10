@@ -3362,6 +3362,11 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
                       "memory allocation error while running "
                       "haskell content handler");
+        if (handlers[lcf->content_handler->handler].type
+            == ngx_http_haskell_handler_type_uch)
+        {
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
         goto cleanup;
     }
 
@@ -3382,13 +3387,12 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
                 ngx_free(eres);
             }
         }
-        goto cleanup;
-    }
-
-    if (res == NULL && len != 0) {
-        ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
-                      "impossible branch while running "
-                      "haskell content handler");
+        if (handlers[lcf->content_handler->handler].type
+            == ngx_http_haskell_handler_type_uch)
+        {
+            ngx_free(eres);
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
         goto cleanup;
     }
 
@@ -3396,6 +3400,13 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
         == ngx_http_haskell_handler_type_uch)
     {
         goto send_response;
+    }
+
+    if (res == NULL && len != 0) {
+        ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
+                      "impossible branch while running "
+                      "haskell content handler");
+        goto cleanup;
     }
 
     pool = lcf->static_content ? lcf->pool : r->pool;
