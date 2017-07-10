@@ -422,7 +422,7 @@ ngx_string(
 "                  fmap (flip (,) 0) $ return $! s\n"
 "              ) `AUX_NGX.catch`\n"
 "                     \\e -> return (AUX_NGX_BSLC8.pack $\n"
-"                                     show (e :: AUX_NGX.SomeException), 1)\n"
+"                                       show (e :: AUX_NGX.SomeException), 1)\n"
 "    aux_ngx_pokeLazyByteString s p >>= AUX_NGX.poke pl\n"
 "    return r\n\n"
 
