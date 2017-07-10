@@ -1315,7 +1315,8 @@ Some facts about exceptions
 ---------------------------
 
 (The following does not refer to exceptions in async and service handlers as
-they catch them all.)
+they catch them all. This also does not refer to all handlers starting from
+version *1.2* of the module.)
 
 Haskell source code must preferably be pure and safe as soon as C code is known
 to be unfamiliar with catching Haskell exceptions. That is why I used functions
@@ -1359,6 +1360,11 @@ You may notice that function *jSONListOfIntsTakeN* is not safe too because of
 using of *B.tail* in it. However the way it is used in nginx rules gives a
 guarantee that the argument of *B.tail* will always have at least the *vertical
 bar* character (*|*) at its head.
+
+Starting from version *1.2* all synchronous variable and content handlers were
+made exception safe. Now synchronous variable handlers return *NGX_ERROR*
+(effectively an empty string) on an exception and log it with level *error*.
+Content handlers log exceptions with level *error* and return HTTP status *500*.
 
 Troubleshooting
 ---------------

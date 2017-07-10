@@ -49,7 +49,8 @@ ngx_string(
 "ngx_hs_ ## F = aux_ngx_hs_s_s $ AUX_NGX_S_S F; \\\n"
 "foreign export ccall ngx_hs_ ## F :: \\\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt -> \\\n"
-"    AUX_NGX.Ptr AUX_NGX.CString -> IO AUX_NGX.CInt;\n\n"
+"    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CInt -> \\\n"
+"    IO AUX_NGX.CUInt;\n\n"
 
 "#define NGX_EXPORT_S_SS(F) \\\n"
 "AUX_NGX_TYPECHECK(AUX_NGX_S_SS, F, F) \\\n"
@@ -57,20 +58,23 @@ ngx_string(
 "foreign export ccall ngx_hs_ ## F :: \\\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt -> \\\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt -> \\\n"
-"    AUX_NGX.Ptr AUX_NGX.CString -> IO AUX_NGX.CInt;\n\n"
+"    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CInt -> \\\n"
+"    IO AUX_NGX.CUInt;\n\n"
 
 "#define NGX_EXPORT_S_LS(F) \\\n"
 "AUX_NGX_TYPECHECK(AUX_NGX_S_LS, F, F) \\\n"
 "ngx_hs_ ## F = aux_ngx_hs_s_ls $ AUX_NGX_S_LS F; \\\n"
 "foreign export ccall ngx_hs_ ## F :: \\\n"
 "    AUX_NGX.Ptr AUX_NGX_STR_TYPE -> AUX_NGX.CInt -> \\\n"
-"    AUX_NGX.Ptr AUX_NGX.CString -> IO AUX_NGX.CInt;\n\n"
+"    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CInt -> \\\n"
+"    IO AUX_NGX.CUInt;\n\n"
 
 "#define NGX_EXPORT_B_S(F) \\\n"
 "AUX_NGX_TYPECHECK(AUX_NGX_B_S, F, F) \\\n"
 "ngx_hs_ ## F = aux_ngx_hs_b_s $ AUX_NGX_B_S F; \\\n"
 "foreign export ccall ngx_hs_ ## F :: \\\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt -> \\\n"
+"    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CInt -> \\\n"
 "    IO AUX_NGX.CUInt;\n\n"
 
 "#define NGX_EXPORT_B_SS(F) \\\n"
@@ -79,6 +83,7 @@ ngx_string(
 "foreign export ccall ngx_hs_ ## F :: \\\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt -> \\\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt -> \\\n"
+"    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CInt -> \\\n"
 "    IO AUX_NGX.CUInt;\n\n"
 
 "#define NGX_EXPORT_B_LS(F) \\\n"
@@ -86,6 +91,7 @@ ngx_string(
 "ngx_hs_ ## F = aux_ngx_hs_b_ls $ AUX_NGX_B_LS F; \\\n"
 "foreign export ccall ngx_hs_ ## F :: \\\n"
 "    AUX_NGX.Ptr AUX_NGX_STR_TYPE -> AUX_NGX.CInt -> \\\n"
+"    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CInt -> \\\n"
 "    IO AUX_NGX.CUInt;\n\n"
 
 "#define NGX_EXPORT_Y_Y(F) \\\n"
@@ -93,13 +99,15 @@ ngx_string(
 "ngx_hs_ ## F = aux_ngx_hs_y_y $ AUX_NGX_Y_Y F; \\\n"
 "foreign export ccall ngx_hs_ ## F :: \\\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt -> \\\n"
-"    AUX_NGX.Ptr AUX_NGX.CString -> IO AUX_NGX.CInt;\n\n"
+"    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CInt -> \\\n"
+"    IO AUX_NGX.CUInt;\n\n"
 
 "#define NGX_EXPORT_B_Y(F) \\\n"
 "AUX_NGX_TYPECHECK(AUX_NGX_B_Y, F, F) \\\n"
 "ngx_hs_ ## F = aux_ngx_hs_b_y $ AUX_NGX_B_Y F; \\\n"
 "foreign export ccall ngx_hs_ ## F :: \\\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt -> \\\n"
+"    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CInt -> \\\n"
 "    IO AUX_NGX.CUInt;\n\n"
 
 "#define NGX_EXPORT_IOY_Y(F) \\\n"
@@ -107,7 +115,8 @@ ngx_string(
 "ngx_hs_ ## F = aux_ngx_hs_ioy_y $ AUX_NGX_IOY_Y (const . F); \\\n"
 "foreign export ccall ngx_hs_ ## F :: \\\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt -> \\\n"
-"    AUX_NGX.Ptr AUX_NGX.CString -> IO AUX_NGX.CInt;\n\n"
+"    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CInt -> \\\n"
+"    IO AUX_NGX.CUInt;\n\n"
 
 "#define NGX_EXPORT_ASYNC_IOY_Y(F) \\\n"
 "AUX_NGX_TYPECHECK(AUX_NGX_IOY_Y, F, (const . F)) \\\n"
@@ -144,14 +153,16 @@ ngx_string(
 "    AUX_NGX.Ptr (AUX_NGX.Ptr AUX_NGX_STR_TYPE) -> "
 "AUX_NGX.Ptr AUX_NGX.CInt -> \\\n"
 "    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CSize -> \\\n"
-"    IO AUX_NGX.CInt;\n\n"
+"    AUX_NGX.Ptr AUX_NGX.CInt -> IO AUX_NGX.CUInt;\n\n"
 
 "#define NGX_EXPORT_DEF_HANDLER(F) \\\n"
 "AUX_NGX_TYPECHECK(AUX_NGX_Y_Y, F, F) \\\n"
 "ngx_hs_ ## F = aux_ngx_hs_def_handler $ AUX_NGX_Y_Y F; \\\n"
 "foreign export ccall ngx_hs_ ## F :: \\\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt -> \\\n"
-"    AUX_NGX.Ptr (AUX_NGX.Ptr AUX_NGX_STR_TYPE) -> IO AUX_NGX.CInt;\n\n"
+"    AUX_NGX.Ptr (AUX_NGX.Ptr AUX_NGX_STR_TYPE) -> \\\n"
+"    AUX_NGX.Ptr AUX_NGX.CInt -> AUX_NGX.Ptr AUX_NGX.CString -> \\\n"
+"    IO AUX_NGX.CUInt;\n\n"
 
 "#define NGX_EXPORT_UNSAFE_HANDLER(F) \\\n"
 "AUX_NGX_TYPECHECK(AUX_NGX_UNSAFE_HANDLER, F, F) \\\n"
@@ -160,7 +171,7 @@ ngx_string(
 "    AUX_NGX.CString -> AUX_NGX.CInt -> \\\n"
 "    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CSize -> \\\n"
 "    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CSize -> \\\n"
-"    IO AUX_NGX.CInt;\n\n"
+"    AUX_NGX.Ptr AUX_NGX.CInt -> IO AUX_NGX.CUInt;\n\n"
 
 "{-# LANGUAGE ViewPatterns #-}\n\n"
 
@@ -250,6 +261,19 @@ ngx_string(
 "    flip AUX_NGX.catchIOError (const $ return AUX_NGX.nullPtr) .\n"
 "        AUX_NGX.mallocBytes\n\n"
 
+"aux_ngx_safeNewCStringLen :: String -> IO AUX_NGX.CStringLen\n"
+"aux_ngx_safeNewCStringLen =\n"
+"    flip AUX_NGX.catchIOError (const $ return (AUX_NGX.nullPtr, -1)) .\n"
+"        AUX_NGX.newCStringLen\n\n"
+
+"aux_ngx_safeHandler :: AUX_NGX.Ptr AUX_NGX.CString ->\n"
+"    AUX_NGX.Ptr AUX_NGX.CInt -> IO AUX_NGX.CUInt -> IO AUX_NGX.CUInt\n"
+"aux_ngx_safeHandler p pl = AUX_NGX.handle $ \\e -> do\n"
+"    (x, fromIntegral -> l) <- aux_ngx_safeNewCStringLen $\n"
+"        show (e :: AUX_NGX.SomeException)\n"
+"    aux_ngx_pokeCStringLen x l p pl\n"
+"    return 1\n\n"
+
 "aux_ngx_peekNgxStringArrayLen :: AUX_NGX.Ptr AUX_NGX_STR_TYPE -> Int ->\n"
 "    IO [String]\n"
 "aux_ngx_peekNgxStringArrayLen x n = sequence $\n"
@@ -267,8 +291,9 @@ ngx_string(
 "                      AUX_NGX_BS.unsafePackCStringLen (y, m))) :)) []\n"
 "                           [0 .. n - 1])\n\n"
 
-"aux_ngx_pokeCStringLen :: AUX_NGX.CString -> AUX_NGX.CSize ->\n"
-"    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CSize -> IO ()\n"
+"aux_ngx_pokeCStringLen :: (AUX_NGX.Storable a, Num a) =>\n"
+"    AUX_NGX.CString -> a -> AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr a ->\n"
+"    IO ()\n"
 "aux_ngx_pokeCStringLen x n p s = AUX_NGX.poke p x >> AUX_NGX.poke s n\n\n"
 
 "aux_ngx_pokeLazyByteString :: AUX_NGX_BSL.ByteString ->\n"
@@ -338,53 +363,68 @@ ngx_string(
 
 "aux_ngx_hs_s_s :: AUX_NGX_EXPORT ->\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt ->\n"
-"    AUX_NGX.Ptr AUX_NGX.CString -> IO AUX_NGX.CInt\n"
+"    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CInt ->\n"
+"    IO AUX_NGX.CUInt\n"
 "aux_ngx_hs_s_s (AUX_NGX_S_S f)\n"
-"            x (fromIntegral -> n) p = do\n"
-"    (s, fromIntegral -> l) <- f <$> AUX_NGX.peekCStringLen (x, n)\n"
-"                                >>= AUX_NGX.newCStringLen\n"
-"    AUX_NGX.poke p s\n"
-"    return l\n\n"
+"            x (fromIntegral -> n) p pl =\n"
+"    aux_ngx_safeHandler p pl $ do\n"
+"        (s, fromIntegral -> l) <- f <$> AUX_NGX.peekCStringLen (x, n)\n"
+"                                    >>= AUX_NGX.newCStringLen\n"
+"        aux_ngx_pokeCStringLen s l p pl\n"
+"        return 0\n\n"
 
 "aux_ngx_hs_s_ss :: AUX_NGX_EXPORT ->\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt ->\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt ->\n"
-"    AUX_NGX.Ptr AUX_NGX.CString -> IO AUX_NGX.CInt\n"
+"    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CInt ->\n"
+"    IO AUX_NGX.CUInt\n"
 "aux_ngx_hs_s_ss (AUX_NGX_S_SS f)\n"
-"            x (fromIntegral -> n) y (fromIntegral -> m) p = do\n"
-"    (s, fromIntegral -> l) <- f <$> AUX_NGX.peekCStringLen (x, n)\n"
-"                                <*> AUX_NGX.peekCStringLen (y, m)\n"
-"                                >>= AUX_NGX.newCStringLen\n"
-"    AUX_NGX.poke p s\n"
-"    return l\n\n"
+"            x (fromIntegral -> n) y (fromIntegral -> m) p pl =\n"
+"    aux_ngx_safeHandler p pl $ do\n"
+"        (s, fromIntegral -> l) <- f <$> AUX_NGX.peekCStringLen (x, n)\n"
+"                                    <*> AUX_NGX.peekCStringLen (y, m)\n"
+"                                    >>= AUX_NGX.newCStringLen\n"
+"        aux_ngx_pokeCStringLen s l p pl\n"
+"        return 0\n\n"
 
 "aux_ngx_hs_s_ls :: AUX_NGX_EXPORT ->\n"
 "    AUX_NGX.Ptr AUX_NGX_STR_TYPE -> AUX_NGX.CInt ->\n"
-"    AUX_NGX.Ptr AUX_NGX.CString -> IO AUX_NGX.CInt\n"
+"    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CInt ->\n"
+"    IO AUX_NGX.CUInt\n"
 "aux_ngx_hs_s_ls (AUX_NGX_S_LS f)\n"
-"            x (fromIntegral -> n) p = do\n"
-"    (s, fromIntegral -> l) <- f <$> aux_ngx_peekNgxStringArrayLen x n\n"
-"                                >>= AUX_NGX.newCStringLen\n"
-"    AUX_NGX.poke p s\n"
-"    return l\n\n"
+"            x (fromIntegral -> n) p pl =\n"
+"    aux_ngx_safeHandler p pl $ do\n"
+"        (s, fromIntegral -> l) <- f <$> aux_ngx_peekNgxStringArrayLen x n\n"
+"                                    >>= AUX_NGX.newCStringLen\n"
+"        aux_ngx_pokeCStringLen s l p pl\n"
+"        return 0\n\n"
 
 "aux_ngx_hs_y_y :: AUX_NGX_EXPORT ->\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt ->\n"
-"    AUX_NGX.Ptr AUX_NGX.CString -> IO AUX_NGX.CInt\n"
+"    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CInt ->\n"
+"    IO AUX_NGX.CUInt\n"
 "aux_ngx_hs_y_y (AUX_NGX_Y_Y f)\n"
-"            x (fromIntegral -> n) p = do\n"
-"    s <- f <$> AUX_NGX_BS.unsafePackCStringLen (x, n)\n"
-"    aux_ngx_pokeLazyByteString s p\n\n"
+"            x (fromIntegral -> n) p pl =\n"
+"    aux_ngx_safeHandler p pl $ do\n"
+"        s <- f <$> AUX_NGX_BS.unsafePackCStringLen (x, n)\n"
+"        aux_ngx_pokeLazyByteString s p >>= AUX_NGX.poke pl\n"
+"        return 0\n\n"
 
 "aux_ngx_hs_ioy_y :: AUX_NGX_EXPORT ->\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt ->\n"
-"    AUX_NGX.Ptr AUX_NGX.CString -> IO AUX_NGX.CInt\n"
+"    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CInt ->\n"
+"    IO AUX_NGX.CUInt\n"
 "aux_ngx_hs_ioy_y (AUX_NGX_IOY_Y f)\n"
-"            x (fromIntegral -> n) p = do\n"
-"    s <- (AUX_NGX_BS.unsafePackCStringLen (x, n) >>= flip f False)\n"
-"        `AUX_NGX.catch` \\e -> return $ AUX_NGX_BSLC8.pack $\n"
-"            show (e :: AUX_NGX.SomeException)\n"
-"    aux_ngx_pokeLazyByteString s p\n\n"
+"            x (fromIntegral -> n) p pl = do\n"
+"    (s, r) <- (do\n"
+"                  s <- AUX_NGX_BS.unsafePackCStringLen (x, n) >>= flip f False"
+"\n"
+"                  fmap (flip (,) 0) $ return $! s\n"
+"              ) `AUX_NGX.catch`\n"
+"                     \\e -> return (AUX_NGX_BSLC8.pack $\n"
+"                                     show (e :: AUX_NGX.SomeException), 1)\n"
+"    aux_ngx_pokeLazyByteString s p >>= AUX_NGX.poke pl\n"
+"    return r\n\n"
 
 "aux_ngx_asyncIOFlag1b :: AUX_NGX_BS.ByteString\n"
 "aux_ngx_asyncIOFlag1b =\n"
@@ -398,13 +438,13 @@ ngx_string(
 "    AUX_NGX.CInt -> Bool -> AUX_NGX.Ptr AUX_NGX.CString ->\n"
 "    AUX_NGX.Ptr AUX_NGX.CSize -> AUX_NGX.Ptr AUX_NGX.CUInt -> IO ()\n"
 "aux_ngx_asyncIOCommon a (fromIntegral -> fd) efd p pl r =\n"
-"    AUX_NGX.void . AUX_NGX.async $\n"
-"    ((Right <$> a)\n"
+"    AUX_NGX.void . AUX_NGX.async $ do\n"
+"    (do {s <- a; fmap Right $ return $! s})\n"
 "        `AUX_NGX.catch`\n"
 "            (\\e -> return $ Left $ show (e :: AUX_NGX.SomeException)) >>=\n"
-"            either\n"
+"                either\n"
 "                (\\s -> do\n"
-"                    (x, fromIntegral -> l) <- AUX_NGX.newCStringLen s\n"
+"                    (x, fromIntegral -> l) <- aux_ngx_safeNewCStringLen s\n"
 "                    aux_ngx_pokeCStringLen x l p pl\n"
 "                    AUX_NGX.poke r 1\n"
 "                )\n"
@@ -414,31 +454,28 @@ ngx_string(
 "                    aux_ngx_pokeCStringLen t l p pl\n"
 "                    AUX_NGX.poke r 0\n"
 "                )\n"
-"    )\n"
-"    `AUX_NGX.finally`\n"
-"    (let writeBufN n s w\n"
-"             | w < n = (w +) <$>\n"
-"                 AUX_NGX.fdWriteBuf fd (AUX_NGX.plusPtr s $ fromIntegral w)\n"
-"                     (n - w)\n"
-"                 `AUX_NGX.catchIOError`\n"
-"                 (\\e -> return $\n"
-"                      if AUX_NGX.ioe_errno e ==\n"
-"                             Just ((\\(AUX_NGX.Errno e) -> e) AUX_NGX.eINTR)\n"
-"                          then 0\n"
-"                          else n\n"
-"                 ) >>= writeBufN n s\n"
-"             | otherwise = return w\n"
-"         writeFlag1b = AUX_NGX.void $\n"
-"             AUX_NGX_BS.unsafeUseAsCString aux_ngx_asyncIOFlag1b $\n"
-"                 flip (writeBufN 1) 0\n"
-"         writeFlag8b = AUX_NGX.void $\n"
-"             AUX_NGX_BS.unsafeUseAsCString aux_ngx_asyncIOFlag8b $\n"
-"                 flip (writeBufN 8) 0\n"
-"     in if efd\n"
-"            then writeFlag8b\n"
-"            else writeFlag1b >> AUX_NGX.closeFd fd `AUX_NGX.catchIOError`\n"
-"                     const (return ())\n"
-"    )\n\n"
+"    let writeBufN n s w\n"
+"            | w < n = (w +) <$>\n"
+"                AUX_NGX.fdWriteBuf fd (AUX_NGX.plusPtr s $ fromIntegral w)\n"
+"                    (n - w)\n"
+"                `AUX_NGX.catchIOError`\n"
+"                (\\e -> return $\n"
+"                     if AUX_NGX.ioe_errno e ==\n"
+"                            Just ((\\(AUX_NGX.Errno e) -> e) AUX_NGX.eINTR)\n"
+"                         then 0\n"
+"                         else n\n"
+"                ) >>= writeBufN n s\n"
+"            | otherwise = return w\n"
+"        writeFlag1b = AUX_NGX.void $\n"
+"            AUX_NGX_BS.unsafeUseAsCString aux_ngx_asyncIOFlag1b $\n"
+"                flip (writeBufN 1) 0\n"
+"        writeFlag8b = AUX_NGX.void $\n"
+"            AUX_NGX_BS.unsafeUseAsCString aux_ngx_asyncIOFlag8b $\n"
+"                flip (writeBufN 8) 0\n"
+"    if efd\n"
+"        then writeFlag8b\n"
+"        else writeFlag1b >> AUX_NGX.closeFd fd `AUX_NGX.catchIOError`\n"
+"                 const (return ())\n\n"
 
 "aux_ngx_hs_async_ioy_y :: AUX_NGX_EXPORT ->\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt -> AUX_NGX.CInt -> AUX_NGX.CUInt ->\n"
@@ -467,77 +504,100 @@ ngx_string(
 
 "aux_ngx_hs_b_s :: AUX_NGX_EXPORT ->\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt ->\n"
+"    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CInt ->\n"
 "    IO AUX_NGX.CUInt\n"
 "aux_ngx_hs_b_s (AUX_NGX_B_S f)\n"
-"            x (fromIntegral -> n) =\n"
-"    AUX_NGX.fromBool . f <$> AUX_NGX.peekCStringLen (x, n)\n\n"
+"            x (fromIntegral -> n) p pl =\n"
+"    aux_ngx_safeHandler p pl $ do\n"
+"        r <- AUX_NGX.fromBool . f <$> AUX_NGX.peekCStringLen (x, n)\n"
+"        aux_ngx_pokeCStringLen AUX_NGX.nullPtr 0 p pl\n"
+"        return r\n\n"
 
 "aux_ngx_hs_b_ss :: AUX_NGX_EXPORT ->\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt ->\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt ->\n"
+"    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CInt ->\n"
 "    IO AUX_NGX.CUInt\n"
 "aux_ngx_hs_b_ss (AUX_NGX_B_SS f)\n"
-"            x (fromIntegral -> n) y (fromIntegral -> m) =\n"
-"    (AUX_NGX.fromBool .) . f <$> AUX_NGX.peekCStringLen (x, n)\n"
-"                             <*> AUX_NGX.peekCStringLen (y, m)\n\n"
+"            x (fromIntegral -> n) y (fromIntegral -> m) p pl =\n"
+"    aux_ngx_safeHandler p pl $ do\n"
+"        r <- (AUX_NGX.fromBool .) . f <$> AUX_NGX.peekCStringLen (x, n)\n"
+"                                      <*> AUX_NGX.peekCStringLen (y, m)\n"
+"        aux_ngx_pokeCStringLen AUX_NGX.nullPtr 0 p pl\n"
+"        return r\n\n"
 
 "aux_ngx_hs_b_ls :: AUX_NGX_EXPORT ->\n"
 "    AUX_NGX.Ptr AUX_NGX_STR_TYPE -> AUX_NGX.CInt ->\n"
+"    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CInt ->\n"
 "    IO AUX_NGX.CUInt\n"
 "aux_ngx_hs_b_ls (AUX_NGX_B_LS f)\n"
-"            x (fromIntegral -> n) =\n"
-"    AUX_NGX.fromBool . f <$> aux_ngx_peekNgxStringArrayLen x n\n\n"
+"            x (fromIntegral -> n) p pl =\n"
+"    aux_ngx_safeHandler p pl $ do\n"
+"        r <- AUX_NGX.fromBool . f <$> aux_ngx_peekNgxStringArrayLen x n\n"
+"        aux_ngx_pokeCStringLen AUX_NGX.nullPtr 0 p pl\n"
+"        return r\n\n"
 
 "aux_ngx_hs_b_y :: AUX_NGX_EXPORT ->\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt ->\n"
+"    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CInt ->\n"
 "    IO AUX_NGX.CUInt\n"
 "aux_ngx_hs_b_y (AUX_NGX_B_Y f)\n"
-"            x (fromIntegral -> n) =\n"
-"    AUX_NGX.fromBool . f <$> AUX_NGX_BS.unsafePackCStringLen (x, n)\n\n"
+"            x (fromIntegral -> n) p pl =\n"
+"    aux_ngx_safeHandler p pl $ do\n"
+"        r <- AUX_NGX.fromBool . f <$> AUX_NGX_BS.unsafePackCStringLen (x, n)\n"
+"        aux_ngx_pokeCStringLen AUX_NGX.nullPtr 0 p pl\n"
+"        return r\n\n"
 
 "aux_ngx_hs_handler :: AUX_NGX_EXPORT ->\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt ->\n"
 "    AUX_NGX.Ptr (AUX_NGX.Ptr AUX_NGX_STR_TYPE) -> AUX_NGX.Ptr AUX_NGX.CInt ->"
 "\n"
 "    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CSize ->\n"
-"    IO AUX_NGX.CInt\n"
+"    AUX_NGX.Ptr AUX_NGX.CInt -> IO AUX_NGX.CUInt\n"
 "aux_ngx_hs_handler (AUX_NGX_HANDLER f)\n"
-"            x (fromIntegral -> n) ps pls pt plt = do\n"
-"    (s, mt, fromIntegral -> st) <- f <$> AUX_NGX_BS.unsafePackCStringLen "
-"(x, n)\n"
-"    (AUX_NGX.fromMaybe (AUX_NGX.nullPtr, -1) -> (t, fromIntegral -> l)) <-\n"
-"        aux_ngx_toBuffers s\n"
-"    AUX_NGX.poke ps t\n"
-"    AUX_NGX.poke pls l\n"
-"    (smt, fromIntegral -> lmt) <- AUX_NGX.newCStringLen mt\n"
-"    aux_ngx_pokeCStringLen smt lmt pt plt\n"
-"    return st\n\n"
+"            x (fromIntegral -> n) p pl pct plct pst =\n"
+"    aux_ngx_safeHandler pct pst $ do\n"
+"        (s, ct, fromIntegral -> st) <-\n"
+"            f <$> AUX_NGX_BS.unsafePackCStringLen (x, n)\n"
+"        (AUX_NGX.fromMaybe (AUX_NGX.nullPtr, -1) -> (t, fromIntegral -> l)) <-"
+"\n"
+"            aux_ngx_toBuffers s\n"
+"        AUX_NGX.poke p t >> AUX_NGX.poke pl l\n"
+"        (sct, fromIntegral -> lct) <- AUX_NGX.newCStringLen ct\n"
+"        aux_ngx_pokeCStringLen sct lct pct plct >> AUX_NGX.poke pst st\n"
+"        return 0\n\n"
 
 "aux_ngx_hs_def_handler :: AUX_NGX_EXPORT ->\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt ->\n"
-"    AUX_NGX.Ptr (AUX_NGX.Ptr AUX_NGX_STR_TYPE) -> IO AUX_NGX.CInt\n"
+"    AUX_NGX.Ptr (AUX_NGX.Ptr AUX_NGX_STR_TYPE) -> AUX_NGX.Ptr AUX_NGX.CInt ->"
+"\n"
+"    AUX_NGX.Ptr AUX_NGX.CString -> IO AUX_NGX.CUInt\n"
 "aux_ngx_hs_def_handler (AUX_NGX_Y_Y f)\n"
-"            x (fromIntegral -> n) ps = do\n"
-"    s <- f <$> AUX_NGX_BS.unsafePackCStringLen (x, n)\n"
-"    (AUX_NGX.fromMaybe (AUX_NGX.nullPtr, -1) -> (t, fromIntegral -> l)) <-\n"
-"        aux_ngx_toBuffers s\n"
-"    AUX_NGX.poke ps t\n"
-"    return l\n\n"
+"            x (fromIntegral -> n) p pl pe =\n"
+"    aux_ngx_safeHandler pe pl $ do\n"
+"        s <- f <$> AUX_NGX_BS.unsafePackCStringLen (x, n)\n"
+"        (AUX_NGX.fromMaybe (AUX_NGX.nullPtr, -1) -> (t, fromIntegral -> l)) <-"
+"\n"
+"            aux_ngx_toBuffers s\n"
+"        AUX_NGX.poke p t >> AUX_NGX.poke pl l\n"
+"        return 0\n\n"
 
 "aux_ngx_hs_unsafe_handler :: AUX_NGX_EXPORT ->\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt ->\n"
 "    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CSize ->\n"
 "    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CSize ->\n"
-"    IO AUX_NGX.CInt\n"
+"    AUX_NGX.Ptr AUX_NGX.CInt -> IO AUX_NGX.CUInt\n"
 "aux_ngx_hs_unsafe_handler (AUX_NGX_UNSAFE_HANDLER f)\n"
-"            x (fromIntegral -> n) ps pls pt plt = do\n"
-"    (s, mt, fromIntegral -> st) <- f <$> AUX_NGX_BS.unsafePackCStringLen "
-"(x, n)\n"
-"    (t, fromIntegral -> lt) <- AUX_NGX_BS.unsafeUseAsCStringLen s return\n"
-"    aux_ngx_pokeCStringLen t lt ps pls\n"
-"    (smt, fromIntegral -> lmt) <- AUX_NGX_BS.unsafeUseAsCStringLen mt return\n"
-"    aux_ngx_pokeCStringLen smt lmt pt plt\n"
-"    return st\n"
+"            x (fromIntegral -> n) p pl pct plct pst =\n"
+"    aux_ngx_safeHandler pct pst $ do\n"
+"        (s, ct, fromIntegral -> st) <-\n"
+"            f <$> AUX_NGX_BS.unsafePackCStringLen (x, n)\n"
+"        (t, fromIntegral -> l) <- AUX_NGX_BS.unsafeUseAsCStringLen s return\n"
+"        aux_ngx_pokeCStringLen t l p pl\n"
+"        (sct, fromIntegral -> lct) <-\n"
+"            AUX_NGX_BS.unsafeUseAsCStringLen ct return\n"
+"        aux_ngx_pokeCStringLen sct lct pct plct >> AUX_NGX.poke pst st\n"
+"        return 0\n\n"
 );
 
 static const ngx_uint_t use_eventfd_channel =
@@ -548,32 +608,34 @@ static const ngx_uint_t use_eventfd_channel =
 #endif
 
 
-typedef HsInt32 (*ngx_http_haskell_handler_s_s)
-    (HsPtr, HsInt32, HsPtr);
-typedef HsInt32 (*ngx_http_haskell_handler_s_ss)
-    (HsPtr, HsInt32, HsPtr, HsInt32, HsPtr);
-typedef HsInt32 (*ngx_http_haskell_handler_s_ls)
-    (HsPtr, HsInt32, HsPtr);
+typedef HsWord32 (*ngx_http_haskell_handler_s_s)
+    (HsPtr, HsInt32, HsPtr, HsPtr);
+typedef HsWord32 (*ngx_http_haskell_handler_s_ss)
+    (HsPtr, HsInt32, HsPtr, HsInt32, HsPtr, HsPtr);
+typedef HsWord32 (*ngx_http_haskell_handler_s_ls)
+    (HsPtr, HsInt32, HsPtr, HsPtr);
 typedef HsWord32 (*ngx_http_haskell_handler_b_s)
-    (HsPtr, HsInt32);
+    (HsPtr, HsInt32, HsPtr, HsPtr);
 typedef HsWord32 (*ngx_http_haskell_handler_b_ss)
-    (HsPtr, HsInt32, HsPtr, HsInt32);
+    (HsPtr, HsInt32, HsPtr, HsInt32, HsPtr, HsPtr);
 typedef HsWord32 (*ngx_http_haskell_handler_b_ls)
-    (HsPtr, HsInt32);
-typedef HsInt32 (*ngx_http_haskell_handler_y_y)
-    (HsPtr, HsInt32, HsPtr);
+    (HsPtr, HsInt32, HsPtr, HsPtr);
+typedef HsWord32 (*ngx_http_haskell_handler_y_y)
+    (HsPtr, HsInt32, HsPtr, HsPtr);
 typedef HsWord32 (*ngx_http_haskell_handler_b_y)
-    (HsPtr, HsInt32);
+    (HsPtr, HsInt32, HsPtr, HsPtr);
+typedef HsWord32 (*ngx_http_haskell_handler_ioy_y)
+    (HsPtr, HsInt32, HsPtr, HsPtr);
 typedef void (*ngx_http_haskell_handler_async_ioy_y)
     (HsPtr, HsInt32, HsInt32, HsWord32, HsWord32, HsPtr, HsPtr, HsPtr);
 typedef void (*ngx_http_haskell_handler_async_ioy_yy)
     (HsPtr, HsInt32, HsPtr, HsInt32, HsInt32, HsWord32, HsPtr, HsPtr, HsPtr);
-typedef HsInt32 (*ngx_http_haskell_handler_ch)
-    (HsPtr, HsInt32, HsPtr, HsPtr, HsPtr, HsPtr);
-typedef HsInt32 (*ngx_http_haskell_handler_dch)
-    (HsPtr, HsInt32, HsPtr);
-typedef HsInt32 (*ngx_http_haskell_handler_uch)
-    (HsPtr, HsInt32, HsPtr, HsPtr, HsPtr, HsPtr);
+typedef HsWord32 (*ngx_http_haskell_handler_ch)
+    (HsPtr, HsInt32, HsPtr, HsPtr, HsPtr, HsPtr, HsPtr);
+typedef HsWord32 (*ngx_http_haskell_handler_dch)
+    (HsPtr, HsInt32, HsPtr, HsPtr, HsPtr);
+typedef HsWord32 (*ngx_http_haskell_handler_uch)
+    (HsPtr, HsInt32, HsPtr, HsPtr, HsPtr, HsPtr, HsPtr);
 
 typedef enum {
     ngx_http_haskell_module_wrap_mode_modular = 0,
@@ -1974,7 +2036,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
                           "bad API version of haskell library");
             goto unload_and_exit;
         }
-        if (version[0] != 0 || version[1] != 4) {
+        if (version[0] != 0 || version[1] != 5) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                           "bad API version of haskell library: %d.%d",
                           version[0], version[1]);
@@ -2799,8 +2861,10 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
     ngx_http_complex_value_t          *args;
     ngx_str_t                          arg1, arg2, *argn = NULL;
     char                              *res = NULL;
-    ngx_pool_cleanup_t                *cln;
     ngx_int_t                          len;
+    ngx_str_t                          reslen;
+    ngx_uint_t                         err;
+    ngx_pool_cleanup_t                *cln;
 
     if (index == NULL) {
         return NGX_ERROR;
@@ -2876,45 +2940,49 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
 
     switch (handlers[code_vars[found_idx].handler].type) {
     case ngx_http_haskell_handler_type_s_s:
-        len = ((ngx_http_haskell_handler_s_s)
+        err = ((ngx_http_haskell_handler_s_s)
                handlers[code_vars[found_idx].handler].self)
-                    (arg1.data, arg1.len, &res);
+                    (arg1.data, arg1.len, &res, &len);
         break;
     case ngx_http_haskell_handler_type_s_ss:
-        len = ((ngx_http_haskell_handler_s_ss)
+        err = ((ngx_http_haskell_handler_s_ss)
                handlers[code_vars[found_idx].handler].self)
-                    (arg1.data, arg1.len, arg2.data, arg2.len, &res);
+                    (arg1.data, arg1.len, arg2.data, arg2.len, &res, &len);
         break;
     case ngx_http_haskell_handler_type_s_ls:
-        len = ((ngx_http_haskell_handler_s_ls)
+        err = ((ngx_http_haskell_handler_s_ls)
                handlers[code_vars[found_idx].handler].self)
-                    (argn, code_vars[found_idx].args.nelts, &res);
+                    (argn, code_vars[found_idx].args.nelts, &res, &len);
         break;
     case ngx_http_haskell_handler_type_b_s:
-        len = ((ngx_http_haskell_handler_b_s)
+        err = ((ngx_http_haskell_handler_b_s)
                handlers[code_vars[found_idx].handler].self)
-                    (arg1.data, arg1.len);
+                    (arg1.data, arg1.len, &res, &len);
         break;
     case ngx_http_haskell_handler_type_b_ss:
-        len = ((ngx_http_haskell_handler_b_ss)
+        err = ((ngx_http_haskell_handler_b_ss)
                handlers[code_vars[found_idx].handler].self)
-                    (arg1.data, arg1.len, arg2.data, arg2.len);
+                    (arg1.data, arg1.len, arg2.data, arg2.len, &res, &len);
         break;
     case ngx_http_haskell_handler_type_b_ls:
-        len = ((ngx_http_haskell_handler_b_ls)
+        err = ((ngx_http_haskell_handler_b_ls)
                handlers[code_vars[found_idx].handler].self)
-                    (argn, code_vars[found_idx].args.nelts);
+                    (argn, code_vars[found_idx].args.nelts, &res, &len);
         break;
     case ngx_http_haskell_handler_type_y_y:
-    case ngx_http_haskell_handler_type_ioy_y:
-        len = ((ngx_http_haskell_handler_y_y)
+        err = ((ngx_http_haskell_handler_y_y)
                handlers[code_vars[found_idx].handler].self)
-                    (arg1.data, arg1.len, &res);
+                    (arg1.data, arg1.len, &res, &len);
         break;
     case ngx_http_haskell_handler_type_b_y:
-        len = ((ngx_http_haskell_handler_b_y)
+        err = ((ngx_http_haskell_handler_b_y)
                handlers[code_vars[found_idx].handler].self)
-                    (arg1.data, arg1.len);
+                    (arg1.data, arg1.len, &res, &len);
+        break;
+    case ngx_http_haskell_handler_type_ioy_y:
+        err = ((ngx_http_haskell_handler_ioy_y)
+               handlers[code_vars[found_idx].handler].self)
+                    (arg1.data, arg1.len, &res, &len);
         break;
     default:
         return NGX_ERROR;
@@ -2923,22 +2991,36 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
     cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
     vars = cmcf->variables.elts;
 
+    if (len == -1) {
+        ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
+                      "memory allocation error while running haskell handler");
+        ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
+                      "memory allocation error while getting value of "
+                      "variable \"%V\"", &vars[*index].name);
+        return NGX_ERROR;
+    }
+
+    reslen.len = len;
+    reslen.data = (u_char *) res;
+
     switch (handlers[code_vars[found_idx].handler].type) {
-    case ngx_http_haskell_handler_type_y_y:
-    case ngx_http_haskell_handler_type_ioy_y:
-        if (len == -1) {
-            ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
-                          "memory allocation error while running "
-                          "haskell handler");
-            ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
-                          "memory allocation error while getting "
-                          "value of variable \"%V\"",
-                          &vars[*index].name);
-            return NGX_ERROR;
-        }
     case ngx_http_haskell_handler_type_s_s:
     case ngx_http_haskell_handler_type_s_ss:
     case ngx_http_haskell_handler_type_s_ls:
+    case ngx_http_haskell_handler_type_y_y:
+    case ngx_http_haskell_handler_type_ioy_y:
+        if (err) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "an exception was caught while getting value of "
+                          "variable \"%V\": \"%V\"",
+                          &vars[*index].name, &reslen);
+            if (handlers[code_vars[found_idx].handler].type
+                != ngx_http_haskell_handler_type_ioy_y)
+            {
+                ngx_free(res);
+                return NGX_ERROR;
+            }
+        }
         if (res == NULL) {
             if (len == 0) {
                 res = "";
@@ -2962,7 +3044,15 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
     case ngx_http_haskell_handler_type_b_ss:
     case ngx_http_haskell_handler_type_b_ls:
     case ngx_http_haskell_handler_type_b_y:
-        res = len == 1 ? "1" : "0";
+        if (res != NULL) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "an exception was caught while getting value of "
+                          "variable \"%V\": \"%V\"",
+                          &vars[*index].name, &reslen);
+            ngx_free(res);
+            return NGX_ERROR;
+        }
+        res = err ? "1" : "0";
         len = 1;
         break;
     default:
@@ -3199,9 +3289,13 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
     ngx_str_t                                 arg = ngx_null_string;
     ngx_str_t                                 ct = ngx_string("text/plain");
     ngx_int_t                                 len = 0, st = NGX_HTTP_OK;
+    ngx_uint_t                                err;
     size_t                                    slen;
     ngx_str_t                                *res = NULL;
     u_char                                   *sres = NULL;
+    char                                     *eres;
+    ngx_int_t                                 elen;
+    ngx_str_t                                 ereslen;
     ngx_chain_t                              *out, *out_cur;
     ngx_buf_t                                *b;
     ngx_pool_cleanup_t                       *cln;
@@ -3240,29 +3334,54 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
 
     switch (handlers[lcf->content_handler->handler].type) {
     case ngx_http_haskell_handler_type_y_y:
-        len = ((ngx_http_haskell_handler_dch)
+        err = ((ngx_http_haskell_handler_dch)
                handlers[lcf->content_handler->handler].self)
-                    (arg.data, arg.len, &res);
+                    (arg.data, arg.len, &res, &len, &eres);
+        elen = len;
         break;
     case ngx_http_haskell_handler_type_ch:
-        st = ((ngx_http_haskell_handler_ch)
-              handlers[lcf->content_handler->handler].self)
-                   (arg.data, arg.len, &res, &len, &ct.data, &ct.len);
+        err = ((ngx_http_haskell_handler_ch)
+               handlers[lcf->content_handler->handler].self)
+                    (arg.data, arg.len, &res, &len, &ct.data, &ct.len, &st);
+        elen = st;
+        eres = (char *) ct.data;
         break;
     case ngx_http_haskell_handler_type_uch:
-        st = ((ngx_http_haskell_handler_uch)
-              handlers[lcf->content_handler->handler].self)
-                   (arg.data, arg.len, &sres, &slen, &ct.data, &ct.len);
+        err = ((ngx_http_haskell_handler_uch)
+               handlers[lcf->content_handler->handler].self)
+                   (arg.data, arg.len, &sres, &slen, &ct.data, &ct.len, &st);
         len = slen;
-        goto send_response;
+        elen = st;
+        eres = (char *) ct.data;
+        break;
     default:
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    if (len == -1 || ct.data == NULL) {
+    if (elen == -1) {
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
                       "memory allocation error while running "
                       "haskell content handler");
+        goto cleanup;
+    }
+
+    if (err) {
+        if (eres == NULL) {
+            ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
+                          "impossible branch while running "
+                          "haskell content handler");
+        } else {
+            ereslen.len = elen;
+            ereslen.data = (u_char *) eres;
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "an exception was caught while running "
+                          "haskell content handler: \"%V\"", &ereslen);
+            if (handlers[lcf->content_handler->handler].type
+                == ngx_http_haskell_handler_type_y_y)
+            {
+                ngx_free(eres);
+            }
+        }
         goto cleanup;
     }
 
@@ -3271,6 +3390,12 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
                       "impossible branch while running "
                       "haskell content handler");
         goto cleanup;
+    }
+
+    if (handlers[lcf->content_handler->handler].type
+        == ngx_http_haskell_handler_type_uch)
+    {
+        goto send_response;
     }
 
     pool = lcf->static_content ? lcf->pool : r->pool;

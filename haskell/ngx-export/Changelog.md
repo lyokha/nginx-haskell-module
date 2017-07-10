@@ -1,3 +1,7 @@
+### 0.5.0.0
+
+- All synchronous variable and content handlers were made exception safe.
+
 ### 0.4.1.0
 
 - Bugfix: keep calling *fdWriteBuf* until it writes complete buffer.
