@@ -1,6 +1,8 @@
 ### 0.5.0.0
 
 - All synchronous variable and content handlers were made exception safe.
+- Bugfix: evaluate results of IO handlers strictly to make sure that all
+  exceptions will be caught.
 
 ### 0.4.1.0
 
