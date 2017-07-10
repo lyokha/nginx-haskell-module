@@ -3622,7 +3622,7 @@ ngx_http_haskell_service_async_event(ngx_event_t *ev)
     }
 
     if (ignore_empty && service_code_var->future_async_data.result.len == 0) {
-        /* newCStringLen allocates memory even for zero size! */
+        /* mallocBytes allocates memory even for zero size! */
         ngx_free(service_code_var->future_async_data.result.data);
     } else {
         ngx_free(service_code_var->async_data.result.data);
