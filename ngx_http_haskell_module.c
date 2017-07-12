@@ -2367,6 +2367,7 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_haskell_service_code_var_data_t  *service_code_var_data;
     ngx_int_t                                  v_idx;
     ngx_uint_t                                *v_idx_ptr;
+    ngx_http_get_variable_pt                   get_handler;
     ngx_uint_t                                 async, rb, service, service_cb;
 
     value = cf->args->elts;
@@ -2544,9 +2545,18 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         *v_idx_ptr = v_idx;
 
         v->data = (uintptr_t) v_idx_ptr;
+
+        get_handler = v->get_handler;
         v->get_handler = service ? ngx_http_haskell_run_service_handler :
                 (async ? ngx_http_haskell_run_async_handler :
                  ngx_http_haskell_run_handler);
+
+        if (get_handler != NULL && get_handler != v->get_handler) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "variable \"%V\" has been already defined with "
+                               "another variable handler", &value[2]);
+            return NGX_CONF_ERROR;
+        }
     }
 
     code_var_data->index = v_idx;
