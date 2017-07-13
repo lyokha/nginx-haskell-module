@@ -1208,9 +1208,15 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
             }
         }
         if (found_idx != NGX_ERROR) {
-            if (!task_complete) {
-                return NGX_DONE;
-            }
+            /* FIXME: by some reason the completeness flag may appear here
+             * unset, which will lead to the request hang. This weirdness
+             * requires further investigation! Currently, testing it will be
+             * commented, which looks fine at first glance, because only write
+             * event from the async haskell handler may resume the request
+             * processing */
+            /*if (!task_complete) {*/
+                /*return NGX_DONE;*/
+            /*}*/
             continue;
         }
 
@@ -3577,6 +3583,10 @@ ngx_http_haskell_async_event(ngx_event_t *ev)
 {
     ngx_http_haskell_async_event_t    *hev = ev->data;
 
+    if (ev->write) {
+        return;
+    }
+
     if (close(hev->s.fd) == -1) {
         ngx_log_error(NGX_LOG_CRIT, hev->r->connection->log, ngx_errno,
                       "failed to close async event channel "
@@ -3774,7 +3784,7 @@ ngx_http_haskell_open_async_event_channel(ngx_fd_t fd[2])
 {
 #if (NGX_HAVE_EVENTFD)
 #if (NGX_HAVE_SYS_EVENTFD_H)
-    fd[0] = fd[1] = eventfd(0, O_NONBLOCK);
+    fd[0] = fd[1] = eventfd(0, EFD_NONBLOCK);
 #else
     fd[0] = fd[1] = syscall(SYS_eventfd, O_NONBLOCK);
 #endif
