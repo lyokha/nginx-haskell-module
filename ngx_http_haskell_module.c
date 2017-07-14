@@ -1213,7 +1213,8 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
              * requires further investigation! Currently, testing it will be
              * commented, which looks fine at first glance, because only write
              * event from the async haskell handler may resume the request
-             * processing */
+             * processing. */
+            /* Update: events can be posted, is this the point? */
             /*if (!task_complete) {*/
                 /*return NGX_DONE;*/
             /*}*/
@@ -3583,9 +3584,14 @@ ngx_http_haskell_async_event(ngx_event_t *ev)
 {
     ngx_http_haskell_async_event_t    *hev = ev->data;
 
+    /* FIXME: testing against ev->write seems to be redundant. */
     if (ev->write) {
         return;
     }
+
+    /* FIXME: can events outlast request data? In this case we must not use r!
+     * Tests have shown that request does persist when the client side closes
+     * connection. Is this still correct for posted events? */
 
     if (close(hev->s.fd) == -1) {
         ngx_log_error(NGX_LOG_CRIT, hev->r->connection->log, ngx_errno,
