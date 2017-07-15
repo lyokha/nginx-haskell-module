@@ -1208,16 +1208,9 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
             }
         }
         if (found_idx != NGX_ERROR) {
-            /* FIXME: by some reason the completeness flag may appear here
-             * unset, which will lead to the request hang. This weirdness
-             * requires further investigation! Currently, testing it will be
-             * commented, which looks fine at first glance, because only write
-             * event from the async haskell handler may resume the request
-             * processing. */
-            /* Update: events can be posted, is this the point? */
-            /*if (!task_complete) {*/
-                /*return NGX_DONE;*/
-            /*}*/
+            if (!task_complete) {
+                return NGX_DONE;
+            }
             continue;
         }
 
@@ -2270,8 +2263,8 @@ ngx_http_haskell_stop_services(ngx_cycle_t *cycle)
             }
             continue;
         }
-        if (ngx_del_event(&service_code_vars[i].event, NGX_READ_EVENT, 0)
-            != NGX_OK)
+        if (ngx_del_event(&service_code_vars[i].event, NGX_READ_EVENT,
+                          NGX_CLOSE_EVENT) == NGX_ERROR)
         {
             ngx_log_error(NGX_LOG_CRIT, cycle->log, 0,
                           "failed to delete event while stopping service");
@@ -3584,14 +3577,14 @@ ngx_http_haskell_async_event(ngx_event_t *ev)
 {
     ngx_http_haskell_async_event_t    *hev = ev->data;
 
-    /* FIXME: testing against ev->write seems to be redundant. */
-    if (ev->write) {
-        return;
-    }
-
     /* FIXME: can events outlast request data? In this case we must not use r!
      * Tests have shown that request does persist when the client side closes
      * connection. Is this still correct for posted events? */
+
+    if (ngx_del_event(ev, NGX_READ_EVENT, NGX_CLOSE_EVENT) == NGX_ERROR) {
+        ngx_log_error(NGX_LOG_ERR, hev->r->connection->log, 0,
+                      "failed to delete event after async task was finished");
+    }
 
     if (close(hev->s.fd) == -1) {
         ngx_log_error(NGX_LOG_CRIT, hev->r->connection->log, ngx_errno,
@@ -3630,6 +3623,11 @@ ngx_http_haskell_service_async_event(ngx_event_t *ev)
     if (hev->s.fd == NGX_INVALID_FILE) {
         ngx_http_haskell_run_service(cycle, service_code_var, hev->first_run);
         return;
+    }
+
+    if (ngx_del_event(ev, NGX_READ_EVENT, NGX_CLOSE_EVENT) == NGX_ERROR) {
+        ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
+                      "failed to delete event after service task was finished");
     }
 
     if (close(hev->s.fd) == -1) {
