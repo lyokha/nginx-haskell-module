@@ -2264,8 +2264,9 @@ ngx_http_haskell_stop_services(ngx_cycle_t *cycle)
             }
             continue;
         }
-        if (ngx_del_event(&service_code_vars[i].event, NGX_READ_EVENT,
-                          NGX_CLOSE_EVENT) == NGX_ERROR)
+        service_code_vars[i].event.active = 0;
+        if (ngx_del_event(&service_code_vars[i].event, NGX_READ_EVENT, 0)
+            == NGX_ERROR)
         {
             ngx_log_error(NGX_LOG_CRIT, cycle->log, 0,
                           "failed to delete event while stopping service");
@@ -3582,7 +3583,8 @@ ngx_http_haskell_async_event(ngx_event_t *ev)
      * Tests have shown that request does persist when the client side closes
      * connection. Is this still correct for posted events? */
 
-    if (ngx_del_event(ev, NGX_READ_EVENT, NGX_CLOSE_EVENT) == NGX_ERROR) {
+    ev->active = 0;
+    if (ngx_del_event(ev, NGX_READ_EVENT, 0) == NGX_ERROR) {
         ngx_log_error(NGX_LOG_ERR, hev->r->connection->log, 0,
                       "failed to delete event after async task was finished");
     }
@@ -3626,7 +3628,8 @@ ngx_http_haskell_service_async_event(ngx_event_t *ev)
         return;
     }
 
-    if (ngx_del_event(ev, NGX_READ_EVENT, NGX_CLOSE_EVENT) == NGX_ERROR) {
+    ev->active = 0;
+    if (ngx_del_event(ev, NGX_READ_EVENT, 0) == NGX_ERROR) {
         ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
                       "failed to delete event after service task was finished");
     }
