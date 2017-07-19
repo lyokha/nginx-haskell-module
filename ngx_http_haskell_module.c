@@ -472,10 +472,11 @@ ngx_string(
 "        writeFlag8b = AUX_NGX.void $\n"
 "            AUX_NGX_BS.unsafeUseAsCString aux_ngx_asyncIOFlag8b $\n"
 "                flip (writeBufN 8) 0\n"
-"    if efd\n"
-"        then writeFlag8b\n"
-"        else writeFlag1b >> AUX_NGX.closeFd fd `AUX_NGX.catchIOError`\n"
-"                 const (return ())\n\n"
+"    AUX_NGX.uninterruptibleMask_ $\n"
+"        if efd\n"
+"            then writeFlag8b\n"
+"            else writeFlag1b >> AUX_NGX.closeFd fd `AUX_NGX.catchIOError`\n"
+"                     const (return ())\n\n"
 
 "aux_ngx_hs_async_ioy_y :: AUX_NGX_EXPORT ->\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt -> AUX_NGX.CInt -> AUX_NGX.CUInt ->\n"
@@ -3790,7 +3791,7 @@ ngx_http_haskell_open_async_event_channel(ngx_fd_t fd[2])
 #if (NGX_HAVE_SYS_EVENTFD_H)
     fd[0] = fd[1] = eventfd(0, EFD_NONBLOCK);
 #else
-    fd[0] = fd[1] = syscall(SYS_eventfd, O_NONBLOCK);
+    fd[0] = fd[1] = syscall(323, O_NONBLOCK);
 #endif
     return fd[0] == NGX_INVALID_FILE ? NGX_ERROR : NGX_OK;
 #else

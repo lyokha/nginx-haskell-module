@@ -433,9 +433,10 @@ asyncIOCommon a (I fd) efd p pl r = void . async $ do
             B.unsafeUseAsCString asyncIOFlag1b $ flip (writeBufN 1) 0
         writeFlag8b = void $
             B.unsafeUseAsCString asyncIOFlag8b $ flip (writeBufN 8) 0
-    if efd
-        then writeFlag8b
-        else writeFlag1b >> closeFd fd `catchIOError` const (return ())
+    uninterruptibleMask_ $
+        if efd
+            then writeFlag8b
+            else writeFlag1b >> closeFd fd `catchIOError` const (return ())
 
 asyncIOYY :: NgxExport -> CString -> CInt ->
     CInt -> CUInt -> CUInt -> Ptr CString -> Ptr CSize -> Ptr CUInt -> IO ()
