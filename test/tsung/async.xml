@@ -39,10 +39,16 @@
     probabilities must be 100 -->
 
     <sessions>
-        <session name="async-http-request" probability="100" type="ts_http">
+        <session name="async-http-request" probability="50" type="ts_http">
             <request>
                 <match do="continue" when="match" skip_headers="http">Hello main!</match>
                 <http url="/async" method="GET" version="1.0"/>
+            </request>
+        </session>
+        <session name="async-http-request-conn-timeout" probability="50" type="ts_http">
+            <request>
+                <match do="continue" when="match" skip_headers="http">ConnectionTimeout</match>
+                <http url="/asyncConnTimeout" method="GET" version="1.0"/>
             </request>
         </session>
     </sessions>
