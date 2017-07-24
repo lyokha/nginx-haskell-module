@@ -177,6 +177,8 @@ ngx_string(
 
 "module NgxHaskellUserRuntime where\n\n"
 
+"-- requires packages base, cpphs, bytestring, async, binary and unix\n\n"
+
 "import qualified Foreign.C as AUX_NGX\n"
 "import qualified Foreign.Ptr as AUX_NGX\n"
 "import qualified Foreign.Storable as AUX_NGX\n"

@@ -742,6 +742,16 @@ Put locations for showing data collected by the services and we are done.
         }
 ```
 
+Please notice, that service handlers can be interrupted at any point of their
+execution when a worker exits. This means that they cannot be used when reliable
+transactional semantics is required, e.g. when they have to write into a file
+for persistency. To work this around, a *callback location* (see details about
+this approach
+[below](#service-variables-in-shared-memory-and-integration-with-other-nginx-modules))
+with a *synchronous* IO handler (see next paragraphs) can be declared: the
+handler would write into the file reliably when it is called after a shared
+memory segment, that corresponds to the shared service variable, gets updated.
+
 Complex scenarios may require synchronous access to handlers with side effects.
 For example it could be an ad-hoc *error_page* redirection loop: asynchronous
 handlers do not suit here very well. For such cases another handler
@@ -895,6 +905,9 @@ could receive a request for running the callback function.
 
 See an example of using this approach in
 [examples/dynamicUpstreams](examples/dynamicUpstreams).
+
+This approach can also be used to provide reliable transactional semantics for
+service handlers (see [here](#asynchronous-tasks-with-side-effects)).
 
 Reloading of haskell code and static content
 --------------------------------------------
@@ -1373,14 +1386,18 @@ Troubleshooting
 - _Haskell source code fails to compile with messages ``Not in scope: ‘<$>’``
   and ``Not in scope: ‘<*>’``_.
 
-  This happens in *standalone module approach* with *ghc* older than *7.10* and
-  can be fixed by adding line
+  This happens in the *standalone module approach* with *ghc* older than *7.10*
+  and can be fixed by adding line
 
     ```haskell
   import Control.Applicative  
     ```
 
   in the import list inside the haskell source code.
+
+  Please also notice, that haskell module *ngx-export* compiles only with ghc
+  *8.0.1* and newer, whereas there is no such restriction for the standalone
+  module.
 
 - _In nginx error log there are many messages of *INFO* level with
   ``epoll_wait() failed (4: Interrupted system call)``_.
