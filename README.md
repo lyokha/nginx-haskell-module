@@ -746,9 +746,9 @@ Please notice, that service handlers can be interrupted at any point of their
 execution when a worker exits. This means that they cannot be used when reliable
 transactional semantics is required, e.g. when they have to write into a file
 for persistency. To work this around, a *callback location* (see details about
-this approach
-[below](#service-variables-in-shared-memory-and-integration-with-other-nginx-modules))
-with a *synchronous* IO handler (see next paragraphs) can be declared: the
+the service variable update callback approach in [this
+section](#service-variables-in-shared-memory-and-integration-with-other-nginx-modules))
+with a *synchronous* IO handler (see the next paragraphs) can be declared: the
 handler would write into the file reliably when it is called after a shared
 memory segment, that corresponds to the shared service variable, gets updated.
 
@@ -907,7 +907,7 @@ See an example of using this approach in
 [examples/dynamicUpstreams](examples/dynamicUpstreams).
 
 This approach can also be used to provide reliable transactional semantics for
-service handlers (see [here](#asynchronous-tasks-with-side-effects)).
+service handlers.
 
 Reloading of haskell code and static content
 --------------------------------------------
