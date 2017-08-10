@@ -411,17 +411,22 @@ for any content that can be evaluated only once in nginx worker's lifetime.
 Optimized unsafe content handler
 --------------------------------
 
+*Notice that starting from version 1.3 of this module, all content handlers do
+not pass copies to the C side! Instead, the underlying lazy bytestrings share
+their contents with nginx. So all the reasons about extra copying below are no
+longer actual.*
+
 Let's go back to the example from the previous section. All the content handlers
 we met so far receive a copy of data produced in haskell handlers. Using
 references to the original data would lead to nasty things after haskell's
-garbage collector wakeup so the only *safe* choice seems to be copying the
-original data. Handler *fromFile* from the example takes static data embedded
-into the haskell library by *Data.FileEmbed*, makes a copy of this and passes it
-to the C code. It runs once per location during location configuration lifetime
-thanks to the directive *haskell_static_content* implementation. Nonetheless
-there are two duplicate static data copies in the program during its run which
-looks wasteful. It can get even worse when using *haskell_static_content* is not
-an option.
+garbage collector wakeup, so the only *safe* choice seems to be copying the
+original data<sup>[1](#fnuch1)</sup>. Handler *fromFile* from the example takes
+static data embedded into the haskell library by *Data.FileEmbed*, makes a copy
+of this and passes it to the C code. It runs once per location during location
+configuration lifetime thanks to the directive *haskell_static_content*
+implementation. Nonetheless there are two duplicate static data copies in the
+program during its run which looks wasteful. It can get even worse when using
+*haskell_static_content* is not an option.
 
 Here is an example. Module *Data.FileEmbed* allows embedding all files in a
 directory recursively using template function *embedDir*. This make it possible
@@ -494,6 +499,15 @@ Haskell* version *2.5.0* (bundled with *ghc* since version *7.0.1*).
 
 The unsafe content handler implementation from the above example can be found in
 file [test/tsung/nginx-static.conf](test/tsung/nginx-static.conf).
+
+<br><hr><a name="fnuch1"><sup>**1**</sup></a>&nbsp; Did you read the notice in
+the beginning of the section? Yes, lazy bytestrings contents can be safely
+passed to the dark C side directly, provided *stable pointers* (*StablePtr*) to
+them are passed too. Creating a stable pointer to a bytestring makes it a *root
+object* that is guaranteed not to be garbage collected while the pointer is not
+freed. The bytestring *itself* can be relocated, but its buffers not! They are
+stored in *pinned memory arrays* that are not moved while the bytestring is
+alive.
 
 Asynchronous tasks with side effects
 ------------------------------------
@@ -1315,10 +1329,11 @@ Some facts about efficiency
     + (This does not refer to *byte strings*.) Haskell strings are simple lists,
       they are not contiguously allocated (but on the other hand they are lazy,
       which usually means efficient).
-    + Haskell exported functions of types *S_S*, *S_SS*, *S_LS* and *Y_Y* and
-      *safe* content handlers allocate new strings with *malloc()* which get
-      freed upon the request termination (or when the location configuration
-      gets reloaded in case of *haskell_static_content* handler).
+    + Haskell exported functions of types *S_S*, *S_SS* and *S_LS* allocate new
+      strings with *malloc()* which get freed upon the request termination.
+      Strings, passed by functions of types *Y_Y* and *IOY_Y* are copied into a
+      single buffer, but only when underlying lazy bytestrings have more than
+      one chunks.
     + Haskell content handlers are not suspendable so you cannot use
       long-running haskell functions without hitting the overall nginx
       performance. Fortunately this does not refer to [asynchronous

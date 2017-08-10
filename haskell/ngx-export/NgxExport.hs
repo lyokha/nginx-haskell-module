@@ -41,6 +41,7 @@ module NgxExport (
 import           Language.Haskell.TH
 import           Foreign.C
 import           Foreign.Ptr
+import           Foreign.StablePtr
 import           Foreign.Storable
 import           Foreign.Marshal.Alloc
 import           Foreign.Marshal.Utils
@@ -50,7 +51,6 @@ import           Control.Monad
 import           Control.Exception hiding (Handler)
 import           GHC.IO.Exception (ioe_errno)
 import           Control.Concurrent.Async
-import           Data.Maybe
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Unsafe as B
 import qualified Data.ByteString.Lazy as L
@@ -59,11 +59,10 @@ import           Data.Binary.Put
 import           Paths_ngx_export (version)
 import           Data.Version
 
-pattern I i                 <- (fromIntegral -> i)
-pattern PtrLen s l          <- (s, I l)
-pattern PtrLenFromMaybe s l <- (fromMaybe (nullPtr, -1) -> PtrLen s l)
-pattern ToBool i            <- (toBool -> i)
-pattern EmptyLBS            <- (L.null -> True)
+pattern I i        <- (fromIntegral -> i)
+pattern PtrLen s l <- (s, I l)
+pattern ToBool i   <- (toBool -> i)
+pattern EmptyLBS   <- (L.null -> True)
 
 data NgxExport = SS            (String -> String)
                | SSS           (String -> String -> String)
@@ -167,7 +166,8 @@ ngxExportBLS =
 ngxExportYY =
     ngxExport 'YY 'yY
     [t|CString -> CInt ->
-       Ptr CString -> Ptr CInt -> IO CUInt|]
+       Ptr (Ptr NgxStrType) -> Ptr CInt ->
+       Ptr (StablePtr L.ByteString) -> IO CUInt|]
 
 -- | Exports a function of type
 -- /'B.ByteString' -> 'Bool'/
@@ -183,7 +183,8 @@ ngxExportBY =
 ngxExportIOYY =
     ngxExportC 'IOYY 'ioyY
     [t|CString -> CInt ->
-       Ptr CString -> Ptr CInt -> IO CUInt|]
+       Ptr (Ptr NgxStrType) -> Ptr CInt ->
+       Ptr (StablePtr L.ByteString) -> IO CUInt|]
 
 -- | Exports a function of type
 -- /'B.ByteString' -> 'IO' 'L.ByteString'/
@@ -191,7 +192,8 @@ ngxExportIOYY =
 ngxExportAsyncIOYY =
     ngxExportC 'IOYY 'asyncIOYY
     [t|CString -> CInt -> CInt -> CUInt -> CUInt ->
-       Ptr CString -> Ptr CSize -> Ptr CUInt -> IO ()|]
+       Ptr (Ptr NgxStrType) -> Ptr CInt -> Ptr CUInt ->
+       Ptr (StablePtr L.ByteString) -> IO ()|]
 
 -- | Exports a function of type
 -- /'L.ByteString' -> 'B.ByteString' -> 'IO' 'L.ByteString'/
@@ -201,8 +203,9 @@ ngxExportAsyncIOYY =
 -- request body.
 ngxExportAsyncOnReqBody =
     ngxExport 'IOYYY 'asyncIOYYY
-    [t|Ptr NgxStrType -> CInt -> CString -> CInt ->
-       CInt -> CUInt -> Ptr CString -> Ptr CSize -> Ptr CUInt -> IO ()|]
+    [t|Ptr NgxStrType -> CInt -> CString -> CInt -> CInt -> CUInt ->
+       Ptr (Ptr NgxStrType) -> Ptr CInt -> Ptr CUInt ->
+       Ptr (StablePtr L.ByteString) -> IO ()|]
 
 -- | Exports a function of type
 -- /'B.ByteString' -> 'Bool' -> 'IO' 'L.ByteString'/
@@ -213,7 +216,8 @@ ngxExportAsyncOnReqBody =
 ngxExportServiceIOYY =
     ngxExport 'IOYY 'asyncIOYY
     [t|CString -> CInt -> CInt -> CUInt -> CUInt ->
-       Ptr CString -> Ptr CSize -> Ptr CUInt -> IO ()|]
+       Ptr (Ptr NgxStrType) -> Ptr CInt -> Ptr CUInt ->
+       Ptr (StablePtr L.ByteString) -> IO ()|]
 
 -- | Exports a function of type
 -- /'B.ByteString' -> ('L.ByteString', 'String', 'Int')/
@@ -225,7 +229,8 @@ ngxExportServiceIOYY =
 ngxExportHandler =
     ngxExport 'Handler 'handler
     [t|CString -> CInt -> Ptr (Ptr NgxStrType) -> Ptr CInt ->
-       Ptr CString -> Ptr CSize -> Ptr CInt -> IO CUInt|]
+       Ptr CString -> Ptr CSize -> Ptr CInt ->
+       Ptr (StablePtr L.ByteString) -> IO CUInt|]
 
 -- | Exports a function of type
 -- /'B.ByteString' -> 'L.ByteString'/
@@ -233,7 +238,8 @@ ngxExportHandler =
 ngxExportDefHandler =
     ngxExport 'YY 'defHandler
     [t|CString -> CInt ->
-       Ptr (Ptr NgxStrType) -> Ptr CInt -> Ptr CString -> IO CUInt|]
+       Ptr (Ptr NgxStrType) -> Ptr CInt -> Ptr CString ->
+       Ptr (StablePtr L.ByteString) -> IO CUInt|]
 
 -- | Exports a function of type
 -- /'B.ByteString' -> ('B.ByteString', 'B.ByteString', 'Int')/
@@ -268,16 +274,6 @@ safeMallocBytes :: Int -> IO (Ptr a)
 safeMallocBytes =
     flip catchIOError (const $ return nullPtr) . mallocBytes
 
-safeNewCStringLen :: String -> IO CStringLen
-safeNewCStringLen =
-    flip catchIOError (const $ return (nullPtr, -1)) . newCStringLen
-
-safeHandler :: Ptr CString -> Ptr CInt -> IO CUInt -> IO CUInt
-safeHandler p pl = handle $ \e -> do
-    PtrLen x l <- safeNewCStringLen $ show (e :: SomeException)
-    pokeCStringLen x l p pl
-    return 1
-
 peekNgxStringArrayLen :: Ptr NgxStrType -> Int -> IO [String]
 peekNgxStringArrayLen x n = sequence $
     foldr (\k ->
@@ -296,60 +292,41 @@ pokeCStringLen :: (Storable a, Num a) =>
     CString -> a -> Ptr CString -> Ptr a -> IO ()
 pokeCStringLen x n p s = poke p x >> poke s n
 
-pokeLazyByteString :: L.ByteString -> Ptr CString -> IO CInt
-pokeLazyByteString s p = do
-    PtrLenFromMaybe t l <- toSingleBuffer s
-    poke p t
-    return l
-
-toSingleBuffer :: L.ByteString -> IO (Maybe CStringLen)
-toSingleBuffer EmptyLBS =
-    return $ Just (nullPtr, 0)
-toSingleBuffer s = do
-    let I l = L.length s
-    t <- safeMallocBytes l
-    if t /= nullPtr
-        then do
-            void $ L.foldlChunks
-                (\a s -> do
-                    off <- a
-                    let l = B.length s
-                    B.unsafeUseAsCString s $ flip (copyBytes $ plusPtr t off) l
-                    return $ off + l
-                ) (return 0) s
-            return $ Just (t, l)
-        else return Nothing
-
-toBuffers :: L.ByteString -> IO (Maybe (Ptr NgxStrType, Int))
+toBuffers :: L.ByteString -> IO (Ptr NgxStrType, Int)
 toBuffers EmptyLBS =
-    return $ Just (nullPtr, 0)
+    return (nullPtr, 0)
 toBuffers s = do
     t <- safeMallocBytes $
         L.foldlChunks (const . succ) 0 s * sizeOf (undefined :: NgxStrType)
-    l <- L.foldlChunks
-        (\a s -> do
-            off <- a
-            maybe (return Nothing)
-                (\off -> do
-                    let l = B.length s
-                    -- l cannot be zero at this point because intermediate
-                    -- chunks of a lazy ByteString cannot be empty which is
-                    -- the consequence of Monoid laws applied when it grows
-                    dst <- safeMallocBytes l
-                    if dst /= nullPtr
-                        then do
-                            B.unsafeUseAsCString s $ flip (copyBytes dst) l
-                            pokeElemOff t off $ NgxStrType (fromIntegral l) dst
-                            return $ Just $ off + 1
-                        else do
-                            mapM_
-                                (peekElemOff t >=> \(NgxStrType _ x) -> free x)
-                                [0 .. off - 1]  -- [0 .. -1] makes [], so wise!
-                            free t
-                            return Nothing
-                ) off
-        ) (return $ if t /= nullPtr then Just 0 else Nothing) s
-    return $ l >>= Just . (,) t
+    if t == nullPtr
+        then return (nullPtr, -1)
+        else (,) t <$>
+                L.foldlChunks
+                    (\a s -> do
+                        off <- a
+                        B.unsafeUseAsCStringLen s $
+                            \(s, l) -> pokeElemOff t off $
+                                NgxStrType (fromIntegral l) s
+                        return $ off + 1
+                    ) (return 0) s
+
+pokeLazyByteString :: L.ByteString ->
+    Ptr (Ptr NgxStrType) -> Ptr CInt ->
+    Ptr (StablePtr L.ByteString) -> IO ()
+pokeLazyByteString s p pl spd = do
+    PtrLen t l <- toBuffers s
+    poke p t >> poke pl l
+    when (t /= nullPtr) $ newStablePtr s >>= poke spd
+
+safeNewCStringLen :: String -> IO CStringLen
+safeNewCStringLen =
+    flip catchIOError (const $ return (nullPtr, -1)) . newCStringLen
+
+safeHandler :: Ptr CString -> Ptr CInt -> IO CUInt -> IO CUInt
+safeHandler p pl = handle $ \e -> do
+    PtrLen x l <- safeNewCStringLen $ show (e :: SomeException)
+    pokeCStringLen x l p pl
+    return 1
 
 sS :: NgxExport -> CString -> CInt ->
     Ptr CString -> Ptr CInt -> IO CUInt
@@ -380,21 +357,23 @@ sLS (SLS f) x (I n) p pl =
         return 0
 
 yY :: NgxExport -> CString -> CInt ->
-    Ptr CString -> Ptr CInt -> IO CUInt
-yY (YY f) x (I n) p pl =
-    safeHandler p pl $ do
-        s <- f <$> B.unsafePackCStringLen (x, n)
-        pokeLazyByteString s p >>= poke pl
-        return 0
+    Ptr (Ptr NgxStrType) -> Ptr CInt ->
+    Ptr (StablePtr L.ByteString) -> IO CUInt
+yY (YY f) x (I n) p pl spd = do
+    (s, r) <- (flip (,) 0 . f <$> B.unsafePackCStringLen (x, n))
+                `catch` \e -> return (C8L.pack $ show (e :: SomeException), 1)
+    pokeLazyByteString s p pl spd
+    return r
 
 ioyY :: NgxExport -> CString -> CInt ->
-    Ptr CString -> Ptr CInt -> IO CUInt
-ioyY (IOYY f) x (I n) p pl = do
+    Ptr (Ptr NgxStrType) -> Ptr CInt ->
+    Ptr (StablePtr L.ByteString) -> IO CUInt
+ioyY (IOYY f) x (I n) p pl spd = do
     (s, r) <- (do
                   s <- B.unsafePackCStringLen (x, n) >>= flip f False
                   fmap (flip (,) 0) $ return $! s
               ) `catch` \e -> return (C8L.pack $ show (e :: SomeException), 1)
-    pokeLazyByteString s p >>= poke pl
+    pokeLazyByteString s p pl spd
     return r
 
 asyncIOFlag1b :: B.ByteString
@@ -404,47 +383,41 @@ asyncIOFlag8b :: B.ByteString
 asyncIOFlag8b = L.toStrict $ runPut $ putInt64host 1
 
 asyncIOCommon :: IO C8L.ByteString ->
-    CInt -> Bool -> Ptr CString -> Ptr CSize -> Ptr CUInt -> IO ()
-asyncIOCommon a (I fd) efd p pl r = void . async $ do
+    CInt -> Bool -> Ptr (Ptr NgxStrType) -> Ptr CInt -> Ptr CUInt ->
+    Ptr (StablePtr L.ByteString) -> IO ()
+asyncIOCommon a (I fd) efd p pl r spd = void . async $ do
     (do {s <- a; fmap Right $ return $! s})
         `catch` (\e -> return $ Left $ show (e :: SomeException)) >>=
-            either
-            (\s -> do
-                PtrLen x l <- safeNewCStringLen s
-                pokeCStringLen x l p pl
-                poke r 1
-            )
-            (\s -> do
-                PtrLenFromMaybe t l <- toSingleBuffer s
-                pokeCStringLen t l p pl
-                poke r 0
-            )
-    let writeBufN n s w
-            | w < n = (w +) <$>
-                fdWriteBuf fd (plusPtr s $ fromIntegral w) (n - w)
-                `catchIOError`
-                (\e -> return $
-                     if ioe_errno e == Just ((\(Errno e) -> e) eINTR)
-                         then 0
-                         else n
-                ) >>= writeBufN n s
-            | otherwise = return w
-        writeFlag1b = void $
-            B.unsafeUseAsCString asyncIOFlag1b $ flip (writeBufN 1) 0
-        writeFlag8b = void $
-            B.unsafeUseAsCString asyncIOFlag8b $ flip (writeBufN 8) 0
+            either (pokeAll 1 . C8L.pack) (pokeAll 0)
     uninterruptibleMask_ $
         if efd
             then writeFlag8b
             else writeFlag1b >> closeFd fd `catchIOError` const (return ())
+    where pokeAll e s = pokeLazyByteString s p pl spd >> poke r e
+          writeBufN n s w
+              | w < n = (w +) <$>
+                  fdWriteBuf fd (plusPtr s $ fromIntegral w) (n - w)
+                  `catchIOError`
+                  (\e -> return $
+                       if ioe_errno e == Just ((\(Errno e) -> e) eINTR)
+                           then 0
+                           else n
+                  ) >>= writeBufN n s
+              | otherwise = return w
+          writeFlag1b = void $
+              B.unsafeUseAsCString asyncIOFlag1b $ flip (writeBufN 1) 0
+          writeFlag8b = void $
+              B.unsafeUseAsCString asyncIOFlag8b $ flip (writeBufN 8) 0
 
 asyncIOYY :: NgxExport -> CString -> CInt ->
-    CInt -> CUInt -> CUInt -> Ptr CString -> Ptr CSize -> Ptr CUInt -> IO ()
+    CInt -> CUInt -> CUInt -> Ptr (Ptr NgxStrType) -> Ptr CInt -> Ptr CUInt ->
+    Ptr (StablePtr L.ByteString) -> IO ()
 asyncIOYY (IOYY f) x (I n) fd (ToBool efd) (ToBool fstRun) =
     asyncIOCommon (B.unsafePackCStringLen (x, n) >>= flip f fstRun) fd efd
 
 asyncIOYYY :: NgxExport -> Ptr NgxStrType -> CInt -> CString -> CInt ->
-    CInt -> CUInt -> Ptr CString -> Ptr CSize -> Ptr CUInt -> IO ()
+    CInt -> CUInt -> Ptr (Ptr NgxStrType) -> Ptr CInt -> Ptr CUInt ->
+    Ptr (StablePtr L.ByteString) -> IO ()
 asyncIOYYY (IOYYY f) b (I m) x (I n) fd (ToBool efd) =
     asyncIOCommon
     (do
@@ -487,23 +460,25 @@ bY (BY f) x (I n) p pl =
         return r
 
 handler :: NgxExport -> CString -> CInt -> Ptr (Ptr NgxStrType) -> Ptr CInt ->
-    Ptr CString -> Ptr CSize -> Ptr CInt -> IO CUInt
-handler (Handler f) x (I n) p pl pct plct pst =
+    Ptr CString -> Ptr CSize -> Ptr CInt ->
+    Ptr (StablePtr L.ByteString) -> IO CUInt
+handler (Handler f) x (I n) p pl pct plct pst spd =
     safeHandler pct pst $ do
         (s, ct, I st) <- f <$> B.unsafePackCStringLen (x, n)
-        PtrLenFromMaybe t l <- toBuffers s
+        PtrLen t l <- toBuffers s
         poke p t >> poke pl l
         PtrLen sct lct <- newCStringLen ct
         pokeCStringLen sct lct pct plct >> poke pst st
+        when (t /= nullPtr) $ newStablePtr s >>= poke spd
         return 0
 
 defHandler :: NgxExport -> CString -> CInt ->
-    Ptr (Ptr NgxStrType) -> Ptr CInt -> Ptr CString -> IO CUInt
-defHandler (YY f) x (I n) p pl pe =
+    Ptr (Ptr NgxStrType) -> Ptr CInt -> Ptr CString ->
+    Ptr (StablePtr L.ByteString) -> IO CUInt
+defHandler (YY f) x (I n) p pl pe spd =
     safeHandler pe pl $ do
         s <- f <$> B.unsafePackCStringLen (x, n)
-        PtrLenFromMaybe t l <- toBuffers s
-        poke p t >> poke pl l
+        pokeLazyByteString s p pl spd
         return 0
 
 unsafeHandler :: NgxExport -> CString -> CInt -> Ptr CString -> Ptr CSize ->
@@ -516,6 +491,12 @@ unsafeHandler (UnsafeHandler f) x (I n) p pl pct plct pst =
         PtrLen sct lct <- B.unsafeUseAsCStringLen ct return
         pokeCStringLen sct lct pct plct >> poke pst st
         return 0
+
+foreign export ccall ngxExportReleaseLockedByteString ::
+    StablePtr L.ByteString -> IO ()
+
+ngxExportReleaseLockedByteString :: StablePtr L.ByteString -> IO ()
+ngxExportReleaseLockedByteString = freeStablePtr
 
 foreign export ccall ngxExportVersion :: Ptr CInt -> CInt -> IO CInt
 

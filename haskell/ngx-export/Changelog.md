@@ -1,3 +1,10 @@
+### 0.6.0.0
+
+- Lazy bytestrings contents are no longer copied when passed back to nginx.
+  Instead, they are passed directly along with a StablePtr to original
+  bytestrings. This must improve performance and lower memory consumption for
+  content handlers with large outputs.
+
 ### 0.5.0.0
 
 - All synchronous variable and content handlers were made exception safe.
