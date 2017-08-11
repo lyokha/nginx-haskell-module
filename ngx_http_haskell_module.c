@@ -3573,9 +3573,12 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
         if (clnd == NULL) {
             goto cleanup;
         }
+        /* do not let release_locked_bytestring() after hs_exit()
+         * for static content! */
         clnd->yy_cleanup_data.release_locked_bytestring =
-                                        mcf->release_locked_bytestring;
-        clnd->yy_cleanup_data.locked_bytestring = locked_bytestring;
+                lcf->static_content ? NULL : mcf->release_locked_bytestring;
+        clnd->yy_cleanup_data.locked_bytestring =
+                lcf->static_content ? NULL : locked_bytestring;
         clnd->yy_cleanup_data.bufs = res;
         clnd->yy_cleanup_data.n_bufs = len;
         clnd->content_type.len = def_handler ? 0 : ct.len;
@@ -3971,6 +3974,7 @@ ngx_http_haskell_yy_handler_result(ngx_log_t *log, ngx_pool_t *pool,
     }
 
     if (bufs == NULL) {
+        rc = service ? NGX_ERROR : NGX_OK;
         if (res->len == 0) {
             res->data = (u_char *) "";
         } else {
@@ -3988,7 +3992,7 @@ ngx_http_haskell_yy_handler_result(ngx_log_t *log, ngx_pool_t *pool,
                       "haskell handler");
         goto cleanup;
     } else if (len == 1) {
-        if (!service) {
+        if (cleanup && !service) {
             cln = ngx_pool_cleanup_add(pool, 0);
             clnd = ngx_palloc(pool, sizeof(ngx_http_haskell_yy_cleanup_data_t));
             if (cln == NULL || clnd == NULL) {
@@ -4000,13 +4004,14 @@ ngx_http_haskell_yy_handler_result(ngx_log_t *log, ngx_pool_t *pool,
         }
         res->len = bufs->len;
         res->data = bufs->data;
-        if (!service) {
-            clnd->bufs = NULL;
+        if (cleanup && !service) {
+            clnd->bufs = bufs;
             clnd->release_locked_bytestring = release_locked_bytestring;
             clnd->locked_bytestring = locked_bytestring;
             cln->handler = ngx_http_haskell_yy_handler_cleanup;
             cln->data = clnd;
-        } else {
+        }
+        if (service) {
             ngx_free(bufs);
         }
         return rc;
@@ -4028,7 +4033,7 @@ ngx_http_haskell_yy_handler_result(ngx_log_t *log, ngx_pool_t *pool,
             ngx_memcpy(res->data + written, bufs[i].data, bufs[i].len);
             written += bufs[i].len;
         }
-        if (cleanup) {
+        if (cleanup && bufs != NULL) {
             ngx_free(bufs);
             release_locked_bytestring(locked_bytestring);
         }
@@ -4054,7 +4059,9 @@ ngx_http_haskell_yy_handler_cleanup(void *data)
 
     if (clnd->bufs != NULL) {
         ngx_free(clnd->bufs);
-        clnd->release_locked_bytestring(clnd->locked_bytestring);
+        if (clnd->release_locked_bytestring != NULL) {
+            clnd->release_locked_bytestring(clnd->locked_bytestring);
+        }
     }
 }
 

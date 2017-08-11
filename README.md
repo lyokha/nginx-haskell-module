@@ -502,8 +502,8 @@ file [test/tsung/nginx-static.conf](test/tsung/nginx-static.conf).
 
 <br><hr><a name="fnuch1"><sup>**1**</sup></a>&nbsp; Did you read the notice in
 the beginning of the section? Yes, lazy bytestrings contents can be safely
-passed to the dark C side directly, provided *stable pointers* (*StablePtr*) to
-them are passed too. Creating a stable pointer to a bytestring makes it a *root
+passed to the C side directly, provided *stable pointers* (*StablePtr*) to them
+are passed too. Creating a stable pointer to a bytestring makes it a *root
 object* that is guaranteed not to be garbage collected while the pointer is not
 freed. The bytestring *itself* can be relocated, but its buffers not! They are
 stored in *pinned memory arrays* that are not moved while the bytestring is
@@ -1331,9 +1331,10 @@ Some facts about efficiency
       which usually means efficient).
     + Haskell exported functions of types *S_S*, *S_SS* and *S_LS* allocate new
       strings with *malloc()* which get freed upon the request termination.
-      Strings, passed by functions of types *Y_Y* and *IOY_Y* are copied into a
-      single buffer, but only when underlying lazy bytestrings have more than
-      one chunks.
+      Strings passed by functions of types *Y_Y*, *IOY_Y* and all async
+      handlers (i.e. by all functions that return lazy bytestrings except for
+      content handlers) are copied into a single buffer, but only when
+      underlying lazy bytestrings have more than one chunks.
     + Haskell content handlers are not suspendable so you cannot use
       long-running haskell functions without hitting the overall nginx
       performance. Fortunately this does not refer to [asynchronous
