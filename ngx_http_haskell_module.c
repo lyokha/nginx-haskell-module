@@ -31,9 +31,13 @@ ngx_string("ghc -O2 -dynamic -shared -fPIC -o ");
 static const ngx_str_t  template_haskell_option =
 ngx_string(" -XTemplateHaskell");
 static const ngx_str_t  ghc_rtslib =
-ngx_string(" -lHSrts-ghc$(ghc --numeric-version)");
+ngx_string(
+" -L$(ghc --print-libdir)/rts -lHSrts-ghc$(ghc --numeric-version)"
+);
 static const ngx_str_t  ghc_rtslib_thr =
-ngx_string(" -lHSrts_thr-ghc$(ghc --numeric-version)");
+ngx_string(
+" -L$(ghc --print-libdir)/rts -lHSrts_thr-ghc$(ghc --numeric-version)"
+);
 static const ngx_int_t haskell_module_ngx_export_api_version_major = 0;
 static const ngx_int_t haskell_module_ngx_export_api_version_minor = 6;
 
