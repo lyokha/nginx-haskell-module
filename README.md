@@ -229,12 +229,12 @@ accessible from nginx that are exported with special macros *NGX_EXPORT_S_S*,
 *returns-String-accepts-String-String*, *returns-Bool-accepts-String* and
 *returns-Bool-accepts-String-String*), their *list* counterparts
 *NGX_EXPORT_S_LS* and *NGX_EXPORT_B_LS* (*LS* stands for *List-of-Strings*) and
-two macros that deal with *byte strings*: *NGX_EXPORT_Y_Y* and *NGX_EXPORT_B_Y*
-(*Y* stands for *bYte*). For the sake of efficiency, byte string macros accept
-*strict* but return (only *Y_Y*) *lazy* byte strings. Effectively this means
-that only those functions are supported that return strings, byte strings or
-booleans and accept one, two or more (only *S_LS* and *B_LS*) string arguments
-or one byte string.
+two macros that deal with *bytestrings*: *NGX_EXPORT_Y_Y* and *NGX_EXPORT_B_Y*
+(*Y* stands for *bYte*). For the sake of efficiency, bytestring macros accept
+*strict* but return (only *Y_Y*) *lazy* bytestrings. Effectively this means that
+only those functions are supported that return strings, bytestrings or booleans
+and accept one, two or more (only *S_LS* and *B_LS*) string arguments or one
+bytestring.
 
 In this example 10 custom haskell functions are exported: *toUpper*, *takeN*,
 *reverse* (which is normal *reverse* imported from *Prelude*), *matches*
@@ -245,12 +245,12 @@ two packages *regex-pcre* and *regex-pcre-builtin*, I had to add an extra *ghc*
 compilation flag *-hide-package regex-pcre* with directive *haskell
 ghc_extra_options*. Another flag *-XFlexibleInstances* passed into the directive
 allows declaration of *instance UrlDecodable String*. Class *UrlDecodable*
-provides function *doURLDecode* for decoding strings and byte strings that was
-adopted from [here](http://www.rosettacode.org/wiki/URL_decoding#Haskell). Byte
-string instance of *doURLDecode* makes use of *view patterns* in its clauses,
-however this extension does not have to be declared explicitly because it was
-already enabled in a pragma from the wrapping haskell code provided by this
-module (see details in section [Wrapping haskell code
+provides function *doURLDecode* for decoding strings and bytestrings that was
+adopted from [here](http://www.rosettacode.org/wiki/URL_decoding#Haskell).
+The bytestring instance of *doURLDecode* makes use of *view patterns* in its
+clauses, however this extension does not have to be declared explicitly because
+it was already enabled in a pragma from the wrapping haskell code provided by
+this module (see details in section [Wrapping haskell code
 organization](#wrapping-haskell-code-organization)). In several clauses of
 *doURLDecode* there are explicit characters wrapped inside single quotes which
 are in turn escaped with backslashes to not confuse nginx parser as the haskell
@@ -482,7 +482,7 @@ NGX_EXPORT_UNSAFE_HANDLER (fromFile)
 ```
 
 The *unsafe* handler returns *3tuple(strictByteString,strictByteString,Int)*.
-The two strict byte strings in it must correspond to the *really* static data,
+The two strict bytestrings in it must correspond to the *really* static data,
 i.e. string literals like *"File not found"#*, *"text/plain"#* and those
 embedded by the *Data.FileEmbed*, otherwise the nasty things may happen! Literal
 strings that end with *hashes* (*#*) are actually addresses of compiled static
@@ -784,13 +784,13 @@ Client request body handlers
 ----------------------------
 
 There is another type of asynchronous handler declared with macro
-*NGX_EXPORT_ASYNC_ON_REQ_BODY*. It accepts two byte strings: the first, *lazy*
-byte string, is the client request's body buffers, the second, *strict* byte
-string, is the user parameter like in normal asynchronous handlers. The request
-body handler returns its result in a *lazy* byte string like normal asynchronous
-handlers. It is possible to declare multiple request body handlers and mix them
-with other asynchronous handlers on the same level (e.g. in one nginx *location*
-or *location-if*). Here is an example from
+*NGX_EXPORT_ASYNC_ON_REQ_BODY*. It accepts two bytestrings: the first, *lazy*
+bytestring, is the client request's body buffers, the second, *strict*
+bytestring, is the user parameter like in normal asynchronous handlers. The
+request body handler returns its result in a *lazy* bytestring like normal
+asynchronous handlers. It is possible to declare multiple request body handlers
+and mix them with other asynchronous handlers on the same level (e.g. in one
+nginx *location* or *location-if*). Here is an example from
 [test/tsung/nginx-async.conf](test/tsung/nginx-async.conf).
 
 ```haskell
@@ -1326,7 +1326,7 @@ Some facts about efficiency
 
 - Pitfalls
 
-    + (This does not refer to *byte strings*.) Haskell strings are simple lists,
+    + (This does not refer to *bytestrings*.) Haskell strings are simple lists,
       they are not contiguously allocated (but on the other hand they are lazy,
       which usually means efficient).
     + Haskell exported functions of types *S_S*, *S_SS* and *S_LS* allocate new
