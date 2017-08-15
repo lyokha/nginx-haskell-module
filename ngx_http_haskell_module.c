@@ -1374,13 +1374,11 @@ ngx_http_haskell_create_async_task(ngx_http_request_t *r, ngx_fd_t fd[2],
 static void
 ngx_http_haskell_post_handler(ngx_http_request_t *r)
 {
-    ngx_http_haskell_loc_conf_t       *lcf;
     ngx_http_haskell_ctx_t            *ctx;
     ngx_chain_t                       *cl;
     ngx_str_t                         *rb;
     ngx_uint_t                         n = 0;
 
-    lcf = ngx_http_get_module_loc_conf(r, ngx_http_haskell_module);
     ctx = ngx_http_get_module_ctx(r, ngx_http_haskell_module);
 
     if (ctx == NULL || r->request_body == NULL || r->request_body->bufs == NULL
@@ -2948,7 +2946,6 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
     HsWord32                             err;
     ngx_str_t                            reslen = ngx_null_string;
     ngx_pool_cleanup_t                  *cln;
-    ngx_http_haskell_yy_cleanup_data_t  *clnd;
 
     if (index == NULL) {
         return NGX_ERROR;
@@ -3202,7 +3199,6 @@ ngx_http_haskell_run_async_handler(ngx_http_request_t *r,
                                    uintptr_t  data)
 {
     ngx_uint_t                         i;
-    ngx_http_haskell_main_conf_t      *mcf;
     ngx_http_core_main_conf_t         *cmcf;
     ngx_http_haskell_ctx_t            *ctx;
     ngx_http_haskell_async_data_t     *async_data_elts;
@@ -3240,8 +3236,6 @@ ngx_http_haskell_run_async_handler(ngx_http_request_t *r,
                       &vars[*index].name);
         return NGX_ERROR;
     }
-
-    mcf = ngx_http_get_module_main_conf(r, ngx_http_haskell_module);
 
     if (!async_data_elts[found_idx].result.complete) {
         async_data_elts[found_idx].result.data.len =
