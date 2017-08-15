@@ -305,8 +305,7 @@ toBuffers s = do
                     (\a s -> do
                         off <- a
                         B.unsafeUseAsCStringLen s $
-                            \(s, l) -> pokeElemOff t off $
-                                NgxStrType (fromIntegral l) s
+                            \(s, I l) -> pokeElemOff t off $ NgxStrType l s
                         return $ off + 1
                     ) (return 0) s
 

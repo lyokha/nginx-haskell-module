@@ -319,8 +319,9 @@ ngx_string(
 "                    (\\a s -> do\n"
 "                        off <- a\n"
 "                        AUX_NGX_BS.unsafeUseAsCStringLen s $\n"
-"                            \\(s, l) -> AUX_NGX.pokeElemOff t off $\n"
-"                                AUX_NGX_STR_TYPE (fromIntegral l) s\n"
+"                            \\(s, fromIntegral -> l) ->\n"
+"                                AUX_NGX.pokeElemOff t off $\n"
+"                                    AUX_NGX_STR_TYPE l s\n"
 "                        return $ off + 1\n"
 "                    ) (return 0) s\n\n"
 
