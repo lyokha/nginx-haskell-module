@@ -3564,12 +3564,13 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
 
     if (!lcf->static_content || lcf->content_handler_data == NULL) {
         cln = ngx_pool_cleanup_add(pool, 0);
-        if (cln == NULL) {
-            goto cleanup;
-        }
         clnd = ngx_palloc(pool,
                           sizeof(ngx_http_haskell_content_handler_data_t));
-        if (clnd == NULL) {
+        if (cln == NULL || clnd == NULL) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "failed to register cleanup handler for "
+                          "content handler data");
+            mcf->release_locked_bytestring(locked_bytestring);
             goto cleanup;
         }
         /* do not let release_locked_bytestring() after hs_exit()
