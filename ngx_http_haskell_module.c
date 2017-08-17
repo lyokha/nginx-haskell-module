@@ -3287,8 +3287,8 @@ ngx_http_haskell_run_service_handler(ngx_http_request_t *r,
     ngx_http_haskell_shm_var_handle_t         *shm_vars;
     ngx_http_variable_t                       *vars;
     ngx_str_t                                  res = ngx_null_string;
-    ngx_pool_cleanup_t                        *cln, *c;
     ngx_http_haskell_async_data_t             *service_data = NULL;
+    ngx_pool_cleanup_t                        *cln;
 
     if (index == NULL) {
         return NGX_ERROR;
@@ -3366,9 +3366,9 @@ ngx_http_haskell_run_service_handler(ngx_http_request_t *r,
         return NGX_ERROR;
     }
 
-    for (c = r->pool->cleanup; c != NULL; c = c->next) {
-        if (c->handler == ngx_http_haskell_service_handler_cleanup) {
-            service_data = c->data;
+    for (cln = r->pool->cleanup; cln != NULL; cln = cln->next) {
+        if (cln->handler == ngx_http_haskell_service_handler_cleanup) {
+            service_data = cln->data;
             break;
         }
     }
