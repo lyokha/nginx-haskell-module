@@ -772,7 +772,6 @@ typedef struct {
     ngx_array_t                                async_data;
     ngx_array_t                                var_nocacheable_cache;
     ngx_array_t                                request_body;
-    ngx_http_haskell_async_data_t             *service_data;
     ngx_uint_t                                 waiting_more_request_body:1;
     ngx_uint_t                                 read_request_body_error:1;
     ngx_uint_t                                 no_request_body:1;
@@ -3281,7 +3280,6 @@ ngx_http_haskell_run_service_handler(ngx_http_request_t *r,
     ngx_uint_t                                 i;
     ngx_http_haskell_main_conf_t              *mcf;
     ngx_http_core_main_conf_t                 *cmcf;
-    ngx_http_haskell_ctx_t                    *ctx;
     ngx_http_haskell_service_code_var_data_t  *service_code_vars;
     ngx_int_t                                 *index = (ngx_int_t *) data;
     ngx_int_t                                  found_idx = NGX_ERROR;
@@ -3289,10 +3287,8 @@ ngx_http_haskell_run_service_handler(ngx_http_request_t *r,
     ngx_http_haskell_shm_var_handle_t         *shm_vars;
     ngx_http_variable_t                       *vars;
     ngx_str_t                                  res = ngx_null_string;
-    ngx_pool_cleanup_t                        *cln;
-    ngx_http_haskell_async_data_t             *clnd;
-    ngx_pool_cleanup_t                        *c;
-    ngx_uint_t                                 has_cln = 0;
+    ngx_pool_cleanup_t                        *cln, *c;
+    ngx_http_haskell_async_data_t             *service_data = NULL;
 
     if (index == NULL) {
         return NGX_ERROR;
@@ -3370,41 +3366,31 @@ ngx_http_haskell_run_service_handler(ngx_http_request_t *r,
         return NGX_ERROR;
     }
 
-    ctx = ngx_http_get_module_ctx(r, ngx_http_haskell_module);
-    if (ctx == NULL) {
-        ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_haskell_ctx_t));
-        if (ctx == NULL) {
-            return NGX_ERROR;
-        }
-        ngx_http_set_ctx(r, ctx, ngx_http_haskell_module);
-    }
-
-    if (ctx->service_data == NULL) {
-        ctx->service_data = service_code_vars[found_idx].async_data;
-        if (ctx->service_data == NULL) {
-            return NGX_ERROR;
-        }
-        for (c = r->pool->cleanup; c != NULL; c = c->next) {
-            if (c->handler == ngx_http_haskell_service_handler_cleanup) {
-                has_cln = 1;
-                break;
-            }
-        }
-        if (!has_cln) {
-            cln = ngx_pool_cleanup_add(r->pool, 0);
-            clnd = ctx->service_data;
-            if (cln == NULL || clnd == NULL) {
-                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                        "failed to register cleanup handler for service data");
-                return NGX_ERROR;
-            }
-            ++ctx->service_data->ref_count;
-            cln->handler = ngx_http_haskell_service_handler_cleanup;
-            cln->data = clnd;
+    for (c = r->pool->cleanup; c != NULL; c = c->next) {
+        if (c->handler == ngx_http_haskell_service_handler_cleanup) {
+            service_data = c->data;
+            break;
         }
     }
 
-    if (ctx->service_data->yy_cleanup_data.n_bufs == -1) {
+    if (service_data == NULL) {
+        service_data = service_code_vars[found_idx].async_data;
+        if (service_data == NULL) {
+            return NGX_ERROR;
+        }
+        cln = ngx_pool_cleanup_add(r->pool, 0);
+        if (cln == NULL) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "failed to register cleanup handler for "
+                          "service data");
+            return NGX_ERROR;
+        }
+        ++service_data->ref_count;
+        cln->handler = ngx_http_haskell_service_handler_cleanup;
+        cln->data = service_data;
+    }
+
+    if (service_data->yy_cleanup_data.n_bufs == -1) {
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
                       "memory allocation error while getting "
                       "value of variable \"%V\" asynchronously",
@@ -3412,16 +3398,16 @@ ngx_http_haskell_run_service_handler(ngx_http_request_t *r,
         return NGX_ERROR;
     }
 
-    if (ctx->service_data->error) {
+    if (service_data->error) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "an exception was caught while getting "
                       "value of variable \"%V\" asynchronously: \"%V\"",
-                      &vars[*index].name, &ctx->service_data->result.data);
+                      &vars[*index].name, &service_data->result.data);
         /* BEWARE: do not return value of the exception */
         return NGX_ERROR;
     }
 
-    res = ctx->service_data->result.data;
+    res = service_data->result.data;
 
 update_var:
 
