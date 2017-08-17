@@ -3291,18 +3291,11 @@ ngx_http_haskell_run_service_handler(ngx_http_request_t *r,
     ngx_str_t                                  res = ngx_null_string;
     ngx_pool_cleanup_t                        *cln;
     ngx_http_haskell_async_data_t             *clnd;
+    ngx_pool_cleanup_t                        *c;
+    ngx_uint_t                                 has_cln = 0;
 
     if (index == NULL) {
         return NGX_ERROR;
-    }
-
-    ctx = ngx_http_get_module_ctx(r, ngx_http_haskell_module);
-    if (ctx == NULL) {
-        ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_haskell_ctx_t));
-        if (ctx == NULL) {
-            return NGX_ERROR;
-        }
-        ngx_http_set_ctx(r, ctx, ngx_http_haskell_module);
     }
 
     mcf = ngx_http_get_module_main_conf(r, ngx_http_haskell_module);
@@ -3377,22 +3370,38 @@ ngx_http_haskell_run_service_handler(ngx_http_request_t *r,
         return NGX_ERROR;
     }
 
+    ctx = ngx_http_get_module_ctx(r, ngx_http_haskell_module);
+    if (ctx == NULL) {
+        ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_haskell_ctx_t));
+        if (ctx == NULL) {
+            return NGX_ERROR;
+        }
+        ngx_http_set_ctx(r, ctx, ngx_http_haskell_module);
+    }
+
     if (ctx->service_data == NULL) {
         ctx->service_data = service_code_vars[found_idx].async_data;
         if (ctx->service_data == NULL) {
             return NGX_ERROR;
         }
-        cln = ngx_pool_cleanup_add(r->pool, 0);
-        clnd = ctx->service_data;
-        if (cln == NULL || clnd == NULL) {
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                    "failed to register cleanup handler for service data");
-            ngx_http_haskell_service_handler_cleanup(ctx->service_data);
-            return NGX_ERROR;
+        for (c = r->pool->cleanup; c != NULL; c = c->next) {
+            if (c->handler == ngx_http_haskell_service_handler_cleanup) {
+                has_cln = 1;
+                break;
+            }
         }
-        ++ctx->service_data->ref_count;
-        cln->handler = ngx_http_haskell_service_handler_cleanup;
-        cln->data = clnd;
+        if (!has_cln) {
+            cln = ngx_pool_cleanup_add(r->pool, 0);
+            clnd = ctx->service_data;
+            if (cln == NULL || clnd == NULL) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                        "failed to register cleanup handler for service data");
+                return NGX_ERROR;
+            }
+            ++ctx->service_data->ref_count;
+            cln->handler = ngx_http_haskell_service_handler_cleanup;
+            cln->data = clnd;
+        }
     }
 
     if (ctx->service_data->yy_cleanup_data.n_bufs == -1) {
