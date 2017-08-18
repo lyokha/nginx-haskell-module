@@ -3839,8 +3839,20 @@ ngx_http_haskell_service_async_event(ngx_event_t *ev)
         }
         service_code_var->async_data =
                 ngx_alloc(sizeof(ngx_http_haskell_async_data_t), cycle->log);
-        *service_code_var->async_data = service_code_var->future_async_data;
-        service_code_var->async_data->ref_count = 1;
+
+        if (service_code_var->async_data == NULL) {
+            ngx_log_error(NGX_LOG_CRIT, cycle->log, 0,
+                          "failed to allocate memory for service async data, "
+                          "using old data");
+            ngx_free(service_code_var->future_async_data.yy_cleanup_data.bufs);
+            mcf->release_locked_bytestring(
+                        service_code_var->future_async_data.yy_cleanup_data.
+                                                            locked_bytestring);
+            goto run_service;
+        } else {
+            *service_code_var->async_data = service_code_var->future_async_data;
+            service_code_var->async_data->ref_count = 1;
+        }
 
         vars = mcf->service_var_in_shm.elts;
         for (i = 0; i < mcf->service_var_in_shm.nelts; i++) {
