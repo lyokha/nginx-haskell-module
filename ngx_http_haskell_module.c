@@ -1380,12 +1380,15 @@ ngx_http_haskell_post_handler(ngx_http_request_t *r)
     ngx_uint_t                         n = 0;
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_haskell_module);
+    if (ctx == NULL) {
+        return;
+    }
 
-    if (ctx == NULL || r->request_body == NULL || r->request_body->bufs == NULL
+    if (r->request_body == NULL || r->request_body->bufs == NULL
         || r->request_body->temp_file)
     {
         ctx->no_request_body = 1;
-        if (r->request_body->temp_file) {
+        if (r->request_body != NULL && r->request_body->temp_file) {
             ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
                           "request body was saved in a temporary file, "
                           "exiting from haskell POST handler");
