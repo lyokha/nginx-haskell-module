@@ -25,4 +25,6 @@ library
   exposed-modules:     NgxExport
   other-modules:       Paths_ngx_export
   ghc-options:         -Wall -Wno-unrecognised-pragmas
+  if impl(ghc < 8.2)
+    ghc-options:       -Wno-incomplete-patterns
 
