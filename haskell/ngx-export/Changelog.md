@@ -1,3 +1,11 @@
+### 0.6.1.0
+
+- Constructors of *NgxExport* were lifted to type level for all handlers to
+  mitigate warnings on incomplete patterns.
+- *COMPLETE* pragmas for pattern synonyms were added for the same reason.
+- Other warnings were fixed too. Now the module builds with *ghc-options*
+  *-Wall -Wno-unrecognised-pragmas*.
+
 ### 0.6.0.0
 
 - Lazy bytestrings contents are no longer copied when passed back to nginx.
