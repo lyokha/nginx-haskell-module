@@ -1,3 +1,7 @@
+### 0.6.1.1
+
+- Added *-Wno-incomplete-patterns* in *ghc-options* for older ghc versions.
+
 ### 0.6.1.0
 
 - Constructors of *NgxExport* were lifted to type level for all handlers to
