@@ -299,6 +299,12 @@ instance Storable NgxStrType where
 safeMallocBytes :: Int -> IO (Ptr a)
 safeMallocBytes =
     flip catchIOError (const $ return nullPtr) . mallocBytes
+{-# INLINE safeMallocBytes #-}
+
+safeNewCStringLen :: String -> IO CStringLen
+safeNewCStringLen =
+    flip catchIOError (const $ return (nullPtr, -1)) . newCStringLen
+{-# INLINE safeNewCStringLen #-}
 
 peekNgxStringArrayLen :: Ptr NgxStrType -> Int -> IO [String]
 peekNgxStringArrayLen x n = sequence $
@@ -316,6 +322,10 @@ peekNgxStringArrayLenY x n = L.fromChunks <$> sequence
 
 pokeCStringLen :: Storable a => CString -> a -> Ptr CString -> Ptr a -> IO ()
 pokeCStringLen x n p s = poke p x >> poke s n
+{-# SPECIALIZE INLINE
+    pokeCStringLen :: CString -> CInt -> Ptr CString -> Ptr CInt ->IO () #-}
+{-# SPECIALIZE INLINE
+    pokeCStringLen :: CString -> CSize -> Ptr CString -> Ptr CSize ->IO () #-}
 
 toBuffers :: L.ByteString -> IO (Ptr NgxStrType, Int)
 toBuffers EmptyLBS =
@@ -341,10 +351,6 @@ pokeLazyByteString s p pl spd = do
     PtrLen t l <- toBuffers s
     poke p t >> poke pl l
     when (t /= nullPtr) $ newStablePtr s >>= poke spd
-
-safeNewCStringLen :: String -> IO CStringLen
-safeNewCStringLen =
-    flip catchIOError (const $ return (nullPtr, -1)) . newCStringLen
 
 safeHandler :: Ptr CString -> Ptr CInt -> IO CUInt -> IO CUInt
 safeHandler p pl = handle $ \e -> do

@@ -281,7 +281,14 @@ ngx_string(
 "aux_ngx_safeMallocBytes :: Int -> IO (AUX_NGX.Ptr a)\n"
 "aux_ngx_safeMallocBytes =\n"
 "    flip AUX_NGX.catchIOError (const $ return AUX_NGX.nullPtr) .\n"
-"        AUX_NGX.mallocBytes\n\n"
+"        AUX_NGX.mallocBytes\n"
+"{-# INLINE aux_ngx_safeMallocBytes #-}\n\n"
+
+"aux_ngx_safeNewCStringLen :: String -> IO AUX_NGX.CStringLen\n"
+"aux_ngx_safeNewCStringLen =\n"
+"    flip AUX_NGX.catchIOError (const $ return (AUX_NGX.nullPtr, -1)) .\n"
+"        AUX_NGX.newCStringLen\n"
+"{-# INLINE aux_ngx_safeNewCStringLen #-}\n\n"
 
 "aux_ngx_peekNgxStringArrayLen :: AUX_NGX.Ptr AUX_NGX_STR_TYPE -> Int ->\n"
 "    IO [String]\n"
@@ -303,7 +310,14 @@ ngx_string(
 "aux_ngx_pokeCStringLen :: AUX_NGX.Storable a =>\n"
 "    AUX_NGX.CString -> a -> AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr a ->\n"
 "    IO ()\n"
-"aux_ngx_pokeCStringLen x n p s = AUX_NGX.poke p x >> AUX_NGX.poke s n\n\n"
+"aux_ngx_pokeCStringLen x n p s = AUX_NGX.poke p x >> AUX_NGX.poke s n\n"
+"{-# SPECIALIZE INLINE\n"
+"    aux_ngx_pokeCStringLen :: AUX_NGX.CString -> AUX_NGX.CInt ->\n"
+"        AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CInt ->IO () #-}\n"
+"{-# SPECIALIZE INLINE\n"
+"    aux_ngx_pokeCStringLen :: AUX_NGX.CString -> AUX_NGX.CSize ->\n"
+"        AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CSize ->IO () #-}"
+"\n\n"
 
 "aux_ngx_toBuffers :: AUX_NGX_BSL.ByteString ->\n"
 "    IO (AUX_NGX.Ptr AUX_NGX_STR_TYPE, Int)\n"
@@ -335,11 +349,6 @@ ngx_string(
 "    AUX_NGX.poke p t >> AUX_NGX.poke pl l\n"
 "    AUX_NGX.when (t /= AUX_NGX.nullPtr) $\n"
 "        AUX_NGX.newStablePtr s >>= AUX_NGX.poke spd\n\n"
-
-"aux_ngx_safeNewCStringLen :: String -> IO AUX_NGX.CStringLen\n"
-"aux_ngx_safeNewCStringLen =\n"
-"    flip AUX_NGX.catchIOError (const $ return (AUX_NGX.nullPtr, -1)) .\n"
-"        AUX_NGX.newCStringLen\n\n"
 
 "aux_ngx_safeHandler :: AUX_NGX.Ptr AUX_NGX.CString ->\n"
 "    AUX_NGX.Ptr AUX_NGX.CInt -> IO AUX_NGX.CUInt -> IO AUX_NGX.CUInt\n"
