@@ -70,9 +70,6 @@ pattern ToBool :: (Num i, Eq i) => Bool -> i
 pattern ToBool i <- (toBool -> i)
 {-# COMPLETE ToBool :: CUInt #-}
 
-pattern EmptyLBS :: C8L.ByteString
-pattern EmptyLBS <- (L.null -> True)
-
 data NgxExport = SS            (String -> String)
                | SSS           (String -> String -> String)
                | SLS           ([String] -> String)
@@ -327,29 +324,36 @@ pokeCStringLen x n p s = poke p x >> poke s n
 {-# SPECIALIZE INLINE
     pokeCStringLen :: CString -> CSize -> Ptr CString -> Ptr CSize ->IO () #-}
 
-toBuffers :: L.ByteString -> IO (Ptr NgxStrType, Int)
-toBuffers EmptyLBS =
+toBuffers :: L.ByteString -> Ptr NgxStrType -> IO (Ptr NgxStrType, Int)
+toBuffers (L.null -> True) _ =
     return (nullPtr, 0)
-toBuffers s = do
-    t <- safeMallocBytes $
-        L.foldlChunks (const . succ) 0 s * sizeOf (undefined :: NgxStrType)
-    if t == nullPtr
-        then return (nullPtr, -1)
-        else (,) t <$>
-                L.foldlChunks
-                    (\a c -> do
-                        off <- a
-                        B.unsafeUseAsCStringLen c $
-                            \(x, I l) -> pokeElemOff t off $ NgxStrType l x
-                        return $ off + 1
-                    ) (return 0) s
+toBuffers s p = do
+    let n = L.foldlChunks (const . succ) 0 s
+    if n == 1
+        then do
+            B.unsafeUseAsCStringLen (head $ L.toChunks s) $
+                \(x, I l) -> poke p $ NgxStrType l x
+            return (p, 1)
+        else do
+            t <- safeMallocBytes $ n * sizeOf (undefined :: NgxStrType)
+            if t == nullPtr
+                then return (nullPtr, -1)
+                else (,) t <$>
+                        L.foldlChunks
+                            (\a c -> do
+                                off <- a
+                                B.unsafeUseAsCStringLen c $
+                                    \(x, I l) ->
+                                        pokeElemOff t off $ NgxStrType l x
+                                return $ off + 1
+                            ) (return 0) s
 
 pokeLazyByteString :: L.ByteString ->
     Ptr (Ptr NgxStrType) -> Ptr CInt ->
     Ptr (StablePtr L.ByteString) -> IO ()
 pokeLazyByteString s p pl spd = do
-    PtrLen t l <- toBuffers s
-    poke p t >> poke pl l
+    PtrLen t l <- peek p >>= toBuffers s
+    when (l /= 1) (poke p t) >> poke pl l
     when (t /= nullPtr) $ newStablePtr s >>= poke spd
 
 safeHandler :: Ptr CString -> Ptr CInt -> IO CUInt -> IO CUInt
@@ -495,8 +499,8 @@ handler :: Handler -> CString -> CInt -> Ptr (Ptr NgxStrType) -> Ptr CInt ->
 handler f x (I n) p pl pct plct pst spd =
     safeHandler pct pst $ do
         (s, ct, I st) <- f <$> B.unsafePackCStringLen (x, n)
-        PtrLen t l <- toBuffers s
-        poke p t >> poke pl l
+        PtrLen t l <- peek p >>= toBuffers s
+        when (l /= 1) (poke p t) >> poke pl l
         PtrLen sct lct <- newCStringLen ct
         pokeCStringLen sct lct pct plct >> poke pst st
         when (t /= nullPtr) $ newStablePtr s >>= poke spd

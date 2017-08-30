@@ -1,3 +1,10 @@
+### 0.7.0.0
+
+Further optimizations.
+
+- Poke single-chunked lazy bytestrings directly into passed from Nginx buffers.
+- Specialize polymorphic functions and inline trivial functions.
+
 ### 0.6.1.1
 
 - Added *-Wno-incomplete-patterns* in *ghc-options* for older ghc versions.
@@ -12,7 +19,7 @@
 
 ### 0.6.0.0
 
-- Lazy bytestrings contents are no longer copied when passed back to nginx.
+- Lazy bytestrings contents are no longer copied when passed back to Nginx.
   Instead, they are passed directly along with a StablePtr to original
   bytestrings. This must improve performance and lower memory consumption for
   content handlers with large outputs.
