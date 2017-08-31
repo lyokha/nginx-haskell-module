@@ -363,7 +363,8 @@ safeHandler p pl = handle $ \e -> do
     return 1
 
 safeYYHandler :: IO (L.ByteString, CUInt) -> IO (L.ByteString, CUInt)
-safeYYHandler = handle $ \e -> return (C8L.pack $ show (e :: SomeException), 1)
+safeYYHandler = handle $ \e ->
+    return (C8L.pack $ show (e :: SomeException), 1)
 {-# INLINE safeYYHandler #-}
 
 sS :: SS -> CString -> CInt ->
@@ -422,16 +423,17 @@ asyncIOFlag8b = L.toStrict $ runPut $ putInt64host 1
 asyncIOCommon :: IO C8L.ByteString ->
     CInt -> Bool -> Ptr (Ptr NgxStrType) -> Ptr CInt -> Ptr CUInt ->
     Ptr (StablePtr L.ByteString) -> IO ()
-asyncIOCommon a (I fd) efd p pl r spd = void . async $ do
-    (do {s <- a; fmap Right $ return $! s})
-        `catch` (\e -> return $ Left $ show (e :: SomeException)) >>=
-            either (pokeAll 1 . C8L.pack) (pokeAll 0)
+asyncIOCommon a (I fd) efd p pl pr spd = void . async $ do
+    (s, r) <- safeYYHandler $ do
+        s <- a
+        fmap (flip (,) 0) $ return $! s
+    pokeLazyByteString s p pl spd
+    poke pr r
     uninterruptibleMask_ $
         if efd
             then writeFlag8b
             else writeFlag1b >> closeFd fd `catchIOError` const (return ())
-    where pokeAll e s = pokeLazyByteString s p pl spd >> poke r e
-          writeBufN n s w
+    where writeBufN n s w
               | w < n = (w +) <$>
                   fdWriteBuf fd (plusPtr s $ fromIntegral w) (n - w)
                   `catchIOError`
