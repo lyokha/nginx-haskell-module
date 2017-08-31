@@ -362,6 +362,10 @@ safeHandler p pl = handle $ \e -> do
     pokeCStringLen x l p pl
     return 1
 
+safeYYHandler :: IO (L.ByteString, CUInt) -> IO (L.ByteString, CUInt)
+safeYYHandler = handle $ \e -> return (C8L.pack $ show (e :: SomeException), 1)
+{-# INLINE safeYYHandler #-}
+
 sS :: SS -> CString -> CInt ->
     Ptr CString -> Ptr CInt -> IO CUInt
 sS f x (I n) p pl =
@@ -394,8 +398,8 @@ yY :: YY -> CString -> CInt ->
     Ptr (Ptr NgxStrType) -> Ptr CInt ->
     Ptr (StablePtr L.ByteString) -> IO CUInt
 yY f x (I n) p pl spd = do
-    (s, r) <- (flip (,) 0 . f <$> B.unsafePackCStringLen (x, n))
-                `catch` \e -> return (C8L.pack $ show (e :: SomeException), 1)
+    (s, r) <- safeYYHandler $
+        flip (,) 0 . f <$> B.unsafePackCStringLen (x, n)
     pokeLazyByteString s p pl spd
     return r
 
@@ -403,10 +407,9 @@ ioyY :: IOYY -> CString -> CInt ->
     Ptr (Ptr NgxStrType) -> Ptr CInt ->
     Ptr (StablePtr L.ByteString) -> IO CUInt
 ioyY f x (I n) p pl spd = do
-    (s, r) <- (do
-                  s <- B.unsafePackCStringLen (x, n) >>= flip f False
-                  fmap (flip (,) 0) $ return $! s
-              ) `catch` \e -> return (C8L.pack $ show (e :: SomeException), 1)
+    (s, r) <- safeYYHandler $ do
+        s <- B.unsafePackCStringLen (x, n) >>= flip f False
+        fmap (flip (,) 0) $ return $! s
     pokeLazyByteString s p pl spd
     return r
 
