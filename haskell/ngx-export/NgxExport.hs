@@ -499,11 +499,9 @@ handler :: Handler -> CString -> CInt -> Ptr (Ptr NgxStrType) -> Ptr CInt ->
 handler f x (I n) p pl pct plct pst spd =
     safeHandler pct pst $ do
         (s, ct, I st) <- f <$> B.unsafePackCStringLen (x, n)
-        PtrLen t l <- peek p >>= toBuffers s
-        when (l /= 1) (poke p t) >> poke pl l
         PtrLen sct lct <- newCStringLen ct
         pokeCStringLen sct lct pct plct >> poke pst st
-        when (t /= nullPtr) $ newStablePtr s >>= poke spd
+        pokeLazyByteString s p pl spd
         return 0
 
 defHandler :: YY -> CString -> CInt ->
@@ -520,10 +518,10 @@ unsafeHandler :: UnsafeHandler -> CString -> CInt -> Ptr CString -> Ptr CSize ->
 unsafeHandler f x (I n) p pl pct plct pst =
     safeHandler pct pst $ do
         (s, ct, I st) <- f <$> B.unsafePackCStringLen (x, n)
-        PtrLen t l <- B.unsafeUseAsCStringLen s return
-        pokeCStringLen t l p pl
         PtrLen sct lct <- B.unsafeUseAsCStringLen ct return
         pokeCStringLen sct lct pct plct >> poke pst st
+        PtrLen t l <- B.unsafeUseAsCStringLen s return
+        pokeCStringLen t l p pl
         return 0
 
 foreign export ccall ngxExportReleaseLockedByteString ::
