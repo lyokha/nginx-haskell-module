@@ -844,9 +844,11 @@ struct ngx_http_haskell_service_code_var_data_s {
     ngx_http_haskell_async_data_t                    *async_data;
     ngx_event_t                                       event;
     ngx_http_haskell_service_async_event_t            hev;
+    ngx_int_t                                         shm_index;
     ngx_uint_t                                        cb:1;
     ngx_uint_t                                        noarg:1;
     ngx_uint_t                                        running:1;
+    ngx_uint_t                                        ignore_empty:1;
 };
 
 typedef struct ngx_http_haskell_service_code_var_data_s
@@ -900,7 +902,7 @@ static void ngx_http_haskell_service_async_event(ngx_event_t *ev);
 static ngx_int_t ngx_http_haskell_yy_handler_result(ngx_log_t *log,
     ngx_pool_t *pool, ngx_str_t *bufs, HsInt32 n_bufs, ngx_str_t *res,
     void (*release_locked_bytestring)(HsStablePtr),
-    HsStablePtr locked_bytestring, ngx_http_variable_t *var,
+    HsStablePtr locked_bytestring, ngx_http_variable_t *cmvar,
     ngx_uint_t cleanup, ngx_uint_t service);
 static void ngx_http_haskell_yy_handler_cleanup(void *data);
 static void ngx_http_haskell_content_handler_cleanup(void *data);
@@ -1453,9 +1455,9 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
     ngx_uint_t                                 i, j;
     ngx_http_haskell_main_conf_t              *mcf;
     ngx_http_core_main_conf_t                 *cmcf;
+    ngx_http_variable_t                       *cmvars;
     ngx_http_haskell_var_handle_t             *vars;
     ngx_http_haskell_service_code_var_data_t  *service_code_vars;
-    ngx_http_variable_t                       *cmvars;
     ngx_uint_t                                 found;
     ngx_int_t                                  index;
 
@@ -1502,13 +1504,26 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
                               &mcf->service_var_in_shm,
                               ngx_http_haskell_run_service_handler);
 
-    vars = mcf->service_var_in_shm.elts;
     service_code_vars = mcf->service_code_vars.elts;
     for (i = 0; i < mcf->service_code_vars.nelts; i++) {
+        index = service_code_vars[i].data->index;
+        vars = mcf->service_var_ignore_empty.elts;
+        for (j = 0; j < mcf->service_var_ignore_empty.nelts; j++) {
+            if (index == vars[j].index) {
+                service_code_vars[i].ignore_empty = 1;
+                break;
+            }
+        }
+        vars = mcf->service_var_in_shm.elts;
+        for (j = 0; j < mcf->service_var_in_shm.nelts; j++) {
+            if (index == vars[j].index) {
+                service_code_vars[i].shm_index = j;
+                break;
+            }
+        }
         if (!service_code_vars[i].cb) {
             continue;
         }
-        index = service_code_vars[i].data->index;
         if (cmvars[index].get_handler != ngx_http_haskell_run_service_handler) {
             ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
                           "variable \"%V\" has incompatible get handler",
@@ -1516,14 +1531,7 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
             service_code_vars[i].data->index = NGX_ERROR;
             continue;
         }
-        found = 0;
-        for (j = 0; j < mcf->service_var_in_shm.nelts; j++) {
-            if (index == vars[j].index) {
-                found = 1;
-                break;
-            }
-        }
-        if (found == 0) {
+        if (service_code_vars[i].shm_index == NGX_ERROR) {
             ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
                           "variable \"%V\" is not in shm", &cmvars[index].name);
             service_code_vars[i].data->index = NGX_ERROR;
@@ -2518,6 +2526,7 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         ngx_memzero(service_code_var_data,
                     sizeof(ngx_http_haskell_service_code_var_data_t));
         service_code_var_data->data = code_var_data;
+        service_code_var_data->shm_index = NGX_ERROR;
         service_code_var_data->cb = service_cb ? 1 : 0;
         service_code_var_data->noarg = n_args > 0 ? 0 : 1;
     } else {
@@ -2950,10 +2959,10 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
     ngx_http_haskell_main_conf_t        *mcf;
     ngx_http_haskell_loc_conf_t         *lcf;
     ngx_http_core_main_conf_t           *cmcf;
+    ngx_http_variable_t                 *cmvars;
     ngx_http_haskell_ctx_t              *ctx;
     ngx_int_t                           *index = (ngx_int_t *) data;
     ngx_int_t                            found_idx = NGX_ERROR;
-    ngx_http_variable_t                 *vars;
     ngx_http_haskell_var_handle_t       *vars_comp;
     ngx_http_haskell_var_cache_t        *var_nocacheable_cache;
     ngx_http_haskell_handler_t          *handlers;
@@ -3092,14 +3101,14 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
     }
 
     cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
-    vars = cmcf->variables.elts;
+    cmvars = cmcf->variables.elts;
 
     if (len == -1) {
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
                       "memory allocation error while running haskell handler");
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
                       "memory allocation error while getting value of "
-                      "variable \"%V\"", &vars[*index].name);
+                      "variable \"%V\"", &cmvars[*index].name);
         return NGX_ERROR;
     }
 
@@ -3114,7 +3123,7 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                           "an exception was caught while getting value of "
                           "variable \"%V\": \"%V\"",
-                          &vars[*index].name, &reslen);
+                          &cmvars[*index].name, &reslen);
             ngx_free(res);
             return NGX_ERROR;
         }
@@ -3143,7 +3152,7 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
                                                res_yy, len, &reslen,
                                                mcf->release_locked_bytestring,
                                                locked_bytestring,
-                                               &vars[*index], 1, 0)
+                                               &cmvars[*index], 1, 0)
             == NGX_ERROR)
         {
             return NGX_ERROR;
@@ -3154,7 +3163,7 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                           "an exception was caught while getting value of "
                           "variable \"%V\": \"%V\"",
-                          &vars[*index].name, &reslen);
+                          &cmvars[*index].name, &reslen);
             if (handlers[code_vars[found_idx].handler].type
                 != ngx_http_haskell_handler_type_ioy_y)
             {
@@ -3170,7 +3179,7 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                           "an exception was caught while getting value of "
                           "variable \"%V\": \"%V\"",
-                          &vars[*index].name, &reslen);
+                          &cmvars[*index].name, &reslen);
             ngx_free(res);
             return NGX_ERROR;
         }
@@ -3222,11 +3231,11 @@ ngx_http_haskell_run_async_handler(ngx_http_request_t *r,
 {
     ngx_uint_t                         i;
     ngx_http_core_main_conf_t         *cmcf;
+    ngx_http_variable_t               *cmvars;
     ngx_http_haskell_ctx_t            *ctx;
     ngx_http_haskell_async_data_t     *async_data_elts;
     ngx_int_t                         *index = (ngx_int_t *) data;
     ngx_int_t                          found_idx = NGX_ERROR;
-    ngx_http_variable_t               *vars;
     ngx_int_t                          rc;
 
     if (index == NULL) {
@@ -3250,12 +3259,13 @@ ngx_http_haskell_run_async_handler(ngx_http_request_t *r,
     }
 
     cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
-    vars = cmcf->variables.elts;
+    cmvars = cmcf->variables.elts;
+
     if (async_data_elts[found_idx].yy_cleanup_data.n_bufs == -1) {
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
                       "memory allocation error while getting "
                       "value of variable \"%V\" asynchronously",
-                      &vars[*index].name);
+                      &cmvars[*index].name);
         return NGX_ERROR;
     }
 
@@ -3267,7 +3277,7 @@ ngx_http_haskell_run_async_handler(ngx_http_request_t *r,
                 async_data_elts[found_idx].yy_cleanup_data.
                                                 release_locked_bytestring,
                 async_data_elts[found_idx].yy_cleanup_data.locked_bytestring,
-                &vars[*index], 0, 0);
+                &cmvars[*index], 0, 0);
         async_data_elts[found_idx].result.complete = 1;
         if (rc == NGX_ERROR) {
             return NGX_ERROR;
@@ -3278,7 +3288,7 @@ ngx_http_haskell_run_async_handler(ngx_http_request_t *r,
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "an exception was caught while getting "
                       "value of variable \"%V\" asynchronously: \"%V\"",
-                      &vars[*index].name,
+                      &cmvars[*index].name,
                       &async_data_elts[found_idx].result);
         /* BEWARE: return value of the exception */
     }
@@ -3300,13 +3310,12 @@ ngx_http_haskell_run_service_handler(ngx_http_request_t *r,
 {
     ngx_uint_t                                 i;
     ngx_http_haskell_main_conf_t              *mcf;
-    ngx_http_core_main_conf_t                 *cmcf;
     ngx_http_haskell_service_code_var_data_t  *service_code_vars;
     ngx_int_t                                 *index = (ngx_int_t *) data;
     ngx_int_t                                  found_idx = NGX_ERROR;
     ngx_slab_pool_t                           *shpool;
     ngx_http_haskell_shm_var_handle_t         *shm_vars;
-    ngx_http_variable_t                       *vars;
+    ngx_int_t                                  shm_index = NGX_ERROR;
     ngx_str_t                                  res = ngx_null_string;
     ngx_http_haskell_async_data_t             *service_data = NULL;
     ngx_pool_cleanup_t                        *cln;
@@ -3318,67 +3327,9 @@ ngx_http_haskell_run_service_handler(ngx_http_request_t *r,
     mcf = ngx_http_get_module_main_conf(r, ngx_http_haskell_module);
     service_code_vars = mcf->service_code_vars.elts;
 
-    cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
-    vars = cmcf->variables.elts;
-
-    for (i = 0; i < mcf->service_var_in_shm.nelts; i++) {
-        if (*index == service_code_vars[i].data->index) {
-            found_idx = i;
-            break;
-        }
-    }
-
-    if (found_idx != NGX_ERROR) {
-        shpool = (ngx_slab_pool_t *) mcf->shm_zone->shm.addr;
-        shm_vars = shpool->data;
-
-        ngx_shmtx_lock(&shpool->mutex);
-
-        if (shm_vars[found_idx].data.yy_cleanup_data.n_bufs == -1) {
-            ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
-                          "memory allocation error while getting "
-                          "value of variable \"%V\" asynchronously",
-                          &vars[*index].name);
-            ngx_shmtx_unlock(&shpool->mutex);
-            return NGX_ERROR;
-        }
-
-        if (shm_vars[found_idx].data.error) {
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                          "an exception was caught while getting "
-                          "value of variable \"%V\" asynchronously: \"%V\"",
-                          &vars[*index].name,
-                          &shm_vars[found_idx].data.result.data);
-            ngx_shmtx_unlock(&shpool->mutex);
-            /* BEWARE: do not return value of the exception */
-            return NGX_ERROR;
-        }
-
-        if (shm_vars[found_idx].data.result.data.len == 0) {
-            ngx_shmtx_unlock(&shpool->mutex);
-            goto update_var;
-        }
-
-        /* BEWARE: there is no cache for res, normally it must be OK because
-         * this handler must be called only once in normal case when the
-         * associated variable is not cacheable */
-        res.len = shm_vars[found_idx].data.result.data.len;
-        res.data = ngx_pnalloc(r->pool, res.len);
-        if (res.data == NULL) {
-            ngx_shmtx_unlock(&shpool->mutex);
-            return NGX_ERROR;
-        }
-
-        ngx_memcpy(res.data, shm_vars[found_idx].data.result.data.data,
-                   res.len);
-
-        ngx_shmtx_unlock(&shpool->mutex);
-
-        goto update_var;
-    }
-
     for (i = 0; i < mcf->service_code_vars.nelts; i++) {
         if (*index == service_code_vars[i].data->index) {
+            shm_index = service_code_vars[i].shm_index;
             found_idx = i;
             break;
         }
@@ -3387,9 +3338,42 @@ ngx_http_haskell_run_service_handler(ngx_http_request_t *r,
         return NGX_ERROR;
     }
 
+    if (shm_index != NGX_ERROR) {
+        shpool = (ngx_slab_pool_t *) mcf->shm_zone->shm.addr;
+        shm_vars = shpool->data;
+
+        ngx_shmtx_lock(&shpool->mutex);
+
+        if (shm_vars[shm_index].data.result.data.len == 0) {
+            ngx_shmtx_unlock(&shpool->mutex);
+            goto update_var;
+        }
+
+        /* BEWARE: there is no cache for res, normally it must be OK because
+         * this handler must be called only once in normal case when the
+         * associated variable is not cacheable */
+        res.len = shm_vars[shm_index].data.result.data.len;
+        res.data = ngx_pnalloc(r->pool, res.len);
+        if (res.data == NULL) {
+            ngx_shmtx_unlock(&shpool->mutex);
+            return NGX_ERROR;
+        }
+
+        ngx_memcpy(res.data, shm_vars[shm_index].data.result.data.data,
+                   res.len);
+
+        ngx_shmtx_unlock(&shpool->mutex);
+
+        goto update_var;
+    }
+
     for (cln = r->pool->cleanup; cln != NULL; cln = cln->next) {
         if (cln->handler == ngx_http_haskell_service_handler_cleanup) {
             service_data = cln->data;
+            if (service_data->index != *index) {
+                service_data = NULL;
+                continue;
+            }
             break;
         }
     }
@@ -3409,23 +3393,6 @@ ngx_http_haskell_run_service_handler(ngx_http_request_t *r,
         ++service_data->ref_count;
         cln->handler = ngx_http_haskell_service_handler_cleanup;
         cln->data = service_data;
-    }
-
-    if (service_data->yy_cleanup_data.n_bufs == -1) {
-        ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
-                      "memory allocation error while getting "
-                      "value of variable \"%V\" asynchronously",
-                      &vars[*index].name);
-        return NGX_ERROR;
-    }
-
-    if (service_data->error) {
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "an exception was caught while getting "
-                      "value of variable \"%V\" asynchronously: \"%V\"",
-                      &vars[*index].name, &service_data->result.data);
-        /* BEWARE: do not return value of the exception */
-        return NGX_ERROR;
     }
 
     res = service_data->result.data;
@@ -3719,12 +3686,9 @@ ngx_http_haskell_service_var_init_zone(ngx_shm_zone_t *shm_zone, void *data)
     }
 
     for (i = 0; i < vars->nelts; i++) {
+        ngx_memzero(&shm_vars[i], sizeof(ngx_http_haskell_shm_var_handle_t));
         shm_vars[i].handle = vars_elts[i];
-        ngx_str_null(&shm_vars[i].data.result.data);
-        shm_vars[i].data.result.complete = 0;
         shm_vars[i].data.index = vars_elts[i].index;
-        shm_vars[i].data.error = 0;
-        shm_vars[i].modified = 0;
     }
 
     ngx_shmtx_unlock(&shpool->mutex);
@@ -3772,18 +3736,17 @@ ngx_http_haskell_service_async_event(ngx_event_t *ev)
 
     ngx_http_haskell_main_conf_t              *mcf;
     ngx_http_core_main_conf_t                 *cmcf;
+    ngx_http_variable_t                       *cmvars;
     ngx_http_haskell_service_code_var_data_t  *service_code_var;
     ngx_http_haskell_service_code_var_data_t  *service_code_vars;
-    ngx_http_haskell_var_handle_t             *vars;
-    ngx_http_variable_t                       *cmvars;
     ngx_slab_pool_t                           *shpool;
     ngx_http_haskell_shm_var_handle_t         *shm_vars;
+    ngx_int_t                                  shm_index = NGX_ERROR;
     ngx_str_t                                 *var;
     u_char                                    *var_data;
+    ngx_http_haskell_async_data_t             *async_data;
     ngx_http_complex_value_t                  *args;
-    ngx_uint_t                                 ignore_empty = 0;
     ngx_uint_t                                 has_cb = 0;
-    ngx_int_t                                  found_idx = NGX_ERROR;
     ngx_int_t                                  rc;
 
     service_code_var = hev->service_code_var;
@@ -3797,7 +3760,8 @@ ngx_http_haskell_service_async_event(ngx_event_t *ev)
     ev->active = 0;
     if (ngx_del_event(ev, NGX_READ_EVENT, 0) == NGX_ERROR) {
         ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
-                      "failed to delete event after service task was finished");
+                      "failed to delete event "
+                      "after service task was finished");
     }
 
     if (close(hev->s.fd) == -1) {
@@ -3809,19 +3773,35 @@ ngx_http_haskell_service_async_event(ngx_event_t *ev)
     cmcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_core_module);
     cmvars = cmcf->variables.elts;
 
-    mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
+    async_data = &service_code_var->future_async_data;
 
     rc = ngx_http_haskell_yy_handler_result(cycle->log, NULL,
-                    service_code_var->future_async_data.yy_cleanup_data.bufs,
-                    service_code_var->future_async_data.yy_cleanup_data.n_bufs,
-                    &service_code_var->future_async_data.result.data,
-                    service_code_var->future_async_data.yy_cleanup_data.
-                                                    release_locked_bytestring,
-                    service_code_var->future_async_data.yy_cleanup_data.
-                                                    locked_bytestring,
+                    async_data->yy_cleanup_data.bufs,
+                    async_data->yy_cleanup_data.n_bufs,
+                    &async_data->result.data,
+                    async_data->yy_cleanup_data.release_locked_bytestring,
+                    async_data->yy_cleanup_data.locked_bytestring,
                     &cmvars[service_code_var->data->index], 1, 1);
-    service_code_var->future_async_data.result.complete =
-            rc == NGX_OK ? 2 : (rc == NGX_DONE ? 1 : 0);
+    async_data->result.complete = rc == NGX_OK ? 2 : (rc == NGX_DONE ? 1 : 0);
+
+    if (async_data->yy_cleanup_data.n_bufs == -1) {
+        ngx_log_error(NGX_LOG_CRIT, cycle->log, 0,
+                      "memory allocation error while getting "
+                      "value of service variable \"%V\", "
+                      "using old value",
+                      &cmvars[service_code_var->data->index].name);
+    }
+    
+    if (async_data->error) {
+        ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
+                      "an exception was caught while getting "
+                      "value of service variable \"%V\": \"%V\", "
+                      "using old value",
+                      &cmvars[service_code_var->data->index].name,
+                      &async_data->result.data);
+    }
+
+    mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
 
     if (service_code_var->cb) {
         if (service_code_var->noarg) {
@@ -3829,34 +3809,30 @@ ngx_http_haskell_service_async_event(ngx_event_t *ev)
             ngx_free(args[0].value.data);
             args[0].value.len = 0;
         }
-        if (service_code_var->future_async_data.result.complete == 2) {
-            ngx_free(service_code_var->future_async_data.result.data.data);
-        } else if (service_code_var->future_async_data.result.complete == 1) {
+        if (async_data->result.complete == 2) {
+            ngx_free(async_data->result.data.data);
+        } else if (async_data->result.complete == 1) {
             mcf->release_locked_bytestring(
-                        service_code_var->future_async_data.yy_cleanup_data.
-                                                            locked_bytestring);
+                                async_data->yy_cleanup_data.locked_bytestring);
         }
         return;
     }
 
-    vars = mcf->service_var_ignore_empty.elts;
-    for (i = 0; i < mcf->service_var_ignore_empty.nelts; i++) {
-        if (vars[i].index == service_code_var->data->index) {
-            ignore_empty = 1;
-            break;
+    if ((service_code_var->ignore_empty && async_data->result.data.len == 0)
+        || async_data->yy_cleanup_data.n_bufs == -1 || async_data->error)
+    {
+        if (async_data->result.complete == 2) {
+            ngx_free(async_data->result.data.data);
+        } else if (async_data->result.complete == 1) {
+            mcf->release_locked_bytestring(
+                                async_data->yy_cleanup_data.locked_bytestring);
         }
+        goto run_service;
     }
 
-    if (ignore_empty && service_code_var->future_async_data.result.data.len
-        == 0)
-    {
-        if (service_code_var->future_async_data.yy_cleanup_data.bufs != NULL) {
-            ngx_free(service_code_var->future_async_data.yy_cleanup_data.bufs);
-            mcf->release_locked_bytestring(
-                        service_code_var->future_async_data.yy_cleanup_data.
-                                                            locked_bytestring);
-        }
-    } else {
+    shm_index = service_code_var->shm_index;
+
+    if (shm_index == NGX_ERROR) {
         if (service_code_var->async_data != NULL) {
             ngx_http_haskell_service_handler_cleanup(
                                                 service_code_var->async_data);
@@ -3866,28 +3842,16 @@ ngx_http_haskell_service_async_event(ngx_event_t *ev)
 
         if (service_code_var->async_data == NULL) {
             ngx_log_error(NGX_LOG_CRIT, cycle->log, 0,
-                          "failed to allocate memory for service async data, "
-                          "using old data");
-            ngx_free(service_code_var->future_async_data.yy_cleanup_data.bufs);
+                          "failed to allocate memory for "
+                          "service variable \"%V\", using old value",
+                          &cmvars[service_code_var->data->index].name);
+            ngx_free(async_data->yy_cleanup_data.bufs);
             mcf->release_locked_bytestring(
-                        service_code_var->future_async_data.yy_cleanup_data.
-                                                            locked_bytestring);
-            goto run_service;
+                                async_data->yy_cleanup_data.locked_bytestring);
         } else {
-            *service_code_var->async_data = service_code_var->future_async_data;
+            *service_code_var->async_data = *async_data;
             service_code_var->async_data->ref_count = 1;
         }
-
-        vars = mcf->service_var_in_shm.elts;
-        for (i = 0; i < mcf->service_var_in_shm.nelts; i++) {
-            if (vars[i].index == service_code_var->data->index) {
-                found_idx = i;
-                break;
-            }
-        }
-    }
-
-    if (found_idx == NGX_ERROR) {
         goto run_service;
     }
 
@@ -3896,22 +3860,11 @@ ngx_http_haskell_service_async_event(ngx_event_t *ev)
 
     ngx_shmtx_lock(&shpool->mutex);
 
-    var = &shm_vars[found_idx].data.result.data;
-
-    shm_vars[found_idx].data.error = service_code_var->async_data->error;
-
-    if (service_code_var->async_data->result.data.len == (ngx_uint_t) -1) {
-        if (var->data != NULL) {
-            ngx_slab_free_locked(shpool, var->data);
-        }
-        var->len = -1;
-        var->data = NULL;
-        goto unlock_and_run_service;
-    }
+    var = &shm_vars[shm_index].data.result.data;
 
     service_code_vars = mcf->service_code_vars.elts;
 
-    if (var->len == service_code_var->async_data->result.data.len) {
+    if (var->len == async_data->result.data.len) {
         if (var->data == NULL) {
             goto unlock_and_run_service;
         }
@@ -3920,8 +3873,7 @@ ngx_http_haskell_service_async_event(ngx_event_t *ev)
                 == service_code_var->data->index
                 && service_code_vars[i].cb && !service_code_vars[i].running)
             {
-                if (ngx_memcmp(var->data,
-                               service_code_var->async_data->result.data.data,
+                if (ngx_memcmp(var->data, async_data->result.data.data,
                                var->len) == 0)
                 {
                     goto unlock_and_run_service;
@@ -3931,8 +3883,7 @@ ngx_http_haskell_service_async_event(ngx_event_t *ev)
                 }
             }
         }
-        ngx_memcpy(var->data, service_code_var->async_data->result.data.data,
-                   var->len);
+        ngx_memcpy(var->data, async_data->result.data.data, var->len);
         if (has_cb) {
             goto cb_unlock_and_run_service;
         } else {
@@ -3940,7 +3891,7 @@ ngx_http_haskell_service_async_event(ngx_event_t *ev)
         }
     }
 
-    if (service_code_var->async_data->result.data.len == 0) {
+    if (async_data->result.data.len == 0) {
         if (var->data != NULL) {
             ngx_slab_free_locked(shpool, var->data);
         }
@@ -3948,24 +3899,23 @@ ngx_http_haskell_service_async_event(ngx_event_t *ev)
         goto cb_unlock_and_run_service;
     }
 
-    var_data = ngx_slab_alloc_locked(shpool,
-                                service_code_var->async_data->result.data.len);
+    var_data = ngx_slab_alloc_locked(shpool, async_data->result.data.len);
     if (var_data == NULL) {
         ngx_log_error(NGX_LOG_CRIT, cycle->log, 0,
-                      "failed to allocate memory to store variable \"%V\"",
-                      &shm_vars[found_idx].handle.name);
+                      "failed to allocate memory to store "
+                      "service variable \"%V\", using old value",
+                      &shm_vars[shm_index].handle.name);
         goto unlock_and_run_service;
     }
 
-    ngx_memcpy(var_data, service_code_var->async_data->result.data.data,
-               service_code_var->async_data->result.data.len);
-    shm_vars[found_idx].data.error = 0;
+    ngx_memcpy(var_data, async_data->result.data.data,
+               async_data->result.data.len);
     /* TODO: update field modified with current time value */
 
     if (var->data != NULL) {
         ngx_slab_free_locked(shpool, var->data);
     }
-    var->len = service_code_var->async_data->result.data.len;
+    var->len = async_data->result.data.len;
     var->data = var_data;
 
 cb_unlock_and_run_service:
@@ -3998,6 +3948,13 @@ cb_unlock_and_run_service:
 
 unlock_and_run_service:
 
+    if (async_data->result.complete == 2) {
+        ngx_free(async_data->result.data.data);
+    } else if (async_data->result.complete == 1) {
+        mcf->release_locked_bytestring(
+                                async_data->yy_cleanup_data.locked_bytestring);
+    }
+
     ngx_shmtx_unlock(&shpool->mutex);
 
 run_service:
@@ -4013,7 +3970,7 @@ ngx_http_haskell_yy_handler_result(ngx_log_t *log, ngx_pool_t *pool,
                                    void (*release_locked_bytestring)
                                                                 (HsStablePtr),
                                    HsStablePtr locked_bytestring,
-                                   ngx_http_variable_t *var,
+                                   ngx_http_variable_t *cmvar,
                                    ngx_uint_t cleanup, ngx_uint_t service)
 {
     ngx_int_t                            i;
@@ -4054,7 +4011,7 @@ ngx_http_haskell_yy_handler_result(ngx_log_t *log, ngx_pool_t *pool,
             if (cln == NULL || clnd == NULL) {
                 ngx_log_error(NGX_LOG_ERR, log, 0,
                               "failed to allocate cleanup handler "
-                              "for variable \"%V\"", var->name);
+                              "for variable \"%V\"", cmvar->name);
                 goto cleanup;
             }
             clnd->bufs = NULL;
@@ -4077,7 +4034,7 @@ ngx_http_haskell_yy_handler_result(ngx_log_t *log, ngx_pool_t *pool,
         if (res->data == NULL) {
             ngx_log_error(NGX_LOG_ERR, log, 0,
                         "failed to allocate contiguous memory block "
-                        "for variable \"%V\"", var->name);
+                        "for variable \"%V\"", cmvar->name);
             goto cleanup;
         }
         written = 0;
