@@ -2,7 +2,10 @@ Nginx Haskell module
 ====================
 
 This Nginx module allows compiling and running Haskell source code found in a
-configuration file or an existing shared library.
+configuration file or an existing shared library. It allows for writing in
+Haskell synchronous variable handlers, asynchronous tasks, services (i.e.
+asynchronous tasks that are not bound to requests), and shared services (i.e.
+services that work only on a single Nginx worker process all the time).
 
 Table of contents
 -----------------
@@ -899,10 +902,13 @@ the haskell module and other nginx modules by setting a special *callback*
 location with a handler from the other module bound to a haskell service
 variable. Here they are.
 
-- *haskell_service_var_in_shm ``shm_name`` ``shm_size`` ``<list>``* &mdash;
-  Makes variables in the *``<list>``* be stored in shared memory ``shm_name``
-  with size ``shm_size``. Accepts only variables defined with directive
-  *haskell_run_service*.
+- *haskell_service_var_in_shm ``shm_name`` ``shm_size`` ``file_locks_path``
+  ``<list>``* &mdash; Makes that variables in the *``<list>``* get stored in
+  shared memory ``shm_name`` with size ``shm_size``. File locks for specific
+  variables will be written in ``file_locks_path``, the path must be accessible
+  for write from worker processes. Accepts only variables defined with directive
+  *haskell_run_service*. This directive by itself can be used to build *shared
+  services* when only one worker process runs the service while others wait.
 
 - *haskell_service_var_update_callback ``service`` ``$var`` ``[value]``* &mdash;
   This directive is similar to *haskell_run_service* and accepts a haskell

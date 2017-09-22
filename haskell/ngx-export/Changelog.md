@@ -1,3 +1,9 @@
+### 0.8.0.0
+
+- Implemented shared services using waitToSetLock to get exclusive access for
+  servicing.
+- New dependency on package *monad-loops* (>= 0.4.2).
+
 ### 0.7.0.0
 
 Further optimizations.

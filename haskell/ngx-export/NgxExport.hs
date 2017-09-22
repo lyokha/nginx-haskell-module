@@ -48,8 +48,10 @@ import           Foreign.Marshal.Utils
 import           System.IO.Error
 import           System.Posix.IO
 import           Control.Monad
+import           Control.Monad.Loops
 import           Control.Exception hiding (Handler)
 import           GHC.IO.Exception (ioe_errno)
+import           GHC.IO.Device (SeekMode (..))
 import           Control.Concurrent.Async
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Unsafe as B
@@ -209,9 +211,9 @@ ngxExportIOYY =
 ngxExportAsyncIOYY :: Name -> Q [Dec]
 ngxExportAsyncIOYY =
     ngxExportC 'IOYY 'asyncIOYY
-    [t|CString -> CInt -> CInt -> CUInt -> CUInt ->
-       Ptr (Ptr NgxStrType) -> Ptr CInt -> Ptr CUInt ->
-       Ptr (StablePtr L.ByteString) -> IO ()|]
+    [t|CString -> CInt -> CInt -> CInt -> CUInt -> CUInt ->
+       Ptr (Ptr NgxStrType) -> Ptr CInt ->
+       Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO ()|]
 
 -- | Exports a function of type
 -- /'L.ByteString' -> 'B.ByteString' -> 'IO' 'L.ByteString'/
@@ -223,8 +225,8 @@ ngxExportAsyncOnReqBody :: Name -> Q [Dec]
 ngxExportAsyncOnReqBody =
     ngxExport 'IOYYY 'asyncIOYYY
     [t|Ptr NgxStrType -> CInt -> CString -> CInt -> CInt -> CUInt ->
-       Ptr (Ptr NgxStrType) -> Ptr CInt -> Ptr CUInt ->
-       Ptr (StablePtr L.ByteString) -> IO ()|]
+       Ptr (Ptr NgxStrType) -> Ptr CInt ->
+       Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO ()|]
 
 -- | Exports a function of type
 -- /'B.ByteString' -> 'Bool' -> 'IO' 'L.ByteString'/
@@ -235,9 +237,9 @@ ngxExportAsyncOnReqBody =
 ngxExportServiceIOYY :: Name -> Q [Dec]
 ngxExportServiceIOYY =
     ngxExport 'IOYY 'asyncIOYY
-    [t|CString -> CInt -> CInt -> CUInt -> CUInt ->
-       Ptr (Ptr NgxStrType) -> Ptr CInt -> Ptr CUInt ->
-       Ptr (StablePtr L.ByteString) -> IO ()|]
+    [t|CString -> CInt -> CInt -> CInt -> CUInt -> CUInt ->
+       Ptr (Ptr NgxStrType) -> Ptr CInt ->
+       Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO ()|]
 
 -- | Exports a function of type
 -- /'B.ByteString' -> ('L.ByteString', 'String', 'Int')/
@@ -367,6 +369,10 @@ safeYYHandler = handle $ \e ->
     return (C8L.pack $ show (e :: SomeException), 1)
 {-# INLINE safeYYHandler #-}
 
+isEINTR :: IOError -> Bool
+isEINTR = (Just ((\(Errno i) -> i) eINTR) ==) . ioe_errno
+{-# INLINE isEINTR #-}
+
 sS :: SS -> CString -> CInt ->
     Ptr CString -> Ptr CInt -> IO CUInt
 sS f x (I n) p pl =
@@ -421,8 +427,8 @@ asyncIOFlag8b :: B.ByteString
 asyncIOFlag8b = L.toStrict $ runPut $ putInt64host 1
 
 asyncIOCommon :: IO C8L.ByteString ->
-    CInt -> Bool -> Ptr (Ptr NgxStrType) -> Ptr CInt -> Ptr CUInt ->
-    Ptr (StablePtr L.ByteString) -> IO ()
+    CInt -> Bool -> Ptr (Ptr NgxStrType) -> Ptr CInt ->
+    Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO ()
 asyncIOCommon a (I fd) efd p pl pr spd = void . async $ do
     (s, r) <- safeYYHandler $ do
         s <- a
@@ -433,30 +439,33 @@ asyncIOCommon a (I fd) efd p pl pr spd = void . async $ do
         if efd
             then writeFlag8b
             else writeFlag1b >> closeFd fd `catchIOError` const (return ())
-    where writeBufN n s w
-              | w < n = (w +) <$>
+    where writeBufN n s = iterateUntilM (>= n)
+              (\w -> (w +) <$>
                   fdWriteBuf fd (plusPtr s $ fromIntegral w) (n - w)
-                  `catchIOError`
-                  (\e -> return $
-                       if ioe_errno e == Just ((\(Errno i) -> i) eINTR)
-                           then 0
-                           else n
-                  ) >>= writeBufN n s
-              | otherwise = return w
-          writeFlag1b = void $
-              B.unsafeUseAsCString asyncIOFlag1b $ flip (writeBufN 1) 0
-          writeFlag8b = void $
-              B.unsafeUseAsCString asyncIOFlag8b $ flip (writeBufN 8) 0
+                  `catchIOError` (\e -> return $ if isEINTR e
+                                                     then 0
+                                                     else n
+                                 )
+              ) 0
+          writeFlag1b = void $ B.unsafeUseAsCString asyncIOFlag1b $ writeBufN 1
+          writeFlag8b = void $ B.unsafeUseAsCString asyncIOFlag8b $ writeBufN 8
 
 asyncIOYY :: IOYY -> CString -> CInt ->
-    CInt -> CUInt -> CUInt -> Ptr (Ptr NgxStrType) -> Ptr CInt -> Ptr CUInt ->
-    Ptr (StablePtr L.ByteString) -> IO ()
-asyncIOYY f x (I n) fd (ToBool efd) (ToBool fstRun) =
-    asyncIOCommon (B.unsafePackCStringLen (x, n) >>= flip f fstRun) fd efd
+    CInt -> CInt -> CUInt -> CUInt -> Ptr (Ptr NgxStrType) -> Ptr CInt ->
+    Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO ()
+asyncIOYY f x (I n) fd (I fdlk) (ToBool efd) (ToBool fstRun) =
+    asyncIOCommon
+    (do
+        when (fstRun && fdlk /= -1) $ void $ iterateUntil (== True) $
+            (waitToSetLock fdlk (WriteLock, AbsoluteSeek, 0, 0) >> return True)
+            `catchIOError` (return . not . isEINTR)
+        x' <- B.unsafePackCStringLen (x, n)
+        f x' fstRun
+    ) fd efd
 
 asyncIOYYY :: IOYYY -> Ptr NgxStrType -> CInt -> CString -> CInt ->
-    CInt -> CUInt -> Ptr (Ptr NgxStrType) -> Ptr CInt -> Ptr CUInt ->
-    Ptr (StablePtr L.ByteString) -> IO ()
+    CInt -> CUInt -> Ptr (Ptr NgxStrType) -> Ptr CInt ->
+    Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO ()
 asyncIOYYY f b (I m) x (I n) fd (ToBool efd) =
     asyncIOCommon
     (do

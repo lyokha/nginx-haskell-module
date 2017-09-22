@@ -33,9 +33,11 @@ type Url = String           -- normally must start with /
 type Destination = String   -- IP address or domain name
 
 data Conf = Conf { updateInterval    :: TimeInterval
-                 , dataSource        :: (Url, Destination)
-                 , dataSink          :: (Url, Destination)
+                 , dataSourceAddr    :: (Url, Destination)
                  } deriving (Read)
+
+newtype Upconf = Upconf { upconfAddr :: (Url, Destination)
+                        } deriving (Read)
 
 data TimeInterval = Hr Int
                   | Min Int
@@ -50,10 +52,6 @@ collectedData :: IORef CollectedData
 collectedData = unsafePerformIO $ newIORef M.empty
 {-# NOINLINE collectedData #-}
 
-upconfAddr :: IORef (Url, Destination)
-upconfAddr = unsafePerformIO $ newIORef ("", "")
-{-# NOINLINE upconfAddr #-}
-
 httpManager = unsafePerformIO $ newManager defaultManagerSettings
 {-# NOINLINE httpManager #-}
 
@@ -65,11 +63,8 @@ query = (getUrl .) . flip mkAddr
     where mkAddr = (("http://" ++) .) . (++)
 
 getUpstreams (C8.unpack -> conf) firstRun = do
-    let Conf (toSec -> upd) (url, addr) (surl, saddr) =
-            readDef (Conf (Hr 24) ("", "") ("", "")) conf
-    if firstRun
-        then writeIORef upconfAddr (surl, saddr)
-        else threadDelaySec upd
+    let Conf (toSec -> upd) (url, addr) = readDef (Conf (Hr 24) ("", "")) conf
+    unless firstRun $ threadDelaySec upd
     new <- catchBadResponse $ (fromMaybe M.empty . decode) <$> query url addr
     old <- readIORef collectedData
     if new == old
@@ -87,9 +82,8 @@ getUpstreams (C8.unpack -> conf) firstRun = do
           toSec (MinSec (m, s)) = 60 * m + s
 ngxExportServiceIOYY 'getUpstreams
 
-signalUpconf _ True = return C8L.empty
-signalUpconf _ _ = do
-    (url, addr) <- readIORef upconfAddr
+signalUpconf (C8.unpack -> conf) = const $ do
+    let Upconf (url, addr) = readDef (Upconf ("", "")) conf
     void $ handle (\(_ :: SomeException) -> return C8L.empty) $ query url addr
     return C8L.empty
 ngxExportServiceIOYY 'signalUpconf

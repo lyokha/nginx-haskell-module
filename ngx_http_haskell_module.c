@@ -38,8 +38,12 @@ static const ngx_str_t  ghc_rtslib_thr =
 ngx_string(
 " -L$(ghc --print-libdir)/rts -lHSrts_thr-ghc$(ghc --numeric-version)"
 );
+static const ngx_str_t  haskell_shm_file_lock_prefix =
+ngx_string("/ngx_hs_var_");
+static const ngx_str_t  haskell_shm_file_lock_suffix =
+ngx_string(".lock");
 static const ngx_int_t haskell_module_ngx_export_api_version_major = 0;
-static const ngx_int_t haskell_module_ngx_export_api_version_minor = 7;
+static const ngx_int_t haskell_module_ngx_export_api_version_minor = 8;
 
 static const ngx_str_t  haskell_module_code_head =
 ngx_string(
@@ -132,7 +136,7 @@ ngx_string(
 "AUX_NGX_TYPECHECK(AUX_NGX_IOY_Y, F, (const . F)) \\\n"
 "ngx_hs_ ## F = aux_ngx_hs_async_ioy_y $ AUX_NGX_IOY_Y (const . F); \\\n"
 "foreign export ccall ngx_hs_ ## F :: \\\n"
-"    AUX_NGX.CString -> AUX_NGX.CInt -> AUX_NGX.CInt -> \\\n"
+"    AUX_NGX.CString -> AUX_NGX.CInt -> AUX_NGX.CInt -> AUX_NGX.CInt -> \\\n"
 "    AUX_NGX.CUInt -> AUX_NGX.CUInt -> \\\n"
 "    AUX_NGX.Ptr (AUX_NGX.Ptr AUX_NGX_STR_TYPE) -> AUX_NGX.Ptr AUX_NGX.CInt -> "
 "\\\n"
@@ -154,7 +158,7 @@ ngx_string(
 "AUX_NGX_TYPECHECK(AUX_NGX_IOY_Y, F, F) \\\n"
 "ngx_hs_ ## F = aux_ngx_hs_async_ioy_y $ AUX_NGX_IOY_Y F; \\\n"
 "foreign export ccall ngx_hs_ ## F :: \\\n"
-"    AUX_NGX.CString -> AUX_NGX.CInt -> AUX_NGX.CInt -> \\\n"
+"    AUX_NGX.CString -> AUX_NGX.CInt -> AUX_NGX.CInt -> AUX_NGX.CInt -> \\\n"
 "    AUX_NGX.CUInt -> AUX_NGX.CUInt -> \\\n"
 "    AUX_NGX.Ptr (AUX_NGX.Ptr AUX_NGX_STR_TYPE) -> AUX_NGX.Ptr AUX_NGX.CInt -> "
 "\\\n"
@@ -196,7 +200,8 @@ ngx_string(
 
 "module NgxHaskellUserRuntime where\n\n"
 
-"-- requires packages base, cpphs, bytestring, async, binary and unix\n\n"
+"-- requires packages base, cpphs, bytestring, async, binary, monad-loops, unix"
+"\n\n"
 
 "import qualified Foreign.C as AUX_NGX\n"
 "import qualified Foreign.Ptr as AUX_NGX\n"
@@ -207,8 +212,10 @@ ngx_string(
 "import qualified System.IO.Error as AUX_NGX\n"
 "import qualified System.Posix.IO as AUX_NGX\n"
 "import qualified Control.Monad as AUX_NGX\n"
+"import qualified Control.Monad.Loops as AUX_NGX\n"
 "import qualified Control.Exception as AUX_NGX\n"
 "import qualified GHC.IO.Exception as AUX_NGX\n"
+"import qualified GHC.IO.Device as AUX_NGX\n"
 "import qualified Control.Concurrent.Async as AUX_NGX\n"
 "import qualified Data.ByteString as AUX_NGX_BS\n"
 "import qualified Data.ByteString.Unsafe as AUX_NGX_BS\n"
@@ -373,6 +380,11 @@ ngx_string(
 "    return (AUX_NGX_BSLC8.pack $ show (e :: AUX_NGX.SomeException), 1)\n"
 "{-# INLINE aux_ngx_safeYYHandler #-}\n\n"
 
+"aux_ngx_isEINTR :: AUX_NGX.IOError -> Bool\n"
+"aux_ngx_isEINTR =\n"
+"    (Just ((\\(AUX_NGX.Errno i) -> i) AUX_NGX.eINTR) ==) . AUX_NGX.ioe_errno\n"
+"{-# INLINE aux_ngx_isEINTR #-}\n\n"
+
 "aux_ngx_hs_s_s :: AUX_NGX_EXPORT ->\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt ->\n"
 "    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CInt ->\n"
@@ -463,36 +475,45 @@ ngx_string(
 "                else writeFlag1b >> AUX_NGX.closeFd fd `AUX_NGX.catchIOError`"
 "\n"
 "                         const (return ())\n"
-"    where writeBufN n s w\n"
-"              | w < n = (w +) <$>\n"
+"    where writeBufN n s = AUX_NGX.iterateUntilM (>= n)\n"
+"              (\\w -> (w +) <$>\n"
 "                  AUX_NGX.fdWriteBuf fd (AUX_NGX.plusPtr s $ fromIntegral w)\n"
 "                      (n - w)\n"
-"                  `AUX_NGX.catchIOError`\n"
-"                  (\\e -> return $\n"
-"                       if AUX_NGX.ioe_errno e ==\n"
-"                              Just ((\\(AUX_NGX.Errno i) -> i) AUX_NGX.eINTR)"
+"                  `AUX_NGX.catchIOError` (\\e -> return $ if aux_ngx_isEINTR e"
 "\n"
-"                           then 0\n"
-"                           else n\n"
-"                  ) >>= writeBufN n s\n"
-"              | otherwise = return w\n"
+"                                                             then 0\n"
+"                                                             else n\n"
+"                                         )\n"
+"              ) 0\n"
 "          writeFlag1b = AUX_NGX.void $\n"
-"              AUX_NGX_BS.unsafeUseAsCString aux_ngx_asyncIOFlag1b $\n"
-"                  flip (writeBufN 1) 0\n"
+"              AUX_NGX_BS.unsafeUseAsCString aux_ngx_asyncIOFlag1b $ writeBufN "
+"1\n"
 "          writeFlag8b = AUX_NGX.void $\n"
-"              AUX_NGX_BS.unsafeUseAsCString aux_ngx_asyncIOFlag8b $\n"
-"                  flip (writeBufN 8) 0\n"
+"              AUX_NGX_BS.unsafeUseAsCString aux_ngx_asyncIOFlag8b $ writeBufN "
+"8\n\n"
 
 "aux_ngx_hs_async_ioy_y :: AUX_NGX_EXPORT ->\n"
-"    AUX_NGX.CString -> AUX_NGX.CInt -> AUX_NGX.CInt -> AUX_NGX.CUInt ->\n"
-"    AUX_NGX.CUInt -> AUX_NGX.Ptr (AUX_NGX.Ptr AUX_NGX_STR_TYPE) ->\n"
-"    AUX_NGX.Ptr AUX_NGX.CInt -> AUX_NGX.Ptr AUX_NGX.CUInt ->\n"
+"    AUX_NGX.CString -> AUX_NGX.CInt -> AUX_NGX.CInt -> AUX_NGX.CInt ->\n"
+"    AUX_NGX.CUInt -> AUX_NGX.CUInt ->\n"
+"    AUX_NGX.Ptr (AUX_NGX.Ptr AUX_NGX_STR_TYPE) -> AUX_NGX.Ptr AUX_NGX.CInt ->"
+"\n"
+"    AUX_NGX.Ptr AUX_NGX.CUInt ->\n"
 "    AUX_NGX.Ptr (AUX_NGX.StablePtr AUX_NGX_BSL.ByteString) -> IO ()\n"
 "aux_ngx_hs_async_ioy_y (AUX_NGX_IOY_Y f)\n"
-"            x (fromIntegral -> n) fd (AUX_NGX.toBool -> efd)\n"
-"            (AUX_NGX.toBool -> fstRun) =\n"
+"            x (fromIntegral -> n) fd (fromIntegral -> fdlk)\n"
+"            (AUX_NGX.toBool -> efd) (AUX_NGX.toBool -> fstRun) =\n"
+
 "    aux_ngx_asyncIOCommon\n"
-"        (AUX_NGX_BS.unsafePackCStringLen (x, n) >>= flip f fstRun) fd efd\n\n"
+"    (do\n"
+"        AUX_NGX.when (fstRun && fdlk /= -1) $ AUX_NGX.void $\n"
+"            AUX_NGX.iterateUntil (== True) $\n"
+"            (AUX_NGX.waitToSetLock fdlk\n"
+"                (AUX_NGX.WriteLock, AUX_NGX.AbsoluteSeek, 0, 0) >> return True"
+")\n"
+"            `AUX_NGX.catchIOError` (return . not . aux_ngx_isEINTR)\n"
+"        x' <- AUX_NGX_BS.unsafePackCStringLen (x, n)\n"
+"        f x' fstRun\n"
+"    ) fd efd\n\n"
 
 "aux_ngx_hs_async_ioy_yy :: AUX_NGX_EXPORT ->\n"
 "    AUX_NGX.Ptr AUX_NGX_STR_TYPE ->\n"
@@ -641,7 +662,7 @@ typedef HsWord32 (*ngx_http_haskell_handler_b_y)
 typedef HsWord32 (*ngx_http_haskell_handler_ioy_y)
     (HsPtr, HsInt32, HsPtr, HsPtr, HsPtr);
 typedef void (*ngx_http_haskell_handler_async_ioy_y)
-    (HsPtr, HsInt32, HsInt32, HsWord32, HsWord32, HsPtr, HsPtr, HsPtr,
+    (HsPtr, HsInt32, HsInt32, HsInt32, HsWord32, HsWord32, HsPtr, HsPtr, HsPtr,
      HsPtr);
 typedef void (*ngx_http_haskell_handler_async_ioy_yy)
     (HsPtr, HsInt32, HsPtr, HsInt32, HsInt32, HsWord32, HsPtr, HsPtr, HsPtr,
@@ -715,8 +736,10 @@ typedef struct {
     ngx_array_t                                service_var_ignore_empty;
     ngx_array_t                                service_var_in_shm;
     ngx_shm_zone_t                            *shm_zone;
+    ngx_str_t                                  shm_lock_files_path;
     ngx_uint_t                                 code_loaded:1;
     ngx_uint_t                                 has_async_tasks:1;
+    ngx_uint_t                                 has_shared_services:1;
 } ngx_http_haskell_main_conf_t;
 
 
@@ -845,6 +868,7 @@ struct ngx_http_haskell_service_code_var_data_s {
     ngx_event_t                                       event;
     ngx_http_haskell_service_async_event_t            hev;
     ngx_int_t                                         shm_index;
+    ngx_fd_t                                          shm_lock_fd;
     ngx_uint_t                                        cb:1;
     ngx_uint_t                                        noarg:1;
     ngx_uint_t                                        running:1;
@@ -1309,7 +1333,7 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
         } else {
             ((ngx_http_haskell_handler_async_ioy_y)
              handlers[code_vars[i].handler].self)
-                    (arg1.data, arg1.len, fd[1], use_eventfd_channel, 0,
+                    (arg1.data, arg1.len, fd[1], -1, use_eventfd_channel, 0,
                      &async_data->yy_cleanup_data.bufs,
                      &async_data->yy_cleanup_data.n_bufs, &async_data->error,
                      &async_data->yy_cleanup_data.locked_bytestring);
@@ -1458,6 +1482,7 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
     ngx_http_variable_t                       *cmvars;
     ngx_http_haskell_var_handle_t             *vars;
     ngx_http_haskell_service_code_var_data_t  *service_code_vars;
+    ngx_file_t                                 out;
     ngx_uint_t                                 found;
     ngx_int_t                                  index;
 
@@ -1507,6 +1532,7 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
     service_code_vars = mcf->service_code_vars.elts;
     for (i = 0; i < mcf->service_code_vars.nelts; i++) {
         index = service_code_vars[i].data->index;
+
         vars = mcf->service_var_ignore_empty.elts;
         for (j = 0; j < mcf->service_var_ignore_empty.nelts; j++) {
             if (index == vars[j].index) {
@@ -1514,16 +1540,70 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
                 break;
             }
         }
+
         vars = mcf->service_var_in_shm.elts;
         for (j = 0; j < mcf->service_var_in_shm.nelts; j++) {
             if (index == vars[j].index) {
                 service_code_vars[i].shm_index = j;
+
+                if (service_code_vars[i].cb) {
+                    continue;
+                }
+
+                ngx_memzero(&out, sizeof(ngx_file_t));
+                out.name.len = mcf->shm_lock_files_path.len +
+                        haskell_shm_file_lock_prefix.len +
+                        cmvars[index].name.len +
+                        haskell_shm_file_lock_suffix.len;
+
+                out.name.data = ngx_pnalloc(cycle->pool, out.name.len + 1);
+                if (out.name.data == NULL) {
+                    ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                                  "failed to allocate memory for artifacts of "
+                                  "file lock for variable in shared memory");
+                    return NGX_ERROR;
+                }
+
+                ngx_memcpy(out.name.data,
+                           mcf->shm_lock_files_path.data,
+                           mcf->shm_lock_files_path.len);
+                ngx_memcpy(out.name.data + mcf->shm_lock_files_path.len,
+                           haskell_shm_file_lock_prefix.data,
+                           haskell_shm_file_lock_prefix.len);
+                ngx_memcpy(out.name.data + mcf->shm_lock_files_path.len +
+                                haskell_shm_file_lock_prefix.len,
+                           cmvars[index].name.data,
+                           cmvars[index].name.len);
+                ngx_memcpy(out.name.data + mcf->shm_lock_files_path.len +
+                                haskell_shm_file_lock_prefix.len +
+                                cmvars[index].name.len,
+                           haskell_shm_file_lock_suffix.data,
+                           haskell_shm_file_lock_suffix.len);
+                out.name.data[out.name.len] = '\0';
+
+                out.fd = ngx_open_file(out.name.data, NGX_FILE_WRONLY,
+                                       NGX_FILE_TRUNCATE,
+                                       NGX_FILE_OWNER_ACCESS);
+                if (out.fd == NGX_INVALID_FILE)
+                {
+                    ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                                  "failed to open file lock \"%V\" for access "
+                                  "to variable in shared memory", &out.name);
+                    return NGX_ERROR;
+                }
+
+                service_code_vars[i].shm_lock_fd = out.fd;
+
+                mcf->has_shared_services = 1;
+
                 break;
             }
         }
+
         if (!service_code_vars[i].cb) {
             continue;
         }
+
         if (cmvars[index].get_handler != ngx_http_haskell_run_service_handler) {
             ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
                           "variable \"%V\" has incompatible get handler",
@@ -1531,6 +1611,7 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
             service_code_vars[i].data->index = NGX_ERROR;
             continue;
         }
+
         if (service_code_vars[i].shm_index == NGX_ERROR) {
             ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
                           "variable \"%V\" is not in shm", &cmvars[index].name);
@@ -1549,13 +1630,31 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
 static void
 ngx_http_haskell_exit_worker(ngx_cycle_t *cycle)
 {
-    if (ngx_process == NGX_PROCESS_HELPER) {
+    ngx_uint_t                                 i;
+    ngx_http_haskell_main_conf_t              *mcf;
+    ngx_http_haskell_service_code_var_data_t  *service_code_vars;
+
+    mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
+
+    if (ngx_process == NGX_PROCESS_HELPER || mcf == NULL) {
         return;
     }
 
     ngx_http_haskell_unload(cycle, 1);
 
     ngx_http_haskell_stop_services(cycle);
+
+    service_code_vars = mcf->service_code_vars.elts;
+    for (i = 0; i < mcf->service_code_vars.nelts; i++) {
+        if (service_code_vars[i].shm_lock_fd != NGX_INVALID_FILE
+            && ngx_close_file(service_code_vars[i].shm_lock_fd)
+            == NGX_FILE_ERROR)
+        {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                          "failed to close file lock handle for variable "
+                          "in shared memory");
+        }
+    }
 }
 
 
@@ -2280,7 +2379,12 @@ ngx_http_haskell_unload(ngx_cycle_t *cycle, ngx_uint_t exiting)
     }
 
     if (mcf->dl_handle != NULL) {
-        mcf->hs_exit();
+        /* shared services use waitToSetLock which is a simple wrapper over
+         * POSIX advisory file locks with fcntl() and F_SETLKW; a blocked
+         * thread may cause hs_exit() hang, so it skipped in this way */
+        if (!exiting || !mcf->has_shared_services) {
+            mcf->hs_exit();
+        }
         /* dlclose() may cause sigsegv when a haskell service wakes up
          * during or after munmap() but before the worker exits */
         if (!exiting) {
@@ -2433,7 +2537,8 @@ ngx_http_haskell_run_service(ngx_cycle_t *cycle,
     arg1 = args[0].value;
     ((ngx_http_haskell_handler_async_ioy_y)
      handlers[service_code_var->data->handler].self)
-            (arg1.data, arg1.len, fd[1], use_eventfd_channel, service_first_run,
+            (arg1.data, arg1.len, fd[1], service_code_var->shm_lock_fd,
+             use_eventfd_channel, service_first_run,
              &service_code_var->future_async_data.yy_cleanup_data.bufs,
              &service_code_var->future_async_data.yy_cleanup_data.n_bufs,
              &service_code_var->future_async_data.error,
@@ -2527,6 +2632,7 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                     sizeof(ngx_http_haskell_service_code_var_data_t));
         service_code_var_data->data = code_var_data;
         service_code_var_data->shm_index = NGX_ERROR;
+        service_code_var_data->shm_lock_fd = NGX_INVALID_FILE;
         service_code_var_data->cb = service_cb ? 1 : 0;
         service_code_var_data->noarg = n_args > 0 ? 0 : 1;
     } else {
@@ -2863,7 +2969,7 @@ ngx_http_haskell_var_configure(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         == 0)
     {
         data = &mcf->service_var_in_shm;
-        idx = 2;
+        idx = 3;
     } else {
         return NGX_CONF_ERROR;
     }
@@ -2915,7 +3021,7 @@ ngx_http_haskell_service_var_in_shm(ngx_conf_t *cf, ngx_command_t *cmd,
         return "is duplicate";
     }
 
-    if (cf->args->nelts < 4) {
+    if (cf->args->nelts < 5) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "too few arguments");
         return NGX_CONF_ERROR;
     }
@@ -2946,6 +3052,8 @@ ngx_http_haskell_service_var_in_shm(ngx_conf_t *cf, ngx_command_t *cmd,
     mcf->shm_zone->data = &mcf->service_var_in_shm;
 
     mcf->shm_zone->noreuse = 1;
+
+    mcf->shm_lock_files_path = value[3];
 
     return ngx_http_haskell_var_configure(cf, cmd, conf);
 }
@@ -3746,7 +3854,7 @@ ngx_http_haskell_service_async_event(ngx_event_t *ev)
     u_char                                    *var_data;
     ngx_http_haskell_async_data_t             *async_data;
     ngx_http_complex_value_t                  *args;
-    ngx_uint_t                                 has_cb = 0;
+    ngx_uint_t                                 run_cb = 0;
     ngx_int_t                                  rc;
 
     service_code_var = hev->service_code_var;
@@ -3878,13 +3986,13 @@ ngx_http_haskell_service_async_event(ngx_event_t *ev)
                 {
                     goto unlock_and_run_service;
                 } else {
-                    has_cb = 1;
+                    run_cb = 1;
                     break;
                 }
             }
         }
         ngx_memcpy(var->data, async_data->result.data.data, var->len);
-        if (has_cb) {
+        if (run_cb) {
             goto cb_unlock_and_run_service;
         } else {
             goto unlock_and_run_service;
@@ -3948,14 +4056,14 @@ cb_unlock_and_run_service:
 
 unlock_and_run_service:
 
+    ngx_shmtx_unlock(&shpool->mutex);
+
     if (async_data->result.complete == 2) {
         ngx_free(async_data->result.data.data);
     } else if (async_data->result.complete == 1) {
         mcf->release_locked_bytestring(
                                 async_data->yy_cleanup_data.locked_bytestring);
     }
-
-    ngx_shmtx_unlock(&shpool->mutex);
 
 run_service:
 

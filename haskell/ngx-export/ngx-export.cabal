@@ -1,5 +1,5 @@
 name:                ngx-export
-version:             0.7.0.1
+version:             0.8.0.0
 synopsis:            Helper module for Nginx haskell module
 description:         Helper module for
         <http://github.com/lyokha/nginx-haskell-module Nginx haskell module>
@@ -19,9 +19,10 @@ library
   build-depends:       base >= 4.8 && < 5
                      , template-haskell >= 2.11.0.0
                      , bytestring >= 0.10.0.0
-                     , unix
-                     , async >= 2.0
+                     , monad-loops >= 0.4.2
                      , binary >= 0.8.1.0
+                     , async >= 2.0
+                     , unix
   exposed-modules:     NgxExport
   other-modules:       Paths_ngx_export
   ghc-options:         -Wall -Wno-unrecognised-pragmas
