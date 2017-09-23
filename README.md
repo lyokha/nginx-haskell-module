@@ -4,8 +4,9 @@ Nginx Haskell module
 This Nginx module allows compiling and running Haskell source code found in a
 configuration file or an existing shared library. It allows for writing in
 Haskell synchronous variable handlers, asynchronous tasks, services (i.e.
-asynchronous tasks that are not bound to requests), and shared services (i.e.
-services that work exclusively on a single Nginx worker process all the time).
+asynchronous tasks that are not bound to requests), shared services (i.e.
+services that work exclusively on a single Nginx worker process all the time),
+content handlers and POST request handlers.
 
 Table of contents
 -----------------
