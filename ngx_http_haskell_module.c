@@ -1582,10 +1582,15 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
                 out.name.data[out.name.len] = '\0';
 
                 out.fd = ngx_open_file(out.name.data, NGX_FILE_WRONLY,
-                                       NGX_FILE_TRUNCATE,
+                                       NGX_FILE_TRUNCATE|O_EXCL,
                                        NGX_FILE_OWNER_ACCESS);
-                if (out.fd == NGX_INVALID_FILE)
+                if (out.fd == NGX_INVALID_FILE && ngx_errno == NGX_EEXIST_FILE)
                 {
+                    out.fd = ngx_open_file(out.name.data, NGX_FILE_WRONLY,
+                                           NGX_FILE_TRUNCATE,
+                                           NGX_FILE_OWNER_ACCESS);
+                }
+                if (out.fd == NGX_INVALID_FILE) {
                     ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
                                   "failed to open file lock \"%V\" for access "
                                   "to variable in shared memory", &out.name);
