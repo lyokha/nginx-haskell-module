@@ -305,26 +305,32 @@ safeNewCStringLen =
     flip catchIOError (const $ return (nullPtr, -1)) . newCStringLen
 {-# INLINE safeNewCStringLen #-}
 
-peekNgxStringArrayLen :: Ptr NgxStrType -> Int -> IO [String]
-peekNgxStringArrayLen x n = sequence $
+peekNgxStringArrayLen :: (CStringLen -> IO a) -> Ptr NgxStrType -> Int -> IO [a]
+peekNgxStringArrayLen f x = sequence .
     foldr (\k ->
-              ((peekElemOff x k >>=
-                  (\(NgxStrType (I m) y) ->
-                      peekCStringLen (y, m))) :)) [] [0 .. n - 1]
+            ((peekElemOff x k >>= (\(NgxStrType (I m) y) -> f (y, m))) :)
+          ) [] . flip take [0 ..]
+{-# SPECIALIZE INLINE peekNgxStringArrayLen ::
+    (CStringLen -> IO String) -> Ptr NgxStrType -> Int ->
+        IO [String] #-}
+{-# SPECIALIZE INLINE peekNgxStringArrayLen ::
+    (CStringLen -> IO B.ByteString) -> Ptr NgxStrType -> Int ->
+        IO [B.ByteString] #-}
+
+peekNgxStringArrayLenLS :: Ptr NgxStrType -> Int -> IO [String]
+peekNgxStringArrayLenLS =
+    peekNgxStringArrayLen peekCStringLen
 
 peekNgxStringArrayLenY :: Ptr NgxStrType -> Int -> IO L.ByteString
-peekNgxStringArrayLenY x n = L.fromChunks <$> sequence
-    (foldr (\k ->
-              ((peekElemOff x k >>=
-                  (\(NgxStrType (I m) y) ->
-                      B.unsafePackCStringLen (y, m))) :)) [] [0 .. n - 1])
+peekNgxStringArrayLenY =
+    (fmap L.fromChunks .) . peekNgxStringArrayLen B.unsafePackCStringLen
 
 pokeCStringLen :: Storable a => CString -> a -> Ptr CString -> Ptr a -> IO ()
 pokeCStringLen x n p s = poke p x >> poke s n
-{-# SPECIALIZE INLINE
-    pokeCStringLen :: CString -> CInt -> Ptr CString -> Ptr CInt ->IO () #-}
-{-# SPECIALIZE INLINE
-    pokeCStringLen :: CString -> CSize -> Ptr CString -> Ptr CSize ->IO () #-}
+{-# SPECIALIZE INLINE pokeCStringLen ::
+    CString -> CInt -> Ptr CString -> Ptr CInt -> IO () #-}
+{-# SPECIALIZE INLINE pokeCStringLen ::
+    CString -> CSize -> Ptr CString -> Ptr CSize -> IO () #-}
 
 toBuffers :: L.ByteString -> Ptr NgxStrType -> IO (Ptr NgxStrType, Int)
 toBuffers (L.null -> True) _ =
@@ -396,7 +402,7 @@ sLS :: SLS -> Ptr NgxStrType -> CInt ->
     Ptr CString -> Ptr CInt -> IO CUInt
 sLS f x (I n) p pl =
     safeHandler p pl $ do
-        PtrLen s l <- f <$> peekNgxStringArrayLen x n
+        PtrLen s l <- f <$> peekNgxStringArrayLenLS x n
                         >>= newCStringLen
         pokeCStringLen s l p pl
         return 0
@@ -495,7 +501,7 @@ bLS :: BLS -> Ptr NgxStrType -> CInt ->
     Ptr CString -> Ptr CInt -> IO CUInt
 bLS f x (I n) p pl =
     safeHandler p pl $ do
-        r <- fromBool . f <$> peekNgxStringArrayLen x n
+        r <- fromBool . f <$> peekNgxStringArrayLenLS x n
         pokeCStringLen nullPtr 0 p pl
         return r
 

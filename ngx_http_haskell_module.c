@@ -297,34 +297,42 @@ ngx_string(
 "        AUX_NGX.newCStringLen\n"
 "{-# INLINE aux_ngx_safeNewCStringLen #-}\n\n"
 
-"aux_ngx_peekNgxStringArrayLen :: AUX_NGX.Ptr AUX_NGX_STR_TYPE -> Int ->\n"
-"    IO [String]\n"
-"aux_ngx_peekNgxStringArrayLen x n = sequence $\n"
+"aux_ngx_peekNgxStringArrayLen :: (AUX_NGX.CStringLen -> IO a) ->\n"
+"    AUX_NGX.Ptr AUX_NGX_STR_TYPE -> Int -> IO [a]\n"
+"aux_ngx_peekNgxStringArrayLen f x = sequence .\n"
 "    foldr (\\k ->\n"
-"              ((AUX_NGX.peekElemOff x k >>=\n"
-"                  (\\(AUX_NGX_STR_TYPE (fromIntegral -> m) y) ->\n"
-"                      AUX_NGX.peekCStringLen (y, m))) :)) [] [0 .. n - 1]\n\n"
+"            ((AUX_NGX.peekElemOff x k >>=\n"
+"                (\\(AUX_NGX_STR_TYPE (fromIntegral -> m) y) -> f (y, m))) :)\n"
+"          ) [] . flip take [0 ..]\n"
+"{-# SPECIALIZE INLINE aux_ngx_peekNgxStringArrayLen ::\n"
+"    (AUX_NGX.CStringLen -> IO String) ->\n"
+"        AUX_NGX.Ptr AUX_NGX_STR_TYPE -> Int -> IO [String] #-}\n"
+"{-# SPECIALIZE INLINE aux_ngx_peekNgxStringArrayLen ::\n"
+"    (AUX_NGX.CStringLen -> IO AUX_NGX_BS.ByteString) ->\n"
+"        AUX_NGX.Ptr AUX_NGX_STR_TYPE -> Int -> IO [AUX_NGX_BS.ByteString] #-}"
+"\n\n"
+
+"aux_ngx_peekNgxStringArrayLenLS :: AUX_NGX.Ptr AUX_NGX_STR_TYPE -> Int ->\n"
+"    IO [String]\n"
+"aux_ngx_peekNgxStringArrayLenLS =\n"
+"    aux_ngx_peekNgxStringArrayLen AUX_NGX.peekCStringLen\n\n"
 
 "aux_ngx_peekNgxStringArrayLenY :: AUX_NGX.Ptr AUX_NGX_STR_TYPE -> Int ->\n"
 "    IO AUX_NGX_BSL.ByteString\n"
-"aux_ngx_peekNgxStringArrayLenY x n = AUX_NGX_BSL.fromChunks <$> sequence\n"
-"    (foldr (\\k ->\n"
-"              ((AUX_NGX.peekElemOff x k >>=\n"
-"                  (\\(AUX_NGX_STR_TYPE (fromIntegral -> m) y) ->\n"
-"                      AUX_NGX_BS.unsafePackCStringLen (y, m))) :)) []\n"
-"                           [0 .. n - 1])\n\n"
+"aux_ngx_peekNgxStringArrayLenY =\n"
+"    (fmap AUX_NGX_BSL.fromChunks .) .\n"
+"        aux_ngx_peekNgxStringArrayLen AUX_NGX_BS.unsafePackCStringLen\n\n"
 
 "aux_ngx_pokeCStringLen :: AUX_NGX.Storable a =>\n"
 "    AUX_NGX.CString -> a -> AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr a ->\n"
 "    IO ()\n"
 "aux_ngx_pokeCStringLen x n p s = AUX_NGX.poke p x >> AUX_NGX.poke s n\n"
-"{-# SPECIALIZE INLINE\n"
-"    aux_ngx_pokeCStringLen :: AUX_NGX.CString -> AUX_NGX.CInt ->\n"
-"        AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CInt ->IO () #-}\n"
-"{-# SPECIALIZE INLINE\n"
-"    aux_ngx_pokeCStringLen :: AUX_NGX.CString -> AUX_NGX.CSize ->\n"
-"        AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CSize ->IO () #-}"
-"\n\n"
+"{-# SPECIALIZE INLINE aux_ngx_pokeCStringLen ::\n"
+"    AUX_NGX.CString -> AUX_NGX.CInt -> AUX_NGX.Ptr AUX_NGX.CString ->\n"
+"        AUX_NGX.Ptr AUX_NGX.CInt -> IO () #-}\n"
+"{-# SPECIALIZE INLINE aux_ngx_pokeCStringLen ::\n"
+"    AUX_NGX.CString -> AUX_NGX.CSize -> AUX_NGX.Ptr AUX_NGX.CString ->\n"
+"        AUX_NGX.Ptr AUX_NGX.CSize -> IO () #-}\n\n"
 
 "aux_ngx_toBuffers :: AUX_NGX_BSL.ByteString -> AUX_NGX.Ptr AUX_NGX_STR_TYPE ->"
 "\n"
@@ -418,7 +426,7 @@ ngx_string(
 "aux_ngx_hs_s_ls (AUX_NGX_S_LS f)\n"
 "            x (fromIntegral -> n) p pl =\n"
 "    aux_ngx_safeHandler p pl $ do\n"
-"        (s, fromIntegral -> l) <- f <$> aux_ngx_peekNgxStringArrayLen x n\n"
+"        (s, fromIntegral -> l) <- f <$> aux_ngx_peekNgxStringArrayLenLS x n\n"
 "                                    >>= AUX_NGX.newCStringLen\n"
 "        aux_ngx_pokeCStringLen s l p pl\n"
 "        return 0\n\n"
@@ -563,7 +571,7 @@ ngx_string(
 "aux_ngx_hs_b_ls (AUX_NGX_B_LS f)\n"
 "            x (fromIntegral -> n) p pl =\n"
 "    aux_ngx_safeHandler p pl $ do\n"
-"        r <- AUX_NGX.fromBool . f <$> aux_ngx_peekNgxStringArrayLen x n\n"
+"        r <- AUX_NGX.fromBool . f <$> aux_ngx_peekNgxStringArrayLenLS x n\n"
 "        aux_ngx_pokeCStringLen AUX_NGX.nullPtr 0 p pl\n"
 "        return r\n\n"
 
@@ -3066,7 +3074,7 @@ ngx_http_haskell_service_var_in_shm(ngx_conf_t *cf, ngx_command_t *cmd,
 
 static ngx_int_t
 ngx_http_haskell_run_handler(ngx_http_request_t *r,
-                             ngx_http_variable_value_t *v, uintptr_t  data)
+                             ngx_http_variable_value_t *v, uintptr_t data)
 {
     ngx_uint_t                           i;
     ngx_http_haskell_main_conf_t        *mcf;
@@ -3340,7 +3348,7 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
 static ngx_int_t
 ngx_http_haskell_run_async_handler(ngx_http_request_t *r,
                                    ngx_http_variable_value_t *v,
-                                   uintptr_t  data)
+                                   uintptr_t data)
 {
     ngx_uint_t                         i;
     ngx_http_core_main_conf_t         *cmcf;
@@ -3419,7 +3427,7 @@ ngx_http_haskell_run_async_handler(ngx_http_request_t *r,
 static ngx_int_t
 ngx_http_haskell_run_service_handler(ngx_http_request_t *r,
                                      ngx_http_variable_value_t *v,
-                                     uintptr_t  data)
+                                     uintptr_t data)
 {
     ngx_uint_t                                 i;
     ngx_http_haskell_main_conf_t              *mcf;
