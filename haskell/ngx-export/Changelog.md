@@ -1,3 +1,8 @@
+### 0.8.0.2
+
+- Removed constraint on *template-haskell* via a CPP macro (this should let
+  compilation for *ghc-7.10*).
+
 ### 0.8.0.0
 
 - Implemented shared services using waitToSetLock to get exclusive access for

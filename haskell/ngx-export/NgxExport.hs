@@ -61,6 +61,12 @@ import           Data.Binary.Put
 import           Paths_ngx_export (version)
 import           Data.Version
 
+#if MIN_VERSION_template_haskell(2,11,0)
+#define DERIV_CLAUSE _
+#else
+#define DERIV_CLAUSE
+#endif
+
 pattern I :: (Num i, Integral a) => i -> a
 pattern I i <- (fromIntegral -> i)
 {-# COMPLETE I :: CInt #-}
@@ -87,7 +93,7 @@ data NgxExport = SS            (String -> String)
                                     (B.ByteString, B.ByteString, Int))
 
 let name = mkName "exportType" in do
-    TyConI (DataD _ _ _ _ cs _) <- reify ''NgxExport
+    TyConI (DataD _ _ _ _ cs DERIV_CLAUSE) <- reify ''NgxExport
     let cons = map (\(NormalC con [(_, typ)]) -> (con, typ)) cs
     sequence $
         [sigD name [t|NgxExport -> IO CInt|],
