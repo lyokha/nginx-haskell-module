@@ -23,18 +23,17 @@ library
                           , binary >= 0.8.1.0
                           , async >= 2.0
                           , unix
+
   exposed-modules:          NgxExport
   other-modules:            Paths_ngx_export
   extensions:               CPP
 
   ghc-options:             -Wall
-  if impl(ghc >= 8.2)
-    ghc-options:           -Wno-unrecognised-pragmas
+  if impl(ghc < 8.0)
+    ghc-options:           -fno-warn-incomplete-patterns
+                           -fno-warn-unrecognised-pragmas
   else
-    if impl(ghc >= 8.0)
+    if impl(ghc < 8.2)
       ghc-options:         -Wno-incomplete-patterns
                            -Wno-unrecognised-pragmas
-    else
-      ghc-options:         -fno-warn-incomplete-patterns
-                           -fno-warn-unrecognised-pragmas
 

@@ -1,6 +1,10 @@
+### 0.8.0.3
+
+- A better solution for ghc warnings set.
+
 ### 0.8.0.2
 
-- Removed constraint on *template-haskell* via a CPP macro (this should let
+- Removed constraint on *template-haskell* via a CPP macro (this should repair
   compilation for *ghc-7.10*).
 
 ### 0.8.0.0
