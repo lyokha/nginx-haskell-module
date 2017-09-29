@@ -1419,6 +1419,10 @@ Troubleshooting
 
   in the import list inside the haskell source code.
 
+  Please also notice, that haskell module *ngx-export* compiles only with ghc
+  *8.0.1* and newer, whereas there is no such restriction for the standalone
+  module.
+
 - _In nginx error log there are many messages of *INFO* level with
   ``epoll_wait() failed (4: Interrupted system call)``_.
 

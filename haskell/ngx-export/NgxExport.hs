@@ -61,20 +61,29 @@ import           Data.Binary.Put
 import           Paths_ngx_export (version)
 import           Data.Version
 
-#if MIN_VERSION_template_haskell(2,11,0)
-#define DERIV_CLAUSE _
+#if MIN_TOOL_VERSION_ghc(8,0,1)
+#define EMPTY_CPROV
 #else
-#define DERIV_CLAUSE
+#define EMPTY_CPROV () =>
 #endif
 
-pattern I :: (Num i, Integral a) => i -> a
+#if MIN_VERSION_template_haskell(2,11,0)
+#define PLACEHOLDER_BEFORE_CON _
+#else
+#define PLACEHOLDER_BEFORE_CON
+#endif
+
+-- FIXME: for some reason this doesn't work for ghc-7.10, and was thus
+-- indirectly disabled by build-depends clause 'template-haskell >= 2.11.0.0'
+-- in cabal spec file
+pattern I :: EMPTY_CPROV (Num i, Integral a) => i -> a
 pattern I i <- (fromIntegral -> i)
 {-# COMPLETE I :: CInt #-}
 
-pattern PtrLen :: (Num i, Integral a) => Ptr s -> i -> (Ptr s, a)
+pattern PtrLen :: EMPTY_CPROV (Num i, Integral a) => Ptr s -> i -> (Ptr s, a)
 pattern PtrLen s l <- (s, I l)
 
-pattern ToBool :: (Num i, Eq i) => Bool -> i
+pattern ToBool :: EMPTY_CPROV (Num i, Eq i) => Bool -> i
 pattern ToBool i <- (toBool -> i)
 {-# COMPLETE ToBool :: CUInt #-}
 
@@ -93,7 +102,7 @@ data NgxExport = SS            (String -> String)
                                     (B.ByteString, B.ByteString, Int))
 
 let name = mkName "exportType" in do
-    TyConI (DataD _ _ _ _ cs DERIV_CLAUSE) <- reify ''NgxExport
+    TyConI (DataD _ _ _ PLACEHOLDER_BEFORE_CON cs _) <- reify ''NgxExport
     let cons = map (\(NormalC con [(_, typ)]) -> (con, typ)) cs
     sequence $
         [sigD name [t|NgxExport -> IO CInt|],
