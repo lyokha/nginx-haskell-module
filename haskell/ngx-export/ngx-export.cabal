@@ -1,32 +1,40 @@
-name:                ngx-export
-version:             0.8.0.2
-synopsis:            Helper module for Nginx haskell module
-description:         Helper module for
+name:                       ngx-export
+version:                    0.8.0.3
+synopsis:                   Helper module for Nginx haskell module
+description:                Helper module for
         <http://github.com/lyokha/nginx-haskell-module Nginx haskell module>
-homepage:            http://github.com/lyokha/nginx-haskell-module
-license:             BSD3
-license-file:        LICENSE
-extra-source-files:  Changelog.md
-author:              Alexey Radkov <alexey.radkov@gmail.com>
-maintainer:          Alexey Radkov <alexey.radkov@gmail.com>
-stability:           experimental
-copyright:           2016-2017 Alexey Radkov
-category:            Network
-build-type:          Simple
-cabal-version:       >= 1.8
+homepage:                   http://github.com/lyokha/nginx-haskell-module
+license:                    BSD3
+license-file:               LICENSE
+extra-source-files:         Changelog.md
+author:                     Alexey Radkov <alexey.radkov@gmail.com>
+maintainer:                 Alexey Radkov <alexey.radkov@gmail.com>
+stability:                  experimental
+copyright:                  2016-2017 Alexey Radkov
+category:                   Network
+build-type:                 Simple
+cabal-version:              >= 1.8
 
 library
-  build-depends:       base >= 4.8 && < 5
-                     , template-haskell
-                     , bytestring >= 0.10.0.0
-                     , monad-loops >= 0.4.2
-                     , binary >= 0.8.1.0
-                     , async >= 2.0
-                     , unix
-  exposed-modules:     NgxExport
-  other-modules:       Paths_ngx_export
-  extensions:          CPP
-  ghc-options:         -Wall -Wno-unrecognised-pragmas
-  if impl(ghc < 8.2)
-    ghc-options:       -Wno-incomplete-patterns
+  build-depends:            base >= 4.8 && < 5
+                          , template-haskell
+                          , bytestring >= 0.10.0.0
+                          , monad-loops >= 0.4.2
+                          , binary >= 0.8.1.0
+                          , async >= 2.0
+                          , unix
+  exposed-modules:          NgxExport
+  other-modules:            Paths_ngx_export
+  extensions:               CPP
+
+  ghc-options:             -Wall
+  if impl(ghc >= 8.2)
+    ghc-options:           -Wno-unrecognised-pragmas
+  else
+    if impl(ghc >= 8.0)
+      ghc-options:         -Wno-incomplete-patterns
+                           -Wno-unrecognised-pragmas
+    else
+      ghc-options:         -fno-warn-incomplete-patterns
+                           -fno-warn-unrecognised-pragmas
 
