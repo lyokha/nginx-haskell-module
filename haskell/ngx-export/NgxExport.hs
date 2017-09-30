@@ -68,19 +68,20 @@ import           Data.Version
 #endif
 
 #if MIN_VERSION_template_haskell(2,11,0)
-#define PLACEHOLDER_BEFORE_CON _
+#define EXTRA_WILDCARD_BEFORE_CON _
 #else
-#define PLACEHOLDER_BEFORE_CON
+#define EXTRA_WILDCARD_BEFORE_CON
 #endif
 
--- FIXME: for some reason this doesn't work for ghc-7.10, and was thus
--- indirectly disabled by build-depends clause 'template-haskell >= 2.11.0.0'
--- in cabal spec file
+-- FIXME: for some reason using polymorphic type Num i => i leads to
+-- compilation error in ghc-7.10, and therefore this version of ghc was
+-- indirectly banned by build-depends clause 'template-haskell >= 2.11.0.0'
+-- in the cabal spec file
 pattern I :: EMPTY_CPROV (Num i, Integral a) => i -> a
 pattern I i <- (fromIntegral -> i)
 {-# COMPLETE I :: CInt #-}
 
-pattern PtrLen :: EMPTY_CPROV (Num i, Integral a) => Ptr s -> i -> (Ptr s, a)
+pattern PtrLen :: EMPTY_CPROV (Num l) => Ptr s -> l -> (Ptr s, Int)
 pattern PtrLen s l <- (s, I l)
 
 pattern ToBool :: EMPTY_CPROV (Num i, Eq i) => Bool -> i
@@ -102,7 +103,7 @@ data NgxExport = SS            (String -> String)
                                     (B.ByteString, B.ByteString, Int))
 
 let name = mkName "exportType" in do
-    TyConI (DataD _ _ _ PLACEHOLDER_BEFORE_CON cs _) <- reify ''NgxExport
+    TyConI (DataD _ _ _ EXTRA_WILDCARD_BEFORE_CON cs _) <- reify ''NgxExport
     let cons = map (\(NormalC con [(_, typ)]) -> (con, typ)) cs
     sequence $
         [sigD name [t|NgxExport -> IO CInt|],
