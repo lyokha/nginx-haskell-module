@@ -10,20 +10,20 @@ matrix:
     - env: CABALVER=head GHCVER=7.10.3
       addons: {apt: {packages: [cabal-install-head,ghc-7.10.3], sources: [hvr-ghc]}}
 
-before_script:
-  - cd haskell/ngx-export
-
 before_install:
   - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
-
-script:
-  - cabal configure
-  - cabal build
-  - cabal sdist
+  - cd haskell/ngx-export
 
 install:
   - cabal --version
   - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
   - travis_retry cabal update
   - cabal install --only-dependencies
+
+script:
+  - cabal configure
+  - cabal build
+  - cabal sdist
+  - SRC_TGZ=$(cabal info . | awk '{print $2;exit}').tar.gz &&
+    (cd dist && cabal install --force-reinstalls "$SRC_TGZ")
 
