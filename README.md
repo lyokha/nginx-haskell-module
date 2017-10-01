@@ -1,6 +1,8 @@
 Nginx Haskell module
 ====================
 
+[![Build Status](https://travis-ci.org/lyokha/nginx-haskell-module.svg?branch=master)](https://travis-ci.org/lyokha/nginx-haskell-module)
+
 This Nginx module allows compiling and running Haskell source code found in a
 configuration file or an existing shared library. It allows for writing in
 Haskell synchronous variable handlers, asynchronous tasks, services (i.e.
