@@ -1,7 +1,3 @@
-### 0.8.0.5
-
-- Compilation for *ghc-7.10* was disabled again.
-
 ### 0.8.0.3
 
 - A better solution for ghc warnings set.

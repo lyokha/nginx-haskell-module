@@ -61,32 +61,32 @@ import           Data.Binary.Put
 import           Paths_ngx_export (version)
 import           Data.Version
 
-#if MIN_TOOL_VERSION_ghc(8,0,1)
-#define EMPTY_CPROV
-#else
-#define EMPTY_CPROV () =>
-#endif
-
 #if MIN_VERSION_template_haskell(2,11,0)
 #define EXTRA_WILDCARD_BEFORE_CON _
 #else
 #define EXTRA_WILDCARD_BEFORE_CON
 #endif
 
--- FIXME: for some reason using polymorphic type Num i => i leads to
--- compilation error in ghc-7.10, and therefore this version of ghc was
--- indirectly banned by build-depends clause 'template-haskell >= 2.11.0.0'
--- in the cabal spec file
-pattern I :: EMPTY_CPROV (Num i, Integral a) => i -> a
+#if MIN_TOOL_VERSION_ghc(8,0,1)
+pattern I :: (Num i, Integral a) => i -> a
+#endif
 pattern I i <- (fromIntegral -> i)
+#if MIN_TOOL_VERSION_ghc(8,2,1)
 {-# COMPLETE I :: CInt #-}
+#endif
 
-pattern PtrLen :: EMPTY_CPROV (Num l) => Ptr s -> l -> (Ptr s, Int)
+#if MIN_TOOL_VERSION_ghc(8,0,1)
+pattern PtrLen :: Num l => Ptr s -> l -> (Ptr s, Int)
+#endif
 pattern PtrLen s l <- (s, I l)
 
-pattern ToBool :: EMPTY_CPROV (Num i, Eq i) => Bool -> i
+#if MIN_TOOL_VERSION_ghc(8,0,1)
+pattern ToBool :: (Num i, Eq i) => Bool -> i
+#endif
 pattern ToBool i <- (toBool -> i)
+#if MIN_TOOL_VERSION_ghc(8,2,1)
 {-# COMPLETE ToBool :: CUInt #-}
+#endif
 
 data NgxExport = SS            (String -> String)
                | SSS           (String -> String -> String)
