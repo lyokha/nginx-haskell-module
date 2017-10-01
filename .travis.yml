@@ -16,3 +16,14 @@ before_script:
 before_install:
   - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
 
+script:
+  - cabal configure
+  - cabal build
+  - cabal sdist
+
+install:
+  - cabal --version
+  - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
+  - travis_retry cabal update
+  - cabal install --only-dependencies
+
