@@ -1,10 +1,18 @@
-language: haskell
+language: c
+sudo: false
 
-ghc:
-  - 8.2
-  - 8.0
-  - 7.10
+matrix:
+  include:
+    - env: CABALVER=head GHCVER=8.2.1
+      addons: {apt: {packages: [cabal-install-head,ghc-8.2.1], sources: [hvr-ghc]}}
+    - env: CABALVER=head GHCVER=8.0.2
+      addons: {apt: {packages: [cabal-install-head,ghc-8.0.2], sources: [hvr-ghc]}}
+    - env: CABALVER=head GHCVER=7.10.3
+      addons: {apt: {packages: [cabal-install-head,ghc-7.10.3], sources: [hvr-ghc]}}
 
 before_script:
   - cd haskell/ngx-export
+
+before_install:
+  - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
 
