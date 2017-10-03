@@ -3,7 +3,7 @@
  *
  *       Filename:  ngx_http_haskell_module.c
  *
- *    Description:  nginx module for inlining haskell code
+ *    Description:  Nginx module for binding Haskell code in conf files
  *
  *        Version:  1.0
  *        Created:  23.12.2015 12:53:00
@@ -20,6 +20,16 @@
 #include <dlfcn.h>
 #include <HsFFI.h>
 #include <ghcversion.h>
+
+#ifdef NGX_HTTP_HASKELL_SHM_USE_SHARED_LOCK
+#define NGX_HTTP_HASKELL_SHM_WLOCK ngx_lock_fd(mcf->shm_lock_fd);
+#define NGX_HTTP_HASKELL_SHM_RLOCK ngx_http_haskell_rlock_fd(mcf->shm_lock_fd);
+#define NGX_HTTP_HASKELL_SHM_UNLOCK ngx_unlock_fd(mcf->shm_lock_fd);
+#else
+#define NGX_HTTP_HASKELL_SHM_WLOCK ngx_shmtx_lock(&shpool->mutex);
+#define NGX_HTTP_HASKELL_SHM_RLOCK ngx_shmtx_lock(&shpool->mutex);
+#define NGX_HTTP_HASKELL_SHM_UNLOCK ngx_shmtx_unlock(&shpool->mutex);
+#endif
 
 
 static const ngx_str_t  haskell_module_handler_prefix =
@@ -745,6 +755,9 @@ typedef struct {
     ngx_array_t                                service_var_in_shm;
     ngx_shm_zone_t                            *shm_zone;
     ngx_str_t                                  shm_lock_files_path;
+#ifdef NGX_HTTP_HASKELL_SHM_USE_SHARED_LOCK
+    ngx_fd_t                                   shm_lock_fd;
+#endif
     ngx_uint_t                                 code_loaded:1;
     ngx_uint_t                                 has_async_tasks:1;
     ngx_uint_t                                 has_shared_services:1;
@@ -920,6 +933,8 @@ static ngx_int_t ngx_http_haskell_init_worker(ngx_cycle_t *cycle);
 static void ngx_http_haskell_exit_worker(ngx_cycle_t *cycle);
 static void ngx_http_haskell_var_init(ngx_log_t *log, ngx_array_t *cmvar,
     ngx_array_t *var, ngx_http_get_variable_pt get_handler);
+static ngx_int_t ngx_http_haskell_shm_lock_init(ngx_cycle_t *cycle,
+    ngx_file_t *out, ngx_str_t path, ngx_str_t *var_name);
 static ngx_int_t ngx_http_haskell_run_handler(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_haskell_run_async_handler(ngx_http_request_t *r,
@@ -942,6 +957,9 @@ static void ngx_http_haskell_service_handler_cleanup(void *data);
 static ngx_int_t ngx_http_haskell_open_async_event_channel(ngx_fd_t fd[2]);
 static void ngx_http_haskell_close_async_event_channel(ngx_log_t *log,
     ngx_fd_t fd[2]);
+#ifdef NGX_HTTP_HASKELL_SHM_USE_SHARED_LOCK
+static ngx_err_t ngx_http_haskell_rlock_fd(ngx_fd_t fd);
+#endif
 
 
 static ngx_command_t  ngx_http_haskell_module_commands[] = {
@@ -1118,6 +1136,10 @@ ngx_http_haskell_create_main_conf(ngx_conf_t *cf)
     {
         return NULL;
     }
+
+#ifdef NGX_HTTP_HASKELL_SHM_USE_SHARED_LOCK
+    mcf->shm_lock_fd = NGX_INVALID_FILE;
+#endif
 
     return mcf;
 }
@@ -1558,60 +1580,34 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
                     continue;
                 }
 
-                ngx_memzero(&out, sizeof(ngx_file_t));
-                out.name.len = mcf->shm_lock_files_path.len +
-                        haskell_shm_file_lock_prefix.len +
-                        cmvars[index].name.len +
-                        haskell_shm_file_lock_suffix.len;
-
-                out.name.data = ngx_pnalloc(cycle->pool, out.name.len + 1);
-                if (out.name.data == NULL) {
-                    ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                                  "failed to allocate memory for artifacts of "
-                                  "file lock for variable in shared memory");
-                    return NGX_ERROR;
-                }
-
-                ngx_memcpy(out.name.data,
-                           mcf->shm_lock_files_path.data,
-                           mcf->shm_lock_files_path.len);
-                ngx_memcpy(out.name.data + mcf->shm_lock_files_path.len,
-                           haskell_shm_file_lock_prefix.data,
-                           haskell_shm_file_lock_prefix.len);
-                ngx_memcpy(out.name.data + mcf->shm_lock_files_path.len +
-                                haskell_shm_file_lock_prefix.len,
-                           cmvars[index].name.data,
-                           cmvars[index].name.len);
-                ngx_memcpy(out.name.data + mcf->shm_lock_files_path.len +
-                                haskell_shm_file_lock_prefix.len +
-                                cmvars[index].name.len,
-                           haskell_shm_file_lock_suffix.data,
-                           haskell_shm_file_lock_suffix.len);
-                out.name.data[out.name.len] = '\0';
-
-                out.fd = ngx_open_file(out.name.data, NGX_FILE_WRONLY,
-                                       NGX_FILE_TRUNCATE|O_EXCL,
-                                       NGX_FILE_OWNER_ACCESS);
-                if (out.fd == NGX_INVALID_FILE && ngx_errno == NGX_EEXIST_FILE)
+                if (ngx_http_haskell_shm_lock_init(cycle, &out,
+                                                   mcf->shm_lock_files_path,
+                                                   &cmvars[index].name)
+                    != NGX_OK)
                 {
-                    out.fd = ngx_open_file(out.name.data, NGX_FILE_WRONLY,
-                                           NGX_FILE_TRUNCATE,
-                                           NGX_FILE_OWNER_ACCESS);
-                }
-                if (out.fd == NGX_INVALID_FILE) {
-                    ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
-                                  "failed to open file lock \"%V\" for access "
-                                  "to variable in shared memory", &out.name);
                     return NGX_ERROR;
                 }
 
                 service_code_vars[i].shm_lock_fd = out.fd;
-
                 mcf->has_shared_services = 1;
 
                 break;
             }
         }
+
+#ifdef NGX_HTTP_HASKELL_SHM_USE_SHARED_LOCK
+        if (mcf->has_shared_services && mcf->shm_lock_fd == NGX_INVALID_FILE) {
+            if (ngx_http_haskell_shm_lock_init(cycle, &out,
+                                               mcf->shm_lock_files_path,
+                                               NULL)
+                != NGX_OK)
+            {
+                return NGX_ERROR;
+            }
+
+            mcf->shm_lock_fd = out.fd;
+        }
+#endif
 
         if (!service_code_vars[i].cb) {
             continue;
@@ -1668,6 +1664,16 @@ ngx_http_haskell_exit_worker(ngx_cycle_t *cycle)
                           "in shared memory");
         }
     }
+
+#ifdef NGX_HTTP_HASKELL_SHM_USE_SHARED_LOCK
+    if (mcf->shm_lock_fd != NGX_INVALID_FILE
+        && ngx_close_file(mcf->shm_lock_fd) == NGX_FILE_ERROR)
+    {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      "failed to close file lock handle for shared memory");
+
+    }
+#endif
 }
 
 
@@ -1706,6 +1712,63 @@ ngx_http_haskell_var_init(ngx_log_t *log, ngx_array_t *cmvar, ngx_array_t *var,
                           "variable \"%V\" was not declared", &vars[i].name);
         }
     }
+}
+
+
+static ngx_int_t
+ngx_http_haskell_shm_lock_init(ngx_cycle_t *cycle, ngx_file_t *out,
+                               ngx_str_t path, ngx_str_t *var_name)
+{
+    ngx_int_t  len = 0;
+
+    if (var_name != NULL) {
+        len = var_name->len;
+    }
+
+    ngx_memzero(out, sizeof(ngx_file_t));
+    out->name.len = path.len +
+                    haskell_shm_file_lock_prefix.len + len +
+                    haskell_shm_file_lock_suffix.len;
+
+    out->name.data = ngx_pnalloc(cycle->pool, out->name.len + 1);
+    if (out->name.data == NULL) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                      "failed to allocate memory for file lock for access "
+                      "to variables in shared memory");
+        return NGX_ERROR;
+    }
+
+    ngx_memcpy(out->name.data, path.data, path.len);
+    ngx_memcpy(out->name.data + path.len,
+               haskell_shm_file_lock_prefix.data,
+               haskell_shm_file_lock_prefix.len);
+    if (var_name != NULL) {
+        ngx_memcpy(out->name.data + path.len + haskell_shm_file_lock_prefix.len,
+                   var_name->data, len);
+    }
+    ngx_memcpy(out->name.data + path.len +
+                    haskell_shm_file_lock_prefix.len + len,
+               haskell_shm_file_lock_suffix.data,
+               haskell_shm_file_lock_suffix.len);
+    out->name.data[out->name.len] = '\0';
+
+    out->fd = ngx_open_file(out->name.data, NGX_FILE_WRONLY,
+                            NGX_FILE_TRUNCATE|O_EXCL,
+                            NGX_FILE_OWNER_ACCESS);
+    if (out->fd == NGX_INVALID_FILE && ngx_errno == NGX_EEXIST_FILE)
+    {
+        out->fd = ngx_open_file(out->name.data, NGX_FILE_WRONLY,
+                                NGX_FILE_TRUNCATE,
+                                NGX_FILE_OWNER_ACCESS);
+    }
+    if (out->fd == NGX_INVALID_FILE) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                      "failed to open file lock \"%V\" for access "
+                      "to variables in shared memory", &out->name);
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
 }
 
 
@@ -3463,10 +3526,10 @@ ngx_http_haskell_run_service_handler(ngx_http_request_t *r,
         shpool = (ngx_slab_pool_t *) mcf->shm_zone->shm.addr;
         shm_vars = shpool->data;
 
-        ngx_shmtx_lock(&shpool->mutex);
+        NGX_HTTP_HASKELL_SHM_RLOCK
 
         if (shm_vars[shm_index].data.result.data.len == 0) {
-            ngx_shmtx_unlock(&shpool->mutex);
+            NGX_HTTP_HASKELL_SHM_UNLOCK
             goto update_var;
         }
 
@@ -3476,14 +3539,14 @@ ngx_http_haskell_run_service_handler(ngx_http_request_t *r,
         res.len = shm_vars[shm_index].data.result.data.len;
         res.data = ngx_pnalloc(r->pool, res.len);
         if (res.data == NULL) {
-            ngx_shmtx_unlock(&shpool->mutex);
+            NGX_HTTP_HASKELL_SHM_UNLOCK
             return NGX_ERROR;
         }
 
         ngx_memcpy(res.data, shm_vars[shm_index].data.result.data.data,
                    res.len);
 
-        ngx_shmtx_unlock(&shpool->mutex);
+        NGX_HTTP_HASKELL_SHM_UNLOCK
 
         goto update_var;
     }
@@ -3912,7 +3975,7 @@ ngx_http_haskell_service_async_event(ngx_event_t *ev)
                       "using old value",
                       &cmvars[service_code_var->data->index].name);
     }
-    
+
     if (async_data->error) {
         ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
                       "an exception was caught while getting "
@@ -3979,7 +4042,7 @@ ngx_http_haskell_service_async_event(ngx_event_t *ev)
     shpool = (ngx_slab_pool_t *) mcf->shm_zone->shm.addr;
     shm_vars = shpool->data;
 
-    ngx_shmtx_lock(&shpool->mutex);
+    NGX_HTTP_HASKELL_SHM_WLOCK
 
     var = &shm_vars[shm_index].data.result.data;
 
@@ -4069,7 +4132,7 @@ cb_unlock_and_run_service:
 
 unlock_and_run_service:
 
-    ngx_shmtx_unlock(&shpool->mutex);
+    NGX_HTTP_HASKELL_SHM_UNLOCK
 
     if (async_data->result.complete == 2) {
         ngx_free(async_data->result.data.data);
@@ -4259,4 +4322,29 @@ ngx_http_haskell_close_async_event_channel(ngx_log_t *log, ngx_fd_t fd[2])
         }
     }
 }
+
+
+#ifdef NGX_HTTP_HASKELL_SHM_USE_SHARED_LOCK
+
+/* this function is the same as existing Nginx function ngx_lock_fd(), except
+ * it uses F_RDLCK instead of F_WRLCK, and thus is capable to create shared
+ * locks for simultaneous access from multiple processes */
+
+static ngx_err_t
+ngx_http_haskell_rlock_fd(ngx_fd_t fd)
+{
+    struct flock  fl;
+
+    ngx_memzero(&fl, sizeof(struct flock));
+    fl.l_type = F_RDLCK;
+    fl.l_whence = SEEK_SET;
+
+    if (fcntl(fd, F_SETLKW, &fl) == -1) {
+        return ngx_errno;
+    }
+
+    return 0;
+}
+
+#endif
 
