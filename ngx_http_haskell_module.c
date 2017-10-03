@@ -22,12 +22,12 @@
 #include <ghcversion.h>
 
 #ifdef NGX_HTTP_HASKELL_SHM_USE_SHARED_LOCK
-#define NGX_HTTP_HASKELL_SHM_WLOCK ngx_lock_fd(mcf->shm_lock_fd);
-#define NGX_HTTP_HASKELL_SHM_RLOCK ngx_http_haskell_rlock_fd(mcf->shm_lock_fd);
+#define NGX_HTTP_HASKELL_SHM_WLOCK  ngx_lock_fd(mcf->shm_lock_fd);
+#define NGX_HTTP_HASKELL_SHM_RLOCK  ngx_http_haskell_rlock_fd(mcf->shm_lock_fd);
 #define NGX_HTTP_HASKELL_SHM_UNLOCK ngx_unlock_fd(mcf->shm_lock_fd);
 #else
-#define NGX_HTTP_HASKELL_SHM_WLOCK ngx_shmtx_lock(&shpool->mutex);
-#define NGX_HTTP_HASKELL_SHM_RLOCK ngx_shmtx_lock(&shpool->mutex);
+#define NGX_HTTP_HASKELL_SHM_WLOCK  ngx_shmtx_lock(&shpool->mutex);
+#define NGX_HTTP_HASKELL_SHM_RLOCK  ngx_shmtx_lock(&shpool->mutex);
 #define NGX_HTTP_HASKELL_SHM_UNLOCK ngx_shmtx_unlock(&shpool->mutex);
 #endif
 
