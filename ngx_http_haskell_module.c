@@ -21,7 +21,7 @@
 #include <HsFFI.h>
 #include <ghcversion.h>
 
-#ifdef NGX_HTTP_HASKELL_SHM_USE_SHARED_LOCK
+#ifdef NGX_HTTP_HASKELL_SHM_USE_SHARED_RLOCK
 #define NGX_HTTP_HASKELL_SHM_WLOCK  ngx_lock_fd(mcf->shm_lock_fd);
 #define NGX_HTTP_HASKELL_SHM_RLOCK  ngx_http_haskell_rlock_fd(mcf->shm_lock_fd);
 #define NGX_HTTP_HASKELL_SHM_UNLOCK ngx_unlock_fd(mcf->shm_lock_fd);
@@ -755,7 +755,7 @@ typedef struct {
     ngx_array_t                                service_var_in_shm;
     ngx_shm_zone_t                            *shm_zone;
     ngx_str_t                                  shm_lock_files_path;
-#ifdef NGX_HTTP_HASKELL_SHM_USE_SHARED_LOCK
+#ifdef NGX_HTTP_HASKELL_SHM_USE_SHARED_RLOCK
     ngx_fd_t                                   shm_lock_fd;
 #endif
     ngx_uint_t                                 code_loaded:1;
@@ -957,7 +957,7 @@ static void ngx_http_haskell_service_handler_cleanup(void *data);
 static ngx_int_t ngx_http_haskell_open_async_event_channel(ngx_fd_t fd[2]);
 static void ngx_http_haskell_close_async_event_channel(ngx_log_t *log,
     ngx_fd_t fd[2]);
-#ifdef NGX_HTTP_HASKELL_SHM_USE_SHARED_LOCK
+#ifdef NGX_HTTP_HASKELL_SHM_USE_SHARED_RLOCK
 static ngx_err_t ngx_http_haskell_rlock_fd(ngx_fd_t fd);
 #endif
 
@@ -1137,7 +1137,7 @@ ngx_http_haskell_create_main_conf(ngx_conf_t *cf)
         return NULL;
     }
 
-#ifdef NGX_HTTP_HASKELL_SHM_USE_SHARED_LOCK
+#ifdef NGX_HTTP_HASKELL_SHM_USE_SHARED_RLOCK
     mcf->shm_lock_fd = NGX_INVALID_FILE;
 #endif
 
@@ -1595,7 +1595,7 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
             }
         }
 
-#ifdef NGX_HTTP_HASKELL_SHM_USE_SHARED_LOCK
+#ifdef NGX_HTTP_HASKELL_SHM_USE_SHARED_RLOCK
         if (mcf->has_shared_services && mcf->shm_lock_fd == NGX_INVALID_FILE) {
             if (ngx_http_haskell_shm_lock_init(cycle, &out,
                                                mcf->shm_lock_files_path,
@@ -1665,7 +1665,7 @@ ngx_http_haskell_exit_worker(ngx_cycle_t *cycle)
         }
     }
 
-#ifdef NGX_HTTP_HASKELL_SHM_USE_SHARED_LOCK
+#ifdef NGX_HTTP_HASKELL_SHM_USE_SHARED_RLOCK
     if (mcf->shm_lock_fd != NGX_INVALID_FILE
         && ngx_close_file(mcf->shm_lock_fd) == NGX_FILE_ERROR)
     {
@@ -1719,11 +1719,7 @@ static ngx_int_t
 ngx_http_haskell_shm_lock_init(ngx_cycle_t *cycle, ngx_file_t *out,
                                ngx_str_t path, ngx_str_t *var_name)
 {
-    ngx_int_t  len = 0;
-
-    if (var_name != NULL) {
-        len = var_name->len;
-    }
+    ngx_int_t  len = var_name == NULL ? 0 : var_name->len;
 
     ngx_memzero(out, sizeof(ngx_file_t));
     out->name.len = path.len +
@@ -1742,7 +1738,7 @@ ngx_http_haskell_shm_lock_init(ngx_cycle_t *cycle, ngx_file_t *out,
     ngx_memcpy(out->name.data + path.len,
                haskell_shm_file_lock_prefix.data,
                haskell_shm_file_lock_prefix.len);
-    if (var_name != NULL) {
+    if (len > 0) {
         ngx_memcpy(out->name.data + path.len + haskell_shm_file_lock_prefix.len,
                    var_name->data, len);
     }
@@ -4324,7 +4320,7 @@ ngx_http_haskell_close_async_event_channel(ngx_log_t *log, ngx_fd_t fd[2])
 }
 
 
-#ifdef NGX_HTTP_HASKELL_SHM_USE_SHARED_LOCK
+#ifdef NGX_HTTP_HASKELL_SHM_USE_SHARED_RLOCK
 
 /* this function is the same as existing Nginx function ngx_lock_fd(), except
  * it uses F_RDLCK instead of F_WRLCK, and thus is capable to create shared
