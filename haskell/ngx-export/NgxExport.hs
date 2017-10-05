@@ -560,12 +560,6 @@ unsafeHandler f x (I n) p pl pct plct pst =
         pokeCStringLen t l p pl
         return 0
 
-foreign export ccall ngxExportReleaseLockedByteString ::
-    StablePtr L.ByteString -> IO ()
-
-ngxExportReleaseLockedByteString :: StablePtr L.ByteString -> IO ()
-ngxExportReleaseLockedByteString = freeStablePtr
-
 foreign export ccall ngxExportVersion :: Ptr CInt -> CInt -> IO CInt
 
 ngxExportVersion :: Ptr CInt -> CInt -> IO CInt

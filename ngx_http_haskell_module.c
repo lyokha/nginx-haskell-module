@@ -644,13 +644,6 @@ ngx_string(
 "        (t, fromIntegral -> l) <- AUX_NGX_BS.unsafeUseAsCStringLen s return\n"
 "        aux_ngx_pokeCStringLen t l p pl\n"
 "        return 0\n\n"
-
-"foreign export ccall ngxExportReleaseLockedByteString ::\n"
-"    AUX_NGX.StablePtr AUX_NGX_BSL.ByteString -> IO ()\n\n"
-
-"ngxExportReleaseLockedByteString ::\n"
-"    AUX_NGX.StablePtr AUX_NGX_BSL.ByteString -> IO ()\n"
-"ngxExportReleaseLockedByteString = AUX_NGX.freeStablePtr\n\n"
 );
 
 static const ngx_uint_t use_eventfd_channel =
@@ -2241,12 +2234,12 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
 #endif
 
     mcf->release_locked_bytestring = (void (*)(HsStablePtr))
-            dlsym(mcf->dl_handle, "ngxExportReleaseLockedByteString");
+            dlsym(mcf->dl_handle, "hs_free_stable_ptr");
     dl_error = dlerror();
     if (dl_error != NULL) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                      "failed to load function \"release_locked_bytestring\": "
-                      "%s", dl_error);
+                      "failed to load function \"hs_free_stable_ptr\": %s",
+                      dl_error);
         goto dlclose_and_exit;
     }
 
