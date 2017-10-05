@@ -2446,7 +2446,7 @@ ngx_http_haskell_unload(ngx_cycle_t *cycle, ngx_uint_t exiting)
     if (mcf->dl_handle != NULL) {
         /* shared services use waitToSetLock which is a simple wrapper over
          * POSIX advisory file locks with fcntl() and F_SETLKW; a blocked
-         * thread may cause hs_exit() hang, so it skipped in this way */
+         * thread may cause hs_exit() hang, so it is skipped in this way */
         if (!exiting || !mcf->has_shared_services) {
             mcf->hs_exit();
         }
