@@ -221,6 +221,8 @@ ngx_string(
 "import qualified Foreign.Marshal.Utils as AUX_NGX\n"
 "import qualified System.IO.Error as AUX_NGX\n"
 "import qualified System.Posix.IO as AUX_NGX\n"
+"import qualified System.Posix.Types as AUX_NGX\n"
+"import qualified System.Posix.Internals as AUX_NGX\n"
 "import qualified Control.Monad as AUX_NGX\n"
 "import qualified Control.Monad.Loops as AUX_NGX\n"
 "import qualified Control.Exception as AUX_NGX\n"
@@ -525,7 +527,7 @@ ngx_string(
 "    (do\n"
 "        AUX_NGX.when (fstRun && fdlk /= -1) $ AUX_NGX.void $\n"
 "            AUX_NGX.iterateUntil (== True) $\n"
-"            (AUX_NGX.waitToSetLock fdlk\n"
+"            (aux_ngx_safeWaitToSetLock fdlk\n"
 "                (AUX_NGX.WriteLock, AUX_NGX.AbsoluteSeek, 0, 0) >> return True"
 ")\n"
 "            `AUX_NGX.catchIOError` (return . not . aux_ngx_isEINTR)\n"
@@ -644,6 +646,39 @@ ngx_string(
 "        (t, fromIntegral -> l) <- AUX_NGX_BS.unsafeUseAsCStringLen s return\n"
 "        aux_ngx_pokeCStringLen t l p pl\n"
 "        return 0\n\n"
+
+"{- SPLICE: safe version of waitToSetLock as defined in System.Posix.IO -}\n\n"
+
+"foreign import ccall \"HsBase.h fcntl\"\n"
+"    aux_ngx_safe_c_fcntl_lock :: AUX_NGX.CInt -> AUX_NGX.CInt ->\n"
+"        AUX_NGX.Ptr AUX_NGX.CFLock -> IO AUX_NGX.CInt\n\n"
+
+"aux_ngx_mode2Int :: AUX_NGX.SeekMode -> AUX_NGX.CShort\n"
+"aux_ngx_mode2Int AUX_NGX.AbsoluteSeek = 0\n"
+"aux_ngx_mode2Int AUX_NGX.RelativeSeek = 1\n"
+"aux_ngx_mode2Int AUX_NGX.SeekFromEnd  = 2\n\n"
+
+"aux_ngx_lockReq2Int :: AUX_NGX.LockRequest -> AUX_NGX.CShort\n"
+"aux_ngx_lockReq2Int AUX_NGX.ReadLock  = 0\n"
+"aux_ngx_lockReq2Int AUX_NGX.WriteLock = 1\n"
+"aux_ngx_lockReq2Int AUX_NGX.Unlock    = 2\n\n"
+
+"aux_ngx_allocaLock :: AUX_NGX.FileLock ->\n"
+"    (AUX_NGX.Ptr AUX_NGX.CFLock -> IO a) -> IO a\n"
+"aux_ngx_allocaLock (lockreq, mode, start, len) io =\n"
+"    AUX_NGX.allocaBytes 32 $ \\p -> do\n"
+"        (`AUX_NGX.pokeByteOff`  0) p (aux_ngx_lockReq2Int lockreq)\n"
+"        (`AUX_NGX.pokeByteOff`  2) p (aux_ngx_mode2Int mode)\n"
+"        (`AUX_NGX.pokeByteOff`  8) p start\n"
+"        (`AUX_NGX.pokeByteOff` 16) p len\n"
+"        io p\n\n"
+
+"aux_ngx_safeWaitToSetLock :: AUX_NGX.Fd -> AUX_NGX.FileLock -> IO ()\n"
+"aux_ngx_safeWaitToSetLock (AUX_NGX.Fd fd) lock = aux_ngx_allocaLock lock $\n"
+"    \\p_flock -> AUX_NGX.throwErrnoIfMinus1_ \"safeWaitToSetLock\" $\n"
+"        aux_ngx_safe_c_fcntl_lock fd 7 p_flock\n\n"
+
+"{- SPLICE: END -}\n\n"
 );
 
 static const ngx_uint_t use_eventfd_channel =
@@ -2444,9 +2479,10 @@ ngx_http_haskell_unload(ngx_cycle_t *cycle, ngx_uint_t exiting)
     }
 
     if (mcf->dl_handle != NULL) {
-        /* shared services use waitToSetLock which is a simple wrapper over
-         * POSIX advisory file locks with fcntl() and F_SETLKW; a blocked
-         * thread may cause hs_exit() hang, so it is skipped in this way */
+        /* shared services use safe version of waitToSetLock which is a simple
+         * wrapper around POSIX advisory file locks with fcntl() and F_SETLKW;
+         * a blocked thread may cause hs_exit() hang, so it is skipped in this
+         * way */
         if (!exiting || !mcf->has_shared_services) {
             mcf->hs_exit();
         }

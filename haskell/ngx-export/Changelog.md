@@ -1,3 +1,12 @@
+### 0.8.1.0
+
+- Function waitSetToLock from package *unix* calls C fcntl() unsafely which
+  caused hangs of the whole haskell RTS when it was waiting for lock release.
+  So this functions was reimplemented using *safe* semantics as
+  safeWaitToSetLock.
+- Exported function ngxExportReleaseLockedByteString was removed because Nginx
+  can call hs_free_stable_ptr() directly.
+
 ### 0.8.0.3
 
 - A better solution for ghc warnings set.

@@ -47,6 +47,8 @@ import           Foreign.Marshal.Alloc
 import           Foreign.Marshal.Utils
 import           System.IO.Error
 import           System.Posix.IO
+import           System.Posix.Types
+import           System.Posix.Internals
 import           Control.Monad
 import           Control.Monad.Loops
 import           Control.Exception hiding (Handler)
@@ -479,8 +481,9 @@ asyncIOYY f x (I n) fd (I fdlk) (ToBool efd) (ToBool fstRun) =
     asyncIOCommon
     (do
         when (fstRun && fdlk /= -1) $ void $ iterateUntil (== True) $
-            (waitToSetLock fdlk (WriteLock, AbsoluteSeek, 0, 0) >> return True)
-            `catchIOError` (return . not . isEINTR)
+            (safeWaitToSetLock fdlk (WriteLock, AbsoluteSeek, 0, 0) >>
+                return True
+            ) `catchIOError` (return . not . isEINTR)
         x' <- B.unsafePackCStringLen (x, n)
         f x' fstRun
     ) fd efd
@@ -559,6 +562,37 @@ unsafeHandler f x (I n) p pl pct plct pst =
         PtrLen t l <- B.unsafeUseAsCStringLen s return
         pokeCStringLen t l p pl
         return 0
+
+{- SPLICE: safe version of waitToSetLock as defined in System.Posix.IO -}
+
+foreign import ccall "HsBase.h fcntl"
+    safe_c_fcntl_lock :: CInt -> CInt -> Ptr CFLock -> IO CInt
+
+mode2Int :: SeekMode -> CShort
+mode2Int AbsoluteSeek = 0
+mode2Int RelativeSeek = 1
+mode2Int SeekFromEnd  = 2
+
+lockReq2Int :: LockRequest -> CShort
+lockReq2Int ReadLock  = 0
+lockReq2Int WriteLock = 1
+lockReq2Int Unlock    = 2
+
+allocaLock :: FileLock -> (Ptr CFLock -> IO a) -> IO a
+allocaLock (lockreq, mode, start, len) io =
+    allocaBytes 32 $ \p -> do
+        (`pokeByteOff`  0) p (lockReq2Int lockreq)
+        (`pokeByteOff`  2) p (mode2Int mode)
+        (`pokeByteOff`  8) p start
+        (`pokeByteOff` 16) p len
+        io p
+
+safeWaitToSetLock :: Fd -> FileLock -> IO ()
+safeWaitToSetLock (Fd fd) lock = allocaLock lock $
+    \p_flock -> throwErrnoIfMinus1_ "safeWaitToSetLock" $
+        safe_c_fcntl_lock fd 7 p_flock
+
+{- SPLICE: END -}
 
 foreign export ccall ngxExportVersion :: Ptr CInt -> CInt -> IO CInt
 
