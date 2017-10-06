@@ -26,6 +26,7 @@ Table of contents
 - [Debugging and tracing of haskell code](#debugging-and-tracing-of-haskell-code) 
 - [Some facts about efficiency](#some-facts-about-efficiency)
 - [Some facts about exceptions](#some-facts-about-exceptions)
+- [Some facts about foreign functions that may block](#some-facts-about-foreign-functions-that-may-block)
 - [Troubleshooting](#troubleshooting)
 - [See also](#see-also)
 
@@ -1405,6 +1406,20 @@ made exception safe. Now synchronous variable handlers return *NGX_ERROR*
 (effectively, an empty string) on an exception, and log it with level *error*.
 Content handlers log exceptions with level *error*, and return HTTP status
 *500*.
+
+Some facts about foreign functions that may block
+-------------------------------------------------
+
+Foreign functions that were imported via FFI as *unsafe* and would block for a
+long time should be avoided in *threaded* haskell RTS, because they would block
+RTS while being blocked themselves. There was a good lesson learned from this
+module when shared services were being implemented. Originally, inactive workers
+were blocked on file locks using function *waitoSetLock* from package *unix*.
+This function makes *unsafe* call to C function *fcntl()* to acquire an advisory
+file lock and blocks until it finally gets a lock. This means that RTS is unable
+to do any other asynchronous tasks while being blocked, which in most cases
+corresponds to the whole lifetime of a blocked worker process! The issue was
+fixed by reimplementation of *waitoSetLock* with *safe* call to *fcntl()*.
 
 Troubleshooting
 ---------------
