@@ -1621,7 +1621,9 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
                               &mcf->service_var_in_shm,
                               ngx_http_haskell_run_service_handler);
 
+#ifdef NGX_HTTP_HASKELL_SHM_USE_SHARED_RLOCK
     found = 0;
+#endif
     service_code_vars = mcf->service_code_vars.elts;
     for (i = 0; i < mcf->service_code_vars.nelts; i++) {
         index = service_code_vars[i].data->index;
@@ -1652,7 +1654,9 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
                 }
 
                 service_code_vars[i].shm_lock_fd = out.fd;
+#ifdef NGX_HTTP_HASKELL_SHM_USE_SHARED_RLOCK
                 found = 1;
+#endif
 
                 break;
             }
