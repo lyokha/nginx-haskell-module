@@ -53,11 +53,11 @@ ngx_string("/ngx_hs_var_");
 static const ngx_str_t  haskell_shm_file_lock_suffix =
 ngx_string(".lock");
 static const ngx_int_t haskell_module_ngx_export_api_version_major = 0;
-static const ngx_int_t haskell_module_ngx_export_api_version_minor = 8;
+static const ngx_int_t haskell_module_ngx_export_api_version_minor = 9;
 
 static const ngx_str_t  haskell_module_code_head =
 ngx_string(
-"{-# LANGUAGE ForeignFunctionInterface, CPP #-}\n"
+"{-# LANGUAGE ForeignFunctionInterface, InterruptibleFFI, CPP #-}\n"
 "{-# OPTIONS_GHC -pgmPcpphs -optP--cpp #-}\n\n"
 
 "#define AUX_NGX_TYPECHECK(T, F, S) \\\n"
@@ -151,7 +151,8 @@ ngx_string(
 "    AUX_NGX.Ptr (AUX_NGX.Ptr AUX_NGX_STR_TYPE) -> AUX_NGX.Ptr AUX_NGX.CInt -> "
 "\\\n"
 "    AUX_NGX.Ptr AUX_NGX.CUInt -> \\\n"
-"    AUX_NGX.Ptr (AUX_NGX.StablePtr AUX_NGX_BSL.ByteString) -> IO ();\n\n"
+"    AUX_NGX.Ptr (AUX_NGX.StablePtr AUX_NGX_BSL.ByteString) -> \\\n"
+"    IO (AUX_NGX.StablePtr (AUX_NGX.Async ()));\n\n"
 
 "#define NGX_EXPORT_ASYNC_ON_REQ_BODY(F) \\\n"
 "AUX_NGX_TYPECHECK(AUX_NGX_IOY_YY, F, F) \\\n"
@@ -162,7 +163,8 @@ ngx_string(
 "    AUX_NGX.Ptr (AUX_NGX.Ptr AUX_NGX_STR_TYPE) -> AUX_NGX.Ptr AUX_NGX.CInt -> "
 "\\\n"
 "    AUX_NGX.Ptr AUX_NGX.CUInt -> \\\n"
-"    AUX_NGX.Ptr (AUX_NGX.StablePtr AUX_NGX_BSL.ByteString) -> IO ();\n\n"
+"    AUX_NGX.Ptr (AUX_NGX.StablePtr AUX_NGX_BSL.ByteString) -> \\\n"
+"    IO (AUX_NGX.StablePtr (AUX_NGX.Async ()));\n\n"
 
 "#define NGX_EXPORT_SERVICE_IOY_Y(F) \\\n"
 "AUX_NGX_TYPECHECK(AUX_NGX_IOY_Y, F, F) \\\n"
@@ -173,7 +175,8 @@ ngx_string(
 "    AUX_NGX.Ptr (AUX_NGX.Ptr AUX_NGX_STR_TYPE) -> AUX_NGX.Ptr AUX_NGX.CInt -> "
 "\\\n"
 "    AUX_NGX.Ptr AUX_NGX.CUInt -> \\\n"
-"    AUX_NGX.Ptr (AUX_NGX.StablePtr AUX_NGX_BSL.ByteString) -> IO ();\n\n"
+"    AUX_NGX.Ptr (AUX_NGX.StablePtr AUX_NGX_BSL.ByteString) -> \\\n"
+"    IO (AUX_NGX.StablePtr (AUX_NGX.Async ()));\n\n"
 
 "#define NGX_EXPORT_HANDLER(F) \\\n"
 "AUX_NGX_TYPECHECK(AUX_NGX_HANDLER, F, F) \\\n"
@@ -481,9 +484,11 @@ ngx_string(
 "aux_ngx_asyncIOCommon :: IO AUX_NGX_BSL.ByteString ->\n"
 "    AUX_NGX.CInt -> Bool -> AUX_NGX.Ptr (AUX_NGX.Ptr AUX_NGX_STR_TYPE) ->\n"
 "    AUX_NGX.Ptr AUX_NGX.CInt -> AUX_NGX.Ptr AUX_NGX.CUInt ->\n"
-"    AUX_NGX.Ptr (AUX_NGX.StablePtr AUX_NGX_BSL.ByteString) -> IO ()\n"
+"    AUX_NGX.Ptr (AUX_NGX.StablePtr AUX_NGX_BSL.ByteString) ->\n"
+"    IO (AUX_NGX.StablePtr (AUX_NGX.Async ()))\n"
 "aux_ngx_asyncIOCommon a (fromIntegral -> fd) efd p pl pr spd =\n"
-"    AUX_NGX.void . AUX_NGX.async $ do\n"
+"    AUX_NGX.async\n"
+"    (do\n"
 "        (s, r) <- aux_ngx_safeYYHandler $ do\n"
 "            s <- a\n"
 "            fmap (flip (,) 0) $ return $! s\n"
@@ -495,15 +500,16 @@ ngx_string(
 "                else writeFlag1b >> AUX_NGX.closeFd fd `AUX_NGX.catchIOError`"
 "\n"
 "                         const (return ())\n"
+"    ) >>= AUX_NGX.newStablePtr\n"
 "    where writeBufN n s = AUX_NGX.iterateUntilM (>= n)\n"
 "              (\\w -> (w +) <$>\n"
 "                  AUX_NGX.fdWriteBuf fd (AUX_NGX.plusPtr s $ fromIntegral w)\n"
 "                      (n - w)\n"
-"                  `AUX_NGX.catchIOError` (\\e -> return $ if aux_ngx_isEINTR e"
-"\n"
-"                                                             then 0\n"
-"                                                             else n\n"
-"                                         )\n"
+"                  `AUX_NGX.catchIOError`\n"
+"                  (\\e -> return $ if aux_ngx_isEINTR e\n"
+"                                      then 0\n"
+"                                      else n\n"
+"                  )\n"
 "              ) 0\n"
 "          writeFlag1b = AUX_NGX.void $\n"
 "              AUX_NGX_BS.unsafeUseAsCString aux_ngx_asyncIOFlag1b $ writeBufN "
@@ -518,21 +524,39 @@ ngx_string(
 "    AUX_NGX.Ptr (AUX_NGX.Ptr AUX_NGX_STR_TYPE) -> AUX_NGX.Ptr AUX_NGX.CInt ->"
 "\n"
 "    AUX_NGX.Ptr AUX_NGX.CUInt ->\n"
-"    AUX_NGX.Ptr (AUX_NGX.StablePtr AUX_NGX_BSL.ByteString) -> IO ()\n"
+"    AUX_NGX.Ptr (AUX_NGX.StablePtr AUX_NGX_BSL.ByteString) ->\n"
+"    IO (AUX_NGX.StablePtr (AUX_NGX.Async ()))\n"
 "aux_ngx_hs_async_ioy_y (AUX_NGX_IOY_Y f)\n"
 "            x (fromIntegral -> n) fd (fromIntegral -> fdlk)\n"
 "            (AUX_NGX.toBool -> efd) (AUX_NGX.toBool -> fstRun) =\n"
 
 "    aux_ngx_asyncIOCommon\n"
 "    (do\n"
-"        AUX_NGX.when (fstRun && fdlk /= -1) $ AUX_NGX.void $\n"
-"            AUX_NGX.iterateUntil (== True) $\n"
-"            (aux_ngx_safeWaitToSetLock fdlk\n"
-"                (AUX_NGX.WriteLock, AUX_NGX.AbsoluteSeek, 0, 0) >> return True"
-")\n"
-"            `AUX_NGX.catchIOError` (return . not . aux_ngx_isEINTR)\n"
-"        x' <- AUX_NGX_BS.unsafePackCStringLen (x, n)\n"
-"        f x' fstRun\n"
+
+"        exiting <- if fstRun && fdlk /= -1\n"
+"                       then snd <$>\n"
+"                           AUX_NGX.iterateUntil ((True ==) . fst)\n"
+"                           (aux_ngx_safeWaitToSetLock fdlk\n"
+"                                (AUX_NGX.WriteLock, AUX_NGX.AbsoluteSeek,\n"
+"                                     0, 0) >> return (True, False)\n"
+"                           )\n"
+"                           `AUX_NGX.catches`\n"
+"                           [AUX_NGX.Handler\n"
+"                                ((\\e -> return (not (aux_ngx_isEINTR e),\n"
+"                                                False)\n"
+"                                 ) :: AUX_NGX.IOError -> IO (Bool, Bool))\n"
+"                           ,AUX_NGX.Handler\n"
+"                                ((\\e -> return (True,\n"
+"                                                e == AUX_NGX.ThreadKilled)\n"
+"                                 ) :: AUX_NGX.AsyncException -> IO (Bool, Bool"
+"))\n"
+"                           ]\n"
+"                       else return False\n"
+"        if exiting\n"
+"            then return AUX_NGX_BSLC8.empty\n"
+"            else do\n"
+"                x' <- AUX_NGX_BS.unsafePackCStringLen (x, n)\n"
+"                f x' fstRun\n"
 "    ) fd efd\n\n"
 
 "aux_ngx_hs_async_ioy_yy :: AUX_NGX_EXPORT ->\n"
@@ -541,7 +565,8 @@ ngx_string(
 "    AUX_NGX.CInt -> AUX_NGX.CUInt ->\n"
 "    AUX_NGX.Ptr (AUX_NGX.Ptr AUX_NGX_STR_TYPE) ->\n"
 "    AUX_NGX.Ptr AUX_NGX.CInt -> AUX_NGX.Ptr AUX_NGX.CUInt ->\n"
-"    AUX_NGX.Ptr (AUX_NGX.StablePtr AUX_NGX_BSL.ByteString) -> IO ()\n"
+"    AUX_NGX.Ptr (AUX_NGX.StablePtr AUX_NGX_BSL.ByteString) ->\n"
+"    IO (AUX_NGX.StablePtr (AUX_NGX.Async ()))\n"
 "aux_ngx_hs_async_ioy_yy (AUX_NGX_IOY_YY f)\n"
 "            b (fromIntegral -> m) x (fromIntegral -> n)\n"
 "            fd (AUX_NGX.toBool -> efd) =\n"
@@ -649,7 +674,7 @@ ngx_string(
 
 "{- SPLICE: safe version of waitToSetLock as defined in System.Posix.IO -}\n\n"
 
-"foreign import ccall \"HsBase.h fcntl\"\n"
+"foreign import ccall interruptible \"HsBase.h fcntl\"\n"
 "    aux_ngx_safe_c_fcntl_lock :: AUX_NGX.CInt -> AUX_NGX.CInt ->\n"
 "        AUX_NGX.Ptr AUX_NGX.CFLock -> IO AUX_NGX.CInt\n\n"
 
@@ -679,6 +704,12 @@ ngx_string(
 "        aux_ngx_safe_c_fcntl_lock fd 7 p_flock\n\n"
 
 "{- SPLICE: END -}\n\n"
+
+"foreign export ccall ngxExportTerminateTask ::\n"
+"    AUX_NGX.StablePtr (AUX_NGX.Async ()) -> IO ()\n\n"
+
+"ngxExportTerminateTask :: AUX_NGX.StablePtr (AUX_NGX.Async ()) -> IO ()\n"
+"ngxExportTerminateTask = AUX_NGX.deRefStablePtr >=> AUX_NGX.cancel\n\n"
 );
 
 static const ngx_uint_t use_eventfd_channel =
@@ -707,10 +738,10 @@ typedef HsWord32 (*ngx_http_haskell_handler_b_y)
     (HsPtr, HsInt32, HsPtr, HsPtr);
 typedef HsWord32 (*ngx_http_haskell_handler_ioy_y)
     (HsPtr, HsInt32, HsPtr, HsPtr, HsPtr);
-typedef void (*ngx_http_haskell_handler_async_ioy_y)
+typedef HsStablePtr (*ngx_http_haskell_handler_async_ioy_y)
     (HsPtr, HsInt32, HsInt32, HsInt32, HsWord32, HsWord32, HsPtr, HsPtr, HsPtr,
      HsPtr);
-typedef void (*ngx_http_haskell_handler_async_ioy_yy)
+typedef HsStablePtr (*ngx_http_haskell_handler_async_ioy_yy)
     (HsPtr, HsInt32, HsPtr, HsInt32, HsInt32, HsWord32, HsPtr, HsPtr, HsPtr,
      HsPtr);
 typedef HsWord32 (*ngx_http_haskell_handler_ch)
@@ -773,7 +804,9 @@ typedef struct {
     void                                     (*hs_add_root)(void (*)(void));
     void                                     (*init_HsModule)(void);
 #endif
-    void                                     (*release_locked_bytestring)
+    void                                     (*hs_free_stable_ptr)
+                                                                (HsStablePtr);
+    void                                     (*terminate_async_task)
                                                                 (HsStablePtr);
     ngx_http_haskell_compile_mode_e            compile_mode;
     ngx_array_t                                service_code_vars;
@@ -788,7 +821,6 @@ typedef struct {
 #endif
     ngx_uint_t                                 code_loaded:1;
     ngx_uint_t                                 has_async_tasks:1;
-    ngx_uint_t                                 has_shared_services:1;
 } ngx_http_haskell_main_conf_t;
 
 
@@ -801,7 +833,7 @@ typedef struct {
 typedef struct {
     ngx_str_t                                 *bufs;
     HsInt32                                    n_bufs;
-    void                                     (*release_locked_bytestring)
+    void                                     (*hs_free_stable_ptr)
                                                                 (HsStablePtr);
     HsStablePtr                                locked_bytestring;
 } ngx_http_haskell_yy_cleanup_data_t;
@@ -918,6 +950,7 @@ struct ngx_http_haskell_service_code_var_data_s {
     ngx_http_haskell_service_async_event_t            hev;
     ngx_int_t                                         shm_index;
     ngx_fd_t                                          shm_lock_fd;
+    HsStablePtr                                       locked_async_task;
     ngx_uint_t                                        cb:1;
     ngx_uint_t                                        noarg:1;
     ngx_uint_t                                        running:1;
@@ -976,9 +1009,8 @@ static void ngx_http_haskell_async_event(ngx_event_t *ev);
 static void ngx_http_haskell_service_async_event(ngx_event_t *ev);
 static ngx_int_t ngx_http_haskell_yy_handler_result(ngx_log_t *log,
     ngx_pool_t *pool, ngx_str_t *bufs, HsInt32 n_bufs, ngx_str_t *res,
-    void (*release_locked_bytestring)(HsStablePtr),
-    HsStablePtr locked_bytestring, ngx_http_variable_t *cmvar,
-    ngx_uint_t cleanup, ngx_uint_t service);
+    void (*hs_free_stable_ptr)(HsStablePtr), HsStablePtr locked_bytestring,
+    ngx_http_variable_t *cmvar, ngx_uint_t cleanup, ngx_uint_t service);
 static void ngx_http_haskell_yy_handler_cleanup(void *data);
 static void ngx_http_haskell_content_handler_cleanup(void *data);
 static void ngx_http_haskell_service_handler_cleanup(void *data);
@@ -1237,6 +1269,7 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
     ngx_http_haskell_yy_cleanup_data_t  *clnd;
     ngx_uint_t                           rb, rb_skip, rb_done;
     ngx_uint_t                           r_main_count;
+    HsStablePtr                          res;
     ngx_int_t                            rc;
 
     mcf = ngx_http_get_module_main_conf(r, ngx_http_haskell_module);
@@ -1349,8 +1382,8 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
         async_data->result.complete = 0;
         async_data->yy_cleanup_data.bufs = &async_data->result.data;
         async_data->yy_cleanup_data.n_bufs = 0;
-        async_data->yy_cleanup_data.release_locked_bytestring =
-                                        mcf->release_locked_bytestring;
+        async_data->yy_cleanup_data.hs_free_stable_ptr =
+                                            mcf->hs_free_stable_ptr;
         async_data->yy_cleanup_data.locked_bytestring = NULL;
         async_data->error = 0;
         async_data->ref_count = 0;
@@ -1381,26 +1414,27 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
         }
 
         if (rb) {
-            ((ngx_http_haskell_handler_async_ioy_yy)
-             handlers[code_vars[i].handler].self)
+            res = ((ngx_http_haskell_handler_async_ioy_yy)
+                   handlers[code_vars[i].handler].self)
                     (ctx->request_body.elts, ctx->request_body.nelts,
                      arg1.data, arg1.len, fd[1], use_eventfd_channel,
                      &async_data->yy_cleanup_data.bufs,
                      &async_data->yy_cleanup_data.n_bufs, &async_data->error,
                      &async_data->yy_cleanup_data.locked_bytestring);
         } else {
-            ((ngx_http_haskell_handler_async_ioy_y)
-             handlers[code_vars[i].handler].self)
+            res = ((ngx_http_haskell_handler_async_ioy_y)
+                   handlers[code_vars[i].handler].self)
                     (arg1.data, arg1.len, fd[1], -1, use_eventfd_channel, 0,
                      &async_data->yy_cleanup_data.bufs,
                      &async_data->yy_cleanup_data.n_bufs, &async_data->error,
                      &async_data->yy_cleanup_data.locked_bytestring);
         }
+        mcf->hs_free_stable_ptr(res);
 
         clnd->bufs = async_data->yy_cleanup_data.bufs;
         clnd->n_bufs = async_data->yy_cleanup_data.n_bufs;
-        clnd->release_locked_bytestring =
-                        async_data->yy_cleanup_data.release_locked_bytestring;
+        clnd->hs_free_stable_ptr =
+                        async_data->yy_cleanup_data.hs_free_stable_ptr;
         clnd->locked_bytestring = async_data->yy_cleanup_data.locked_bytestring;
         cln->handler = ngx_http_haskell_yy_handler_cleanup;
         cln->data = clnd;
@@ -1541,8 +1575,8 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
     ngx_http_haskell_var_handle_t             *vars;
     ngx_http_haskell_service_code_var_data_t  *service_code_vars;
     ngx_file_t                                 out;
-    ngx_uint_t                                 found;
     ngx_int_t                                  index;
+    ngx_uint_t                                 found;
 
     if (ngx_process == NGX_PROCESS_HELPER) {
         return NGX_OK;
@@ -1587,6 +1621,7 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
                               &mcf->service_var_in_shm,
                               ngx_http_haskell_run_service_handler);
 
+    found = 0;
     service_code_vars = mcf->service_code_vars.elts;
     for (i = 0; i < mcf->service_code_vars.nelts; i++) {
         index = service_code_vars[i].data->index;
@@ -1617,25 +1652,11 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
                 }
 
                 service_code_vars[i].shm_lock_fd = out.fd;
-                mcf->has_shared_services = 1;
+                found = 1;
 
                 break;
             }
         }
-
-#ifdef NGX_HTTP_HASKELL_SHM_USE_SHARED_RLOCK
-        if (mcf->has_shared_services && mcf->shm_lock_fd == NGX_INVALID_FILE) {
-            if (ngx_http_haskell_shm_lock_init(cycle, &out,
-                                               mcf->shm_lock_files_path,
-                                               NULL)
-                != NGX_OK)
-            {
-                return NGX_ERROR;
-            }
-
-            mcf->shm_lock_fd = out.fd;
-        }
-#endif
 
         if (!service_code_vars[i].cb) {
             continue;
@@ -1655,6 +1676,19 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
             service_code_vars[i].data->index = NGX_ERROR;
         }
     }
+
+#ifdef NGX_HTTP_HASKELL_SHM_USE_SHARED_RLOCK
+    if (found && mcf->shm_lock_fd == NGX_INVALID_FILE) {
+        if (ngx_http_haskell_shm_lock_init(cycle, &out,
+                                           mcf->shm_lock_files_path, NULL)
+            != NGX_OK)
+        {
+            return NGX_ERROR;
+        }
+
+        mcf->shm_lock_fd = out.fd;
+    }
+#endif
 
     if (ngx_http_haskell_load(cycle) != NGX_OK) {
         return NGX_ERROR;
@@ -1677,11 +1711,20 @@ ngx_http_haskell_exit_worker(ngx_cycle_t *cycle)
         return;
     }
 
+    service_code_vars = mcf->service_code_vars.elts;
+    if (mcf->code_loaded && mcf->dl_handle != NULL) {
+        for (i = 0; i < mcf->service_code_vars.nelts; i++) {
+            if (service_code_vars[i].locked_async_task != NULL) {
+                mcf->terminate_async_task(
+                                    service_code_vars[i].locked_async_task);
+            }
+        }
+    }
+
     ngx_http_haskell_unload(cycle, 1);
 
     ngx_http_haskell_stop_services(cycle);
 
-    service_code_vars = mcf->service_code_vars.elts;
     for (i = 0; i < mcf->service_code_vars.nelts; i++) {
         if (service_code_vars[i].shm_lock_fd != NGX_INVALID_FILE
             && ngx_close_file(service_code_vars[i].shm_lock_fd)
@@ -2268,12 +2311,22 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     }
 #endif
 
-    mcf->release_locked_bytestring = (void (*)(HsStablePtr))
-            dlsym(mcf->dl_handle, "hs_free_stable_ptr");
+    mcf->hs_free_stable_ptr = (void (*)(HsStablePtr)) dlsym(mcf->dl_handle,
+                                                        "hs_free_stable_ptr");
     dl_error = dlerror();
     if (dl_error != NULL) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                       "failed to load function \"hs_free_stable_ptr\": %s",
+                      dl_error);
+        goto dlclose_and_exit;
+    }
+
+    mcf->terminate_async_task = (void (*)(HsStablePtr)) dlsym(mcf->dl_handle,
+                                                    "ngxExportTerminateTask");
+    dl_error = dlerror();
+    if (dl_error != NULL) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                      "failed to load function \"ngxExportTerminateTask\": %s",
                       dl_error);
         goto dlclose_and_exit;
     }
@@ -2479,13 +2532,7 @@ ngx_http_haskell_unload(ngx_cycle_t *cycle, ngx_uint_t exiting)
     }
 
     if (mcf->dl_handle != NULL) {
-        /* shared services use safe version of waitToSetLock which is a simple
-         * wrapper around POSIX advisory file locks with fcntl() and F_SETLKW;
-         * a blocked thread may cause hs_exit() hang, so it is skipped in this
-         * way */
-        if (!exiting || !mcf->has_shared_services) {
-            mcf->hs_exit();
-        }
+        mcf->hs_exit();
         /* dlclose() may cause sigsegv when a haskell service wakes up
          * during or after munmap() but before the worker exits */
         if (!exiting) {
@@ -2632,12 +2679,17 @@ ngx_http_haskell_run_service(ngx_cycle_t *cycle,
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
     handlers = mcf->handlers.elts;
 
+    if (service_code_var->locked_async_task != NULL) {
+        mcf->hs_free_stable_ptr(service_code_var->locked_async_task);
+    }
+
     service_code_var->future_async_data.yy_cleanup_data.bufs =
             &service_code_var->future_async_data.result.data;
     args = service_code_var->data->args.elts;
     arg1 = args[0].value;
-    ((ngx_http_haskell_handler_async_ioy_y)
-     handlers[service_code_var->data->handler].self)
+    service_code_var->locked_async_task =
+        ((ngx_http_haskell_handler_async_ioy_y)
+         handlers[service_code_var->data->handler].self)
             (arg1.data, arg1.len, fd[1], service_code_var->shm_lock_fd,
              use_eventfd_channel, service_first_run,
              &service_code_var->future_async_data.yy_cleanup_data.bufs,
@@ -2646,8 +2698,8 @@ ngx_http_haskell_run_service(ngx_cycle_t *cycle,
              &service_code_var->
                         future_async_data.yy_cleanup_data.locked_bytestring);
     service_code_var->
-            future_async_data.yy_cleanup_data.release_locked_bytestring =
-                                                mcf->release_locked_bytestring;
+            future_async_data.yy_cleanup_data.hs_free_stable_ptr =
+                                                    mcf->hs_free_stable_ptr;
 
     return NGX_OK;
 }
@@ -3359,7 +3411,7 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
     case ngx_http_haskell_handler_type_ioy_y:
         if (ngx_http_haskell_yy_handler_result(r->connection->log, r->pool,
                                                res_yy, len, &reslen,
-                                               mcf->release_locked_bytestring,
+                                               mcf->hs_free_stable_ptr,
                                                locked_bytestring,
                                                &cmvars[*index], 1, 0)
             == NGX_ERROR)
@@ -3483,8 +3535,7 @@ ngx_http_haskell_run_async_handler(ngx_http_request_t *r,
                 async_data_elts[found_idx].yy_cleanup_data.bufs,
                 async_data_elts[found_idx].yy_cleanup_data.n_bufs,
                 &async_data_elts[found_idx].result.data,
-                async_data_elts[found_idx].yy_cleanup_data.
-                                                release_locked_bytestring,
+                async_data_elts[found_idx].yy_cleanup_data.hs_free_stable_ptr,
                 async_data_elts[found_idx].yy_cleanup_data.locked_bytestring,
                 &cmvars[*index], 0, 0);
         async_data_elts[found_idx].result.complete = 1;
@@ -3763,15 +3814,14 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                           "failed to register cleanup handler for "
                           "content handler data");
-            mcf->release_locked_bytestring(locked_bytestring);
+            mcf->hs_free_stable_ptr(locked_bytestring);
             goto cleanup;
         }
-        /* do not let release_locked_bytestring() after hs_exit()
-         * for static content! */
-        clnd->yy_cleanup_data.release_locked_bytestring =
-                lcf->static_content ? NULL : mcf->release_locked_bytestring;
+        /* do not let hs_free_stable_ptr() after hs_exit() for static content */
+        clnd->yy_cleanup_data.hs_free_stable_ptr =
+                        lcf->static_content ? NULL : mcf->hs_free_stable_ptr;
         clnd->yy_cleanup_data.locked_bytestring =
-                lcf->static_content ? NULL : locked_bytestring;
+                        lcf->static_content ? NULL : locked_bytestring;
         clnd->yy_cleanup_data.bufs = len > 1 ? res : NULL;
         clnd->yy_cleanup_data.n_bufs = len;
         clnd->content_type.len = def_handler ? 0 : ct.len;
@@ -3988,7 +4038,7 @@ ngx_http_haskell_service_async_event(ngx_event_t *ev)
                     async_data->yy_cleanup_data.bufs,
                     async_data->yy_cleanup_data.n_bufs,
                     &async_data->result.data,
-                    async_data->yy_cleanup_data.release_locked_bytestring,
+                    async_data->yy_cleanup_data.hs_free_stable_ptr,
                     async_data->yy_cleanup_data.locked_bytestring,
                     &cmvars[service_code_var->data->index], 1, 1);
     async_data->result.complete = rc == NGX_OK ? 2 : (rc == NGX_DONE ? 1 : 0);
@@ -4021,7 +4071,7 @@ ngx_http_haskell_service_async_event(ngx_event_t *ev)
         if (async_data->result.complete == 2) {
             ngx_free(async_data->result.data.data);
         } else if (async_data->result.complete == 1) {
-            mcf->release_locked_bytestring(
+            mcf->hs_free_stable_ptr(
                                 async_data->yy_cleanup_data.locked_bytestring);
         }
         return;
@@ -4033,7 +4083,7 @@ ngx_http_haskell_service_async_event(ngx_event_t *ev)
         if (async_data->result.complete == 2) {
             ngx_free(async_data->result.data.data);
         } else if (async_data->result.complete == 1) {
-            mcf->release_locked_bytestring(
+            mcf->hs_free_stable_ptr(
                                 async_data->yy_cleanup_data.locked_bytestring);
         }
         goto run_service;
@@ -4055,7 +4105,7 @@ ngx_http_haskell_service_async_event(ngx_event_t *ev)
                           "service variable \"%V\", using old value",
                           &cmvars[service_code_var->data->index].name);
             ngx_free(async_data->yy_cleanup_data.bufs);
-            mcf->release_locked_bytestring(
+            mcf->hs_free_stable_ptr(
                                 async_data->yy_cleanup_data.locked_bytestring);
         } else {
             *service_code_var->async_data = *async_data;
@@ -4162,7 +4212,7 @@ unlock_and_run_service:
     if (async_data->result.complete == 2) {
         ngx_free(async_data->result.data.data);
     } else if (async_data->result.complete == 1) {
-        mcf->release_locked_bytestring(
+        mcf->hs_free_stable_ptr(
                                 async_data->yy_cleanup_data.locked_bytestring);
     }
 
@@ -4176,8 +4226,7 @@ static ngx_int_t
 ngx_http_haskell_yy_handler_result(ngx_log_t *log, ngx_pool_t *pool,
                                    ngx_str_t *bufs, HsInt32 n_bufs,
                                    ngx_str_t *res,
-                                   void (*release_locked_bytestring)
-                                                                (HsStablePtr),
+                                   void (*hs_free_stable_ptr)(HsStablePtr),
                                    HsStablePtr locked_bytestring,
                                    ngx_http_variable_t *cmvar,
                                    ngx_uint_t cleanup, ngx_uint_t service)
@@ -4225,7 +4274,7 @@ ngx_http_haskell_yy_handler_result(ngx_log_t *log, ngx_pool_t *pool,
             }
             clnd->bufs = NULL;
             clnd->n_bufs = 1;
-            clnd->release_locked_bytestring = release_locked_bytestring;
+            clnd->hs_free_stable_ptr = hs_free_stable_ptr;
             clnd->locked_bytestring = locked_bytestring;
             cln->handler = ngx_http_haskell_yy_handler_cleanup;
             cln->data = clnd;
@@ -4253,7 +4302,7 @@ ngx_http_haskell_yy_handler_result(ngx_log_t *log, ngx_pool_t *pool,
         }
         if (cleanup && bufs != NULL) {
             ngx_free(bufs);
-            release_locked_bytestring(locked_bytestring);
+            hs_free_stable_ptr(locked_bytestring);
         }
     }
 
@@ -4265,7 +4314,7 @@ cleanup:
         if (n_bufs > 1) {
             ngx_free(bufs);
         }
-        release_locked_bytestring(locked_bytestring);
+        hs_free_stable_ptr(locked_bytestring);
     }
 
     return NGX_ERROR;
@@ -4281,8 +4330,8 @@ ngx_http_haskell_yy_handler_cleanup(void *data)
         if (clnd->n_bufs > 1) {
             ngx_free(clnd->bufs);
         }
-        if (clnd->release_locked_bytestring != NULL) {
-            clnd->release_locked_bytestring(clnd->locked_bytestring);
+        if (clnd->hs_free_stable_ptr != NULL) {
+            clnd->hs_free_stable_ptr(clnd->locked_bytestring);
         }
     }
 }
@@ -4310,7 +4359,7 @@ ngx_http_haskell_service_handler_cleanup(void *data)
     if (async_data->result.complete == 2) {
         ngx_free(async_data->result.data.data);
     } else if (async_data->result.complete == 1) {
-        async_data->yy_cleanup_data.release_locked_bytestring(
+        async_data->yy_cleanup_data.hs_free_stable_ptr(
                                 async_data->yy_cleanup_data.locked_bytestring);
     }
 

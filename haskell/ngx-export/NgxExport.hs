@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell, ForeignFunctionInterface #-}
+{-# LANGUAGE TemplateHaskell, ForeignFunctionInterface, InterruptibleFFI #-}
 {-# LANGUAGE ViewPatterns, PatternSynonyms #-}
 
 -----------------------------------------------------------------------------
@@ -51,6 +51,7 @@ import           System.Posix.Types
 import           System.Posix.Internals
 import           Control.Monad
 import           Control.Monad.Loops
+import qualified Control.Exception as E
 import           Control.Exception hiding (Handler)
 import           GHC.IO.Exception (ioe_errno)
 import           GHC.IO.Device (SeekMode (..))
@@ -231,7 +232,7 @@ ngxExportAsyncIOYY =
     ngxExportC 'IOYY 'asyncIOYY
     [t|CString -> CInt -> CInt -> CInt -> CUInt -> CUInt ->
        Ptr (Ptr NgxStrType) -> Ptr CInt ->
-       Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO ()|]
+       Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO (StablePtr (Async ()))|]
 
 -- | Exports a function of type
 -- /'L.ByteString' -> 'B.ByteString' -> 'IO' 'L.ByteString'/
@@ -244,7 +245,7 @@ ngxExportAsyncOnReqBody =
     ngxExport 'IOYYY 'asyncIOYYY
     [t|Ptr NgxStrType -> CInt -> CString -> CInt -> CInt -> CUInt ->
        Ptr (Ptr NgxStrType) -> Ptr CInt ->
-       Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO ()|]
+       Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO (StablePtr (Async ()))|]
 
 -- | Exports a function of type
 -- /'B.ByteString' -> 'Bool' -> 'IO' 'L.ByteString'/
@@ -257,7 +258,7 @@ ngxExportServiceIOYY =
     ngxExport 'IOYY 'asyncIOYY
     [t|CString -> CInt -> CInt -> CInt -> CUInt -> CUInt ->
        Ptr (Ptr NgxStrType) -> Ptr CInt ->
-       Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO ()|]
+       Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO (StablePtr (Async ()))|]
 
 -- | Exports a function of type
 -- /'B.ByteString' -> ('L.ByteString', 'String', 'Int')/
@@ -452,45 +453,64 @@ asyncIOFlag8b = L.toStrict $ runPut $ putInt64host 1
 
 asyncIOCommon :: IO C8L.ByteString ->
     CInt -> Bool -> Ptr (Ptr NgxStrType) -> Ptr CInt ->
-    Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO ()
-asyncIOCommon a (I fd) efd p pl pr spd = void . async $ do
-    (s, r) <- safeYYHandler $ do
-        s <- a
-        fmap (flip (,) 0) $ return $! s
-    pokeLazyByteString s p pl spd
-    poke pr r
-    uninterruptibleMask_ $
-        if efd
-            then writeFlag8b
-            else writeFlag1b >> closeFd fd `catchIOError` const (return ())
+    Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO (StablePtr (Async ()))
+asyncIOCommon a (I fd) efd p pl pr spd =
+    async
+    (do
+        (s, r) <- safeYYHandler $ do
+            s <- a
+            fmap (flip (,) 0) $ return $! s
+        pokeLazyByteString s p pl spd
+        poke pr r
+        uninterruptibleMask_ $
+            if efd
+                then writeFlag8b
+                else writeFlag1b >> closeFd fd `catchIOError` const (return ())
+    ) >>= newStablePtr
     where writeBufN n s = iterateUntilM (>= n)
               (\w -> (w +) <$>
                   fdWriteBuf fd (plusPtr s $ fromIntegral w) (n - w)
-                  `catchIOError` (\e -> return $ if isEINTR e
-                                                     then 0
-                                                     else n
-                                 )
+                  `catchIOError`
+                  (\e -> return $ if isEINTR e
+                                      then 0
+                                      else n
+                  )
               ) 0
           writeFlag1b = void $ B.unsafeUseAsCString asyncIOFlag1b $ writeBufN 1
           writeFlag8b = void $ B.unsafeUseAsCString asyncIOFlag8b $ writeBufN 8
 
 asyncIOYY :: IOYY -> CString -> CInt ->
     CInt -> CInt -> CUInt -> CUInt -> Ptr (Ptr NgxStrType) -> Ptr CInt ->
-    Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO ()
+    Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO (StablePtr (Async ()))
 asyncIOYY f x (I n) fd (I fdlk) (ToBool efd) (ToBool fstRun) =
     asyncIOCommon
     (do
-        when (fstRun && fdlk /= -1) $ void $ iterateUntil (== True) $
-            (safeWaitToSetLock fdlk (WriteLock, AbsoluteSeek, 0, 0) >>
-                return True
-            ) `catchIOError` (return . not . isEINTR)
-        x' <- B.unsafePackCStringLen (x, n)
-        f x' fstRun
+        exiting <- if fstRun && fdlk /= -1
+                       then snd <$>
+                           iterateUntil ((True ==) . fst)
+                           (safeWaitToSetLock fdlk
+                                (WriteLock, AbsoluteSeek, 0, 0) >>
+                                    return (True, False)
+                           )
+                           `catches`
+                           [E.Handler
+                                ((\e -> return (not (isEINTR e), False)) ::
+                                    IOError -> IO (Bool, Bool))
+                           ,E.Handler
+                                ((\e -> return (True, e == ThreadKilled)) ::
+                                    AsyncException -> IO (Bool, Bool))
+                           ]
+                       else return False
+        if exiting
+            then return C8L.empty
+            else do
+                x' <- B.unsafePackCStringLen (x, n)
+                f x' fstRun
     ) fd efd
 
 asyncIOYYY :: IOYYY -> Ptr NgxStrType -> CInt -> CString -> CInt ->
     CInt -> CUInt -> Ptr (Ptr NgxStrType) -> Ptr CInt ->
-    Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO ()
+    Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO (StablePtr (Async ()))
 asyncIOYYY f b (I m) x (I n) fd (ToBool efd) =
     asyncIOCommon
     (do
@@ -565,7 +585,7 @@ unsafeHandler f x (I n) p pl pct plct pst =
 
 {- SPLICE: safe version of waitToSetLock as defined in System.Posix.IO -}
 
-foreign import ccall "HsBase.h fcntl"
+foreign import ccall interruptible "HsBase.h fcntl"
     safe_c_fcntl_lock :: CInt -> CInt -> Ptr CFLock -> IO CInt
 
 mode2Int :: SeekMode -> CShort
@@ -593,6 +613,11 @@ safeWaitToSetLock (Fd fd) lock = allocaLock lock $
         safe_c_fcntl_lock fd 7 p_flock
 
 {- SPLICE: END -}
+
+foreign export ccall ngxExportTerminateTask :: StablePtr (Async ()) -> IO ()
+
+ngxExportTerminateTask :: StablePtr (Async ()) -> IO ()
+ngxExportTerminateTask = deRefStablePtr >=> cancel
 
 foreign export ccall ngxExportVersion :: Ptr CInt -> CInt -> IO CInt
 

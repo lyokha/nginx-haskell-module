@@ -1,3 +1,8 @@
+### 0.9.0.0
+
+- Using interruptible FFI for safeWaitToSetLock to re-enable graceful shutdown
+  with hs_exit() for shared services.
+
 ### 0.8.1.0
 
 - Function waitSetToLock from package *unix* calls C fcntl() unsafely which
