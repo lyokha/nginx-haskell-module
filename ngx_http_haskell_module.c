@@ -955,6 +955,7 @@ struct ngx_http_haskell_service_code_var_data_s {
     ngx_uint_t                                        noarg:1;
     ngx_uint_t                                        running:1;
     ngx_uint_t                                        ignore_empty:1;
+    ngx_uint_t                                        has_locked_async_task:1;
 };
 
 typedef struct ngx_http_haskell_service_code_var_data_s
@@ -1718,7 +1719,7 @@ ngx_http_haskell_exit_worker(ngx_cycle_t *cycle)
     service_code_vars = mcf->service_code_vars.elts;
     if (mcf->code_loaded && mcf->dl_handle != NULL) {
         for (i = 0; i < mcf->service_code_vars.nelts; i++) {
-            if (service_code_vars[i].locked_async_task != NULL) {
+            if (service_code_vars[i].has_locked_async_task) {
                 mcf->terminate_async_task(
                                     service_code_vars[i].locked_async_task);
             }
@@ -2676,16 +2677,13 @@ ngx_http_haskell_run_service(ngx_cycle_t *cycle,
                       "failed to add event for future async result, "
                       "postponing IO task for 2 sec");
         ngx_http_haskell_close_async_event_channel(cycle->log, fd);
+        hev->s.fd = NGX_INVALID_FILE;
         ngx_add_timer(event, 2000);
         return NGX_OK;
     }
 
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
     handlers = mcf->handlers.elts;
-
-    if (service_code_var->locked_async_task != NULL) {
-        mcf->hs_free_stable_ptr(service_code_var->locked_async_task);
-    }
 
     service_code_var->future_async_data.yy_cleanup_data.bufs =
             &service_code_var->future_async_data.result.data;
@@ -2701,9 +2699,9 @@ ngx_http_haskell_run_service(ngx_cycle_t *cycle,
              &service_code_var->future_async_data.error,
              &service_code_var->
                         future_async_data.yy_cleanup_data.locked_bytestring);
-    service_code_var->
-            future_async_data.yy_cleanup_data.hs_free_stable_ptr =
-                                                    mcf->hs_free_stable_ptr;
+    service_code_var->has_locked_async_task = 1;
+    service_code_var->future_async_data.yy_cleanup_data.hs_free_stable_ptr =
+                                                        mcf->hs_free_stable_ptr;
 
     return NGX_OK;
 }
@@ -4066,6 +4064,9 @@ ngx_http_haskell_service_async_event(ngx_event_t *ev)
 
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
 
+    mcf->hs_free_stable_ptr(service_code_var->locked_async_task);
+    service_code_var->has_locked_async_task = 0;
+
     if (service_code_var->cb) {
         if (service_code_var->noarg) {
             args = service_code_var->data->args.elts;
@@ -4216,8 +4217,7 @@ unlock_and_run_service:
     if (async_data->result.complete == 2) {
         ngx_free(async_data->result.data.data);
     } else if (async_data->result.complete == 1) {
-        mcf->hs_free_stable_ptr(
-                                async_data->yy_cleanup_data.locked_bytestring);
+        mcf->hs_free_stable_ptr(async_data->yy_cleanup_data.locked_bytestring);
     }
 
 run_service:
