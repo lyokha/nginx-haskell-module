@@ -839,12 +839,12 @@ sense in running other handlers in async way: calculation of head and extraction
 of a form field can be carried out by synchronous *pure* handlers on the
 calculated value of ``$hs_rb``.
 
-Returning a large client request body in a handler like *reqBody* is not very
-efficient because it requires extra copying of internal nginx buffers. When only
-the whole request body is needed, there is a more efficient way that makes use
-of a standard nginx variable ``$request_body`` and a simple haskell handler that
-returns an empty string, while nevertheless ensuring that reading of the request
-body is triggered. Below is an example.
+Returning a large client request body in a handler like *reqBody* may have a
+small overhead when converting original request buffers into a haskell
+bytestring. When only the whole request body is needed, there is a more
+practical way that makes use of a standard nginx variable ``$request_body`` and
+a simple haskell handler that returns an empty string, while nevertheless
+ensures that reading of the request body is triggered. Below is an example.
 
 ```haskell
 reqBodyTouch = (return .) . const . return C8L.empty
