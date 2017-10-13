@@ -996,7 +996,7 @@ static void ngx_http_haskell_exit_worker(ngx_cycle_t *cycle);
 static void ngx_http_haskell_var_init(ngx_log_t *log, ngx_array_t *cmvar,
     ngx_array_t *var, ngx_http_get_variable_pt get_handler);
 static ngx_int_t ngx_http_haskell_shm_lock_init(ngx_cycle_t *cycle,
-    ngx_file_t *out, ngx_str_t path, ngx_str_t *var_name);
+    ngx_file_t *out, ngx_str_t path, ngx_str_t zone_name, ngx_str_t *var_name);
 static ngx_int_t ngx_http_haskell_run_handler(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_haskell_run_async_handler(ngx_http_request_t *r,
@@ -1648,6 +1648,7 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
 
                 if (ngx_http_haskell_shm_lock_init(cycle, &out,
                                                    mcf->shm_lock_files_path,
+                                                   mcf->shm_zone->shm.name,
                                                    &cmvars[index].name)
                     != NGX_OK)
                 {
@@ -1685,7 +1686,9 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
 #ifdef NGX_HTTP_HASKELL_SHM_USE_SHARED_RLOCK
     if (found && mcf->shm_lock_fd == NGX_INVALID_FILE) {
         if (ngx_http_haskell_shm_lock_init(cycle, &out,
-                                           mcf->shm_lock_files_path, NULL)
+                                           mcf->shm_lock_files_path,
+                                           mcf->shm_zone->shm.name,
+                                           NULL)
             != NGX_OK)
         {
             return NGX_ERROR;
@@ -1793,14 +1796,15 @@ ngx_http_haskell_var_init(ngx_log_t *log, ngx_array_t *cmvar, ngx_array_t *var,
 
 static ngx_int_t
 ngx_http_haskell_shm_lock_init(ngx_cycle_t *cycle, ngx_file_t *out,
-                               ngx_str_t path, ngx_str_t *var_name)
+                               ngx_str_t path, ngx_str_t zone_name,
+                               ngx_str_t *var_name)
 {
     ngx_int_t  len = var_name == NULL ? 0 : var_name->len;
 
     ngx_memzero(out, sizeof(ngx_file_t));
     out->name.len = path.len +
-                    haskell_shm_file_lock_prefix.len + len +
-                    haskell_shm_file_lock_suffix.len;
+                    haskell_shm_file_lock_prefix.len + zone_name.len + 1 +
+                    len + haskell_shm_file_lock_suffix.len;
 
     out->name.data = ngx_pnalloc(cycle->pool, out->name.len + 1);
     if (out->name.data == NULL) {
@@ -1814,12 +1818,18 @@ ngx_http_haskell_shm_lock_init(ngx_cycle_t *cycle, ngx_file_t *out,
     ngx_memcpy(out->name.data + path.len,
                haskell_shm_file_lock_prefix.data,
                haskell_shm_file_lock_prefix.len);
+    ngx_memcpy(out->name.data + path.len + haskell_shm_file_lock_prefix.len,
+               zone_name.data, zone_name.len);
+    ngx_memcpy(out->name.data + path.len + haskell_shm_file_lock_prefix.len +
+                    zone_name.len,
+               "_", 1);
     if (len > 0) {
-        ngx_memcpy(out->name.data + path.len + haskell_shm_file_lock_prefix.len,
+        ngx_memcpy(out->name.data + path.len +
+                        haskell_shm_file_lock_prefix.len + zone_name.len + 1,
                    var_name->data, len);
     }
     ngx_memcpy(out->name.data + path.len +
-                    haskell_shm_file_lock_prefix.len + len,
+                    haskell_shm_file_lock_prefix.len + zone_name.len + 1 + len,
                haskell_shm_file_lock_suffix.data,
                haskell_shm_file_lock_suffix.len);
     out->name.data[out->name.len] = '\0';
