@@ -467,7 +467,8 @@ asyncIOCommon a (I fd) efd p pl pr spd =
                 then writeFlag8b
                 else writeFlag1b >> closeFd fd `catchIOError` const (return ())
     ) >>= newStablePtr
-    where writeBufN n s = iterateUntilM (>= n)
+    where writeBufN n s = void $
+              iterateUntilM (>= n)
               (\w -> (w +) <$>
                   fdWriteBuf fd (plusPtr s $ fromIntegral w) (n - w)
                   `catchIOError`
@@ -476,8 +477,8 @@ asyncIOCommon a (I fd) efd p pl pr spd =
                                       else n
                   )
               ) 0
-          writeFlag1b = void $ B.unsafeUseAsCString asyncIOFlag1b $ writeBufN 1
-          writeFlag8b = void $ B.unsafeUseAsCString asyncIOFlag8b $ writeBufN 8
+          writeFlag1b = B.unsafeUseAsCString asyncIOFlag1b $ writeBufN 1
+          writeFlag8b = B.unsafeUseAsCString asyncIOFlag8b $ writeBufN 8
 
 asyncIOYY :: IOYY -> CString -> CInt ->
     CInt -> CInt -> CUInt -> CUInt -> Ptr (Ptr NgxStrType) -> Ptr CInt ->
