@@ -494,12 +494,8 @@ asyncIOYY f x (I n) fd (I fdlk) (ToBool efd) (ToBool fstRun) =
                                     return (True, False)
                            )
                            `catches`
-                           [E.Handler
-                                ((\e -> return (not (isEINTR e), False)) ::
-                                    IOError -> IO (Bool, Bool))
-                           ,E.Handler
-                                ((\e -> return (True, e == ThreadKilled)) ::
-                                    AsyncException -> IO (Bool, Bool))
+                           [E.Handler $ return . flip (,) False . not . isEINTR
+                           ,E.Handler $ return . (,) True . (== ThreadKilled)
                            ]
                        else return False
         if exiting
