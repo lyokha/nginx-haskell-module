@@ -2072,8 +2072,8 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         } else {
             if (has_threaded) {
                 ngx_conf_log_error(NGX_LOG_NOTICE, cf, 0,
-                        "haskell library exist but asked to be compiled as "
-                        "threaded, please make sure that it was indeed "
+                        "haskell library exists but is asked to be compiled "
+                        "as threaded, please make sure that it was indeed "
                         "compiled as threaded, otherwise async tasks may "
                         "stall in runtime");
                 mcf->compile_mode = ngx_http_haskell_compile_mode_load_existing;
