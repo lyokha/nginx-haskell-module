@@ -52,8 +52,8 @@ static const ngx_str_t  haskell_shm_file_lock_prefix =
 ngx_string("/ngx_hs_var_");
 static const ngx_str_t  haskell_shm_file_lock_suffix =
 ngx_string(".lock");
-static const ngx_int_t haskell_module_ngx_export_api_version_major = 0;
-static const ngx_int_t haskell_module_ngx_export_api_version_minor = 9;
+static const ngx_int_t  haskell_module_ngx_export_api_version_major = 0;
+static const ngx_int_t  haskell_module_ngx_export_api_version_minor = 9;
 
 static const ngx_str_t  haskell_module_code_head =
 ngx_string(
@@ -718,12 +718,14 @@ ngx_string(
 "ngxExportTerminateTask = AUX_NGX.deRefStablePtr >=> AUX_NGX.cancel\n\n"
 );
 
-static const ngx_uint_t use_eventfd_channel =
+static const ngx_uint_t  use_eventfd_channel =
 #if (NGX_HAVE_EVENTFD)
     1;
 #else
     0;
 #endif
+
+static ngx_event_t  dummy_write_event;
 
 
 typedef HsWord32 (*ngx_http_haskell_handler_s_s)
@@ -1475,7 +1477,8 @@ ngx_http_haskell_create_async_task(ngx_http_request_t *r, ngx_fd_t fd[2],
     }
 
     hev = ngx_pcalloc(r->pool, sizeof(ngx_http_haskell_async_event_t));
-    if (hev == NULL) {
+    event = ngx_pcalloc(r->pool, sizeof(ngx_event_t));
+    if (hev == NULL || event == NULL) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "failed to allocate memory for future async result, "
                       "skipping IO task");
@@ -1487,19 +1490,13 @@ ngx_http_haskell_create_async_task(ngx_http_request_t *r, ngx_fd_t fd[2],
     hev->r = r;
     hev->complete = &async_data->complete;
 
-    event = ngx_pcalloc(r->pool, sizeof(ngx_event_t));
-    if (event== NULL) {
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "failed to allocate memory for future async result, "
-                      "skipping IO task");
-        ngx_http_haskell_close_async_event_channel(r->connection->log, fd);
-        return NGX_ERROR;
-    }
     event->data = hev;
     event->handler = ngx_http_haskell_async_event;
     event->log = r->connection->log;
+
     hev->s.read = event;
-    hev->s.write = event;   /* to make ngx_add_event() happy */
+    hev->s.write = &dummy_write_event;
+
     if (ngx_add_event(event, NGX_READ_EVENT, 0) != NGX_OK) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "failed to add event for future async result, "
@@ -2672,7 +2669,7 @@ ngx_http_haskell_run_service(ngx_cycle_t *cycle,
     ngx_memzero(hev, sizeof(ngx_http_haskell_service_async_event_t));
     hev->service_code_var = service_code_var;
     hev->s.read = event;
-    hev->s.write = event;   /* to make ngx_add_event() happy: */
+    hev->s.write = &dummy_write_event;
 
     hev->s.fd = NGX_INVALID_FILE;
     hev->cycle = cycle;
