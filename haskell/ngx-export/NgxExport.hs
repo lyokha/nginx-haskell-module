@@ -389,9 +389,15 @@ safeHandler p pl = handle $ \e -> do
     pokeCStringLen x l p pl
     return 1
 
-safeYYHandler :: IO (L.ByteString, CUInt) -> IO (L.ByteString, CUInt)
+safeYYHandler :: IO (L.ByteString, (CUInt, Bool)) ->
+    IO (L.ByteString, (CUInt, Bool))
 safeYYHandler = handle $ \e ->
-    return (C8L.pack $ show (e :: SomeException), 1)
+    return (C8L.pack $ show e,
+            (1, case asyncExceptionFromException e of
+                    Nothing -> False
+                    Just ae -> ae == ThreadKilled
+            )
+           )
 {-# INLINE safeYYHandler #-}
 
 isEINTR :: IOError -> Bool
@@ -430,8 +436,8 @@ yY :: YY -> CString -> CInt ->
     Ptr (Ptr NgxStrType) -> Ptr CInt ->
     Ptr (StablePtr L.ByteString) -> IO CUInt
 yY f x (I n) p pl spd = do
-    (s, r) <- safeYYHandler $
-        flip (,) 0 . f <$> B.unsafePackCStringLen (x, n)
+    (s, (r, _)) <- safeYYHandler $
+        flip (,) (0, False) . f <$> B.unsafePackCStringLen (x, n)
     pokeLazyByteString s p pl spd
     return r
 
@@ -439,9 +445,9 @@ ioyY :: IOYY -> CString -> CInt ->
     Ptr (Ptr NgxStrType) -> Ptr CInt ->
     Ptr (StablePtr L.ByteString) -> IO CUInt
 ioyY f x (I n) p pl spd = do
-    (s, r) <- safeYYHandler $ do
+    (s, (r, _)) <- safeYYHandler $ do
         s <- B.unsafePackCStringLen (x, n) >>= flip f False
-        fmap (flip (,) 0) $ return $! s
+        fmap (flip (,) (0, False)) $ return $! s
     pokeLazyByteString s p pl spd
     return r
 
@@ -457,15 +463,17 @@ asyncIOCommon :: IO C8L.ByteString ->
 asyncIOCommon a (I fd) efd p pl pr spd =
     async
     (do
-        (s, r) <- safeYYHandler $ do
+        (s, (r, exiting)) <- safeYYHandler $ do
             s <- a
-            fmap (flip (,) 0) $ return $! s
+            fmap (flip (,) (0, False)) $ return $! s
         pokeLazyByteString s p pl spd
         poke pr r
-        uninterruptibleMask_ $
-            if efd
-                then writeFlag8b
-                else writeFlag1b >> closeFd fd `catchIOError` const (return ())
+        if exiting
+            then unless efd closeChannel
+            else uninterruptibleMask_ $
+                    if efd
+                        then writeFlag8b
+                        else writeFlag1b >> closeChannel
     ) >>= newStablePtr
     where writeBufN n s = void $
               iterateUntilM (>= n)
@@ -479,6 +487,7 @@ asyncIOCommon a (I fd) efd p pl pr spd =
               ) 0
           writeFlag1b = B.unsafeUseAsCString asyncIOFlag1b $ writeBufN 1
           writeFlag8b = B.unsafeUseAsCString asyncIOFlag8b $ writeBufN 8
+          closeChannel = closeFd fd `catchIOError` const (return ())
 
 asyncIOYY :: IOYY -> CString -> CInt ->
     CInt -> CInt -> CUInt -> CUInt -> Ptr (Ptr NgxStrType) -> Ptr CInt ->
