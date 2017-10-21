@@ -1486,13 +1486,13 @@ ngx_http_haskell_create_async_task(ngx_http_request_t *r, ngx_fd_t fd[2],
         return NGX_ERROR;
     }
 
-    hev->s.fd = fd[0];
-    hev->r = r;
-    hev->complete = &async_data->complete;
-
     event->data = hev;
     event->handler = ngx_http_haskell_async_event;
     event->log = r->connection->log;
+
+    hev->s.fd = fd[0];
+    hev->r = r;
+    hev->complete = &async_data->complete;
 
     hev->s.read = event;
     hev->s.write = &dummy_write_event;
@@ -2667,13 +2667,13 @@ ngx_http_haskell_run_service(ngx_cycle_t *cycle,
     event->log = cycle->log;
 
     ngx_memzero(hev, sizeof(ngx_http_haskell_service_async_event_t));
-    hev->service_code_var = service_code_var;
-    hev->s.read = event;
-    hev->s.write = &dummy_write_event;
-
     hev->s.fd = NGX_INVALID_FILE;
     hev->cycle = cycle;
+    hev->service_code_var = service_code_var;
     hev->first_run = service_first_run;
+
+    hev->s.read = event;
+    hev->s.write = &dummy_write_event;
 
     if (ngx_http_haskell_open_async_event_channel(fd) == NGX_ERROR) {
         ngx_log_error(NGX_LOG_ERR, cycle->log, ngx_errno,
