@@ -1,3 +1,7 @@
+### 0.9.1.0
+
+- Do not write into service event channel when Nginx is exiting.
+
 ### 0.9.0.0
 
 - Using interruptible FFI for safeWaitToSetLock to re-enable graceful shutdown
