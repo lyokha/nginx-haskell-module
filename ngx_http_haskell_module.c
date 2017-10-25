@@ -460,8 +460,9 @@ ngx_string(
 "    IO AUX_NGX.CUInt\n"
 "aux_ngx_hs_y_y (AUX_NGX_Y_Y f)\n"
 "            x (fromIntegral -> n) p pl spd = do\n"
-"    (s, (r, _)) <- aux_ngx_safeYYHandler $\n"
-"        flip (,) (0, False) . f <$> AUX_NGX_BS.unsafePackCStringLen (x, n)\n"
+"    (s, (r, _)) <- aux_ngx_safeYYHandler $ do\n"
+"        s <- f <$> AUX_NGX_BS.unsafePackCStringLen (x, n)\n"
+"        fmap (flip (,) (0, False)) $ return $! s\n"
 "    aux_ngx_pokeLazyByteString s p pl spd\n"
 "    return r\n\n"
 
@@ -3697,7 +3698,7 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
     HsInt32                                   len = 0, st = NGX_HTTP_OK;
     HsWord32                                  err;
     size_t                                    slen;
-    ngx_str_t                                *res, buf;
+    ngx_str_t                                *res, buf, *sbuf;
     u_char                                   *sres = NULL;
     char                                     *eres;
     ngx_int_t                                 elen;
@@ -3769,6 +3770,10 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
+    if (err) {
+        len = 0;
+    }
+
     if (elen == -1 || len == -1) {
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
                       "memory allocation error while running "
@@ -3837,8 +3842,26 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
                         lcf->static_content ? NULL : mcf->hs_free_stable_ptr;
         clnd->yy_cleanup_data.locked_bytestring =
                         lcf->static_content ? NULL : locked_bytestring;
-        clnd->yy_cleanup_data.bufs = len > 1 ? res : NULL;
+        clnd->yy_cleanup_data.bufs = res;
         clnd->yy_cleanup_data.n_bufs = len;
+        if (res == &buf) {
+            if (len != 1) {
+                ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
+                              "impossible branch while running "
+                              "haskell content handler");
+                goto cleanup;
+            }
+            sbuf = ngx_palloc(pool, sizeof(ngx_str_t));
+            if (sbuf == NULL) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "failed to allocate data buffer for "
+                              "content handler data");
+                mcf->hs_free_stable_ptr(locked_bytestring);
+                goto cleanup;
+            }
+            *sbuf = buf;
+            clnd->yy_cleanup_data.bufs = sbuf;
+        }
         clnd->content_type.len = def_handler ? 0 : ct.len;
         clnd->content_type.data = def_handler ? NULL : ct.data;
         clnd->status = st;

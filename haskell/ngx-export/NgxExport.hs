@@ -436,8 +436,9 @@ yY :: YY -> CString -> CInt ->
     Ptr (Ptr NgxStrType) -> Ptr CInt ->
     Ptr (StablePtr L.ByteString) -> IO CUInt
 yY f x (I n) p pl spd = do
-    (s, (r, _)) <- safeYYHandler $
-        flip (,) (0, False) . f <$> B.unsafePackCStringLen (x, n)
+    (s, (r, _)) <- safeYYHandler $ do
+        s <- f <$> B.unsafePackCStringLen (x, n)
+        fmap (flip (,) (0, False)) $ return $! s
     pokeLazyByteString s p pl spd
     return r
 

@@ -1,3 +1,7 @@
+### 0.9.1.1
+
+- yY handler must be strict against exceptions in safeYYHandler.
+
 ### 0.9.1.0
 
 - Do not write into service event channel when Nginx is exiting.
