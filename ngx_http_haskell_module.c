@@ -3698,7 +3698,7 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
     HsInt32                                   len = 0, st = NGX_HTTP_OK;
     HsWord32                                  err;
     size_t                                    slen;
-    ngx_str_t                                *res, buf, *sbuf;
+    ngx_str_t                                *res, buf;
     u_char                                   *sres = NULL;
     char                                     *eres;
     ngx_int_t                                 elen;
@@ -3851,16 +3851,15 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
                               "haskell content handler");
                 goto cleanup;
             }
-            sbuf = ngx_palloc(pool, sizeof(ngx_str_t));
-            if (sbuf == NULL) {
+            clnd->yy_cleanup_data.bufs = ngx_palloc(pool, sizeof(ngx_str_t));
+            if (clnd->yy_cleanup_data.bufs == NULL) {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                               "failed to allocate data buffer for "
                               "content handler data");
                 mcf->hs_free_stable_ptr(locked_bytestring);
                 goto cleanup;
             }
-            *sbuf = buf;
-            clnd->yy_cleanup_data.bufs = sbuf;
+            *clnd->yy_cleanup_data.bufs = buf;
         }
         clnd->content_type.len = def_handler ? 0 : ct.len;
         clnd->content_type.data = def_handler ? NULL : ct.data;
