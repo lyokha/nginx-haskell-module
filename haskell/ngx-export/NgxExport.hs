@@ -458,15 +458,15 @@ asyncIOFlag1b = L.toStrict $ runPut $ putInt8 1
 asyncIOFlag8b :: B.ByteString
 asyncIOFlag8b = L.toStrict $ runPut $ putInt64host 1
 
-asyncIOCommon :: IO C8L.ByteString ->
+asyncIOCommon :: IO (C8L.ByteString, Bool) ->
     CInt -> Bool -> Ptr (Ptr NgxStrType) -> Ptr CInt ->
     Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO (StablePtr (Async ()))
 asyncIOCommon a (I fd) efd p pl pr spd =
     async
     (do
         (s, (r, exiting)) <- safeYYHandler $ do
-            s <- a
-            fmap (flip (,) (0, False)) $ return $! s
+            (s, exiting) <- a
+            fmap (flip (,) (0, exiting)) $ return $! s
         pokeLazyByteString s p pl spd
         poke pr r
         if exiting
@@ -509,10 +509,10 @@ asyncIOYY f x (I n) fd (I fdlk) (ToBool efd) (ToBool fstRun) =
                            ]
                        else return False
         if exiting
-            then return C8L.empty
+            then return (C8L.empty, True)
             else do
                 x' <- B.unsafePackCStringLen (x, n)
-                f x' fstRun
+                flip (,) False <$> f x' fstRun
     ) fd efd
 
 asyncIOYYY :: IOYYY -> Ptr NgxStrType -> CInt -> CString -> CInt ->
@@ -523,7 +523,7 @@ asyncIOYYY f b (I m) x (I n) fd (ToBool efd) =
     (do
         b' <- peekNgxStringArrayLenY b m
         x' <- B.unsafePackCStringLen (x, n)
-        f b' x'
+        flip (,) False <$> f b' x'
     ) fd efd
 
 bS :: BS -> CString -> CInt ->
