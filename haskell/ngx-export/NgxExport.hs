@@ -38,7 +38,7 @@ module NgxExport (
                  ,Foreign.C.CInt (..)
                  ,Foreign.C.CUInt (..)) where
 
-import           Language.Haskell.TH
+import           Language.Haskell.TH hiding (interruptible)
 import           Foreign.C
 import           Foreign.Ptr
 import           Foreign.StablePtr
@@ -63,6 +63,16 @@ import qualified Data.ByteString.Lazy.Char8 as C8L
 import           Data.Binary.Put
 import           Paths_ngx_export (version)
 import           Data.Version
+
+#if MIN_VERSION_base(4,9,0)
+interruptibleBlock :: IO a -> IO a
+interruptibleBlock = interruptible
+#else
+import           GHC.IO (unsafeUnmask)
+
+interruptibleBlock :: IO a -> IO a
+interruptibleBlock = unsafeUnmask
+#endif
 
 #if MIN_VERSION_template_haskell(2,11,0)
 #define EXTRA_WILDCARD_BEFORE_CON _
@@ -389,14 +399,19 @@ safeHandler p pl = handle $ \e -> do
     pokeCStringLen x l p pl
     return 1
 
+-- FIXME: safeYYHandler is enabled to detect whether Nginx is exiting after
+-- catching of ThreadKilled async exception, but this is only needed inside
+-- asyncIOCommon where all async exceptions are masked due to function async.
+-- Perhaps in future umasked async handlers will be implemented, and thus this
+-- feature of safeYYHandler will be finally used.
 safeYYHandler :: IO (L.ByteString, (CUInt, Bool)) ->
     IO (L.ByteString, (CUInt, Bool))
 safeYYHandler = handle $ \e ->
     return (C8L.pack $ show e,
-            (1, case asyncExceptionFromException e of
-                    Nothing -> False
-                    Just ae -> ae == ThreadKilled
-            )
+               (1, case asyncExceptionFromException e of
+                       Nothing -> False
+                       Just ae -> ae == ThreadKilled
+               )
            )
 {-# INLINE safeYYHandler #-}
 
@@ -458,15 +473,15 @@ asyncIOFlag1b = L.toStrict $ runPut $ putInt8 1
 asyncIOFlag8b :: B.ByteString
 asyncIOFlag8b = L.toStrict $ runPut $ putInt64host 1
 
-asyncIOCommon :: IO C8L.ByteString ->
+asyncIOCommon :: IO (C8L.ByteString, Bool) ->
     CInt -> Bool -> Ptr (Ptr NgxStrType) -> Ptr CInt ->
     Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO (StablePtr (Async ()))
 asyncIOCommon a (I fd) efd p pl pr spd =
     async
     (do
         (s, (r, exiting)) <- safeYYHandler $ do
-            s <- a
-            fmap (flip (,) (0, False)) $ return $! s
+            (s, exiting) <- a
+            fmap (flip (,) (0, exiting)) $ return $! s
         pokeLazyByteString s p pl spd
         poke pr r
         if exiting
@@ -498,21 +513,26 @@ asyncIOYY f x (I n) fd (I fdlk) (ToBool efd) (ToBool fstRun) =
     (do
         exiting <- if fstRun && fdlk /= -1
                        then snd <$>
-                           iterateUntil ((True ==) . fst)
-                           (safeWaitToSetLock fdlk
-                                (WriteLock, AbsoluteSeek, 0, 0) >>
-                                    return (True, False)
+                           interruptibleBlock
+                           (
+                               iterateUntil ((True ==) . fst)
+                               (safeWaitToSetLock fdlk
+                                   (WriteLock, AbsoluteSeek, 0, 0) >>
+                                       return (True, False)
+                               )
+                               `catches`
+                               [E.Handler $
+                                   return . flip (,) False . not . isEINTR
+                               ,E.Handler $
+                                   return . (,) True . (== ThreadKilled)
+                               ]
                            )
-                           `catches`
-                           [E.Handler $ return . flip (,) False . not . isEINTR
-                           ,E.Handler $ return . (,) True . (== ThreadKilled)
-                           ]
                        else return False
         if exiting
-            then return C8L.empty
+            then return (C8L.empty, True)
             else do
                 x' <- B.unsafePackCStringLen (x, n)
-                f x' fstRun
+                flip (,) False <$> f x' fstRun
     ) fd efd
 
 asyncIOYYY :: IOYYY -> Ptr NgxStrType -> CInt -> CString -> CInt ->
@@ -523,7 +543,7 @@ asyncIOYYY f b (I m) x (I n) fd (ToBool efd) =
     (do
         b' <- peekNgxStringArrayLenY b m
         x' <- B.unsafePackCStringLen (x, n)
-        f b' x'
+        flip (,) False <$> f b' x'
     ) fd efd
 
 bS :: BS -> CString -> CInt ->
@@ -624,7 +644,7 @@ safeWaitToSetLock (Fd fd) lock = allocaLock lock $
 foreign export ccall ngxExportTerminateTask :: StablePtr (Async ()) -> IO ()
 
 ngxExportTerminateTask :: StablePtr (Async ()) -> IO ()
-ngxExportTerminateTask = deRefStablePtr >=> cancel
+ngxExportTerminateTask = deRefStablePtr >=> uninterruptibleCancel
 
 foreign export ccall ngxExportVersion :: Ptr CInt -> CInt -> IO CInt
 
