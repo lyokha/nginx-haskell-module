@@ -229,7 +229,6 @@ ngx_string(
 "import qualified Control.Monad as AUX_NGX\n"
 "import qualified Control.Monad.Loops as AUX_NGX\n"
 "import qualified Control.Exception as AUX_NGX\n"
-"import qualified GHC.IO as AUX_NGX\n"
 "import qualified GHC.IO.Exception as AUX_NGX\n"
 "import qualified GHC.IO.Device as AUX_NGX\n"
 "import qualified Control.Concurrent.Async as AUX_NGX\n"
@@ -300,12 +299,6 @@ ngx_string(
 "    poke p x@(AUX_NGX_STR_TYPE n s) = do\n"
 "        AUX_NGX.poke (AUX_NGX.castPtr p) n\n"
 "        AUX_NGX.poke (AUX_NGX.plusPtr p $ AUX_NGX.alignment x) s\n\n"
-
-"-- BEWARE: in Control.Exception and GHC.IO from base 4.9.0.0 and newer\n"
-"-- there is a better function named interruptible.\n"
-"aux_ngx_interruptibleBlock :: IO a -> IO a\n"
-"aux_ngx_interruptibleBlock = AUX_NGX.unsafeUnmask\n"
-"{-# INLINE aux_ngx_interruptibleBlock #-}\n\n"
 
 "aux_ngx_safeMallocBytes :: Int -> IO (AUX_NGX.Ptr a)\n"
 "aux_ngx_safeMallocBytes =\n"
@@ -404,22 +397,15 @@ ngx_string(
 "    aux_ngx_pokeCStringLen x l p pl\n"
 "    return 1\n\n"
 
-"-- FIXME: safeYYHandler is enabled to detect whether Nginx is exiting after\n"
-"-- catching of ThreadKilled async exception, but this is only needed inside\n"
-"-- asyncIOCommon where all async exceptions are masked due to function async."
-"\n"
-"-- Perhaps in future umasked async handlers will be implemented, and thus this"
-"\n"
-"-- feature of safeYYHandler will be finally used.\n"
 "aux_ngx_safeYYHandler :: IO (AUX_NGX_BSL.ByteString, (AUX_NGX.CUInt, Bool)) ->"
 "\n"
 "    IO (AUX_NGX_BSL.ByteString, (AUX_NGX.CUInt, Bool))\n"
 "aux_ngx_safeYYHandler = AUX_NGX.handle $ \\e ->\n"
 "    return (AUX_NGX_BSLC8.pack $ show e,\n"
-"               (1, case AUX_NGX.asyncExceptionFromException e of\n"
-"                       Nothing -> False\n"
-"                       Just ae -> ae == AUX_NGX.ThreadKilled\n"
-"               )\n"
+"            (1, case AUX_NGX.asyncExceptionFromException e of\n"
+"                    Nothing -> False\n"
+"                    Just ae -> ae == AUX_NGX.ThreadKilled\n"
+"            )\n"
 "           )\n"
 "{-# INLINE aux_ngx_safeYYHandler #-}\n\n"
 
@@ -502,7 +488,7 @@ ngx_string(
 "aux_ngx_asyncIOFlag8b =\n"
 "    AUX_NGX_BSL.toStrict $ AUX_NGX.runPut $ AUX_NGX.putInt64host 1\n\n"
 
-"aux_ngx_asyncIOCommon :: IO (AUX_NGX_BSL.ByteString, Bool) ->\n"
+"aux_ngx_asyncIOCommon :: IO AUX_NGX_BSL.ByteString ->\n"
 "    AUX_NGX.CInt -> Bool -> AUX_NGX.Ptr (AUX_NGX.Ptr AUX_NGX_STR_TYPE) ->\n"
 "    AUX_NGX.Ptr AUX_NGX.CInt -> AUX_NGX.Ptr AUX_NGX.CUInt ->\n"
 "    AUX_NGX.Ptr (AUX_NGX.StablePtr AUX_NGX_BSL.ByteString) ->\n"
@@ -511,8 +497,8 @@ ngx_string(
 "    AUX_NGX.async\n"
 "    (do\n"
 "        (s, (r, exiting)) <- aux_ngx_safeYYHandler $ do\n"
-"            (s, exiting) <- a\n"
-"            fmap (flip (,) (0, exiting)) $ return $! s\n"
+"            s <- a\n"
+"            fmap (flip (,) (0, False)) $ return $! s\n"
 "        aux_ngx_pokeLazyByteString s p pl spd\n"
 "        AUX_NGX.poke pr r\n"
 "        if exiting\n"
@@ -557,26 +543,25 @@ ngx_string(
 "    (do\n"
 "        exiting <- if fstRun && fdlk /= -1\n"
 "                       then snd <$>\n"
-"                           aux_ngx_interruptibleBlock\n"
-"                           (\n"
-"                               AUX_NGX.iterateUntil ((True ==) . fst)\n"
-"                               (aux_ngx_safeWaitToSetLock fdlk\n"
-"                                   (AUX_NGX.WriteLock, AUX_NGX.AbsoluteSeek,\n"
-"                                       0, 0) >> return (True, False)\n"
-"                               )\n"
-"                               `AUX_NGX.catches`\n"
-"                               [AUX_NGX.Handler $ return .\n"
-"                                   flip (,) False . not . aux_ngx_isEINTR\n"
-"                               ,AUX_NGX.Handler $ return .\n"
-"                                   (,) True . (== AUX_NGX.ThreadKilled)\n"
-"                               ]\n"
+"                           AUX_NGX.iterateUntil ((True ==) . fst)\n"
+"                           (aux_ngx_safeWaitToSetLock fdlk\n"
+"                                (AUX_NGX.WriteLock, AUX_NGX.AbsoluteSeek,\n"
+"                                     0, 0) >> return (True, False)\n"
 "                           )\n"
+"                           `AUX_NGX.catches`\n"
+"                           [AUX_NGX.Handler $\n"
+"                                return . flip (,) False . not . "
+"aux_ngx_isEINTR\n"
+"                           ,AUX_NGX.Handler $\n"
+"                                return . (,) True . (== AUX_NGX.ThreadKilled)"
+"\n"
+"                           ]\n"
 "                       else return False\n"
 "        if exiting\n"
-"            then return (AUX_NGX_BSLC8.empty, True)\n"
+"            then return AUX_NGX_BSLC8.empty\n"
 "            else do\n"
 "                x' <- AUX_NGX_BS.unsafePackCStringLen (x, n)\n"
-"                flip (,) False <$> f x' fstRun\n"
+"                f x' fstRun\n"
 "    ) fd efd\n\n"
 
 "aux_ngx_hs_async_ioy_yy :: AUX_NGX_EXPORT ->\n"
@@ -594,7 +579,7 @@ ngx_string(
 "    (do\n"
 "        b' <- aux_ngx_peekNgxStringArrayLenY b m\n"
 "        x' <- AUX_NGX_BS.unsafePackCStringLen (x, n)\n"
-"        flip (,) False <$> f b' x'\n"
+"        f b' x'\n"
 "    ) fd efd\n\n"
 
 "aux_ngx_hs_b_s :: AUX_NGX_EXPORT ->\n"
@@ -729,8 +714,7 @@ ngx_string(
 "    AUX_NGX.StablePtr (AUX_NGX.Async ()) -> IO ()\n\n"
 
 "ngxExportTerminateTask :: AUX_NGX.StablePtr (AUX_NGX.Async ()) -> IO ()\n"
-"ngxExportTerminateTask =\n"
-"    AUX_NGX.deRefStablePtr >=> AUX_NGX.uninterruptibleCancel\n\n"
+"ngxExportTerminateTask = AUX_NGX.deRefStablePtr >=> AUX_NGX.cancel\n\n"
 );
 
 static const ngx_uint_t  use_eventfd_channel =
@@ -1740,10 +1724,7 @@ ngx_http_haskell_exit_worker(ngx_cycle_t *cycle)
     service_code_vars = mcf->service_code_vars.elts;
     if (mcf->code_loaded && mcf->dl_handle != NULL) {
         for (i = 0; i < mcf->service_code_vars.nelts; i++) {
-            if (service_code_vars[i].has_locked_async_task
-                /*BEWARE: terminate shared services only! */
-                && service_code_vars[i].shm_index != NGX_ERROR)
-            {
+            if (service_code_vars[i].has_locked_async_task) {
                 mcf->terminate_async_task(
                                     service_code_vars[i].locked_async_task);
             }
