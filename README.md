@@ -27,6 +27,7 @@ Table of contents
 - [Debugging and tracing of haskell code](#debugging-and-tracing-of-haskell-code) 
 - [Some facts about efficiency](#some-facts-about-efficiency)
 - [Some facts about exceptions](#some-facts-about-exceptions)
+- [Termination of nginx worker and asynchronous exception ThreadKilled](#termination-of-nginx-worker-and-asynchronous-exception-threadkilled)
 - [Some facts about foreign functions that may block](#some-facts-about-foreign-functions-that-may-block)
 - [Troubleshooting](#troubleshooting)
 - [See also](#see-also)
@@ -792,7 +793,8 @@ You can find all the examples shown here in file
 <br><hr><a name="fnat1"><sup>**1**</sup></a>&nbsp; Starting from version *1.4.3*
 of the module you can use technique of catching *ThreadKilled* exception for
 performing persistency and cleanup actions on a worker's exit. See details in
-section [Some facts about exceptions](#some-facts-about-exceptions).
+section [Termination of nginx worker and asynchronous exception
+ThreadKilled](#termination-of-nginx-worker-and-asynchronous-exception-threadkilled).
 
 Client request body handlers
 ----------------------------
@@ -1414,9 +1416,11 @@ made exception safe. Now synchronous variable handlers return *NGX_ERROR*
 Content handlers log exceptions with level *error*, and return HTTP status
 *500*.
 
-*Termination of nginx worker and asynchronous exception ThreadKilled.* When an
-nginx worker terminates, it calls function *cancel* from package *async* for all
-asynchronous services. Function *cancel* sends asynchronous exception
+Termination of nginx worker and asynchronous exception ThreadKilled
+-------------------------------------------------------------------
+
+When an nginx worker terminates, it calls function *cancel* from package *async*
+for all asynchronous services. Function *cancel* sends asynchronous exception
 *ThreadKilled* to a corresponding haskell async thread and waits until it exits.
 This means that nginx worker may block if the service thread is blocked on
 *unsafe* blocking foreign function (see also [the next
