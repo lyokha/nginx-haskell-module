@@ -1335,8 +1335,9 @@ Some facts about efficiency
 
 - Advantages
 
-    + The haskell library gets compiled at the very start of nginx and later
-      loaded with *dlopen()* in every nginx worker process.
+    + The haskell code gets compiled (in standalone mode) in a library at the
+      very start of nginx and later loaded with *dlopen()* in every nginx worker
+      process.
     + Nginx strings are passed to haskell exported functions as strings with
       lengths, no extra allocations are needed.
     + *Template Haskell* extension makes it possible to read files into the
@@ -1347,11 +1348,11 @@ Some facts about efficiency
 - Pitfalls
 
     + (This does not refer to *bytestrings*.) Haskell strings are simple lists,
-      they are not contiguously allocated (but on the other hand they are lazy,
+      they are not contiguously allocated (but on the other hand, they are lazy
       which usually means efficient).
     + Haskell exported functions of types *S_S*, *S_SS* and *S_LS* allocate new
       strings with *malloc()* which get freed upon the request termination.
-      Strings passed by functions of types *Y_Y*, *IOY_Y* and all async
+      Strings returned by functions of types *Y_Y*, *IOY_Y* and all async
       handlers (i.e. by all functions that return lazy bytestrings except for
       content handlers) are copied into a single buffer, but only when
       underlying lazy bytestrings have more than one chunks.
