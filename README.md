@@ -767,8 +767,9 @@ Put locations for showing data collected by the services and we are done.
 Please notice, that service handlers can be interrupted at any point of their
 execution when a worker exits. This means that they cannot be used when reliable
 transactional semantics is required, e.g. when they have to write into a file
-for persistency. To work this around, a *callback location* (see details about
-the service variable update callback approach in [this
+for persistency<sup>[1](#fnat1)</sup>. To work this around, a *callback
+location* (see details about the service variable update callback approach in
+[this
 section](#service-variables-in-shared-memory-and-integration-with-other-nginx-modules))
 with a *synchronous* IO handler (see the next paragraphs) can be declared: the
 handler would write into the file reliably when it is called after a shared
@@ -787,6 +788,11 @@ NGX_EXPORT_IOY_Y (getIOValue)
 
 You can find all the examples shown here in file
 [test/tsung/nginx-async.conf](test/tsung/nginx-async.conf).
+
+<br><hr><a name="fnat1"><sup>**1**</sup></a>&nbsp; Starting from version *1.4.3*
+of the module you can use technique of catching *ThreadKilled* exception for
+performing persistency and cleanup actions on a worker's exit. See details in
+section [Some facts about exceptions](#some-facts-about-exceptions).
 
 Client request body handlers
 ----------------------------
@@ -1407,6 +1413,94 @@ made exception safe. Now synchronous variable handlers return *NGX_ERROR*
 (effectively, an empty string) on an exception, and log it with level *error*.
 Content handlers log exceptions with level *error*, and return HTTP status
 *500*.
+
+*Termination of nginx worker and asynchronous exception ThreadKilled.* When an
+nginx worker terminates, it calls function *cancel* from package *async* for all
+asynchronous services. Function *cancel* sends asynchronous exception
+*ThreadKilled* to a corresponding haskell async thread and waits until it exits.
+This means that nginx worker may block if the service thread is blocked on
+*unsafe* blocking foreign function (see also [the next
+section](#some-facts-about-foreign-functions-that-may-block)), or it catches
+*ThreadKilled* with other exceptions and re-iterates some internal loop, or it
+is masked from asynchronous exceptions. Imagine the following sketch of a
+service.
+
+```haskell
+serviceWithALoop _ = const go
+    where go = (do
+                   -- wait for an event and return result
+                   -- (do not use unsafe blocking foreign functions here!)
+               )
+               `catch` (const waitAndGo :: SomeException -> IO L.ByteString)
+          waitAndGo = threadDelaySec 1 >> go
+ngxExportServiceIOYY 'serviceWithALoop
+```
+
+This service will catch *ThreadKilled* along with other exceptions because all
+exceptions match *SomeException*, and re-iterate the loop by calling *go*. When
+nginx worker calls *cancel*, the *ThreadKilled* exception will be caught, the
+loop will re-iterate, and the worker will never end. We could treat
+*ThreadKilled* specially...
+
+```haskell
+serviceWithALoop _ = const go
+    where go = (do
+                   -- wait for an event and return result
+                   -- (do not use unsafe blocking foreign functions here!)
+               )
+               `catches`
+               [Handler (\e -> if e == ThreadKilled
+                                   then return L.empty
+                                   else waitAndGo
+                        )
+               ,Handler (const waitAndGo :: SomeException -> IO L.ByteString)
+               ]
+          waitAndGo = threadDelaySec 1 >> go
+ngxExportServiceIOYY 'serviceWithALoop
+```
+
+...but this won't help a lot: *catches* still makes tail call of the *go* body
+for other exceptions, and after the first non-*ThreadKilled* exception caught it
+masks *go* from asynchronous exceptions thus making the service unresponsive to
+*ThreadKilled*. A good solution would be avoiding re-iterations upon *catch*.
+
+```haskell
+serviceWithALoop _ = const go
+    where go = (do
+                   -- wait for an event and return result
+                   -- (do not use unsafe blocking foreign functions here!)
+               )
+               `catch` (waitAndThrow :: SomeException -> IO L.ByteString)
+          waitAndGo = threadDelaySec 1 >> go
+          waitAndThrow e = threadDelaySec 1 >> throw e
+ngxExportServiceIOYY 'serviceWithALoop
+```
+
+Now when *any* exception gets caught, the service waits 1 second and re-throw it
+without re-iteration of *go*. The exception will be caught inside the service
+wrapper code and even kindly reported in nginx log! But we can still do better!
+*ThreadKilled* can be used to perform service cleanup and persistency actions
+such as saving data on a disk etc.
+
+```haskell
+serviceWithALoop _ = const go
+    where go = (do
+                   -- wait for an event and return result
+                   -- (do not use unsafe blocking foreign functions here!)
+               )
+               `catches`
+               [Handler (\e -> if e == ThreadKilled
+                                   then
+                                       -- make cleanup and persistency actions
+                                       return L.empty
+                                   else waitAndThrow e
+                        )
+               ,Handler (waitAndThrow :: SomeException -> IO L.ByteString)
+               ]
+          waitAndGo = threadDelaySec 1 >> go
+          waitAndThrow e = threadDelaySec 1 >> throw e
+ngxExportServiceIOYY 'serviceWithALoop
+```
 
 Some facts about foreign functions that may block
 -------------------------------------------------
