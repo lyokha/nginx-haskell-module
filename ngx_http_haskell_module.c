@@ -979,8 +979,8 @@ static void ngx_http_haskell_unload(ngx_cycle_t *cycle, ngx_uint_t exiting);
 static ngx_int_t ngx_http_haskell_init_services(ngx_cycle_t *cycle);
 static void ngx_http_haskell_stop_services(ngx_cycle_t *cycle);
 static ngx_int_t ngx_http_haskell_run_service(ngx_cycle_t *cycle,
-                    ngx_http_haskell_service_code_var_data_t *service_code_var,
-                    ngx_uint_t service_first_run);
+    ngx_http_haskell_service_code_var_data_t *service_code_var,
+    ngx_uint_t service_first_run);
 static char *ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd,
@@ -1805,8 +1805,8 @@ ngx_http_haskell_shm_lock_init(ngx_cycle_t *cycle, ngx_file_t *out,
 
     ngx_memzero(out, sizeof(ngx_file_t));
     out->name.len = path.len +
-                    haskell_shm_file_lock_prefix.len + zone_name.len + 1 +
-                    len + haskell_shm_file_lock_suffix.len;
+            haskell_shm_file_lock_prefix.len + zone_name.len + 1 + len +
+            haskell_shm_file_lock_suffix.len;
 
     out->name.data = ngx_pnalloc(cycle->pool, out->name.len + 1);
     if (out->name.data == NULL) {
@@ -1839,8 +1839,7 @@ ngx_http_haskell_shm_lock_init(ngx_cycle_t *cycle, ngx_file_t *out,
     out->fd = ngx_open_file(out->name.data, NGX_FILE_WRONLY,
                             NGX_FILE_TRUNCATE|O_EXCL,
                             NGX_FILE_OWNER_ACCESS);
-    if (out->fd == NGX_INVALID_FILE && ngx_errno == NGX_EEXIST_FILE)
-    {
+    if (out->fd == NGX_INVALID_FILE && ngx_errno == NGX_EEXIST_FILE) {
         out->fd = ngx_open_file(out->name.data, NGX_FILE_WRONLY,
                                 NGX_FILE_TRUNCATE,
                                 NGX_FILE_OWNER_ACCESS);
