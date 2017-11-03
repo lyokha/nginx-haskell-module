@@ -993,8 +993,8 @@ Here is an example.
     # ...
 
         location /requires_valid_global_state {
-            haskell_run updateGlobalState $hs_dummy $_upd__hs_shared_variable;
-            haskell_run payloadProcess $hs_result "<Passed data>$hs_dummy";
+            haskell_run updateGlobalState $_upd_ $_upd__hs_shared_data;
+            haskell_run payloadProcess $hs_result "${_upd_}<payload if any>";
             echo $hs_result;
         }
 ```
@@ -1027,10 +1027,10 @@ In this example the global state is stored in some way in variable
 ``$hs_shared_data`` resided in shared memory. It is supposed that all requests
 in location */requires_valid_global_state* depend on the valid global state.
 This state gets updated before running handler *payloadProcess* in
-*updateGlobalState* using *update variable* ``$_upd__hs_shared_variable``.
-Handler *updateGlobalState* updates the global state and returns an empty string
-in ``$hs_dummy``. Gluing its value to data passed in *payloadProcess* ensures
-that the global state has been updated.
+*updateGlobalState* using *update variable* ``$_upd__hs_shared_data``. Handler
+*updateGlobalState* updates the global state and returns an empty string in
+``$_upd_``. Gluing its value to payload data passed in *payloadProcess*
+ensures that the global state has been updated.
 
 Reloading of haskell code and static content
 --------------------------------------------
