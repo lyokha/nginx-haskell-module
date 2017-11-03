@@ -21,6 +21,7 @@ Table of contents
 - [Client request body handlers](#client-request-body-handlers)
 - [Miscellaneous nginx directives](#miscellaneous-nginx-directives)
 - [Service variables in shared memory and integration with other nginx modules](#service-variables-in-shared-memory-and-integration-with-other-nginx-modules)
+- [Shared services and global states](#shared-services-and-global-states)
 - [Reloading of haskell code and static content](#reloading-of-haskell-code-and-static-content)
 - [Wrapping haskell code organization](#wrapping-haskell-code-organization)
 - [Static linkage against basic haskell libraries](#static-linkage-against-basic-haskell-libraries)
@@ -945,6 +946,86 @@ See an example of using this approach in
 
 This approach can also be used to provide reliable transactional semantics for
 service handlers.
+
+Shared services and global states
+---------------------------------
+
+Starting from version *1.4* of this module, all services in which corresponding
+variables are listed in directive *haskell_service_var_in_shm* became *shared*.
+This means that only one worker runs such a service while in other workers
+identical services wait on file locks. This let drastically reduce involved
+resources when many workers are running. However, this approach has downsides as
+well. When all services run on all workers, they may have global states where
+they can store data retrieved from the outer world. This data could be used in
+processing client requests. Shared services cannot rely upon global states
+because there is only one worker that continuously updates its global state.
+
+Let's try to figure out how services on all workers could obtain the valid state
+to process client requests at any time. The active worker could store the global
+state in the service variable resided in shared memory and thus available in all
+workers. When a client would come to a worker, it could pass the variable to the
+haskell side in a handler. But this would be very inefficient. In this approach
+the variable's contents must be copied from shared memory and interpreted in the
+haskell handler on every request! Which is basically unnecessary because service
+data do not change every millisecond. To mitigate this problem, special *update
+variables* are created to accompany every service variable in shared memory.
+They have names with prefix *\_upd\_\_* and evaluate to the corresponding
+service variable value only when its data really changes. Being passed to
+haskell handlers, their non-empty values may be used to update global states.
+However, they require careful treatment. It is better to use a separate handler
+that only updates the global state and does not do anything else, otherwise
+uncaught exceptions from custom code may ruin the change of the state. This
+handler must return an empty string in all cases. This returned empty value must
+be *glued* to the value of the payload handler that requires the updated global
+state.
+
+Here is an example.
+
+```nginx
+
+    haskell_run_service getDataFromOuterWorld $hs_shared_data;
+
+    haskell_service_var_in_shm outer_worls 64k /tmp $hs_shared_data;
+
+    # ...
+
+        location /requires_valid_global_state {
+            haskell_run updateGlobalState $hs_dummy $_upd__hs_shared_variable;
+            haskell_run payloadProcess $hs_result "<Passed data>$hs_dummy;
+            echo $hs_result;
+        }
+```
+
+```haskell
+globalState :: IORef GlobalStateType
+globalState = unsafePerformIO $ newIORef GlobalStateTypeCons
+{-# NOINLINE globalState #-}
+
+-- ...
+
+getDataFromOuterWorld s firstRun = do
+    -- retrieving data from outer world
+    -- nginx will store it in $hs_shared_data variable in shared memory
+ngxExportServiceIOYY 'getDataFromOuterWorld
+
+updateGlobalState s = do
+    maybe (return ()) (writeIORef globalState) $ decodeStrict s
+    return L.empty
+ngxExportIOYY 'updateGlobalState
+
+payloadProcess s = do
+    -- useful processing of s that requires globalState to be valid
+ngxExportIOYY 'payloadProcess
+```
+
+In this example the global state is stored in some way in variable
+``$hs_shared_data`` resided in shared memory. It is supposed that all requests
+in location */requires_valid_global_state* depend on the valid global state.
+This state gets updated before running handler *payloadProcess* in
+*updateGlobalState* using *update variable* ``$_upd__hs_shared_variable``.
+Handler *updateGlobalState* updates the global state and returns an empty string
+in ``$hs_dummy``. Gluing its value to data passed in *payloadProcess* ensures
+that the global state has been updated.
 
 Reloading of haskell code and static content
 --------------------------------------------
