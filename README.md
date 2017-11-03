@@ -981,7 +981,10 @@ state.
 
 Here is an example.
 
+*Nginx configuration.*
+
 ```nginx
+    haskell load /var/lib/nginx/haskell_lib.so;
 
     haskell_run_service getDataFromOuterWorld $hs_shared_data;
 
@@ -991,10 +994,12 @@ Here is an example.
 
         location /requires_valid_global_state {
             haskell_run updateGlobalState $hs_dummy $_upd__hs_shared_variable;
-            haskell_run payloadProcess $hs_result "<Passed data>$hs_dummy;
+            haskell_run payloadProcess $hs_result "<Passed data>$hs_dummy";
             echo $hs_result;
         }
 ```
+
+*Code from the haskell library.*
 
 ```haskell
 globalState :: IORef GlobalStateType
