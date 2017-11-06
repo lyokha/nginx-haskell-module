@@ -1013,6 +1013,7 @@ getDataFromOuterWorld s firstRun = do
     -- nginx will store it in $hs_shared_data variable in shared memory
 ngxExportServiceIOYY 'getDataFromOuterWorld
 
+updateGlobalState (B.null -> True) = return L.empty
 updateGlobalState s = do
     maybe (return ()) (writeIORef globalState) $ decodeStrict s
     return L.empty
@@ -1027,10 +1028,10 @@ In this example the global state is stored in some way in variable
 ``$hs_shared_data`` resided in shared memory. It is supposed that all requests
 in location */requires_valid_global_state* depend on the valid global state.
 This state gets updated before running handler *payloadProcess* in
-*updateGlobalState* using *update variable* ``$_upd__hs_shared_data``. Handler
-*updateGlobalState* updates the global state and returns an empty string in
-``$_upd_``. Gluing its value to payload data passed in *payloadProcess*
-ensures that the global state has been updated.
+*updateGlobalState* when *update variable* ``$_upd__hs_shared_data`` is not
+empty. Handler *updateGlobalState* updates the global state and returns an empty
+string in ``$_upd_``. Gluing its value to the payload data passed in
+*payloadProcess* ensures that the global state has been updated.
 
 Reloading of haskell code and static content
 --------------------------------------------
