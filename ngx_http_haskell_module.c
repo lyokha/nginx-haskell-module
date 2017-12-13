@@ -3306,8 +3306,8 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
     ngx_http_complex_value_t            *args;
     ngx_str_t                            arg1, arg2, *argn = NULL;
     char                                *res = NULL;
-    ngx_str_t                           *res_yy, buf_yy;
-    HsStablePtr                          locked_bytestring;
+    ngx_str_t                           *res_yy = NULL, buf_yy;
+    HsStablePtr                          locked_bytestring = NULL;
     HsInt32                              len;
     HsWord32                             err;
     ngx_str_t                            reslen;
@@ -3843,9 +3843,9 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
     ngx_chain_t                              *out, *out_cur;
     ngx_buf_t                                *b;
     ngx_pool_cleanup_t                       *cln;
-    ngx_http_haskell_content_handler_data_t  *clnd;
+    ngx_http_haskell_content_handler_data_t  *clnd = NULL;
     ngx_pool_t                               *pool;
-    HsStablePtr                               locked_bytestring;
+    HsStablePtr                               locked_bytestring = NULL;
     ngx_uint_t                                def_handler;
     ngx_int_t                                 rc;
 
@@ -4559,7 +4559,7 @@ ngx_http_haskell_open_async_event_channel(ngx_fd_t fd[2])
 #endif
     return fd[0] == NGX_INVALID_FILE ? NGX_ERROR : NGX_OK;
 #else
-    return pipe2(fd, O_NONBLOCK) == -1 ? NGX_ERROR : NGX_OK;
+    return pipe(fd) == -1 ? NGX_ERROR : NGX_OK;
 #endif
 }
 
