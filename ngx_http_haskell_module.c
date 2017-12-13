@@ -4559,7 +4559,15 @@ ngx_http_haskell_open_async_event_channel(ngx_fd_t fd[2])
 #endif
     return fd[0] == NGX_INVALID_FILE ? NGX_ERROR : NGX_OK;
 #else
-    return pipe(fd) == -1 ? NGX_ERROR : NGX_OK;
+    if (pipe(fd) == -1) {
+        return NGX_ERROR;
+    }
+    if (fcntl(fd[0], F_SETFL, O_NONBLOCK) == -1
+        || fcntl(fd[1], F_SETFL, O_NONBLOCK) == -1)
+    {
+        return NGX_ERROR;
+    }
+    return NGX_OK;
 #endif
 }
 
