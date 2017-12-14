@@ -4565,6 +4565,7 @@ ngx_http_haskell_open_async_event_channel(ngx_fd_t fd[2])
     if (fcntl(fd[0], F_SETFL, O_NONBLOCK) == -1
         || fcntl(fd[1], F_SETFL, O_NONBLOCK) == -1)
     {
+        ngx_http_haskell_close_async_event_channel(NULL, fd);
         return NGX_ERROR;
     }
     return NGX_OK;
@@ -4578,7 +4579,7 @@ ngx_http_haskell_close_async_event_channel(ngx_log_t *log, ngx_fd_t fd[2])
     ngx_int_t  i;
 
     for (i = 0; i < (fd[0] == fd[1] ? 1 : 2); i++) {
-        if (close(fd[i]) == -1) {
+        if (close(fd[i]) == -1 && log != NULL) {
             ngx_log_error(NGX_LOG_CRIT, log, ngx_errno,
                           "failed to close file descriptor of "
                           "async event channel");
