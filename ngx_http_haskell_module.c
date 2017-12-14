@@ -25,12 +25,10 @@
 #define NGX_HTTP_HASKELL_SHM_WLOCK   ngx_http_haskell_wlock(mcf->shm_lock_fd);
 #define NGX_HTTP_HASKELL_SHM_RLOCK   ngx_http_haskell_rlock(mcf->shm_lock_fd);
 #define NGX_HTTP_HASKELL_SHM_UNLOCK  ngx_http_haskell_unlock(mcf->shm_lock_fd);
-#define NGX_HTTP_HASKELL_SHM_LOCK_FILE_MODE  NGX_FILE_RDWR
 #else
 #define NGX_HTTP_HASKELL_SHM_WLOCK   ngx_shmtx_lock(&shpool->mutex);
 #define NGX_HTTP_HASKELL_SHM_RLOCK   ngx_shmtx_lock(&shpool->mutex);
 #define NGX_HTTP_HASKELL_SHM_UNLOCK  ngx_shmtx_unlock(&shpool->mutex);
-#define NGX_HTTP_HASKELL_SHM_LOCK_FILE_MODE  NGX_FILE_WRONLY
 #endif
 
 
@@ -1014,7 +1012,8 @@ static void ngx_http_haskell_exit_worker(ngx_cycle_t *cycle);
 static void ngx_http_haskell_var_init(ngx_log_t *log, ngx_array_t *cmvar,
     ngx_array_t *var, ngx_http_get_variable_pt get_handler);
 static ngx_int_t ngx_http_haskell_shm_lock_init(ngx_cycle_t *cycle,
-    ngx_file_t *out, ngx_str_t path, ngx_str_t zone_name, ngx_str_t *var_name);
+    ngx_file_t *out, ngx_str_t path, ngx_str_t zone_name, ngx_str_t *var_name,
+    int mode);
 static ngx_int_t ngx_http_haskell_run_handler(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_haskell_run_async_handler(ngx_http_request_t *r,
@@ -1667,7 +1666,8 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
                 if (ngx_http_haskell_shm_lock_init(cycle, &out,
                                                    mcf->shm_lock_files_path,
                                                    mcf->shm_zone->shm.name,
-                                                   &cmvars[index].name)
+                                                   &cmvars[index].name,
+                                                   NGX_FILE_WRONLY)
                     != NGX_OK)
                 {
                     return NGX_ERROR;
@@ -1709,7 +1709,7 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
         if (ngx_http_haskell_shm_lock_init(cycle, &out,
                                            mcf->shm_lock_files_path,
                                            mcf->shm_zone->shm.name,
-                                           NULL)
+                                           NULL, NGX_FILE_RDWR)
             != NGX_OK)
         {
             return NGX_ERROR;
@@ -1818,7 +1818,7 @@ ngx_http_haskell_var_init(ngx_log_t *log, ngx_array_t *cmvar, ngx_array_t *var,
 static ngx_int_t
 ngx_http_haskell_shm_lock_init(ngx_cycle_t *cycle, ngx_file_t *out,
                                ngx_str_t path, ngx_str_t zone_name,
-                               ngx_str_t *var_name)
+                               ngx_str_t *var_name, int mode)
 {
     ngx_int_t  len = var_name == NULL ? 0 : var_name->len;
 
@@ -1855,13 +1855,11 @@ ngx_http_haskell_shm_lock_init(ngx_cycle_t *cycle, ngx_file_t *out,
                haskell_shm_file_lock_suffix.len);
     out->name.data[out->name.len] = '\0';
 
-    out->fd = ngx_open_file(out->name.data,
-                            NGX_HTTP_HASKELL_SHM_LOCK_FILE_MODE,
+    out->fd = ngx_open_file(out->name.data, mode,
                             NGX_FILE_TRUNCATE|O_EXCL,
                             NGX_FILE_OWNER_ACCESS);
     if (out->fd == NGX_INVALID_FILE && ngx_errno == NGX_EEXIST_FILE) {
-        out->fd = ngx_open_file(out->name.data,
-                                NGX_HTTP_HASKELL_SHM_LOCK_FILE_MODE,
+        out->fd = ngx_open_file(out->name.data, mode,
                                 NGX_FILE_TRUNCATE,
                                 NGX_FILE_OWNER_ACCESS);
     }
@@ -4597,7 +4595,8 @@ ngx_http_haskell_close_async_event_channel(ngx_log_t *log, ngx_fd_t fd[2])
 
 #ifdef NGX_HTTP_HASKELL_SHM_USE_SHARED_RLOCK
 
-/* the following 2 functions are made with ngx_shmtx_lock() as a pattern */
+/* the following 2 functions are implemented with ngx_shmtx_lock() used as
+ * a pattern */
 
 static void
 ngx_http_haskell_wlock(ngx_fd_t fd)
@@ -4629,7 +4628,7 @@ ngx_http_haskell_rlock(ngx_fd_t fd)
 }
 
 
-/* this function is made with ngx_shmtx_unlock() as a pattern */
+/* this function is implemented with ngx_shmtx_unlock() used as a pattern */
 
 static void
 ngx_http_haskell_unlock(ngx_fd_t fd)
