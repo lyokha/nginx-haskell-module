@@ -22,13 +22,15 @@
 #include <ghcversion.h>
 
 #ifdef NGX_HTTP_HASKELL_SHM_USE_SHARED_RLOCK
-#define NGX_HTTP_HASKELL_SHM_WLOCK  ngx_lock_fd(mcf->shm_lock_fd);
-#define NGX_HTTP_HASKELL_SHM_RLOCK  ngx_http_haskell_rlock_fd(mcf->shm_lock_fd);
-#define NGX_HTTP_HASKELL_SHM_UNLOCK ngx_unlock_fd(mcf->shm_lock_fd);
+#define NGX_HTTP_HASKELL_SHM_WLOCK   ngx_http_haskell_wlock(mcf->shm_lock_fd);
+#define NGX_HTTP_HASKELL_SHM_RLOCK   ngx_http_haskell_rlock(mcf->shm_lock_fd);
+#define NGX_HTTP_HASKELL_SHM_UNLOCK  ngx_http_haskell_unlock(mcf->shm_lock_fd);
+#define NGX_HTTP_HASKELL_SHM_LOCK_FILE_MODE  NGX_FILE_RDWR
 #else
-#define NGX_HTTP_HASKELL_SHM_WLOCK  ngx_shmtx_lock(&shpool->mutex);
-#define NGX_HTTP_HASKELL_SHM_RLOCK  ngx_shmtx_lock(&shpool->mutex);
-#define NGX_HTTP_HASKELL_SHM_UNLOCK ngx_shmtx_unlock(&shpool->mutex);
+#define NGX_HTTP_HASKELL_SHM_WLOCK   ngx_shmtx_lock(&shpool->mutex);
+#define NGX_HTTP_HASKELL_SHM_RLOCK   ngx_shmtx_lock(&shpool->mutex);
+#define NGX_HTTP_HASKELL_SHM_UNLOCK  ngx_shmtx_unlock(&shpool->mutex);
+#define NGX_HTTP_HASKELL_SHM_LOCK_FILE_MODE  NGX_FILE_WRONLY
 #endif
 
 
@@ -1037,6 +1039,9 @@ static ngx_int_t ngx_http_haskell_open_async_event_channel(ngx_fd_t fd[2]);
 static void ngx_http_haskell_close_async_event_channel(ngx_log_t *log,
     ngx_fd_t fd[2]);
 #ifdef NGX_HTTP_HASKELL_SHM_USE_SHARED_RLOCK
+static void ngx_http_haskell_wlock(ngx_fd_t fd);
+static void ngx_http_haskell_rlock(ngx_fd_t fd);
+static void ngx_http_haskell_unlock(ngx_fd_t fd);
 static ngx_err_t ngx_http_haskell_rlock_fd(ngx_fd_t fd);
 #endif
 
@@ -1850,11 +1855,13 @@ ngx_http_haskell_shm_lock_init(ngx_cycle_t *cycle, ngx_file_t *out,
                haskell_shm_file_lock_suffix.len);
     out->name.data[out->name.len] = '\0';
 
-    out->fd = ngx_open_file(out->name.data, NGX_FILE_WRONLY,
+    out->fd = ngx_open_file(out->name.data,
+                            NGX_HTTP_HASKELL_SHM_LOCK_FILE_MODE,
                             NGX_FILE_TRUNCATE|O_EXCL,
                             NGX_FILE_OWNER_ACCESS);
     if (out->fd == NGX_INVALID_FILE && ngx_errno == NGX_EEXIST_FILE) {
-        out->fd = ngx_open_file(out->name.data, NGX_FILE_WRONLY,
+        out->fd = ngx_open_file(out->name.data,
+                                NGX_HTTP_HASKELL_SHM_LOCK_FILE_MODE,
                                 NGX_FILE_TRUNCATE,
                                 NGX_FILE_OWNER_ACCESS);
     }
@@ -4589,6 +4596,55 @@ ngx_http_haskell_close_async_event_channel(ngx_log_t *log, ngx_fd_t fd[2])
 
 
 #ifdef NGX_HTTP_HASKELL_SHM_USE_SHARED_RLOCK
+
+/* the following 2 functions are made with ngx_shmtx_lock() as a pattern */
+
+static void
+ngx_http_haskell_wlock(ngx_fd_t fd)
+{
+    ngx_err_t  err;
+
+    err = ngx_lock_fd(fd);
+
+    if (err == 0) {
+        return;
+    }
+
+    ngx_log_abort(err, "write lock on data in shared memory failed");
+}
+
+
+static void
+ngx_http_haskell_rlock(ngx_fd_t fd)
+{
+    ngx_err_t  err;
+
+    err = ngx_http_haskell_rlock_fd(fd);
+
+    if (err == 0) {
+        return;
+    }
+
+    ngx_log_abort(err, "read lock on data in shared memory failed");
+}
+
+
+/* this function is made with ngx_shmtx_unlock() as a pattern */
+
+static void
+ngx_http_haskell_unlock(ngx_fd_t fd)
+{
+    ngx_err_t  err;
+
+    err = ngx_unlock_fd(fd);
+
+    if (err == 0) {
+        return;
+    }
+
+    ngx_log_abort(err, "unlock on data in shared memory failed");
+}
+
 
 /* this function is the same as existing Nginx function ngx_lock_fd(), except
  * it uses F_RDLCK instead of F_WRLCK, and thus is capable to create shared
