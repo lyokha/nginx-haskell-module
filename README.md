@@ -18,6 +18,7 @@ Table of contents
 - [Static content in HTTP responses](#static-content-in-http-responses)
 - [Optimized unsafe content handler](#optimized-unsafe-content-handler)
 - [Asynchronous tasks with side effects](#asynchronous-tasks-with-side-effects)
+- [Asynchronous services](#asynchronous-services)
 - [Client request body handlers](#client-request-body-handlers)
 - [Miscellaneous nginx directives](#miscellaneous-nginx-directives)
 - [Service variables in shared memory and integration with other nginx modules](#service-variables-in-shared-memory-and-integration-with-other-nginx-modules)
@@ -724,12 +725,15 @@ asynchronously, however they must be finishing not in order. Be aware that
 simultaneous requests to locations */* and */delay* will probably wait for each
 other: use different semaphores for different handlers when it is not desirable.
 
+Asynchronous services
+---------------------
+
 Starting an async task that normally returns identical result on every new
-request may be unnecessarily expensive. In the above example function *getUrl*
-must presumably return the same value during a long period of time (days,
-months or even years). For this case there is another handler
-*NGX_EXPORT_SERVICE_IOY_Y* that runs an async task as a service. Let's put the
-following service function inside our haskell code.
+request may be unnecessarily expensive. In the example from the previous
+section, function *getUrl* must presumably return the same value during a long
+period of time (days, months or even years). For this case there is another
+handler *NGX_EXPORT_SERVICE_IOY_Y* that runs an async task as a service. Let's
+put the following service function inside our haskell code.
 
 ```haskell
 getUrlService url firstRun = do
