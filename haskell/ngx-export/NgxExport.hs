@@ -8,7 +8,7 @@
 -- License     :  BSD-style
 --
 -- Maintainer  :  alexey.radkov@gmail.com
--- Stability   :  experimental
+-- Stability   :  stable
 -- Portability :  non-portable (requires POSIX)
 --
 -- Export regular haskell functions for using in directives of
@@ -33,6 +33,7 @@ module NgxExport (
                  ,ngxExportHandler
                  ,ngxExportDefHandler
                  ,ngxExportUnsafeHandler
+                 ,ngxExportAsyncHandler
     -- * Re-exported data constructors from /"Foreign.C"/
     --   (for marshalling in foreign calls)
                  ,Foreign.C.CInt (..)
@@ -91,6 +92,9 @@ pattern ToBool i <- (toBool -> i)
 {-# COMPLETE ToBool :: CUInt #-}
 #endif
 
+type ContentHandlerData       = (L.ByteString, B.ByteString, Int)
+type UnsafeContentHandlerData = (B.ByteString, B.ByteString, Int)
+
 data NgxExport = SS            (String -> String)
                | SSS           (String -> String -> String)
                | SLS           ([String] -> String)
@@ -101,9 +105,9 @@ data NgxExport = SS            (String -> String)
                | BY            (B.ByteString -> Bool)
                | IOYY          (B.ByteString -> Bool -> IO L.ByteString)
                | IOYYY         (L.ByteString -> B.ByteString -> IO L.ByteString)
-               | Handler       (B.ByteString -> (L.ByteString, String, Int))
-               | UnsafeHandler (B.ByteString ->
-                                    (B.ByteString, B.ByteString, Int))
+               | Handler       (B.ByteString -> ContentHandlerData)
+               | UnsafeHandler (B.ByteString -> UnsafeContentHandlerData)
+               | AsyncHandler  (B.ByteString -> IO ContentHandlerData)
 
 let name = mkName "exportType" in do
     TyConI (DataD _ _ _ EXTRA_WILDCARD_BEFORE_CON cs _) <- reify ''NgxExport
@@ -261,7 +265,7 @@ ngxExportServiceIOYY =
        Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO (StablePtr (Async ()))|]
 
 -- | Exports a function of type
--- /'B.ByteString' -> ('L.ByteString', 'String', 'Int')/
+-- /'B.ByteString' -> ('L.ByteString', 'B.ByteString', 'Int')/
 -- for using in directives /haskell_content/ and /haskell_static_content/.
 --
 -- The first element in the returned /3-tuple/ of the exported function is
@@ -271,7 +275,7 @@ ngxExportHandler :: Name -> Q [Dec]
 ngxExportHandler =
     ngxExport 'Handler 'handler
     [t|CString -> CInt -> Ptr (Ptr NgxStrType) -> Ptr CInt ->
-       Ptr CString -> Ptr CSize -> Ptr CInt ->
+       Ptr CString -> Ptr CSize -> Ptr (StablePtr B.ByteString) -> Ptr CInt ->
        Ptr (StablePtr L.ByteString) -> IO CUInt|]
 
 -- | Exports a function of type
@@ -298,6 +302,21 @@ ngxExportUnsafeHandler =
     ngxExport 'UnsafeHandler 'unsafeHandler
     [t|CString -> CInt -> Ptr CString -> Ptr CSize ->
        Ptr CString -> Ptr CSize -> Ptr CInt -> IO CUInt|]
+
+-- | Exports a function of type
+-- /'B.ByteString' -> IO ('L.ByteString', 'B.ByteString', 'Int')/
+-- for using in directive /haskell_async_content/.
+--
+-- The first element in the returned /3-tuple/ of the exported function is
+-- the /content/, the second is the /content type/, and the third is the
+-- /HTTP status/.
+ngxExportAsyncHandler :: Name -> Q [Dec]
+ngxExportAsyncHandler =
+    ngxExport 'AsyncHandler 'asyncHandler
+    [t|CString -> CInt -> CInt -> CUInt ->
+       Ptr CString -> Ptr CSize -> Ptr (StablePtr B.ByteString) -> Ptr CInt ->
+       Ptr (Ptr NgxStrType) -> Ptr CInt ->
+       Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO (StablePtr (Async ()))|]
 
 data NgxStrType = NgxStrType CSize CString
 
@@ -383,6 +402,12 @@ pokeLazyByteString s p pl spd = do
     when (l /= 1) (poke p t) >> poke pl l
     when (t /= nullPtr) $ newStablePtr s >>= poke spd
 
+pokeContentTypeAndStatus :: B.ByteString ->
+    Ptr CString -> Ptr CSize -> Ptr CInt -> CInt -> IO ()
+pokeContentTypeAndStatus ct pct plct pst st = do
+    PtrLen sct lct <- B.unsafeUseAsCStringLen ct return
+    pokeCStringLen sct lct pct plct >> poke pst st
+
 safeHandler :: Ptr CString -> Ptr CInt -> IO CUInt -> IO CUInt
 safeHandler p pl = handle $ \e -> do
     PtrLen x l <- safeNewCStringLen $ show (e :: SomeException)
@@ -458,7 +483,7 @@ asyncIOFlag1b = L.toStrict $ runPut $ putInt8 1
 asyncIOFlag8b :: B.ByteString
 asyncIOFlag8b = L.toStrict $ runPut $ putInt64host 1
 
-asyncIOCommon :: IO (C8L.ByteString, Bool) ->
+asyncIOCommon :: IO (L.ByteString, Bool) ->
     CInt -> Bool -> Ptr (Ptr NgxStrType) -> Ptr CInt ->
     Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO (StablePtr (Async ()))
 asyncIOCommon a (I fd) efd p pl pr spd =
@@ -509,7 +534,7 @@ asyncIOYY f x (I n) fd (I fdlk) (ToBool efd) (ToBool fstRun) =
                            ]
                        else return False
         if exiting
-            then return (C8L.empty, True)
+            then return (L.empty, True)
             else do
                 x' <- B.unsafePackCStringLen (x, n)
                 flip (,) False <$> f x' fstRun
@@ -524,6 +549,21 @@ asyncIOYYY f b (I m) x (I n) fd (ToBool efd) =
         b' <- peekNgxStringArrayLenY b m
         x' <- B.unsafePackCStringLen (x, n)
         flip (,) False <$> f b' x'
+    ) fd efd
+
+asyncHandler :: AsyncHandler -> CString -> CInt ->
+    CInt -> CUInt ->
+    Ptr CString -> Ptr CSize -> Ptr (StablePtr B.ByteString) -> Ptr CInt ->
+    Ptr (Ptr NgxStrType) -> Ptr CInt ->
+    Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO (StablePtr (Async ()))
+asyncHandler f x (I n) fd (ToBool efd) pct plct spct pst =
+    asyncIOCommon
+    (do
+        x' <- B.unsafePackCStringLen (x, n)
+        (s, ct, I st) <- f x'
+        (return $! s) >> pokeContentTypeAndStatus ct pct plct pst st
+        newStablePtr ct >>= poke spct
+        return (s, False)
     ) fd efd
 
 bS :: BS -> CString -> CInt ->
@@ -560,14 +600,14 @@ bY f x (I n) p pl =
         return r
 
 handler :: Handler -> CString -> CInt -> Ptr (Ptr NgxStrType) -> Ptr CInt ->
-    Ptr CString -> Ptr CSize -> Ptr CInt ->
+    Ptr CString -> Ptr CSize -> Ptr (StablePtr B.ByteString) -> Ptr CInt ->
     Ptr (StablePtr L.ByteString) -> IO CUInt
-handler f x (I n) p pl pct plct pst spd =
+handler f x (I n) p pl pct plct spct pst spd =
     safeHandler pct pst $ do
         (s, ct, I st) <- f <$> B.unsafePackCStringLen (x, n)
-        PtrLen sct lct <- newCStringLen ct
-        pokeCStringLen sct lct pct plct >> poke pst st
+        pokeContentTypeAndStatus ct pct plct pst st
         pokeLazyByteString s p pl spd
+        newStablePtr ct >>= poke spct
         return 0
 
 defHandler :: YY -> CString -> CInt ->
@@ -584,8 +624,7 @@ unsafeHandler :: UnsafeHandler -> CString -> CInt -> Ptr CString -> Ptr CSize ->
 unsafeHandler f x (I n) p pl pct plct pst =
     safeHandler pct pst $ do
         (s, ct, I st) <- f <$> B.unsafePackCStringLen (x, n)
-        PtrLen sct lct <- B.unsafeUseAsCStringLen ct return
-        pokeCStringLen sct lct pct plct >> poke pst st
+        pokeContentTypeAndStatus ct pct plct pst st
         PtrLen t l <- B.unsafeUseAsCStringLen s return
         pokeCStringLen t l p pl
         return 0

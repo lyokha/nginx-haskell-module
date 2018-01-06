@@ -50,7 +50,8 @@ http {
     sendfile            on;
 
     haskell ghc_extra_options
-                -hide-package regex-pcre -XFlexibleInstances -XTupleSections;
+                -hide-package regex-pcre
+                -XFlexibleInstances -XMagicHash -XTupleSections;
 
     haskell compile standalone /tmp/ngx_haskell.hs '
 
@@ -62,6 +63,8 @@ import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Lazy.Char8 as C8L
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as C8
+import           Data.ByteString.Unsafe
+import           Data.ByteString.Internal (accursedUnutterablePerformIO)
 import           Text.Pandoc
 import           Text.Pandoc.Builder
 import qualified Data.Text.Encoding as T
@@ -134,13 +137,15 @@ urlDecode = fromMaybe "" . doURLDecode
 NGX_EXPORT_S_S (urlDecode)
 
 -- compatible with Pandoc 2.0 (will not compile for older versions)
-fromMd (T.decodeUtf8 -> x) = uncurry (, "text/html", ) $
+fromMd (T.decodeUtf8 -> x) = uncurry (, packLiteral 9 "text/html"#, ) $
     case runPure $ readMarkdown def x >>= writeHtml of
         Right p -> (fromText p, 200)
         Left (displayException -> e) -> (case runPure $ writeError e of
                                              Right p -> fromText p
                                              Left  _ -> C8L.pack e, 500)
-    where fromText = C8L.fromStrict . T.encodeUtf8
+    where packLiteral l s =
+              accursedUnutterablePerformIO $ unsafePackAddressLen l s
+          fromText = C8L.fromStrict . T.encodeUtf8
           writeHtml = writeHtml5String defHtmlWriterOptions
           writeError = writeHtml . doc . para . singleton . Str
           defHtmlWriterOptions = def
@@ -253,15 +258,15 @@ bytestring.
 In this example 10 custom haskell functions are exported: *toUpper*, *takeN*,
 *reverse* (which is normal *reverse* imported from *Prelude*), *matches*
 (which requires module *Text.Regex.PCRE*), *firstNotEmpty*, *isInList*,
-*isJSONListOfInts*, *jSONListOfIntsTakeN*, *urlDecode* and *toYesNo*. As soon as
-probably this code won't compile due to ambiguity involved by presence of the
-two packages *regex-pcre* and *regex-pcre-builtin*, I had to add an extra *ghc*
-compilation flag *-hide-package regex-pcre* with directive *haskell
-ghc_extra_options*. Another flag *-XFlexibleInstances* passed into the directive
-allows declaration of *instance UrlDecodable String*. Class *UrlDecodable*
-provides function *doURLDecode* for decoding strings and bytestrings that was
-adopted from [here](http://www.rosettacode.org/wiki/URL_decoding#Haskell).
-The bytestring instance of *doURLDecode* makes use of *view patterns* in its
+*isJSONListOfInts*, *jSONListOfIntsTakeN*, *urlDecode* and *toYesNo*. In my case
+this code won't compile due to ambiguity involved by presence of the two
+installed packages *regex-pcre* and *regex-pcre-builtin*, so I had to add an
+extra *ghc* compilation flag *-hide-package regex-pcre* using directive *haskell
+ghc_extra_options*. Other flags include *-XFlexibleInstances* which allows
+declaration of *instance UrlDecodable String*. Class *UrlDecodable* provides
+function *doURLDecode* for decoding strings and bytestrings that was adopted
+from [here](http://www.rosettacode.org/wiki/URL_decoding#Haskell). The
+bytestring instance of *doURLDecode* makes use of *view patterns* in its
 clauses, however this extension does not have to be declared explicitly because
 it was already enabled in a pragma from the wrapping haskell code provided by
 this module (see details in section [Wrapping haskell code
@@ -288,18 +293,21 @@ behave as normally expected.
 
 There is another haskell directive *haskell_content* which accepts a haskell
 function to generate HTTP response and an optional string that will be passed to
-the function. The function may have one of the two types:
+the function. The function must be of one of the two types:
 *strictByteString-to-lazyByteString* and
-*strictByteString-to-3tuple(lazyByteString,String,Int)*. It must be exported
-with *NGX_EXPORT_DEF_HANDLER* (*default* content handler) in the first case and
-*NGX_EXPORT_HANDLER* in the second case. The elements in the *3tuple* correspond
-to returned content, its type (e.g. *text/html* etc.) and HTTP status. Default
-content handler sets content type to *text/plain* and HTTP status to *200*.
-Directive *haskell_content* is allowed in *location* and *location-if* clauses
-of the nginx configuration. In the location */content* from the above example
-the directive *haskell_content* makes use of a haskell function *fromMd* to
-generate HTML response from a markdown text. Function *fromMd* translates a
-markdown text to HTML using Pandoc library.
+*strictByteString-to-3tuple(lazyByteString,strictByteString,Int)*. It must be
+exported with *NGX_EXPORT_DEF_HANDLER* (*default* content handler) in the first
+case and *NGX_EXPORT_HANDLER* in the second case. The elements in the *3tuple*
+correspond to returned content, its type (e.g. *text/html* etc.) and HTTP
+status. Default content handler sets content type to *text/plain* and HTTP
+status to *200*. Directive *haskell_content* is allowed in *location* and
+*location-if* clauses of the nginx configuration. In the location */content*
+from the above example the directive *haskell_content* makes use of a haskell
+function *fromMd* to generate HTML response from a markdown text. Function
+*fromMd* translates a markdown text to HTML using Pandoc library. Notice that
+content type is built from a string literal with a *magic hash* at the end to
+avoid unnecessary expenses (see details about using string literals in section
+[Optimized unsafe content handler](#optimized-unsafe-content-handler)).
 
 What about doing some tests? Let's first start nginx.
 
@@ -480,10 +488,10 @@ rewritten as follows.
 ```haskell
 fromFile (tailSafe . C8.unpack -> f) =
     case lookup f $(embedDir "/rootpath") of
-        Just p  -> (p,                         text_plain, 200)
-        Nothing -> (pack 14 "File not found"#, text_plain, 404)
-    where pack l s = unsafePerformIO $ unsafePackAddressLen l s
-          text_plain = pack 10 "text/plain"#
+        Just p  -> (p,                                text_plain, 200)
+        Nothing -> (packLiteral 14 "File not found"#, text_plain, 404)
+    where packLiteral l s = unsafePerformIO $ unsafePackAddressLen l s
+          text_plain = packLiteral 10 "text/plain"#
 NGX_EXPORT_UNSAFE_HANDLER (fromFile)
 ```
 

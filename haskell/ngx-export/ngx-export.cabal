@@ -1,5 +1,5 @@
 name:                       ngx-export
-version:                    0.9.1.2
+version:                    1.0
 synopsis:                   Helper module for Nginx haskell module
 description:                Helper module for
         <http://github.com/lyokha/nginx-haskell-module Nginx haskell module>
@@ -9,7 +9,7 @@ license-file:               LICENSE
 extra-source-files:         Changelog.md
 author:                     Alexey Radkov <alexey.radkov@gmail.com>
 maintainer:                 Alexey Radkov <alexey.radkov@gmail.com>
-stability:                  experimental
+stability:                  stable
 copyright:                  2016-2017 Alexey Radkov
 category:                   Network
 build-type:                 Simple

@@ -1,3 +1,10 @@
+### 1.0
+
+- Added an asynchronous content handler exported with *ngxExportAsyncHandler*.
+- Content type in all content handlers gets packed in a strict bytestring now.
+  This makes it possible to use static strings without dynamic memory overhead.
+- Package stability tag was promoted to stable.
+
 ### 0.9.1.1
 
 - yY handler must be strict against exceptions in safeYYHandler.

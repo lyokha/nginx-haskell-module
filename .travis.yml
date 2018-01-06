@@ -5,8 +5,8 @@ matrix:
   include:
     - env: CABALVER=head GHCVER=head
       addons: {apt: {packages: [cabal-install-head,ghc-head], sources: [hvr-ghc]}}
-    - env: CABALVER=head GHCVER=8.2.1
-      addons: {apt: {packages: [cabal-install-head,ghc-8.2.1], sources: [hvr-ghc]}}
+    - env: CABALVER=head GHCVER=8.2.2
+      addons: {apt: {packages: [cabal-install-head,ghc-8.2.2], sources: [hvr-ghc]}}
     - env: CABALVER=head GHCVER=8.0.2
       addons: {apt: {packages: [cabal-install-head,ghc-8.0.2], sources: [hvr-ghc]}}
     - env: CABALVER=head GHCVER=7.10.3
