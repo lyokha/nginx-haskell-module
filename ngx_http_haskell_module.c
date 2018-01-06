@@ -1714,6 +1714,12 @@ ngx_http_haskell_delete_async_task(void *data)
         return;
     }
 
+    if (*hev->complete == 0) {
+        ngx_log_error(NGX_LOG_CRIT, hev->r->connection->log, 0,
+                      "async task is still not finished at request "
+                      "termination, its data will probably leak!");
+    }
+
     ev->active = 0;
     if (ngx_del_event(ev, NGX_READ_EVENT, 0) == NGX_ERROR) {
         ngx_log_error(NGX_LOG_ERR, hev->r->connection->log, 0,
@@ -4419,6 +4425,8 @@ ngx_http_haskell_async_event(ngx_event_t *ev)
 {
     ngx_http_haskell_async_event_t    *hev = ev->data;
 
+    *hev->complete = 1;
+
     ngx_http_haskell_delete_async_task(hev);
 
     *hev->complete = 3;
@@ -4810,12 +4818,6 @@ ngx_http_haskell_async_content_handler_cleanup(void *data)
 {
     ngx_http_haskell_content_handler_data_t  *clnd = data;
 
-    /* FIXME: if clnd->complete is 0 or 2, i.e. async task has not finished yet
-     * by some reason, then stable pointers from content handler data will
-     * leak! Fortunately, it seems that there is only one scenario for that:
-     * when a worker closes outstanding requests at its exit. In other cases
-     * request must hang on access phase until async event gets triggered and
-     * writes 3 in clnd->complete. */
     if (clnd->complete != 3 && clnd->yy_cleanup_data.n_bufs == 0) {
         return;
     }
