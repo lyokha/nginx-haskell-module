@@ -1714,7 +1714,7 @@ ngx_http_haskell_delete_async_task(void *data)
         return;
     }
 
-    if (*hev->complete == 0) {
+    if (*hev->complete == 0 && !(ngx_terminate || ngx_exiting)) {
         ngx_log_error(NGX_LOG_CRIT, hev->r->connection->log, 0,
                       "async task is still not finished at request "
                       "termination, its data will probably leak!");
