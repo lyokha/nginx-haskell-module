@@ -1585,19 +1585,28 @@ ngx_http_haskell_access_phase_handler(ngx_http_request_t *r)
     ctx = ngx_http_get_module_ctx(r, ngx_http_haskell_module);
     if (ctx == NULL) {
         ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_haskell_ctx_t));
+        if (ctx == NULL) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "failed to create an async task for content handler, "
+                          "declining phase handler");
+            return NGX_DECLINED;
+        }
+        ngx_http_set_ctx(r, ctx, ngx_http_haskell_module);
+    }
+
+    clnd = ctx->content_handler_data;
+    if (clnd == NULL) {
         clnd = ngx_pcalloc(r->pool,
                            sizeof(ngx_http_haskell_content_handler_data_t));
-        if (ctx == NULL || clnd == NULL) {
+        if (clnd == NULL) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                           "failed to create an async task for content handler, "
                           "declining phase handler");
             return NGX_DECLINED;
         }
         ctx->content_handler_data = clnd;
-        ngx_http_set_ctx(r, ctx, ngx_http_haskell_module);
     }
 
-    clnd = ctx->content_handler_data;
     if (clnd->complete) {
         return NGX_DECLINED;
     }

@@ -743,8 +743,7 @@ with an asynchronous task like in the following example.
 
 ```nginx
         location /async_content {
-            haskell_run_async getUrl $hs_async_httpbin
-                    "http://httpbin.org";
+            haskell_run_async getUrl $hs_async_httpbin "http://httpbin.org";
             haskell_content echo $hs_async_httpbin;
         }
 ```
@@ -760,13 +759,14 @@ run before redirection, but variable *hs_async_httpbin* will never be used
 because we'll get out from the current location.
 
 Asynchronous content handlers have type
-*strictByteString-to-IO(3tuple(lazyByteString,strictByteString,Int))*. This
-corresponds to type of a normal content handler, except it runs in the *IO
-Monad*. The task runs in a late *access phase*, and the lazy bytestring --- the
-contents --- gets used in the content handler as is, with all of its originally
+*strictByteString-to-IO(3tuple(lazyByteString,strictByteString,Int))* and are
+declared with directive *haskell_async_content*. The type corresponds to the
+type of a normal content handler, except it runs in the *IO Monad*. The task
+runs in a late *access phase*, and the lazy bytestring &mdash; the contents
+&mdash; gets used in the content handler as is, with all of its originally
 computed chunks.
 
-The *echo*-example with an async content handler will look like this.
+The *echo*-example with an async content handler will look like the following.
 
 ```haskell
 getUrlContent url = (, packLiteral 9 "text/html"#, 200) <$> getUrl url
