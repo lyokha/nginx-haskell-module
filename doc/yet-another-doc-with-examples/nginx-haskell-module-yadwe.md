@@ -777,6 +777,9 @@ Directive                                                     Level             
 `haskell_unsafe_content`                                      `location`,         Declare an unsafe Haskell content handler.
                                                               `location if`
 
+`haskell_async_content`                                       `location`,         Declare an asynchronous Haskell content handler.
+                                                              `location if`
+
 `haskell_var_nocacheable`                                     `http`              All variables in the list become no cacheable and safe
                                                                                   for using in ad-hoc iterations over *error_page* cycles.
 

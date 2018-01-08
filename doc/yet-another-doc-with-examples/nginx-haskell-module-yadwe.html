@@ -629,21 +629,26 @@
 <td style="text-align: left;">Declare an unsafe Haskell content handler.</td>
 </tr>
 <tr class="even">
+<td style="text-align: left;"><code>haskell_async_content</code></td>
+<td style="text-align: left;"><code>location</code>, <code>location if</code></td>
+<td style="text-align: left;">Declare an asynchronous Haskell content handler.</td>
+</tr>
+<tr class="odd">
 <td style="text-align: left;"><code>haskell_var_nocacheable</code></td>
 <td style="text-align: left;"><code>http</code></td>
 <td style="text-align: left;">All variables in the list become no cacheable and safe for using in ad-hoc iterations over <em>error_page</em> cycles.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;"><code>haskell_var_compensate_uri_changes</code></td>
 <td style="text-align: left;"><code>http</code></td>
 <td style="text-align: left;">All variables in the list allow to cheat <em>error_page</em> when used in its redirections and make the cycle infinite.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;"><code>haskell_service_var_ignore_empty</code></td>
 <td style="text-align: left;"><code>http</code></td>
 <td style="text-align: left;">Do not write the service result when its value is empty.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;"><code>haskell_service_var_in_shm</code></td>
 <td style="text-align: left;"><code>http</code></td>
 <td style="text-align: left;">Store the service result in a shared memory. Implicitly declares a shared service.</td>
