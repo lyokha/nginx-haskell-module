@@ -4,7 +4,7 @@
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  NgxExport
--- Copyright   :  (c) Alexey Radkov 2016-2017
+-- Copyright   :  (c) Alexey Radkov 2016-2018
 -- License     :  BSD-style
 --
 -- Maintainer  :  alexey.radkov@gmail.com

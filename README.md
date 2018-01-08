@@ -18,6 +18,7 @@ Table of contents
 - [Static content in HTTP responses](#static-content-in-http-responses)
 - [Optimized unsafe content handler](#optimized-unsafe-content-handler)
 - [Asynchronous tasks with side effects](#asynchronous-tasks-with-side-effects)
+- [Asynchronous content handlers](#asynchronous-content-handlers)
 - [Asynchronous services](#asynchronous-services)
 - [Client request body handlers](#client-request-body-handlers)
 - [Miscellaneous nginx directives](#miscellaneous-nginx-directives)
@@ -732,6 +733,53 @@ asynchronously, however they must be finishing not in order. Be aware that
 *sem1* is shared between all async handlers that use it, this means that
 simultaneous requests to locations */* and */delay* will probably wait for each
 other: use different semaphores for different handlers when it is not desirable.
+
+Asynchronous content handlers
+-----------------------------
+
+Effectful code in content handlers is not permitted because they are all *pure*
+functions. We could emulate effects in a content handler by combining the latter
+with an asynchronous task like in the following example.
+
+```nginx
+        location /async_content {
+            haskell_run_async getUrl $hs_async_httpbin
+                    "http://httpbin.org";
+            haskell_content echo $hs_async_httpbin;
+        }
+```
+
+Here *echo* is a simple content handler that echoes its argument. This approach
+has at least two deficiencies related to performance and memory usage. The
+content may be huge and chunked, and its chunks could have been naturally used
+in the content handler. However, here the chunks get collected by directive
+*haskell_run_async* into a single chunk, and then passed to the content handler
+*echo*. The other problem deals with *eagerness* of asynchronous tasks. Imagine
+that we put in the location a rewrite to another location: handler *getUrl* will
+run before redirection, but variable *hs_async_httpbin* will never be used
+because we'll get out from the current location.
+
+Asynchronous content handlers have type
+*strictByteString-to-IO(3tuple(lazyByteString,strictByteString,Int))*. This
+corresponds to type of a normal content handler, except it runs in the *IO
+Monad*. The task runs in a late *access phase*, and the lazy bytestring --- the
+contents --- gets used in the content handler as is, with all of its originally
+computed chunks.
+
+The *echo*-example with an async content handler will look like this.
+
+```haskell
+getUrlContent url = (, packLiteral 9 "text/html"#, 200) <$> getUrl url
+    where packLiteral l s =
+              accursedUnutterablePerformIO $ unsafePackAddressLen l s
+NGX_EXPORT_ASYNC_HANDLER (getUrlContent)
+```
+
+```nginx
+        location /async_content {
+            haskell_async_content getUrlContent "http://httpbin.org";
+        }
+```
 
 Asynchronous services
 ---------------------

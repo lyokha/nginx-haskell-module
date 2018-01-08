@@ -10,7 +10,7 @@ extra-source-files:         Changelog.md
 author:                     Alexey Radkov <alexey.radkov@gmail.com>
 maintainer:                 Alexey Radkov <alexey.radkov@gmail.com>
 stability:                  stable
-copyright:                  2016-2017 Alexey Radkov
+copyright:                  2016-2018 Alexey Radkov
 category:                   Network
 build-type:                 Simple
 cabal-version:              >= 1.8

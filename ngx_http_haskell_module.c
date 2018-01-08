@@ -185,8 +185,8 @@ ngx_string(
 "ngx_hs_ ## F = aux_ngx_hs_handler $ AUX_NGX_HANDLER F; \\\n"
 "foreign export ccall ngx_hs_ ## F :: \\\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt -> \\\n"
-"    AUX_NGX.Ptr (AUX_NGX.Ptr AUX_NGX_STR_TYPE) -> "
-"AUX_NGX.Ptr AUX_NGX.CInt -> \\\n"
+"    AUX_NGX.Ptr (AUX_NGX.Ptr AUX_NGX_STR_TYPE) -> AUX_NGX.Ptr AUX_NGX.CInt -> "
+"\\\n"
 "    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CSize -> \\\n"
 "    AUX_NGX.Ptr (AUX_NGX.StablePtr AUX_NGX_BS.ByteString) -> \\\n"
 "    AUX_NGX.Ptr AUX_NGX.CInt -> \\\n"
@@ -911,7 +911,7 @@ typedef struct {
     HsInt32                                    status;
     HsWord32                                   error;
     ngx_uint_t                                 complete;
-    ngx_uint_t                                 def_handler;
+    ngx_uint_t                                 has_locked_ct;
 } ngx_http_haskell_content_handler_data_t;
 
 
@@ -1277,7 +1277,7 @@ ngx_http_haskell_init(ngx_conf_t *cf)
         hs_elts[i] = hs_elts[i - 1];
     }
 
-    *h = ngx_http_haskell_access_phase_handler;
+    hs_elts[0] = ngx_http_haskell_access_phase_handler;
 
     return NGX_OK;
 }
@@ -4154,9 +4154,9 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
     case ngx_http_haskell_handler_type_ach:
         ctx = ngx_http_get_module_ctx(r, ngx_http_haskell_module);
         if (ctx == NULL) {
-            ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
-                          "impossible branch while running "
-                          "haskell content handler (no request context)");
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "no request context while running "
+                          "haskell async content handler");
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
         if (ctx->content_handler_data == NULL) {
@@ -4167,7 +4167,7 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
         }
         if (!ctx->content_handler_data->complete) {
             ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
-                          "content handler is incomplete");
+                          "content handler data is not ready");
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
         err = ctx->content_handler_data->error;
@@ -4277,10 +4277,10 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
             }
             *clnd->yy_cleanup_data.bufs = buf;
         }
-        clnd->def_handler = def_handler;
         clnd->content_type.len = def_handler ? 0 : ct.len;
         clnd->content_type.data = def_handler ? NULL : ct.data;
         clnd->locked_ct = def_handler ? NULL : locked_ct;
+        clnd->has_locked_ct = def_handler ? 0 : 1;
         clnd->status = st;
         cln->handler = ngx_http_haskell_content_handler_cleanup;
         cln->data = clnd;
@@ -4755,7 +4755,8 @@ ngx_http_haskell_yy_handler_result(ngx_log_t *log, ngx_pool_t *pool,
             } else {
                 ngx_log_error(NGX_LOG_ERR, log, 0,
                               "failed to allocate contiguous memory block "
-                              "for error log message in content handler");
+                              "for error log message in haskell async "
+                              "content handler");
             }
             goto cleanup;
         }
@@ -4806,7 +4807,7 @@ ngx_http_haskell_content_handler_cleanup(void *data)
 {
     ngx_http_haskell_content_handler_data_t  *clnd = data;
 
-    if (!clnd->def_handler) {
+    if (clnd->has_locked_ct) {
         clnd->yy_cleanup_data.hs_free_stable_ptr(clnd->locked_ct);
     }
     ngx_http_haskell_yy_handler_cleanup(&clnd->yy_cleanup_data);
