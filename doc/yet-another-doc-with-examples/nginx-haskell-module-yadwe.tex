@@ -1,0 +1,171 @@
+\documentclass[12pt]{article}
+% adjust page geometry
+\usepackage[a4paper,vmargin={2cm,2cm},hmargin={2cm,2cm}]{geometry}
+\usepackage[raggedright]{titlesec}
+
+\usepackage[T1]{fontenc}
+\usepackage{inconsolata}
+\usepackage{lmodern}
+\usepackage{amssymb,amsmath}
+\usepackage{ifxetex,ifluatex}
+\usepackage{fixltx2e} % provides \textsubscript
+% use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
+  \usepackage[utf8]{inputenc}
+\else % if luatex or xelatex
+  \ifxetex
+    %\usepackage{mathspec}
+    %\usepackage{xltxtra,xunicode}
+    \usepackage{fontspec} % enables loading of OpenType fonts
+
+    % fonts:
+    \defaultfontfeatures{Scale=MatchLowercase,Mapping=tex-text} % without this XeLaTeX won't turn "--" into dashes
+    %\setmainfont{Georgia}
+    %\setsansfont{DejaVu Sans for Powerline}
+    \setmonofont{Inconsolatazi4-Regular.otf}
+  \else
+    \usepackage{fontspec}
+  \fi
+  \defaultfontfeatures{Mapping=tex-text,Scale=MatchLowercase}
+  \newcommand{\euro}{€}
+\fi
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+% use microtype if available
+\IfFileExists{microtype.sty}{\usepackage{microtype}}{}
+\usepackage{xcolor}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\usepackage{framed}
+\usepackage{listings}
+\newenvironment{Shaded}{
+  \definecolor{shadecolor}{rgb}{1.0, 1.0, 0.9}
+  \setlength\parskip{0pt}
+  \setlength\OuterFrameSep{4pt}
+  \setlength\partopsep{-\topsep}
+  \begin{shaded}
+    \small
+}{\end{shaded}}
+\renewenvironment{leftbar}{%
+  \definecolor{leftbarcolor}{HTML}{66DDFF}%
+  \def\FrameCommand{{\color{leftbarcolor}\vrule width 3pt} \hspace{10pt}}%
+  \MakeFramed {\advance\hsize-\width \FrameRestore}}%
+ {\endMakeFramed}
+\makeatletter
+\newenvironment{Leftbar}{
+  \setlength\parskip{0pt}
+  \setlength\OuterFrameSep{4pt}
+  \setlength\partopsep{-\topsep}
+  \lst@CCPutMacro\lst@ProcessLetter {"2D}{\lst@ttfamily{-{}}{-{}}}
+  \@empty\z@\@empty
+  \begin{leftbar}
+    \small
+}{\end{leftbar}}
+\makeatother
+\newenvironment{Snugshade}{
+  \definecolor{shadecolor}{HTML}{FFEFD5}
+  \setlength\OuterFrameSep{4pt}
+  \begin{snugshade}
+    \small
+}{\end{snugshade}}
+\definecolor{outputcolor}{rgb}{0.35, 0.35, 0.35}
+
+\usepackage{graphicx}
+\usepackage{longtable,booktabs}
+\DeclareGraphicsRule{.mps}{eps}{*}{}
+% Redefine \includegraphics so that, unless explicit options are
+% given, the image width will not exceed the width of the page.
+% Images get their normal width if they fit onto the page, but
+% are scaled down if they would overflow the margins.
+\makeatletter
+\def\ScaleIfNeeded{%
+  \ifdim\Gin@nat@width>\linewidth
+    \linewidth
+  \else
+    \Gin@nat@width
+  \fi
+}
+\makeatother
+\let\Oldincludegraphics\includegraphics
+{%
+ \catcode`\@=11\relax%
+ \gdef\includegraphics{\@ifnextchar[{\Oldincludegraphics}{\Oldincludegraphics[width=\ScaleIfNeeded]}}%
+}%
+\ifxetex
+  \usepackage[setpagesize=false, % page size defined by xetex
+              unicode=false, % unicode breaks when used with xetex
+              xetex]{hyperref}
+\else
+  \usepackage[unicode=true]{hyperref}
+\fi
+\definecolor{linkcolor}{HTML}{AF8787}
+\hypersetup{breaklinks=true,
+            bookmarks=true,
+            pdfauthor={},
+            pdftitle={},
+            colorlinks=true,
+            citecolor=blue,
+            urlcolor=blue,
+            linkcolor=linkcolor,
+            pdfborder={0 0 0}}
+\urlstyle{same}  % don't use monospace font for urls
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt plus 2pt minus 1pt}
+\setlength{\emergencystretch}{3em}  % prevent overfull lines
+\renewcommand{\arraystretch}{1.4}
+\setcounter{secnumdepth}{0}
+
+\usepackage{MnSymbol}
+\lstset{basicstyle=\small\ttfamily, breaklines=true}
+\lstset{prebreak=\raisebox{0ex}[0ex][0ex]
+  {\ensuremath{\rhookswarrow}}}
+\lstset{postbreak=\raisebox{0ex}[0ex][0ex]
+  {\ensuremath{\rcurvearrowse\space}}}
+\definecolor{shellpromptcolor}{HTML}{000000}
+\definecolor{shelloutputcolor}{HTML}{666666}
+\lstdefinelanguage{shelloutput}
+  {basicstyle=\color{shelloutputcolor}
+    \small
+    \ttfamily\itshape,
+   moredelim=[il][\color{shellpromptcolor}\upshape]{|||\ }}
+\lstdefinelanguage{shelloutput1}
+  {basicstyle=\color{shelloutputcolor}
+    \small
+    \ttfamily\itshape,
+   moredelim=[il][\color{shellpromptcolor}\upshape]{|||\ },
+   keywords={lyokha},
+   keywordstyle=\color[HTML]{00FF5F}}
+
+\usepackage{enumitem}
+\setenumerate{itemsep=2pt, topsep=0pt}
+\setitemize{itemsep=2pt, topsep=0pt}
+\usepackage[normalem]{ulem}
+
+\title{%
+    Nginx Haskell module \\
+    (yet another doc with examples)}
+\author{Alexey Radkov}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\pagenumbering{gobble}
+\tableofcontents
+\clearpage
+
+\newpage
+\thispagestyle{empty}
+\mbox{}
+\clearpage
+
+\pagenumbering{arabic}
+
+\include{nginx-haskell-module-yadwe-content}
+
+\end{document}
