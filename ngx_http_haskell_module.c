@@ -767,7 +767,7 @@ ngx_string(
 "    AUX_NGX.StablePtr (AUX_NGX.Async ()) -> IO ()\n\n"
 
 "ngxExportTerminateTask :: AUX_NGX.StablePtr (AUX_NGX.Async ()) -> IO ()\n"
-"ngxExportTerminateTask = AUX_NGX.deRefStablePtr >=> AUX_NGX.cancel\n\n"
+"ngxExportTerminateTask = AUX_NGX.deRefStablePtr AUX_NGX.>=> AUX_NGX.cancel\n\n"
 );
 
 static const ngx_uint_t  use_eventfd_channel =
