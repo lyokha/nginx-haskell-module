@@ -304,7 +304,7 @@ ngxExportUnsafeHandler =
        Ptr CString -> Ptr CSize -> Ptr CInt -> IO CUInt|]
 
 -- | Exports a function of type
--- /'B.ByteString' -> IO ('L.ByteString', 'B.ByteString', 'Int')/
+-- /'B.ByteString' -> 'IO' ('L.ByteString', 'B.ByteString', 'Int')/
 -- for using in directive /haskell_async_content/.
 --
 -- The first element in the returned /3-tuple/ of the exported function is
