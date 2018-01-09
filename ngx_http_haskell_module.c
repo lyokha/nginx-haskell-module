@@ -4196,7 +4196,7 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
                 return NGX_HTTP_INTERNAL_SERVER_ERROR;
             }
             elen = ereslen.len;
-            eres = ereslen.data;
+            eres = (char *) ereslen.data;
         }
         break;
     default:
