@@ -1,8 +1,8 @@
 ### 1.0
 
 - Added an asynchronous content handler exported with *ngxExportAsyncHandler*.
-- Content type in all content handlers gets packed in a strict bytestring now.
-  This makes it possible to use static strings without dynamic memory overhead.
+- Content type in all content handlers gets packed in a strict bytestring now,
+  which allows for using static strings without dynamic memory allocation.
 - Package stability tag was promoted to stable.
 
 ### 0.9.1.1
