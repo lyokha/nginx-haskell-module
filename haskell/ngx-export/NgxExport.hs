@@ -52,6 +52,7 @@ import           System.Posix.Types
 import           System.Posix.Internals
 import           Control.Monad
 import           Control.Monad.Loops
+import           Control.DeepSeq
 import qualified Control.Exception as E
 import           Control.Exception hiding (Handler)
 import           GHC.IO.Exception (ioe_errno)
@@ -463,7 +464,7 @@ yY :: YY -> CString -> CInt ->
 yY f x (I n) p pl spd = do
     (s, (r, _)) <- safeYYHandler $ do
         s <- f <$> B.unsafePackCStringLen (x, n)
-        fmap (flip (,) (0, False)) $ return $! s
+        fmap (flip (,) (0, False)) $ return $!! s
     pokeLazyByteString s p pl spd
     return r
 
@@ -473,7 +474,7 @@ ioyY :: IOYY -> CString -> CInt ->
 ioyY f x (I n) p pl spd = do
     (s, (r, _)) <- safeYYHandler $ do
         s <- B.unsafePackCStringLen (x, n) >>= flip f False
-        fmap (flip (,) (0, False)) $ return $! s
+        fmap (flip (,) (0, False)) $ return $!! s
     pokeLazyByteString s p pl spd
     return r
 
@@ -491,7 +492,7 @@ asyncIOCommon a (I fd) efd p pl pr spd =
     (do
         (s, (r, exiting)) <- safeYYHandler $ do
             (s, exiting) <- a
-            fmap (flip (,) (0, exiting)) $ return $! s
+            fmap (flip (,) (0, exiting)) $ return $!! s
         pokeLazyByteString s p pl spd
         poke pr r
         if exiting
@@ -561,7 +562,7 @@ asyncHandler f x (I n) fd (ToBool efd) pct plct spct pst =
     (do
         x' <- B.unsafePackCStringLen (x, n)
         (s, ct, I st) <- f x'
-        (return $! s) >> pokeContentTypeAndStatus ct pct plct pst st
+        (return $!! s) >> pokeContentTypeAndStatus ct pct plct pst st
         newStablePtr ct >>= poke spct
         return (s, False)
     ) fd efd
@@ -605,7 +606,7 @@ handler :: Handler -> CString -> CInt -> Ptr (Ptr NgxStrType) -> Ptr CInt ->
 handler f x (I n) p pl pct plct spct pst spd =
     safeHandler pct pst $ do
         (s, ct, I st) <- f <$> B.unsafePackCStringLen (x, n)
-        pokeContentTypeAndStatus ct pct plct pst st
+        (return $!! s) >> pokeContentTypeAndStatus ct pct plct pst st
         pokeLazyByteString s p pl spd
         newStablePtr ct >>= poke spct
         return 0
@@ -624,7 +625,7 @@ unsafeHandler :: UnsafeHandler -> CString -> CInt -> Ptr CString -> Ptr CSize ->
 unsafeHandler f x (I n) p pl pct plct pst =
     safeHandler pct pst $ do
         (s, ct, I st) <- f <$> B.unsafePackCStringLen (x, n)
-        pokeContentTypeAndStatus ct pct plct pst st
+        (return $!! s) >> pokeContentTypeAndStatus ct pct plct pst st
         PtrLen t l <- B.unsafeUseAsCStringLen s return
         pokeCStringLen t l p pl
         return 0

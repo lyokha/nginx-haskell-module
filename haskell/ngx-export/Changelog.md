@@ -1,3 +1,8 @@
+### 1.0.1
+
+- Using deepseq for really deep evaluation of resulting lazy bytestrings to
+  prevent leaks of exceptions outside of protected code.
+
 ### 1.0
 
 - Added an asynchronous content handler exported with *ngxExportAsyncHandler*.
