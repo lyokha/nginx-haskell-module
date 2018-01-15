@@ -54,6 +54,8 @@ static const ngx_str_t  haskell_shm_file_lock_suffix =
 ngx_string(".lock");
 static const ngx_str_t  haskell_module_shm_update_var_prefix =
 ngx_string("_upd__");
+static const ngx_str_t  haskell_module_shm_stats_var_prefix =
+ngx_string("_shm__");
 static const ngx_int_t  haskell_module_ngx_export_api_version_major = 1;
 static const ngx_int_t  haskell_module_ngx_export_api_version_minor = 0;
 
@@ -994,9 +996,19 @@ typedef struct {
 
 
 typedef struct {
+    time_t                                     modified;
+    size_t                                     size;
+    ngx_uint_t                                 changes;
+    ngx_uint_t                                 failures;
+    ngx_uint_t                                 failed;
+} ngx_http_haskell_shm_stats_var_t;
+
+
+typedef struct {
     ngx_http_haskell_var_handle_t              handle;
     ngx_http_haskell_async_data_t              data;
     ngx_msec_t                                 modified;
+    ngx_http_haskell_shm_stats_var_t           stats;
 } ngx_http_haskell_shm_var_handle_t;
 
 
@@ -1089,6 +1101,8 @@ static ngx_int_t ngx_http_haskell_run_async_handler(ngx_http_request_t *r,
 static ngx_int_t ngx_http_haskell_run_service_handler(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_haskell_shm_update_var_handler(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_haskell_shm_stats_var_handler(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_haskell_content_handler(ngx_http_request_t *r);
 static ngx_int_t ngx_http_haskell_service_var_init_zone(
@@ -3383,7 +3397,7 @@ ngx_http_haskell_var_configure(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_str_t                                v_name;
     ngx_http_get_variable_pt                 get_handler;
     ngx_int_t                                idx = 0;
-    ngx_uint_t                               create_update_vars = 0;
+    ngx_uint_t                               create_shm_aux_vars = 0;
 
     value = cf->args->elts;
 
@@ -3407,7 +3421,7 @@ ngx_http_haskell_var_configure(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         == 0)
     {
         data = &mcf->service_var_in_shm;
-        create_update_vars = 1;
+        create_shm_aux_vars = 1;
         idx = 3;
     } else {
         return NGX_CONF_ERROR;
@@ -3441,7 +3455,7 @@ ngx_http_haskell_var_configure(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         vars[i].name = value[j];
         vars[i].index = -1;
 
-        if (!create_update_vars) {
+        if (!create_shm_aux_vars) {
             continue;
         }
 
@@ -3475,6 +3489,35 @@ ngx_http_haskell_var_configure(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         get_handler = v->get_handler;
         v->get_handler = ngx_http_haskell_shm_update_var_handler;
+        if (get_handler != NULL && get_handler != v->get_handler) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "variable \"%V\" has been already defined with "
+                               "another variable handler", &v_name);
+            return NGX_CONF_ERROR;
+        }
+
+        v_name.len = value[j].len + haskell_module_shm_stats_var_prefix.len;
+        v_name.data = ngx_pnalloc(cf->pool, v_name.len);
+        if (v_name.data == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        ngx_memcpy(v_name.data,
+                   haskell_module_shm_stats_var_prefix.data,
+                   haskell_module_shm_stats_var_prefix.len);
+        ngx_memcpy(v_name.data + haskell_module_shm_stats_var_prefix.len,
+                   value[j].data,
+                   value[j].len);
+
+        v = ngx_http_add_variable(cf, &v_name, NGX_HTTP_VAR_CHANGEABLE);
+        if (v == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        v->data = (uintptr_t) v_data;
+
+        get_handler = v->get_handler;
+        v->get_handler = ngx_http_haskell_shm_stats_var_handler;
         if (get_handler != NULL && get_handler != v->get_handler) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "variable \"%V\" has been already defined with "
@@ -4076,6 +4119,70 @@ update_var:
 
 
 static ngx_int_t
+ngx_http_haskell_shm_stats_var_handler(ngx_http_request_t *r,
+                                       ngx_http_variable_value_t *v,
+                                       uintptr_t data)
+{
+    ngx_uint_t                                 i;
+    ngx_http_haskell_main_conf_t              *mcf;
+    ngx_http_haskell_service_code_var_data_t  *service_code_vars;
+    ngx_http_haskell_shm_var_handle_data_t    *shm_handle_data;
+    ngx_slab_pool_t                           *shpool;
+    ngx_http_haskell_shm_var_handle_t         *shm_vars;
+    ngx_int_t                                  shm_index = NGX_ERROR;
+    ngx_http_haskell_shm_stats_var_t           stats;
+    u_char                                    *buf, *p;
+    static const size_t                        buf_size = 256;
+
+    shm_handle_data = (ngx_http_haskell_shm_var_handle_data_t *) data;
+
+    if (shm_handle_data->index == NGX_ERROR) {
+        return NGX_ERROR;
+    }
+
+    mcf = ngx_http_get_module_main_conf(r, ngx_http_haskell_module);
+    service_code_vars = mcf->service_code_vars.elts;
+
+    for (i = 0; i < mcf->service_code_vars.nelts; i++) {
+        if (shm_handle_data->index == service_code_vars[i].data->index) {
+            shm_index = service_code_vars[i].shm_index;
+            break;
+        }
+    }
+
+    if (shm_index == NGX_ERROR) {
+        return NGX_ERROR;
+    }
+
+    shpool = (ngx_slab_pool_t *) mcf->shm_zone->shm.addr;
+    shm_vars = shpool->data;
+
+    NGX_HTTP_HASKELL_SHM_RLOCK
+
+    stats = shm_vars[shm_index].stats;
+
+    NGX_HTTP_HASKELL_SHM_UNLOCK
+
+    buf = ngx_pnalloc(r->pool, buf_size);
+    if (buf == NULL) {
+        return NGX_ERROR;
+    }
+
+    p = ngx_snprintf(buf, buf_size - 1, "%T | %uz | %ui | %ui | %ui",
+                     stats.modified, stats.size, stats.changes, stats.failures,
+                     stats.failed);
+
+    v->len = p - buf;
+    v->data = buf;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
 ngx_http_haskell_content_handler(ngx_http_request_t *r)
 {
     ngx_int_t                                 i;
@@ -4468,6 +4575,7 @@ ngx_http_haskell_service_async_event(ngx_event_t *ev)
     ngx_http_haskell_async_data_t             *async_data;
     ngx_http_complex_value_t                  *args;
     ngx_msec_t                                 old_modified;
+    time_t                                     modified;
     ngx_uint_t                                 run_cb = 0;
     ngx_int_t                                  rc;
 
@@ -4580,10 +4688,14 @@ ngx_http_haskell_service_async_event(ngx_event_t *ev)
         goto run_service;
     }
 
+    modified = ngx_time();
+
     shpool = (ngx_slab_pool_t *) mcf->shm_zone->shm.addr;
     shm_vars = shpool->data;
 
     NGX_HTTP_HASKELL_SHM_WLOCK
+
+    shm_vars[shm_index].stats.failed = 0;
 
     var = &shm_vars[shm_index].data.result.data;
 
@@ -4609,6 +4721,12 @@ ngx_http_haskell_service_async_event(ngx_event_t *ev)
             }
         }
         shm_vars[shm_index].modified = ngx_current_msec;
+        /* FIXME: semantics of the following stats fields depends on actual
+         * usage of a callback, because the current code scope may have been
+         * skipped from the upper for-cycle depending on the value of flag
+         * service_code_vars[i].cb */
+        shm_vars[shm_index].stats.modified = modified;
+        ++shm_vars[shm_index].stats.changes;
         ngx_memcpy(var->data, async_data->result.data.data, var->len);
         if (run_cb) {
             goto cb_unlock_and_run_service;
@@ -4619,6 +4737,10 @@ ngx_http_haskell_service_async_event(ngx_event_t *ev)
 
     old_modified = shm_vars[shm_index].modified;
     shm_vars[shm_index].modified = ngx_current_msec;
+
+    shm_vars[shm_index].stats.modified = modified;
+    shm_vars[shm_index].stats.size = async_data->result.data.len;
+    ++shm_vars[shm_index].stats.changes;
 
     if (async_data->result.data.len == 0) {
         if (var->data != NULL) {
@@ -4635,6 +4757,10 @@ ngx_http_haskell_service_async_event(ngx_event_t *ev)
                       "service variable \"%V\", using old value",
                       &shm_vars[shm_index].handle.name);
         shm_vars[shm_index].modified = old_modified;
+        shm_vars[shm_index].stats.failed = 1;
+        shm_vars[shm_index].stats.size = var->len;
+        ++shm_vars[shm_index].stats.failures;
+        --shm_vars[shm_index].stats.changes;
         goto unlock_and_run_service;
     }
 
