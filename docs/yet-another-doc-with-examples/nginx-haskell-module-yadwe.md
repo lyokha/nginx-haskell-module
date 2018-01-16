@@ -683,6 +683,19 @@ active service on every change of the service variable, and shall be supposedly
 used to integrate with other Nginx modules by signaling specific Nginx locations
 via an HTTP client.
 
+## Shm stats variables
+
+Every service variable in shared memory has an auxiliary variable that provides
+basic stats in format *timestamp | size | changes | failures | failed*, where
+*timestamp* is a number of seconds elapsed from the beginning of the *UNIX
+epoch* till the last change of the variable's value, *size* is the size of the
+variable in bytes, *changes* is a number of changes, and *failures* is a number
+of memory allocation failures since the last Nginx reload, the value of flag
+*failed* (*0* or *1*) denotes if the last attempt of memory allocation from the
+shared memory pool for a new value of the variable has failed. The name of the
+shm stats variable is built from the service variable's name with prefix
+*\_shm\_\_*.
+
 # Efficiency of data exchange between Nginx and Haskell parts
 
 Haskell handlers may accept strings (`String` or `[String]`) and *strict*
