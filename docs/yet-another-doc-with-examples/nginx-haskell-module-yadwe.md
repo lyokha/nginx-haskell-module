@@ -4,8 +4,8 @@
 # Why bother?
 
 The [*nginx-haskell-module*](https://github.com/lyokha/nginx-haskell-module)
-allows for running in Nginx synchronous and asynchronous tasks and content
-handlers written in Haskell.
+allows for running in Nginx written in Haskell synchronous and asynchronous
+tasks, per-worker and shared services, and content handlers.
 
 # Synchronous tasks
 
@@ -373,7 +373,7 @@ ngxExportAsyncHandler 'delayContent
 ```
 
 For the *content type* we used a static string *"text/plain"#* that ends with a
-*magic hash* merely to avoid *any* memory allocations.
+*magic hash* merely to avoid any dynamic memory allocations.
 
 **File test.conf** (*additions*)
 
@@ -685,15 +685,15 @@ via an HTTP client.
 
 ## Shm stats variables
 
-Every service variable in shared memory has an auxiliary variable that provides
-basic stats in format *timestamp | size | changes | failures | failed*, where
-*timestamp* is a number of seconds elapsed from the beginning of the *UNIX
-epoch* till the last change of the variable's value, *size* is the size of the
-variable in bytes, *changes* is a number of changes, and *failures* is a number
-of memory allocation failures since the last Nginx reload, the value of flag
-*failed* (*0* or *1*) denotes if the last attempt of memory allocation from the
-shared memory pool for a new value of the variable has failed. The name of the
-shm stats variable is built from the service variable's name with prefix
+Every service variable in shared memory has an associated auxiliary variable
+that provides basic stats in format *timestamp | size | changes | failures |
+failed*, where *timestamp* is a number of seconds elapsed from the beginning of
+the *UNIX epoch* till the last change of the variable's value, *size* is the
+size of the variable in bytes, *changes* is a number of changes, and *failures*
+is a number of memory allocation failures since the last Nginx reload, the value
+of flag *failed* (*0* or *1*) denotes if the last attempt of memory allocation
+from the shared memory pool for a new value of the variable has failed. The name
+of the shm stats variable is built from the service variable's name with prefix
 *\_shm\_\_*.
 
 # Efficiency of data exchange between Nginx and Haskell parts
