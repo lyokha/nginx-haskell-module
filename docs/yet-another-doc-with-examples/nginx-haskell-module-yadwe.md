@@ -696,6 +696,30 @@ from the shared memory pool for a new value of the variable has failed. The name
 of the shm stats variable is built from the service variable's name with prefix
 *\_shm\_\_*.
 
+### An example
+
+Let's add a location to show shm stats about our *httpbin* service. This time
+only configuration file *test.conf* is affected.
+
+**File test.conf** (*additions*)
+
+``` {.nginx hl="vim"}
+        location /httpbin/shmstats {
+            echo "Httpbin service shm stats: $_shm__hs_service_httpbin";
+        }
+```
+
+Run curl tests.
+
+``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
+||| curl 'http://127.0.0.1:8010/httpbin/shmstats'
+Httpbin service shm stats: 1516274639 | 13011 | 1 | 0 | 0
+```
+
+From this output we can find that payload size of *httpbin.org* is *13011*
+bytes, the service variable was updated only once (less than 20 seconds elapsed
+from start of Nginx), and that there were no memory allocation failures.
+
 # Efficiency of data exchange between Nginx and Haskell parts
 
 Haskell handlers may accept strings (`String` or `[String]`) and *strict*
