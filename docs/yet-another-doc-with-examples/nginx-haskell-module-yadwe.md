@@ -663,37 +663,17 @@ Run curl tests.
 ...
 ```
 
-## Update callbacks
-
-There is a special type of single-shot services called update callbacks. They
-are declared like
-
-``` {.nginx hl="vim"}
-    haskell_service_var_update_callback cb_httpbin $hs_service_httpbin optional_value;
-```
-
-Here *cb_httpbin* is a Haskell handler exported by *ngxExportServiceIOYY* as
-always. Variable *hs_service_httpbin* must be declared in directive
-*haskell_service_var_in_shm* (this matches our example). Argument
-*optional_value* is a string, it can be omitted in which case handler
-*cb_httpbin* gets an empty string as its first argument.
-
-Update callbacks do not return results. They run from a worker that holds the
-active service on every change of the service variable, and shall be supposedly
-used to integrate with other Nginx modules by signaling specific Nginx locations
-via an HTTP client.
-
 ## Shm stats variables
 
-Every service variable in shared memory has an associated auxiliary variable
-that provides basic stats in format *timestamp | size | changes | failures |
-failed*, where *timestamp* is a number of seconds elapsed from the beginning of
-the *UNIX epoch* till the last change of the variable's value, *size* is the
-size of the variable in bytes, *changes* is a number of changes, and *failures*
-is a number of memory allocation failures since the last Nginx reload, the value
-of flag *failed* (*0* or *1*) denotes if the last attempt of memory allocation
-from the shared memory pool for a new value of the variable has failed. The name
-of the shm stats variable is built from the service variable's name with prefix
+Every service variable in shared memory has another associated variable that
+provides basic stats in format *timestamp | size | changes | failures | failed*,
+where *timestamp* is a number of seconds elapsed from the beginning of the *UNIX
+epoch* till the last change of the variable's value, *size* is the size of the
+variable in bytes, *changes* is a number of changes, and *failures* is a number
+of memory allocation failures since the last Nginx reload, the value of flag
+*failed* (*0* or *1*) denotes if the last attempt of memory allocation from the
+shared memory pool for a new value of the variable has failed. The name of the
+shm stats variable is built from the service variable's name with prefix
 *\_shm\_\_*.
 
 ### An example
@@ -719,6 +699,81 @@ Httpbin service shm stats: 1516274639 | 13011 | 1 | 0 | 0
 From this output we can find that payload size of *httpbin.org* is *13011*
 bytes, the service variable was updated only once (less than 20 seconds elapsed
 from start of Nginx), and that there were no memory allocation failures.
+
+## Update callbacks
+
+There is a special type of single-shot services called update callbacks. They
+are declared like
+
+``` {.nginx hl="vim"}
+    haskell_service_var_update_callback cbHttpbin $hs_service_httpbin optional_value;
+```
+
+Here *cbHttpbin* is a Haskell handler exported by *ngxExportServiceIOYY* as
+always. Variable *hs_service_httpbin* must be declared in directive
+*haskell_service_var_in_shm*. Argument *optional_value* is a string, it can be
+omitted in which case handler *cbHttpbin* gets an empty string as its first
+argument.
+
+Update callbacks do not return results. They run from a worker that holds the
+active service on every change of the service variable, and shall be supposedly
+used to integrate with other Nginx modules by signaling specific Nginx locations
+via an HTTP client.
+
+### An example
+
+Let's count changes in service variable *hs_service_httpbin* during Nginx
+lifetime (originally I supposed that its content won't change after the first
+initialization because *httpbin.org* looks like a static page, but responses
+appeared to be able to vary from time to time). For this we will use counters
+from
+[*nginx-custom-counters-module*](https://github.com/lyokha/nginx-custom-counters-module).
+
+**File test.hs** (*additions*)
+
+``` {.haskell hl="vim"}
+cbHttpbin :: ByteString -> Bool -> IO L.ByteString
+cbHttpbin url firstRun = do
+    when firstRun $ threadDelay $ 5 * 1000000
+    getUrl url
+ngxExportServiceIOYY 'cbHttpbin
+```
+
+Handler *cbHttpbin* is a simple HTTP client. On the first run it waits 5 seconds
+before sending request because the request is supposed to be destined to self,
+while Nginx workers may appear to be not ready to accept it.
+
+**File test.conf** (*additions*)
+
+``` {.nginx hl="vim"}
+    haskell_service_var_update_callback cbHttpbin $hs_service_httpbin
+                                        "http://127.0.0.1:8010/httpbin/count";
+
+    # ...
+
+        location /httpbin/count {
+            counter $cnt_httpbin inc;
+            return 200;
+        }
+
+        location /counters {
+            echo "Httpbin service changes count: $cnt_httpbin";
+        }
+```
+
+Wait at least 5 seconds after Nginx start and run curl tests.
+
+``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
+||| curl 'http://127.0.0.1:8010/counters'
+Httpbin service changes count: 1
+```
+
+Further the count will probably be steadily increasing.
+
+``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
+||| curl 'http://127.0.0.1:8010/counters'
+Httpbin service changes count: 3
+```
 
 # Efficiency of data exchange between Nginx and Haskell parts
 

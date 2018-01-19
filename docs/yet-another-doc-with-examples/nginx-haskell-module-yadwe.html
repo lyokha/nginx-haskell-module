@@ -532,16 +532,8 @@
 <span style="color: #808080;">...</span>
 </pre>
 
-<h2 id="update-callbacks">Update callbacks</h2>
-<p>There is a special type of single-shot services called update callbacks. They are declared like</p>
-<pre style="overflow-x: auto; background: #FFE">
-<span style="color: #000000;">    haskell_service_var_update_callback cb_httpbin </span><span style="color: #008700;">$hs_service_httpbin</span><span style="color: #000000;"> optional_value;</span>
-</pre>
-
-<p>Here <em>cb_httpbin</em> is a Haskell handler exported by <em>ngxExportServiceIOYY</em> as always. Variable <em>hs_service_httpbin</em> must be declared in directive <em>haskell_service_var_in_shm</em> (this matches our example). Argument <em>optional_value</em> is a string, it can be omitted in which case handler <em>cb_httpbin</em> gets an empty string as its first argument.</p>
-<p>Update callbacks do not return results. They run from a worker that holds the active service on every change of the service variable, and shall be supposedly used to integrate with other Nginx modules by signaling specific Nginx locations via an HTTP client.</p>
 <h2 id="shm-stats-variables">Shm stats variables</h2>
-<p>Every service variable in shared memory has an associated auxiliary variable that provides basic stats in format <em>timestamp | size | changes | failures | failed</em>, where <em>timestamp</em> is a number of seconds elapsed from the beginning of the <em>UNIX epoch</em> till the last change of the variable’s value, <em>size</em> is the size of the variable in bytes, <em>changes</em> is a number of changes, and <em>failures</em> is a number of memory allocation failures since the last Nginx reload, the value of flag <em>failed</em> (<em>0</em> or <em>1</em>) denotes if the last attempt of memory allocation from the shared memory pool for a new value of the variable has failed. The name of the shm stats variable is built from the service variable’s name with prefix <em>_shm__</em>.</p>
+<p>Every service variable in shared memory has another associated variable that provides basic stats in format <em>timestamp | size | changes | failures | failed</em>, where <em>timestamp</em> is a number of seconds elapsed from the beginning of the <em>UNIX epoch</em> till the last change of the variable’s value, <em>size</em> is the size of the variable in bytes, <em>changes</em> is a number of changes, and <em>failures</em> is a number of memory allocation failures since the last Nginx reload, the value of flag <em>failed</em> (<em>0</em> or <em>1</em>) denotes if the last attempt of memory allocation from the shared memory pool for a new value of the variable has failed. The name of the shm stats variable is built from the service variable’s name with prefix <em>_shm__</em>.</p>
 <h3 id="an-example-5">An example</h3>
 <p>Let’s add a location to show shm stats about our <em>httpbin</em> service. This time only configuration file <em>test.conf</em> is affected.</p>
 <p><strong>File test.conf</strong> (<em>additions</em>)</p>
@@ -558,6 +550,55 @@
 </pre>
 
 <p>From this output we can find that payload size of <em>httpbin.org</em> is <em>13011</em> bytes, the service variable was updated only once (less than 20 seconds elapsed from start of Nginx), and that there were no memory allocation failures.</p>
+<h2 id="update-callbacks">Update callbacks</h2>
+<p>There is a special type of single-shot services called update callbacks. They are declared like</p>
+<pre style="overflow-x: auto; background: #FFE">
+<span style="color: #000000;">    haskell_service_var_update_callback cbHttpbin </span><span style="color: #008700;">$hs_service_httpbin</span><span style="color: #000000;"> optional_value;</span>
+</pre>
+
+<p>Here <em>cbHttpbin</em> is a Haskell handler exported by <em>ngxExportServiceIOYY</em> as always. Variable <em>hs_service_httpbin</em> must be declared in directive <em>haskell_service_var_in_shm</em>. Argument <em>optional_value</em> is a string, it can be omitted in which case handler <em>cbHttpbin</em> gets an empty string as its first argument.</p>
+<p>Update callbacks do not return results. They run from a worker that holds the active service on every change of the service variable, and shall be supposedly used to integrate with other Nginx modules by signaling specific Nginx locations via an HTTP client.</p>
+<h3 id="an-example-6">An example</h3>
+<p>Let’s count changes in service variable <em>hs_service_httpbin</em> during Nginx lifetime (originally I supposed that its content won’t change after the first initialization because <em>httpbin.org</em> looks like a static page, but responses appeared to be able to vary from time to time). For this we will use counters from <a href="https://github.com/lyokha/nginx-custom-counters-module"><em>nginx-custom-counters-module</em></a>.</p>
+<p><strong>File test.hs</strong> (<em>additions</em>)</p>
+<pre style="overflow-x: auto; background: #FFE">
+<span style="color: #008700;">cbHttpbin</span> <span style="color: #005FAF;">::</span> <span style="color: #005F87;">ByteString</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">Bool</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">IO</span> <span style="color: #005F87;">L</span><span style="color: #005FAF;">.</span><span style="color: #005F87;">ByteString</span>
+<span style="color: #008700;">cbHttpbin</span> <span style="color: #000000;">url</span> <span style="color: #000000;">firstRun</span> <span style="color: #005FAF;">=</span> <span style="color: #005FAF;">do</span>
+    <span style="color: #000000;">when</span> <span style="color: #000000;">firstRun</span> <span style="color: #005FAF;">$</span> <span style="color: #000000;">threadDelay</span> <span style="color: #005FAF;">$</span> <span style="color: #AF5F00;">5</span> <span style="color: #005FAF;">*</span> <span style="color: #AF5F00;">1000000</span>
+    <span style="color: #000000;">getUrl</span> <span style="color: #000000;">url</span>
+<span style="color: #008787;">ngxExportServiceIOYY</span><span style="color: #000000;"> '</span><span style="color: #000000;">cbHttpbin</span>
+</pre>
+
+<p>Handler <em>cbHttpbin</em> is a simple HTTP client. On the first run it waits 5 seconds before sending request because the request is supposed to be destined to self, while Nginx workers may appear to be not ready to accept it.</p>
+<p><strong>File test.conf</strong> (<em>additions</em>)</p>
+<pre style="overflow-x: auto; background: #FFE">
+<span style="color: #000000;">    haskell_service_var_update_callback cbHttpbin </span><span style="color: #008700;">$hs_service_httpbin</span>
+                                        <span style="color: #AF5F00;">&quot;http://127.0.0.1:8010/httpbin/count&quot;</span><span style="color: #000000;">;</span>
+
+<span style="color: #808080;">    # ...</span>
+
+        <span style="color: #005FAF;">location</span><span style="color: #000000;"> /httpbin/count {</span>
+<span style="color: #000000;">            counter </span><span style="color: #008700;">$cnt_httpbin</span><span style="color: #000000;"> inc;</span>
+            <span style="color: #005FAF;">return</span><span style="color: #000000;"> 200;</span>
+<span style="color: #000000;">        }</span>
+
+        <span style="color: #005FAF;">location</span><span style="color: #000000;"> /counters {</span>
+            <span style="color: #870087;">echo</span> <span style="color: #AF5F00;">&quot;Httpbin service changes count: </span><span style="color: #008787;">$cnt_httpbin</span><span style="color: #AF5F00;">&quot;</span><span style="color: #000000;">;</span>
+<span style="color: #000000;">        }</span>
+</pre>
+
+<p>Wait at least 5 seconds after Nginx start and run curl tests.</p>
+<pre style="overflow-x: auto; border-style: none none none solid; border-color: #6DF; border-width: 10px; padding: 5px 10px">
+<span style="color: #005FAF;">curl 'http://127.0.0.1:8010/counters'</span>
+<span style="color: #808080;">Httpbin service changes count: 1</span>
+</pre>
+
+<p>Further the count will probably be steadily increasing.</p>
+<pre style="overflow-x: auto; border-style: none none none solid; border-color: #6DF; border-width: 10px; padding: 5px 10px">
+<span style="color: #005FAF;">curl 'http://127.0.0.1:8010/counters'</span>
+<span style="color: #808080;">Httpbin service changes count: 3</span>
+</pre>
+
 <h1 id="efficiency-of-data-exchange-between-nginx-and-haskell-parts">Efficiency of data exchange between Nginx and Haskell parts</h1>
 <p>Haskell handlers may accept strings (<code>String</code> or <code>[String]</code>) and <em>strict</em> bytestrings (<code>ByteString</code>), and return strings, <em>lazy</em> bytestrings and booleans. Input C-strings are marshaled into a <em>String</em> with <em>peekCStringLen</em> which has linear complexity <span class="math inline"><em>O</em>(<em>n</em>)</span>, output <em>Strings</em> are marshaled into C-strings with <em>newCStringLen</em> which is also <span class="math inline"><em>O</em>(<em>n</em>)</span>. The new C-strings get freed upon the request termination in the Nginx part.</p>
 <p>The bytestring counterparts are much faster. Both input and output are <span class="math inline"><em>O</em>(1)</span>, using <em>unsafePackCStringLen</em> and a Haskell <em>stable pointer</em> to lazy bytestring buffers created inside Haskell handlers. If an output lazy bytestring has more than one chunk, a new single-chunked C-string will be created in variable and service handlers, but not in content handlers because the former use the chunks directly when constructing contents. Holding a stable pointer to a bytestring’s chunks on the Nginx part ensures that they won’t be garbage collected until the pointer gets freed. Stable pointers get freed upon the request termination for variable and content handlers, and before the next service iteration for service handlers.</p>

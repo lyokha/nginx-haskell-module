@@ -104,3 +104,9 @@ sortLinks "httpbin" = do
 sortLinks _ = return ""
 ngxExportIOYY 'sortLinks
 
+cbHttpbin :: ByteString -> Bool -> IO L.ByteString
+cbHttpbin url firstRun = do
+    when firstRun $ threadDelay $ 5 * 1000000
+    getUrl url
+ngxExportServiceIOYY 'cbHttpbin
+
