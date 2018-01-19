@@ -21,17 +21,17 @@ Type                                        Exporter
 
 `String -> String -> String`                `ngxExportSSS` (`NGX_EXPORT_S_SS`)
 
-`String -> Boolean`                         `ngxExportBS` (`NGX_EXPORT_B_S`)
+`String -> Bool`                            `ngxExportBS` (`NGX_EXPORT_B_S`)
 
-`String -> String -> Boolean`               `ngxExportBSS` (`NGX_EXPORT_B_SS`)
+`String -> String -> Bool`                  `ngxExportBSS` (`NGX_EXPORT_B_SS`)
 
 `[String] -> String`                        `ngxExportSLS` (`NGX_EXPORT_S_LS`)
 
-`[String] -> Boolean`                       `ngxExportBLS` (`NGX_EXPORT_B_LS`)
+`[String] -> Bool`                          `ngxExportBLS` (`NGX_EXPORT_B_LS`)
 
 `ByteString -> L.ByteString`                `ngxExportYY` (`NGX_EXPORT_Y_Y`)
 
-`ByteString -> Boolean`                     `ngxExportBY` (`NGX_EXPORT_B_Y`)
+`ByteString -> Bool`                        `ngxExportBY` (`NGX_EXPORT_B_Y`)
 
 `ByteString -> IO L.ByteString`             `ngxExportIOYY` (`NGX_EXPORT_IOY_Y`)
 --------------------------------------------------------------------------------------
