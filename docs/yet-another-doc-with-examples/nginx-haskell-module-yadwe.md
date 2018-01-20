@@ -246,9 +246,9 @@ compiled). When the rewrite phase handler of this module spawns an asynchronous
 task, it opens an eventfd, then registers it in the event loop, and passes it to
 the Haskell handler. As soon as the Haskell handler finishes the task and pokes
 the result into buffers, it writes into the eventfd, thus informing the Nginx
-part that the task has been finished. Then Nginx gets back to the module's
-rewrite phase handler, and it spawns the next asynchronous task, or returns
-(when there are no more tasks), moving request processing to the next stage.
+part that the task has finished. Then Nginx gets back to the module's rewrite
+phase handler, and it spawns the next asynchronous task, or returns (when there
+are no more tasks left), moving request processing to the next stage.
 
 ## An example
 
@@ -332,11 +332,11 @@ latter with an asynchronous task like in the following example.
 
 Here *getUrl* is an asynchronous Haskell handler that returns content of an HTTP
 page. This approach has at least two deficiencies related to performance and
-memory usage. The content may be huge and chunked, and its chunks could have
-been naturally used in the content handler. But they won't, because here they
-get collected by directive *haskell_run_async* into a single chunk, and then
-passed to the content handler *echo*. The other problem deals with *eagerness*
-of asynchronous tasks. Imagine that we put in the location a rewrite to another
+memory usage. The content may be huge and chunked, and its chunks could be
+naturally reused in the content handler. But they won't, because here they get
+collected by directive *haskell_run_async* into a single chunk, and then passed
+to the content handler *echo*. The other problem deals with *eagerness* of
+asynchronous tasks. Imagine that we put in the location a rewrite to another
 location: handler *getUrl* will run before redirection, but variable
 *hs_async_httpbin* will never be used because we'll get out from the current
 location.
