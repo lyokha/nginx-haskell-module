@@ -1,3 +1,7 @@
+### 1.0.2
+
+- Reading buffered request body from a temp file when it's provided.
+
 ### 1.0.1
 
 - Using deepseq for really deep evaluation of resulting lazy bytestrings to

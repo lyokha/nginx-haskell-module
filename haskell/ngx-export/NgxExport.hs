@@ -248,7 +248,8 @@ ngxExportAsyncIOYY =
 ngxExportAsyncOnReqBody :: Name -> Q [Dec]
 ngxExportAsyncOnReqBody =
     ngxExport 'IOYYY 'asyncIOYYY
-    [t|Ptr NgxStrType -> CInt -> CString -> CInt -> CInt -> CUInt ->
+    [t|Ptr NgxStrType -> Ptr NgxStrType -> CInt ->
+       CString -> CInt -> CInt -> CUInt ->
        Ptr (Ptr NgxStrType) -> Ptr CInt ->
        Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO (StablePtr (Async ()))|]
 
@@ -541,13 +542,19 @@ asyncIOYY f x (I n) fd (I fdlk) (ToBool efd) (ToBool fstRun) =
                 flip (,) False <$> f x' fstRun
     ) fd efd
 
-asyncIOYYY :: IOYYY -> Ptr NgxStrType -> CInt -> CString -> CInt ->
-    CInt -> CUInt -> Ptr (Ptr NgxStrType) -> Ptr CInt ->
+asyncIOYYY :: IOYYY -> Ptr NgxStrType -> Ptr NgxStrType -> CInt ->
+    CString -> CInt -> CInt -> CUInt -> Ptr (Ptr NgxStrType) -> Ptr CInt ->
     Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO (StablePtr (Async ()))
-asyncIOYYY f b (I m) x (I n) fd (ToBool efd) =
+asyncIOYYY f tmpf b (I m) x (I n) fd (ToBool efd) =
     asyncIOCommon
     (do
-        b' <- peekNgxStringArrayLenY b m
+        b' <- if tmpf /= nullPtr
+                  then do
+                      c <- peek tmpf >>=
+                          (\(NgxStrType (I l) s) -> peekCStringLen (s, l)) >>=
+                              L.readFile
+                      L.length c `seq` return c
+                  else peekNgxStringArrayLenY b m
         x' <- B.unsafePackCStringLen (x, n)
         flip (,) False <$> f b' x'
     ) fd efd

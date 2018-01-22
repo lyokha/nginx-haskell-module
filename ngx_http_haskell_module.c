@@ -162,6 +162,7 @@ ngx_string(
 "AUX_NGX_TYPECHECK(AUX_NGX_IOY_YY, F, F) \\\n"
 "ngx_hs_ ## F = aux_ngx_hs_async_ioy_yy $ AUX_NGX_IOY_YY F; \\\n"
 "foreign export ccall ngx_hs_ ## F :: \\\n"
+"    AUX_NGX.Ptr AUX_NGX_STR_TYPE -> \\\n"
 "    AUX_NGX.Ptr AUX_NGX_STR_TYPE -> AUX_NGX.CInt -> \\\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt -> AUX_NGX.CInt -> AUX_NGX.CUInt -> \\\n"
 "    AUX_NGX.Ptr (AUX_NGX.Ptr AUX_NGX_STR_TYPE) -> AUX_NGX.Ptr AUX_NGX.CInt -> "
@@ -601,18 +602,25 @@ ngx_string(
 
 "aux_ngx_hs_async_ioy_yy :: AUX_NGX_EXPORT ->\n"
 "    AUX_NGX.Ptr AUX_NGX_STR_TYPE ->\n"
-"    AUX_NGX.CInt -> AUX_NGX.CString -> AUX_NGX.CInt ->\n"
-"    AUX_NGX.CInt -> AUX_NGX.CUInt ->\n"
+"    AUX_NGX.Ptr AUX_NGX_STR_TYPE -> AUX_NGX.CInt ->\n"
+"    AUX_NGX.CString -> AUX_NGX.CInt -> AUX_NGX.CInt -> AUX_NGX.CUInt ->\n"
 "    AUX_NGX.Ptr (AUX_NGX.Ptr AUX_NGX_STR_TYPE) ->\n"
 "    AUX_NGX.Ptr AUX_NGX.CInt -> AUX_NGX.Ptr AUX_NGX.CUInt ->\n"
 "    AUX_NGX.Ptr (AUX_NGX.StablePtr AUX_NGX_BSL.ByteString) ->\n"
 "    IO (AUX_NGX.StablePtr (AUX_NGX.Async ()))\n"
 "aux_ngx_hs_async_ioy_yy (AUX_NGX_IOY_YY f)\n"
-"            b (fromIntegral -> m) x (fromIntegral -> n)\n"
+"            tmpf b (fromIntegral -> m) x (fromIntegral -> n)\n"
 "            fd (AUX_NGX.toBool -> efd) =\n"
 "    aux_ngx_asyncIOCommon\n"
 "    (do\n"
-"        b' <- aux_ngx_peekNgxStringArrayLenY b m\n"
+"        b' <- if tmpf /= AUX_NGX.nullPtr\n"
+"                  then do\n"
+"                      c <- AUX_NGX.peek tmpf >>=\n"
+"                          (\\(AUX_NGX_STR_TYPE (fromIntegral -> l) s) ->\n"
+"                              AUX_NGX.peekCStringLen (s, l)) >>=\n"
+"                                  L.readFile\n"
+"                      AUX_NGX_BSL.length c `seq` return c\n"
+"                  else aux_ngx_peekNgxStringArrayLenY b m\n"
 "        x' <- AUX_NGX_BS.unsafePackCStringLen (x, n)\n"
 "        flip (,) False <$> f b' x'\n"
 "    ) fd efd\n\n"
@@ -808,8 +816,8 @@ typedef HsStablePtr (*ngx_http_haskell_handler_async_ioy_y)
     (HsPtr, HsInt32, HsInt32, HsInt32, HsWord32, HsWord32, HsPtr, HsPtr, HsPtr,
      HsPtr);
 typedef HsStablePtr (*ngx_http_haskell_handler_async_ioy_yy)
-    (HsPtr, HsInt32, HsPtr, HsInt32, HsInt32, HsWord32, HsPtr, HsPtr, HsPtr,
-     HsPtr);
+    (HsPtr, HsPtr, HsInt32, HsPtr, HsInt32, HsInt32, HsWord32, HsPtr, HsPtr,
+     HsPtr, HsPtr);
 typedef HsWord32 (*ngx_http_haskell_handler_ch)
     (HsPtr, HsInt32, HsPtr, HsPtr, HsPtr, HsPtr, HsPtr, HsPtr, HsPtr);
 typedef HsWord32 (*ngx_http_haskell_handler_dch)
@@ -926,6 +934,7 @@ typedef struct {
     ngx_pool_t                                *pool;
     ngx_http_haskell_content_handler_t        *content_handler;
     ngx_http_haskell_content_handler_data_t   *content_handler_data;
+    ngx_flag_t                                 request_body_read_temp_file;
     ngx_uint_t                                 static_content;
 } ngx_http_haskell_loc_conf_t;
 
@@ -969,6 +978,7 @@ typedef struct {
     ngx_array_t                                var_nocacheable_cache;
     ngx_array_t                                request_body;
     ngx_http_haskell_content_handler_data_t   *content_handler_data;
+    ngx_uint_t                                 request_body_read_cycle;
     ngx_uint_t                                 waiting_more_request_body:1;
     ngx_uint_t                                 read_request_body_error:1;
     ngx_uint_t                                 no_request_body:1;
@@ -1214,6 +1224,12 @@ static ngx_command_t  ngx_http_haskell_module_commands[] = {
       NGX_HTTP_MAIN_CONF_OFFSET,
       0,
       NULL },
+    { ngx_string("haskell_request_body_read_temp_file"),
+      NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_haskell_loc_conf_t, request_body_read_temp_file),
+      NULL },
 
       ngx_null_command
 };
@@ -1348,6 +1364,8 @@ ngx_http_haskell_create_loc_conf(ngx_conf_t *cf)
         return NULL;
     }
 
+    lcf->request_body_read_temp_file = NGX_CONF_UNSET;
+
     return lcf;
 }
 
@@ -1370,6 +1388,9 @@ ngx_http_haskell_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
         *elem = ((ngx_http_haskell_code_var_data_t *) prev->code_vars.elts)[i];
     }
+
+    ngx_conf_merge_value(conf->request_body_read_temp_file,
+                         prev->request_body_read_temp_file, 0);
 
     return NGX_CONF_OK;
 }
@@ -1464,6 +1485,11 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
         rb_done = rb_skip || ctx->request_body.nalloc > 0;
 
         if (rb && !rb_done) {
+            if (lcf->request_body_read_temp_file) {
+                r->request_body_in_persistent_file = 1;
+                r->request_body_in_clean_file = 1;
+            }
+
             r_main_count = r->main->count;
             rc = ngx_http_read_client_request_body(r,
                                                 ngx_http_haskell_post_handler);
@@ -1543,7 +1569,10 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
         if (rb) {
             res = ((ngx_http_haskell_handler_async_ioy_yy)
                    handlers[code_vars[i].handler].self)
-                    (ctx->request_body.elts, ctx->request_body.nelts,
+                    (r->request_body && r->request_body->temp_file
+                     && lcf->request_body_read_temp_file ?
+                        &r->request_body->temp_file->file.name : NULL,
+                     ctx->request_body.elts, ctx->request_body.nelts,
                      arg1.data, arg1.len, fd[1], use_eventfd_channel,
                      &async_data->yy_cleanup_data.bufs,
                      &async_data->yy_cleanup_data.n_bufs, &async_data->error,
@@ -1766,6 +1795,7 @@ ngx_http_haskell_delete_async_task(void *data)
 static void
 ngx_http_haskell_post_handler(ngx_http_request_t *r)
 {
+    ngx_http_haskell_loc_conf_t       *lcf;
     ngx_http_haskell_ctx_t            *ctx;
     ngx_chain_t                       *cl;
     ngx_str_t                         *rb;
@@ -1776,16 +1806,20 @@ ngx_http_haskell_post_handler(ngx_http_request_t *r)
         return;
     }
 
-    if (r->request_body == NULL || r->request_body->bufs == NULL
-        || r->request_body->temp_file)
-    {
-        ctx->no_request_body = 1;
-        if (r->request_body != NULL && r->request_body->temp_file) {
+    if (r->request_body != NULL && r->request_body->temp_file) {
+        lcf = ngx_http_get_module_loc_conf(r, ngx_http_haskell_module);
+        if (!lcf->request_body_read_temp_file
+            && ctx->request_body_read_cycle == 0)
+        {
             ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
-                          "request body was saved in a temporary file, "
+                          "request body is being saved in a temporary file, "
                           "exiting from haskell POST handler");
         }
         goto request_body_done;
+    }
+
+    if (r->request_body == NULL || r->request_body->bufs == NULL) {
+        ctx->no_request_body = 1;
     }
 
     if (ctx->request_body.nalloc != 0 || ctx->no_request_body) {
@@ -1815,6 +1849,8 @@ ngx_http_haskell_post_handler(ngx_http_request_t *r)
     }
 
 request_body_done:
+
+    ++ctx->request_body_read_cycle;
 
     if (ctx->waiting_more_request_body) {
         ctx->waiting_more_request_body = 0;
