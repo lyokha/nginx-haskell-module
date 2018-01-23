@@ -1,5 +1,7 @@
-### 1.0.2
+### 1.1
 
+- Added an asynchronous content handler with direct access to request body
+  chunks exported with *ngxExportAsyncHandlerOnReqBody*.
 - Reading buffered request body from a temp file when it's provided.
 
 ### 1.0.1

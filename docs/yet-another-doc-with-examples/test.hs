@@ -15,6 +15,8 @@ import           Control.Concurrent
 import           Safe
 import           Data.ByteString.Unsafe
 import           Data.ByteString.Internal (accursedUnutterablePerformIO)
+import           GHC.Prim
+import qualified Codec.Picture as Pic
 import           Network.HTTP.Client
 import           Control.Exception
 import           System.IO.Unsafe
@@ -52,14 +54,27 @@ delay v = do
     return $ C8L.pack $ show t
 ngxExportAsyncIOYY 'delay
 
+packLiteral :: Int -> GHC.Prim.Addr# -> ByteString
+packLiteral l s = accursedUnutterablePerformIO $ unsafePackAddressLen l s
+
 delayContent :: ByteString -> IO (L.ByteString, ByteString, Int)
 delayContent v = do
     v' <- delay v
     return $ (, packLiteral 10 "text/plain"#, 200) $
         L.concat ["Waited ", v', " sec\n"]
-    where packLiteral l s =
-              accursedUnutterablePerformIO $ unsafePackAddressLen l s
 ngxExportAsyncHandler 'delayContent
+
+convertToPng :: L.ByteString -> ByteString -> IO (L.ByteString, ByteString, Int)
+convertToPng t _ =
+    return $ case Pic.decodeImage $ L.toStrict t of
+                  Left e -> (C8L.pack e, packLiteral 10 "text/plain"#, 500)
+                  Right image ->
+                      case Pic.encodeDynamicPng image of
+                          Left e ->
+                              (C8L.pack e, packLiteral 10 "text/plain"#, 500)
+                          Right png ->
+                              (png, packLiteral 9 "image/png"#, 200)
+ngxExportAsyncHandlerOnReqBody 'convertToPng
 
 httpManager :: Manager
 httpManager = unsafePerformIO $ newManager defaultManagerSettings

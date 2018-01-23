@@ -57,7 +57,7 @@ ngx_string("_upd__");
 static const ngx_str_t  haskell_module_shm_stats_var_prefix =
 ngx_string("_shm__");
 static const ngx_int_t  haskell_module_ngx_export_api_version_major = 1;
-static const ngx_int_t  haskell_module_ngx_export_api_version_minor = 0;
+static const ngx_int_t  haskell_module_ngx_export_api_version_minor = 1;
 
 static const ngx_str_t  haskell_module_code_head =
 ngx_string(
@@ -680,8 +680,8 @@ ngx_string(
 "    ) fd efd\n\n"
 
 "aux_ngx_hs_async_handler_rb :: AUX_NGX_EXPORT ->\n"
-"    AUX_NGX.Ptr AUX_NGX_STR_TYPE -> AUX_NGX.Ptr AUX_NGX_STR_TYPE ->\n"
-"    AUX_NGX.CInt ->\n"
+"    AUX_NGX.Ptr AUX_NGX_STR_TYPE ->\n"
+"    AUX_NGX.Ptr AUX_NGX_STR_TYPE -> AUX_NGX.CInt ->\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt -> AUX_NGX.CInt -> AUX_NGX.CUInt ->\n"
 "    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CSize ->\n"
 "    AUX_NGX.Ptr (AUX_NGX.StablePtr AUX_NGX_BS.ByteString) ->\n"
@@ -692,7 +692,7 @@ ngx_string(
 "    AUX_NGX.Ptr (AUX_NGX.StablePtr AUX_NGX_BSL.ByteString) ->\n"
 "    IO (AUX_NGX.StablePtr (AUX_NGX.Async ()))\n"
 "aux_ngx_hs_async_handler_rb (AUX_NGX_ASYNC_HANDLER_RB f)\n"
-"            b (fromIntegral -> m) x (fromIntegral -> n)\n"
+"            tmpf b (fromIntegral -> m) x (fromIntegral -> n)\n"
 "            fd (AUX_NGX.toBool -> efd)\n"
 "            pct plct spct pst =\n"
 "    aux_ngx_asyncIOCommon\n"
