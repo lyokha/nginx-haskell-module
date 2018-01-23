@@ -17,8 +17,11 @@
 -----------------------------------------------------------------------------
 
 module NgxExport (
+    -- * Type declarations
+                  ContentHandlerResult
+                 ,UnsafeContentHandlerResult 
     -- * Exporters
-                  ngxExportSS
+                 ,ngxExportSS
                  ,ngxExportSSS
                  ,ngxExportSLS
                  ,ngxExportBS
@@ -94,8 +97,16 @@ pattern ToBool i <- (toBool -> i)
 {-# COMPLETE ToBool :: CUInt #-}
 #endif
 
-type ContentHandlerData       = (L.ByteString, B.ByteString, Int)
-type UnsafeContentHandlerData = (B.ByteString, B.ByteString, Int)
+-- The first element of the /3-tuple/ is /content/, the second is
+-- /content type/, and the third is /HTTP status/.
+type ContentHandlerResult       = (L.ByteString, B.ByteString, Int)
+
+-- The first element of the /3-tuple/ is /content/, the second is
+-- /content type/, and the third is /HTTP status/. Both the content and the
+-- content type are supposed to be referring to low-level string literals which
+-- do not need to be freed upon request termination and must not be
+-- garbage-collected in the Haskell RTS.
+type UnsafeContentHandlerResult = (B.ByteString, B.ByteString, Int)
 
 data NgxExport = SS              (String -> String)
                | SSS             (String -> String -> String)
@@ -108,11 +119,11 @@ data NgxExport = SS              (String -> String)
                | IOYY            (B.ByteString -> Bool -> IO L.ByteString)
                | IOYYY           (L.ByteString -> B.ByteString ->
                                      IO L.ByteString)
-               | Handler         (B.ByteString -> ContentHandlerData)
-               | UnsafeHandler   (B.ByteString -> UnsafeContentHandlerData)
-               | AsyncHandler    (B.ByteString -> IO ContentHandlerData)
+               | Handler         (B.ByteString -> ContentHandlerResult)
+               | UnsafeHandler   (B.ByteString -> UnsafeContentHandlerResult)
+               | AsyncHandler    (B.ByteString -> IO ContentHandlerResult)
                | AsyncHandlerRB  (L.ByteString -> B.ByteString ->
-                                     IO ContentHandlerData)
+                                     IO ContentHandlerResult)
 
 let name = mkName "exportType" in do
     TyConI (DataD _ _ _ EXTRA_WILDCARD_BEFORE_CON cs _) <- reify ''NgxExport
@@ -271,12 +282,8 @@ ngxExportServiceIOYY =
        Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO (StablePtr (Async ()))|]
 
 -- | Exports a function of type
--- /'B.ByteString' -> ('L.ByteString', 'B.ByteString', 'Int')/
+-- /'B.ByteString' -> 'ContentHandlerResult'/
 -- for using in directives /haskell_content/ and /haskell_static_content/.
---
--- The first element in the returned /3-tuple/ of the exported function is
--- the /content/, the second is the /content type/, and the third is the
--- /HTTP status/.
 ngxExportHandler :: Name -> Q [Dec]
 ngxExportHandler =
     ngxExport 'Handler 'handler
@@ -295,14 +302,8 @@ ngxExportDefHandler =
        Ptr (StablePtr L.ByteString) -> IO CUInt|]
 
 -- | Exports a function of type
--- /'B.ByteString' -> ('B.ByteString', 'B.ByteString', 'Int')/
+-- /'B.ByteString' -> 'UnsafeContentHandlerResult'/
 -- for using in directive /haskell_unsafe_content/.
---
--- The first element in the returned /3-tuple/ of the exported function is
--- the /content/, the second is the /content type/, and the third is the
--- /HTTP status/. Both the content and the content type are supposed to be
--- referring to low-level string literals which do not need to be freed upon
--- the request termination and must not be garbage-collected in the Haskell RTS.
 ngxExportUnsafeHandler :: Name -> Q [Dec]
 ngxExportUnsafeHandler =
     ngxExport 'UnsafeHandler 'unsafeHandler
@@ -310,12 +311,8 @@ ngxExportUnsafeHandler =
        Ptr CString -> Ptr CSize -> Ptr CInt -> IO CUInt|]
 
 -- | Exports a function of type
--- /'B.ByteString' -> 'IO' ('L.ByteString', 'B.ByteString', 'Int')/
+-- /'B.ByteString' -> 'IO' 'ContentHandlerResult'/
 -- for using in directive /haskell_async_content/.
---
--- The first element in the returned /3-tuple/ of the exported function is
--- the /content/, the second is the /content type/, and the third is the
--- /HTTP status/.
 ngxExportAsyncHandler :: Name -> Q [Dec]
 ngxExportAsyncHandler =
     ngxExport 'AsyncHandler 'asyncHandler
@@ -325,13 +322,11 @@ ngxExportAsyncHandler =
        Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO (StablePtr (Async ()))|]
 
 -- | Exports a function of type
--- /'L.ByteString' -> 'B.ByteString' ->
---      'IO' ('L.ByteString', 'B.ByteString', 'Int')/
+-- /'L.ByteString' -> 'B.ByteString' -> 'IO' 'ContentHandlerResult'/
 -- for using in directive /haskell_async_content_on_request_body/.
 --
--- The first element in the returned /3-tuple/ of the exported function is
--- the /content/, the second is the /content type/, and the third is the
--- /HTTP status/.
+-- The first argument of the exported function contains buffers of the client
+-- request body.
 ngxExportAsyncHandlerOnReqBody :: Name -> Q [Dec]
 ngxExportAsyncHandlerOnReqBody =
     ngxExport 'AsyncHandlerRB 'asyncHandlerRB

@@ -282,9 +282,9 @@ static const ngx_str_t  haskell_module_code_tail =
 ngx_string(
 "\n-- END OF USER HASKELL CODE\n\n"
 
-"type AUX_NGX_ContentHandlerData =\n"
+"type AUX_NGX_ContentHandlerResult =\n"
 "    (AUX_NGX_BSL.ByteString, AUX_NGX_BS.ByteString, Int)\n"
-"type AUX_NGX_UnsafeContentHandlerData =\n"
+"type AUX_NGX_UnsafeContentHandlerResult =\n"
 "    (AUX_NGX_BS.ByteString, AUX_NGX_BS.ByteString, Int)\n\n"
 
 "data AUX_NGX_EXPORT = AUX_NGX_S_S (String -> String)\n"
@@ -302,14 +302,14 @@ ngx_string(
 "                          AUX_NGX_BS.ByteString -> IO AUX_NGX_BSL.ByteString)"
 "\n"
 "                    | AUX_NGX_HANDLER (AUX_NGX_BS.ByteString ->\n"
-"                          AUX_NGX_ContentHandlerData)\n"
+"                          AUX_NGX_ContentHandlerResult)\n"
 "                    | AUX_NGX_UNSAFE_HANDLER (AUX_NGX_BS.ByteString ->\n"
-"                          AUX_NGX_UnsafeContentHandlerData)\n"
+"                          AUX_NGX_UnsafeContentHandlerResult)\n"
 "                    | AUX_NGX_ASYNC_HANDLER (AUX_NGX_BS.ByteString ->\n"
-"                          IO AUX_NGX_ContentHandlerData)\n"
+"                          IO AUX_NGX_ContentHandlerResult)\n"
 "                    | AUX_NGX_ASYNC_HANDLER_RB (AUX_NGX_BSL.ByteString ->\n"
 "                          AUX_NGX_BS.ByteString ->\n"
-"                          IO AUX_NGX_ContentHandlerData)\n\n"
+"                          IO AUX_NGX_ContentHandlerResult)\n\n"
 
 "instance Enum AUX_NGX_EXPORT where\n"
 "    toEnum _ = AUX_NGX_S_S id    -- not used\n"
@@ -1751,7 +1751,7 @@ ngx_http_haskell_access_phase_handler(ngx_http_request_t *r)
     clnd->yy_cleanup_data.bufs = ngx_pnalloc(r->pool, sizeof(ngx_str_t));
     if (clnd->yy_cleanup_data.bufs == NULL) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "failed to allocate pointer to initial buffer for future "
+                      "failed to allocate initial buffer for future "
                       "content handler result, skipping IO task");
         clnd->complete = 1;
         return NGX_DECLINED;
@@ -4473,6 +4473,8 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
         err = ctx->content_handler_data->error;
         res = ctx->content_handler_data->yy_cleanup_data.bufs;
         len = ctx->content_handler_data->yy_cleanup_data.n_bufs;
+        ct = ctx->content_handler_data->content_type;
+        st = ctx->content_handler_data->status;
         if (err) {
             rc = ngx_http_haskell_yy_handler_result(r->connection->log, r->pool,
                     res, len, &ereslen,

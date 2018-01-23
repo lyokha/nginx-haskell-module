@@ -357,18 +357,20 @@ Let's rewrite our *timer* example using *haskell_async_content*.
 
 -- ...
 
+import           GHC.Prim
 import           Data.ByteString.Unsafe
 import           Data.ByteString.Internal (accursedUnutterablePerformIO)
 
 -- ...
+
+packLiteral :: Int -> GHC.Prim.Addr# -> ByteString
+packLiteral l s = accursedUnutterablePerformIO $ unsafePackAddressLen l s
 
 delayContent :: ByteString -> IO (L.ByteString, ByteString, Int)
 delayContent v = do
     v' <- delay v
     return $ (, packLiteral 10 "text/plain"#, 200) $
         L.concat ["Waited ", v', " sec\n"]
-    where packLiteral l s =
-              accursedUnutterablePerformIO $ unsafePackAddressLen l s
 ngxExportAsyncHandler 'delayContent
 ```
 

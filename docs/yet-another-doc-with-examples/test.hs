@@ -13,10 +13,10 @@ import qualified Data.ByteString.Char8 as C8
 import qualified Data.ByteString.Lazy.Char8 as C8L
 import           Control.Concurrent
 import           Safe
+import           GHC.Prim
 import           Data.ByteString.Unsafe
 import           Data.ByteString.Internal (accursedUnutterablePerformIO)
-import           GHC.Prim
-import qualified Codec.Picture as Pic
+import           Codec.Picture
 import           Network.HTTP.Client
 import           Control.Exception
 import           System.IO.Unsafe
@@ -57,23 +57,20 @@ ngxExportAsyncIOYY 'delay
 packLiteral :: Int -> GHC.Prim.Addr# -> ByteString
 packLiteral l s = accursedUnutterablePerformIO $ unsafePackAddressLen l s
 
-delayContent :: ByteString -> IO (L.ByteString, ByteString, Int)
+delayContent :: ByteString -> IO ContentHandlerResult
 delayContent v = do
     v' <- delay v
     return $ (, packLiteral 10 "text/plain"#, 200) $
         L.concat ["Waited ", v', " sec\n"]
 ngxExportAsyncHandler 'delayContent
 
-convertToPng :: L.ByteString -> ByteString -> IO (L.ByteString, ByteString, Int)
-convertToPng t _ =
-    return $ case Pic.decodeImage $ L.toStrict t of
-                  Left e -> (C8L.pack e, packLiteral 10 "text/plain"#, 500)
-                  Right image ->
-                      case Pic.encodeDynamicPng image of
-                          Left e ->
-                              (C8L.pack e, packLiteral 10 "text/plain"#, 500)
-                          Right png ->
-                              (png, packLiteral 9 "image/png"#, 200)
+convertToPng :: L.ByteString -> ByteString -> IO ContentHandlerResult
+convertToPng t = const $ return $
+    case decodeImage $ L.toStrict t of
+        Left e -> (C8L.pack e, packLiteral 10 "text/plain"#, 500)
+        Right image -> case encodeDynamicPng image of
+                Left e -> (C8L.pack e, packLiteral 10 "text/plain"#, 500)
+                Right png -> (png, packLiteral 9 "image/png"#, 200)
 ngxExportAsyncHandlerOnReqBody 'convertToPng
 
 httpManager :: Manager
