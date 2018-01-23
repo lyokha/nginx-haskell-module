@@ -34,6 +34,7 @@ module NgxExport (
                  ,ngxExportDefHandler
                  ,ngxExportUnsafeHandler
                  ,ngxExportAsyncHandler
+                 ,ngxExportAsyncHandlerOnReqBody
     -- * Re-exported data constructors from /"Foreign.C"/
     --   (for marshalling in foreign calls)
                  ,Foreign.C.CInt (..)
@@ -96,19 +97,22 @@ pattern ToBool i <- (toBool -> i)
 type ContentHandlerData       = (L.ByteString, B.ByteString, Int)
 type UnsafeContentHandlerData = (B.ByteString, B.ByteString, Int)
 
-data NgxExport = SS            (String -> String)
-               | SSS           (String -> String -> String)
-               | SLS           ([String] -> String)
-               | BS            (String -> Bool)
-               | BSS           (String -> String -> Bool)
-               | BLS           ([String] -> Bool)
-               | YY            (B.ByteString -> L.ByteString)
-               | BY            (B.ByteString -> Bool)
-               | IOYY          (B.ByteString -> Bool -> IO L.ByteString)
-               | IOYYY         (L.ByteString -> B.ByteString -> IO L.ByteString)
-               | Handler       (B.ByteString -> ContentHandlerData)
-               | UnsafeHandler (B.ByteString -> UnsafeContentHandlerData)
-               | AsyncHandler  (B.ByteString -> IO ContentHandlerData)
+data NgxExport = SS              (String -> String)
+               | SSS             (String -> String -> String)
+               | SLS             ([String] -> String)
+               | BS              (String -> Bool)
+               | BSS             (String -> String -> Bool)
+               | BLS             ([String] -> Bool)
+               | YY              (B.ByteString -> L.ByteString)
+               | BY              (B.ByteString -> Bool)
+               | IOYY            (B.ByteString -> Bool -> IO L.ByteString)
+               | IOYYY           (L.ByteString -> B.ByteString ->
+                                     IO L.ByteString)
+               | Handler         (B.ByteString -> ContentHandlerData)
+               | UnsafeHandler   (B.ByteString -> UnsafeContentHandlerData)
+               | AsyncHandler    (B.ByteString -> IO ContentHandlerData)
+               | AsyncHandlerRB  (L.ByteString -> B.ByteString ->
+                                     IO ContentHandlerData)
 
 let name = mkName "exportType" in do
     TyConI (DataD _ _ _ EXTRA_WILDCARD_BEFORE_CON cs _) <- reify ''NgxExport
@@ -320,6 +324,23 @@ ngxExportAsyncHandler =
        Ptr (Ptr NgxStrType) -> Ptr CInt ->
        Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO (StablePtr (Async ()))|]
 
+-- | Exports a function of type
+-- /'L.ByteString' -> 'B.ByteString' ->
+--      'IO' ('L.ByteString', 'B.ByteString', 'Int')/
+-- for using in directive /haskell_async_content_on_request_body/.
+--
+-- The first element in the returned /3-tuple/ of the exported function is
+-- the /content/, the second is the /content type/, and the third is the
+-- /HTTP status/.
+ngxExportAsyncHandlerOnReqBody :: Name -> Q [Dec]
+ngxExportAsyncHandlerOnReqBody =
+    ngxExport 'AsyncHandlerRB 'asyncHandlerRB
+    [t|Ptr NgxStrType -> Ptr NgxStrType -> CInt ->
+       CString -> CInt -> CInt -> CUInt ->
+       Ptr CString -> Ptr CSize -> Ptr (StablePtr B.ByteString) -> Ptr CInt ->
+       Ptr (Ptr NgxStrType) -> Ptr CInt ->
+       Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO (StablePtr (Async ()))|]
+
 data NgxStrType = NgxStrType CSize CString
 
 instance Storable NgxStrType where
@@ -409,6 +430,23 @@ pokeContentTypeAndStatus :: B.ByteString ->
 pokeContentTypeAndStatus ct pct plct pst st = do
     PtrLen sct lct <- B.unsafeUseAsCStringLen ct return
     pokeCStringLen sct lct pct plct >> poke pst st
+
+peekRequestBodyChunks :: Ptr NgxStrType -> Ptr NgxStrType -> Int ->
+    IO L.ByteString
+peekRequestBodyChunks tmpf b m =
+    if tmpf /= nullPtr
+        then do
+            c <- peek tmpf >>=
+                (\(NgxStrType (I l) s) -> peekCStringLen (s, l)) >>=
+                    L.readFile
+            L.length c `seq` return c
+        else peekNgxStringArrayLenY b m
+
+pokeAsyncHandlerData :: B.ByteString -> Ptr CString -> Ptr CSize ->
+    Ptr (StablePtr B.ByteString) -> Ptr CInt -> CInt -> IO ()
+pokeAsyncHandlerData ct pct plct spct pst st = do
+    pokeContentTypeAndStatus ct pct plct pst st
+    newStablePtr ct >>= poke spct
 
 safeHandler :: Ptr CString -> Ptr CInt -> IO CUInt -> IO CUInt
 safeHandler p pl = handle $ \e -> do
@@ -548,13 +586,7 @@ asyncIOYYY :: IOYYY -> Ptr NgxStrType -> Ptr NgxStrType -> CInt ->
 asyncIOYYY f tmpf b (I m) x (I n) fd (ToBool efd) =
     asyncIOCommon
     (do
-        b' <- if tmpf /= nullPtr
-                  then do
-                      c <- peek tmpf >>=
-                          (\(NgxStrType (I l) s) -> peekCStringLen (s, l)) >>=
-                              L.readFile
-                      L.length c `seq` return c
-                  else peekNgxStringArrayLenY b m
+        b' <- peekRequestBodyChunks tmpf b m
         x' <- B.unsafePackCStringLen (x, n)
         flip (,) False <$> f b' x'
     ) fd efd
@@ -569,8 +601,22 @@ asyncHandler f x (I n) fd (ToBool efd) pct plct spct pst =
     (do
         x' <- B.unsafePackCStringLen (x, n)
         (s, ct, I st) <- f x'
-        (return $!! s) >> pokeContentTypeAndStatus ct pct plct pst st
-        newStablePtr ct >>= poke spct
+        (return $!! s) >> pokeAsyncHandlerData ct pct plct spct pst st
+        return (s, False)
+    ) fd efd
+
+asyncHandlerRB :: AsyncHandlerRB -> Ptr NgxStrType -> Ptr NgxStrType -> CInt ->
+    CString -> CInt -> CInt -> CUInt ->
+    Ptr CString -> Ptr CSize -> Ptr (StablePtr B.ByteString) -> Ptr CInt ->
+    Ptr (Ptr NgxStrType) -> Ptr CInt ->
+    Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO (StablePtr (Async ()))
+asyncHandlerRB f tmpf b (I m) x (I n) fd (ToBool efd) pct plct spct pst =
+    asyncIOCommon
+    (do
+        b' <- peekRequestBodyChunks tmpf b m
+        x' <- B.unsafePackCStringLen (x, n)
+        (s, ct, I st) <- f b' x'
+        (return $!! s) >> pokeAsyncHandlerData ct pct plct spct pst st
         return (s, False)
     ) fd efd
 
