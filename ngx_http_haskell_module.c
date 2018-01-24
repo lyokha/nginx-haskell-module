@@ -463,7 +463,7 @@ ngx_string(
 "    AUX_NGX.Ptr AUX_NGX.CInt -> AUX_NGX.CInt -> IO ()\n"
 "aux_ngx_pokeAsyncHandlerData ct pct plct spct pst st = do\n"
 "    aux_ngx_pokeContentTypeAndStatus ct pct plct pst st\n"
-"    AUX_NGX.newStablePtr ct >>= AUX_NGX.poke spct\n"
+"    AUX_NGX.newStablePtr ct >>= AUX_NGX.poke spct\n\n"
 
 "aux_ngx_safeHandler :: AUX_NGX.Ptr AUX_NGX.CString ->\n"
 "    AUX_NGX.Ptr AUX_NGX.CInt -> IO AUX_NGX.CUInt -> IO AUX_NGX.CUInt\n"
