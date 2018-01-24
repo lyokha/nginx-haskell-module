@@ -5,7 +5,8 @@
 
 The [*nginx-haskell-module*](https://github.com/lyokha/nginx-haskell-module)
 allows for running in Nginx written in Haskell synchronous and asynchronous
-tasks, per-worker and shared services, and content handlers.
+tasks, request body handlers, per-worker and shared services, and content
+handlers.
 
 # Synchronous tasks
 
@@ -54,7 +55,10 @@ custom Haskell declarations get wrapped inside common Haskell code.
 
 ## Examples
 
-In the examples we will use *modular* approach with *camel-cased* exporters.
+In all examples in this section and later we will use *modular* approach with
+*camel-cased* exporters and separate compilation of Haskell code.
+
+\pagebreak
 
 **File test.hs**
 
@@ -222,8 +226,8 @@ needle `isInList` [needle, in, stack] = 1
 
 # Asynchronous tasks and request body handlers
 
-There are only two types of Haskell handlers for per-request asynchronous tasks:
-the asynchronous handler and the asynchronous request body handler.
+There are two types of Haskell handlers for per-request asynchronous tasks: an
+asynchronous handler and an asynchronous request body handler.
 
 ---------------------------------------------------------------------------------------------------------------------------------------
 Type                                                                         Exporter
@@ -234,9 +238,9 @@ Type                                                                         Exp
 ---------------------------------------------------------------------------------------------------------------------------------------
 
 Normal asynchronous handler accepts a strict bytestring and returns a lazy
-bytestring. Its type exactly corresponds to that of handlers exported with
-*ngxExportIOYY*. Request body handlers require the request body chunks in their
-first parameter.
+bytestring. Its type exactly corresponds to that of the handlers exported with
+*ngxExportIOYY*. Request body handler additionally accepts request body chunks
+in its first parameter.
 
 Unlike synchronous handlers, asynchronous per-request handlers are *eager*. This
 means that they will always run when declared in a location, no matter whether
@@ -263,6 +267,8 @@ are no more tasks left), moving request processing to the next stage.
 Let's add two asynchronous handlers into *test.hs*: one for extracting a field
 from POST data, and the other for delaying response for a given number of
 seconds.
+
+**File test.hs** (*additions*)
 
 ``` {.haskell hl="vim"}
 import qualified Data.ByteString.Char8 as C8
@@ -294,8 +300,10 @@ Linking test.so ...
 ||| cp -i test.so /var/lib/nginx/
 ```
 
-Let's make location */timer*, where we will read how many seconds to wait from
-the POST field *timer*, and then wait them until returning the response.
+Let's make location */timer*, where we will read how many seconds to wait in
+POST field *timer*, and then wait them until returning the response.
+
+**File test.conf** (*additions*)
 
 ``` {.nginx hl="vim"}
         location /timer {
@@ -318,8 +326,8 @@ Waited 0 sec
 
 There are two types of *impure* content handlers that allow for effectful code.
 One of them corresponds to that of the *normal* content handler, except the
-result is wrapped in *IO Monad*. The other accepts POST data chunks in its first
-argument like in *ngxExportAsyncOnReqBody*.
+result is wrapped in *IO Monad*. The other accepts request body chunks in its
+first argument like the handler exported with *ngxExportAsyncOnReqBody*.
 
 --------------------------------------------------------------------------------------------------------------------------------------------------------------
 Type                                                                                 Exporter
@@ -330,7 +338,7 @@ Type                                                                            
 --------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 The first handler is declared with directive *haskell_async_content*, the
-handler that accepts request body chunks is declared with
+handler that accepts request body chunks is declared with directive
 *haskell_async_content_on_request_body*.
 
 It's easy to emulate effects in a synchronous content handler by combining the
@@ -390,6 +398,8 @@ ngxExportAsyncHandler 'delayContent
 For the *content type* we used a static string *"text/plain"#* that ends with a
 *magic hash* merely to avoid any dynamic memory allocations.
 
+\pagebreak
+
 **File test.conf** (*additions*)
 
 ``` {.nginx hl="vim"}
@@ -408,7 +418,7 @@ Waited 3 sec
 Waited 0 sec
 ```
 
-In another example we will create an *online image converter* to convert images
+In the next example we will create an *online image converter* to convert images
 of various formats into PNG using Haskell library *JuicyPixels*.
 
 **File test.hs** (*additions*)
@@ -717,7 +727,6 @@ Run curl tests.
 /anything
 /basic-auth/user/passwd
 /brotli
-/bytes/1024
 
 ...
 ```

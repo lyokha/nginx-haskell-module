@@ -22,7 +22,7 @@
 (yet another doc with examples)</h1>
 </header>
 <h1 id="why-bother">Why bother?</h1>
-<p>The <a href="https://github.com/lyokha/nginx-haskell-module"><em>nginx-haskell-module</em></a> allows for running in Nginx written in Haskell synchronous and asynchronous tasks, per-worker and shared services, and content handlers.</p>
+<p>The <a href="https://github.com/lyokha/nginx-haskell-module"><em>nginx-haskell-module</em></a> allows for running in Nginx written in Haskell synchronous and asynchronous tasks, request body handlers, per-worker and shared services, and content handlers.</p>
 <h1 id="synchronous-tasks">Synchronous tasks</h1>
 <p>Synchronous tasks are mostly <em>pure</em> Haskell functions of various types. To make them available in Nginx configuration files, they must be exported with special declarations named <em>exporters</em>. Below is a table of <em>type/exporter</em> correspondence for all available synchronous handlers.</p>
 <table>
@@ -78,7 +78,8 @@
 <p>All synchronous handlers may accept <em>strings</em> (one or two), a <em>list of strings</em>, or a <em>strict bytestring</em>, and return a <em>string</em>, a <em>boolean</em> or a <em>lazy bytestring</em>. The last handler from the table is <em>impure</em> or <em>effectful</em>, and it returns a <em>lazy bytestring</em> wrapped in <em>IO Monad</em>.</p>
 <p>There are two kinds of exporters which differ only in their implementations. The first kind — <em>camel-cased</em> exporters — is implemented by means of <em>Template Haskell</em>, the other kind — exporters in braces, as they are shown in the table — is implemented using <em>CPP macros</em>. Both of them provide <em>FFI</em> declarations for functions they export, but the camel-cased exporters are available only from a separate Haskell module <a href="http://hackage.haskell.org/package/ngx-export"><em>ngx-export</em></a>, which can be downloaded and installed by <em>cabal</em>, whereas the CPP exporters are implemented inside the <em>nginx-haskell-module</em> in so-called <em>standalone</em> approach, where custom Haskell declarations get wrapped inside common Haskell code.</p>
 <h2 id="examples">Examples</h2>
-<p>In the examples we will use <em>modular</em> approach with <em>camel-cased</em> exporters.</p>
+<p>In all examples in this section and later we will use <em>modular</em> approach with <em>camel-cased</em> exporters and separate compilation of Haskell code.</p>
+
 <p><strong>File test.hs</strong></p>
 <pre style="overflow-x: auto; background: #FFE">
 <span style="color: #870087;">{-# LANGUAGE TemplateHaskell #-}</span>
@@ -220,7 +221,7 @@
 </pre>
 
 <h1 id="asynchronous-tasks-and-request-body-handlers">Asynchronous tasks and request body handlers</h1>
-<p>There are only two types of Haskell handlers for per-request asynchronous tasks: the asynchronous handler and the asynchronous request body handler.</p>
+<p>There are two types of Haskell handlers for per-request asynchronous tasks: an asynchronous handler and an asynchronous request body handler.</p>
 <table>
 <colgroup>
 <col style="width: 57%" />
@@ -243,11 +244,12 @@
 </tr>
 </tbody>
 </table>
-<p>Normal asynchronous handler accepts a strict bytestring and returns a lazy bytestring. Its type exactly corresponds to that of handlers exported with <em>ngxExportIOYY</em>. Request body handlers require the request body chunks in their first parameter.</p>
+<p>Normal asynchronous handler accepts a strict bytestring and returns a lazy bytestring. Its type exactly corresponds to that of the handlers exported with <em>ngxExportIOYY</em>. Request body handler additionally accepts request body chunks in its first parameter.</p>
 <p>Unlike synchronous handlers, asynchronous per-request handlers are <em>eager</em>. This means that they will always run when declared in a location, no matter whether their results are going to be used in the response and rewrite directives, or not. The asynchronous handlers run in an early <em>rewrite phase</em> (before rewrite directives), and in a late rewrite phase (after rewrite directives, if in the final location there are more asynchronous tasks declared). It is possible to declare many asynchronous tasks in a single location: in this case they are spawned one by one in order of their declarations, which lets using results of early tasks in inputs of later task.</p>
 <p>Asynchronous tasks are bound to the Nginx event loop by means of <em>eventfd</em> (or POSIX <em>pipes</em> if eventfd was not available on the platform when Nginx was being compiled). When the rewrite phase handler of this module spawns an asynchronous task, it opens an eventfd, then registers it in the event loop, and passes it to the Haskell handler. As soon as the Haskell handler finishes the task and pokes the result into buffers, it writes into the eventfd, thus informing the Nginx part that the task has finished. Then Nginx gets back to the module’s rewrite phase handler, and it spawns the next asynchronous task, or returns (when there are no more tasks left), moving request processing to the next stage.</p>
 <h2 id="an-example-1">An example</h2>
 <p>Let’s add two asynchronous handlers into <em>test.hs</em>: one for extracting a field from POST data, and the other for delaying response for a given number of seconds.</p>
+<p><strong>File test.hs</strong> (<em>additions</em>)</p>
 <pre style="overflow-x: auto; background: #FFE">
 <span style="color: #008787;">import</span> <span style="color: #008787;">qualified</span> <span style="color: #000000;">Data.ByteString.Char8</span> <span style="color: #008787;">as</span> <span style="color: #000000;">C8</span>
 <span style="color: #008787;">import</span> <span style="color: #008787;">qualified</span> <span style="color: #000000;">Data.ByteString.Lazy.Char8</span> <span style="color: #008787;">as</span> <span style="color: #000000;">C8L</span>
@@ -277,7 +279,8 @@
 <span style="color: #005FAF;">cp -i test.so /var/lib/nginx/</span>
 </pre>
 
-<p>Let’s make location <em>/timer</em>, where we will read how many seconds to wait from the POST field <em>timer</em>, and then wait them until returning the response.</p>
+<p>Let’s make location <em>/timer</em>, where we will read how many seconds to wait in POST field <em>timer</em>, and then wait them until returning the response.</p>
+<p><strong>File test.conf</strong> (<em>additions</em>)</p>
 <pre style="overflow-x: auto; background: #FFE">
         <span style="color: #005FAF;">location</span><span style="color: #000000;"> /timer {</span>
 <span style="color: #000000;">            haskell_run_async_on_request_body reqFld </span><span style="color: #008700;">$hs_timeout</span><span style="color: #000000;"> timer;</span>
@@ -295,7 +298,7 @@
 </pre>
 
 <h1 id="asynchronous-content-handlers">Asynchronous content handlers</h1>
-<p>There are two types of <em>impure</em> content handlers that allow for effectful code. One of them corresponds to that of the <em>normal</em> content handler, except the result is wrapped in <em>IO Monad</em>. The other accepts POST data chunks in its first argument like in <em>ngxExportAsyncOnReqBody</em>.</p>
+<p>There are two types of <em>impure</em> content handlers that allow for effectful code. One of them corresponds to that of the <em>normal</em> content handler, except the result is wrapped in <em>IO Monad</em>. The other accepts request body chunks in its first argument like the handler exported with <em>ngxExportAsyncOnReqBody</em>.</p>
 <table>
 <colgroup>
 <col style="width: 53%" />
@@ -318,7 +321,7 @@
 </tr>
 </tbody>
 </table>
-<p>The first handler is declared with directive <em>haskell_async_content</em>, the handler that accepts request body chunks is declared with <em>haskell_async_content_on_request_body</em>.</p>
+<p>The first handler is declared with directive <em>haskell_async_content</em>, the handler that accepts request body chunks is declared with directive <em>haskell_async_content_on_request_body</em>.</p>
 <p>It’s easy to emulate effects in a synchronous content handler by combining the latter with an asynchronous task like in the following example.</p>
 <pre style="overflow-x: auto; background: #FFE">
         <span style="color: #005FAF;">location</span><span style="color: #000000;"> /async_content {</span>
@@ -356,6 +359,7 @@
 </pre>
 
 <p>For the <em>content type</em> we used a static string <em>“text/plain”#</em> that ends with a <em>magic hash</em> merely to avoid any dynamic memory allocations.</p>
+
 <p><strong>File test.conf</strong> (<em>additions</em>)</p>
 <pre style="overflow-x: auto; background: #FFE">
         <span style="color: #005FAF;">location</span><span style="color: #000000;"> /timer/ch {</span>
@@ -372,7 +376,7 @@
 <span style="color: #808080;">Waited 0 sec</span>
 </pre>
 
-<p>In another example we will create an <em>online image converter</em> to convert images of various formats into PNG using Haskell library <em>JuicyPixels</em>.</p>
+<p>In the next example we will create an <em>online image converter</em> to convert images of various formats into PNG using Haskell library <em>JuicyPixels</em>.</p>
 <p><strong>File test.hs</strong> (<em>additions</em>)</p>
 <pre style="overflow-x: auto; background: #FFE">
 <span style="color: #008787;">import</span>           <span style="color: #000000;">Codec.Picture</span>
@@ -571,7 +575,6 @@
 <span style="color: #808080;">/anything</span>
 <span style="color: #808080;">/basic-auth/user/passwd</span>
 <span style="color: #808080;">/brotli</span>
-<span style="color: #808080;">/bytes/1024</span>
 
 <span style="color: #808080;">...</span>
 </pre>
