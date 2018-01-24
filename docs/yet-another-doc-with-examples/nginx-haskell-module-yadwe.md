@@ -144,15 +144,23 @@ reverse world = dlrow
 
 There are three types of exporters for synchronous content handlers.
 
--------------------------------------------------------------------------------------------------------------------------------
-Type                                                                     Exporter
------------------------------------------------------------------------  ------------------------------------------------------
-`ByteString -> (L.ByteString, ByteString, Int)`                          `ngxExportHandler` (`NGX_EXPORT_HANDLER`)
+---------------------------------------------------------------------------------------------------------------------------
+Type                                                                 Exporter
+-------------------------------------------------------------------  ------------------------------------------------------
+`ByteString -> ContentHandlerResult`                                 `ngxExportHandler` (`NGX_EXPORT_HANDLER`)
 
-`ByteString -> L.ByteString`                                             `ngxExportDefHandler` (`NGX_EXPORT_DEF_HANDLER`)
+`ByteString -> L.ByteString`                                         `ngxExportDefHandler` (`NGX_EXPORT_DEF_HANDLER`)
 
-`ByteString -> (ByteString, ByteString, Int)`                            `ngxExportUnsafeHandler` (`NGX_EXPORT_UNSAFE_HANDLER`)
--------------------------------------------------------------------------------------------------------------------------------
+`ByteString -> UnsafeContentHandlerResult`                           `ngxExportUnsafeHandler` (`NGX_EXPORT_UNSAFE_HANDLER`)
+---------------------------------------------------------------------------------------------------------------------------
+
+Types *ContentHandlerResult* and *UnsafeContentHandlerResult* are declared as
+type synonyms in module *NgxExport*.
+
+``` {.haskell hl="vim"}
+type ContentHandlerResult = (L.ByteString, ByteString, Int)
+type UnsafeContentHandlerResult = (ByteString, ByteString, Int)
+```
 
 All content handlers are *pure* Haskell functions, as well as the most of other
 synchronous handlers. The *normal* content handler returns a *3-tuple*
@@ -306,19 +314,24 @@ Waited 3 sec
 Waited 0 sec
 ```
 
-# Asynchronous content handler
+# Asynchronous content handlers
 
-There is a special type of *impure* content handlers which allows for effectful
-code. The type corresponds to that of the *normal* content handler, except the
-result is wrapped in *IO Monad*.
+There are two types of *impure* content handlers that allow for effectful code.
+One of them corresponds to that of the *normal* content handler, except the
+result is wrapped in *IO Monad*. The other accepts POST data chunks in its first
+argument like in *ngxExportAsyncOnReqBody*.
 
------------------------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------------------------------------------------
 Type                                                                                 Exporter
------------------------------------------------------------------------------------  ----------------------------------------------------
-`ByteString -> IO (L.ByteString, ByteString, Int)`                                   `ngxExportAsyncHandler` (`NGX_EXPORT_ASYNC_HANDLER`)
------------------------------------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------  -------------------------------------------------------------------------
+`ByteString -> IO ContentHandlerResult`                                              `ngxExportAsyncHandler` (`NGX_EXPORT_ASYNC_HANDLER`)
 
-Such handlers are declared with directive *haskell_async_content*.
+`L.ByteString -> ByteString -> IO ContentHandlerResult`                              `ngxExportAsyncHandlerOnReqBody` (`NGX_EXPORT_ASYNC_HANDLER_ON_REQ_BODY`)
+--------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+The first handler is declared with directive *haskell_async_content*, the
+handler that accepts request body chunks is declared with
+*haskell_async_content_on_request_body*.
 
 It's easy to emulate effects in a synchronous content handler by combining the
 latter with an asynchronous task like in the following example.
@@ -345,7 +358,7 @@ The asynchronous task runs in a late *access phase*, and the lazy bytestring ---
 the contents --- gets used in the content handler as is, with all of its
 originally computed chunks.
 
-## An example
+## Examples (including online image converter)
 
 Let's rewrite our *timer* example using *haskell_async_content*.
 
@@ -366,7 +379,7 @@ import           Data.ByteString.Internal (accursedUnutterablePerformIO)
 packLiteral :: Int -> GHC.Prim.Addr# -> ByteString
 packLiteral l s = accursedUnutterablePerformIO $ unsafePackAddressLen l s
 
-delayContent :: ByteString -> IO (L.ByteString, ByteString, Int)
+delayContent :: ByteString -> IO ContentHandlerResult
 delayContent v = do
     v' <- delay v
     return $ (, packLiteral 10 "text/plain"#, 200) $
@@ -393,6 +406,50 @@ Run curl tests.
 Waited 3 sec
 ||| curl 'http://127.0.0.1:8010/timer/ch'
 Waited 0 sec
+```
+
+In another example we will create an *online image converter* to convert images
+of various formats into PNG using Haskell library *JuicyPixels*.
+
+**File test.hs** (*additions*)
+
+``` {.haskell hl="vim"}
+import           Codec.Picture
+
+-- ...
+
+convertToPng :: L.ByteString -> ByteString -> IO ContentHandlerResult
+convertToPng t = const $ return $
+    case decodeImage $ L.toStrict t of
+        Left e -> (C8L.pack e, packLiteral 10 "text/plain"#, 500)
+        Right image -> case encodeDynamicPng image of
+                Left e -> (C8L.pack e, packLiteral 10 "text/plain"#, 500)
+                Right png -> (png, packLiteral 9 "image/png"#, 200)
+ngxExportAsyncHandlerOnReqBody 'convertToPng
+```
+
+**File test.conf** (*additions*)
+
+``` {.nginx hl="vim"}
+        location /convert/topng {
+            client_max_body_size 20m;
+            haskell_request_body_read_temp_file on;
+            haskell_async_content_on_request_body convertToPng;
+        }
+```
+
+The first directive permits uploading of data that exceeds *20 megabytes*. The
+second directive *haskell_request_body_read_temp_file on* makes the Haskell part
+able to read huge POST data that is buffered in a temporary file by Nginx. We
+do not provide additional data for directive
+*haskell_async_content_on_request_body* besides the request chunks, and so the
+second argument is simply skipped.
+
+For running tests, an original file, say *sample.tif*, must be prepared. We will
+pipe command *display* from *ImageMagick* to the output of curl for more fun.
+
+``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
+||| curl --data-binary @sample.tif 'http://127.0.0.1:8010/convert/topng' | display
 ```
 
 # Asynchronous services
@@ -832,58 +889,65 @@ handlers in Haskell handlers, when it's possible, should be preferred.
 
 # Summary table of all Nginx directives of the module
 
--------------------------------------------------------------------------------------------------------------------------------------------
-Directive                                                     Level               Comment
-------------------------------------------------------------  ------------------  ---------------------------------------------------------
-`haskell compile`                                             `http`              Compile Haskell code from the last argument. Accepts
-                                                                                  arguments *threaded* (use *threaded* RTS library) and
-                                                                                  *standalone* (use *standalone* approach).
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+Directive                                                                 Level                 Comment
+------------------------------------------------------------------------  --------------------  ---------------------------------------------------------
+`haskell compile`                                                         `http`                Compile Haskell code from the last argument. Accepts
+                                                                                                arguments *threaded* (use *threaded* RTS library) and
+                                                                                                *standalone* (use *standalone* approach).
 
-`haskell load`                                                `http`              Load specified Haskell library.
+`haskell load`                                                            `http`                Load specified Haskell library.
 
-`haskell ghc_extra_options`                                   `http`              Specify extra options for GHC when the library compiles.
+`haskell ghc_extra_options`                                               `http`                Specify extra options for GHC when the library compiles.
 
-`haskell rts_options`                                         `http`              Specify options for Haskell RTS.
+`haskell rts_options`                                                     `http`                Specify options for Haskell RTS.
 
-`haskell program_options`                                     `http`              Specify program options. This is just another way for
-                                                                                  passing data into Haskell handlers.
+`haskell program_options`                                                 `http`                Specify program options. This is just another way for
+                                                                                                passing data into Haskell handlers.
 
-`haskell_run`                                                 `server`,           Run a synchronous Haskell task.
-                                                              `location`,
-                                                              `location if`
+`haskell_run`                                                             `server`,             Run a synchronous Haskell task.
+                                                                          `location`,
+                                                                          `location if`
 
-`haskell_run_async`                                           `location`,         Run an asynchronous Haskell task.
-                                                              `location if`
+`haskell_run_async`                                                       `location`,           Run an asynchronous Haskell task.
+                                                                          `location if`
 
-`haskell_run_async_on_request_body`                           `location`,         Run an asynchronous Haskell request body handler.
-                                                              `location if`
+`haskell_run_async_on_request_body`                                       `location`,           Run an asynchronous Haskell request body handler.
+                                                                          `location if`
 
-`haskell_run_service`                                         `http`              Run a Haskell service.
+`haskell_run_service`                                                     `http`                Run a Haskell service.
 
-`haskell_service_var_update_callback`                         `http`              Declare a callback on a service variable's update.
+`haskell_service_var_update_callback`                                     `http`                Run a callback on a service variable's update.
 
-`haskell_content`                                             `location`,         Declare a Haskell content handler.
-                                                              `location if`
+`haskell_content`                                                         `location`,           Declare a Haskell content handler.
+                                                                          `location if`
 
-`haskell_static_content`                                      `location`,         Declare a static Haskell content handler.
-                                                              `location if`
+`haskell_static_content`                                                  `location`,           Declare a static Haskell content handler.
+                                                                          `location if`
 
-`haskell_unsafe_content`                                      `location`,         Declare an unsafe Haskell content handler.
-                                                              `location if`
+`haskell_unsafe_content`                                                  `location`,           Declare an unsafe Haskell content handler.
+                                                                          `location if`
 
-`haskell_async_content`                                       `location`,         Declare an asynchronous Haskell content handler.
-                                                              `location if`
+`haskell_async_content`                                                   `location`,           Declare an asynchronous Haskell content handler.
+                                                                          `location if`
 
-`haskell_var_nocacheable`                                     `http`              All variables in the list become no cacheable and safe
-                                                                                  for using in ad-hoc iterations over *error_page* cycles.
+`haskell_async_content_on_request_body`                                   `location`,           Declare an asynchronous Haskell content handler with
+                                                                          `location if`         access to request body.
 
-`haskell_var_compensate_uri_changes`                          `http`              All variables in the list allow to cheat *error_page*
-                                                                                  when used in its redirections and make the cycle
-                                                                                  infinite.
+`haskell_request_body_read_temp_file`                                     `server`,             This flag (*on* or *off*) makes asynchronous tasks and
+                                                                          `location`,           content handlers read buffered in a *temporary file* POST
+                                                                          `location if`         data. If not set, then buffered data is not read.
 
-`haskell_service_var_ignore_empty`                            `http`              Do not write the service result when its value is empty.
+`haskell_var_nocacheable`                                                 `http`                All variables in the list become no cacheable and safe
+                                                                                                for using in ad-hoc iterations over *error_page* cycles.
 
-`haskell_service_var_in_shm`                                  `http`              Store the service result in a shared memory. Implicitly
-                                                                                  declares a shared service.
--------------------------------------------------------------------------------------------------------------------------------------------
+`haskell_var_compensate_uri_changes`                                      `http`                All variables in the list allow to cheat *error_page*
+                                                                                                when used in its redirections and make the cycle
+                                                                                                infinite.
+
+`haskell_service_var_ignore_empty`                                        `http`                Do not write the service result when its value is empty.
+
+`haskell_service_var_in_shm`                                              `http`                Store the service result in a shared memory. Implicitly
+                                                                                                declares a shared service.
+---------------------------------------------------------------------------------------------------------------------------------------------------------
 

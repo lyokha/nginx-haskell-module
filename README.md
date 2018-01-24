@@ -19,7 +19,7 @@ Table of contents
 - [Static content in HTTP responses](#static-content-in-http-responses)
 - [Optimized unsafe content handler](#optimized-unsafe-content-handler)
 - [Asynchronous tasks with side effects](#asynchronous-tasks-with-side-effects)
-- [Asynchronous content handler](#asynchronous-content-handler)
+- [Asynchronous content handlers](#asynchronous-content-handlers)
 - [Asynchronous services](#asynchronous-services)
 - [Client request body handlers](#client-request-body-handlers)
 - [Miscellaneous nginx directives](#miscellaneous-nginx-directives)
@@ -735,8 +735,8 @@ asynchronously, however they must be finishing not in order. Be aware that
 simultaneous requests to locations */* and */delay* will probably wait for each
 other: use different semaphores for different handlers when it is not desirable.
 
-Asynchronous content handler
-----------------------------
+Asynchronous content handlers
+-----------------------------
 
 Effectful code in content handlers is not permitted because they are all *pure*
 functions. We could emulate effects in a content handler by combining the latter
@@ -759,12 +759,16 @@ that we put in the location a rewrite to another location: handler *getUrl* will
 run before redirection, but variable *hs_async_httpbin* will never be used
 because we'll get out from the current location.
 
-Asynchronous content handlers have type
-*strictByteString-to-IO(3tuple(lazyByteString,strictByteString,Int))* and are
-declared with directive *haskell_async_content*. The type corresponds to that of
-the normal content handler, except it runs in the *IO Monad*. The task runs in a
-late *access phase*, and the lazy bytestring &mdash; the contents &mdash; gets
-used in the content handler as is, with all of its originally computed chunks.
+Asynchronous content handlers may have two types:
+*strictByteString-to-IO(3tuple(lazyByteString,strictByteString,Int))* and
+*lazyByteString-then-strictByteString-to-IO(3tuple(lazyByteString,strictByteString,Int))*.
+They are declared with directives *haskell_async_content* and
+*haskell_async_content_on_request_body* respectively. The type of the first
+variant corresponds to that of the normal content handler, except it runs in the
+*IO Monad*, the second variant accepts additionally request body chunks in its
+first argument. The task runs in a late *access phase*, and the lazy bytestring
+from the *3tuple* &mdash; the contents &mdash; gets used in the content handler
+as is, with all of its originally computed chunks.
 
 The *echo*-example with an async content handler will look like the following.
 
@@ -968,8 +972,14 @@ with a no-cacheable condition test variable.
   static data to the user haskell library. Inside the library data can be
   accessed with *cmdargs* or other tools that work with program options.
 
-All directives in this section are allowed only in the *http* clause of the
+All the directives listed so far are allowed only in the *http* clause of the
 nginx configuration.
+
+- *haskell_request_body_read_temp_file ``<on/off>``* &mdash; Makes haskell
+  handlers that require request body, read from a *temporary file* where the
+  body has been buffered by nginx. Allowed in *server*, *location* and
+  *location-if* clauses. If not set then buffered request bodies are not read in
+  haskell handlers.
 
 Service variables in shared memory and integration with other nginx modules
 ---------------------------------------------------------------------------

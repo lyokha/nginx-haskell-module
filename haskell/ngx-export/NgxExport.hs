@@ -97,11 +97,11 @@ pattern ToBool i <- (toBool -> i)
 {-# COMPLETE ToBool :: CUInt #-}
 #endif
 
--- The first element of the /3-tuple/ is /content/, the second is
+-- | The first element of the /3-tuple/ is /content/, the second is
 -- /content type/, and the third is /HTTP status/.
-type ContentHandlerResult       = (L.ByteString, B.ByteString, Int)
+type ContentHandlerResult = (L.ByteString, B.ByteString, Int)
 
--- The first element of the /3-tuple/ is /content/, the second is
+-- | The first element of the /3-tuple/ is /content/, the second is
 -- /content type/, and the third is /HTTP status/. Both the content and the
 -- content type are supposed to be referring to low-level string literals which
 -- do not need to be freed upon request termination and must not be

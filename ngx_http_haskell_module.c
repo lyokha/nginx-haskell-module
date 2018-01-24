@@ -313,19 +313,20 @@ ngx_string(
 
 "instance Enum AUX_NGX_EXPORT where\n"
 "    toEnum _ = AUX_NGX_S_S id    -- not used\n"
-"    fromEnum (AUX_NGX_S_S _)            = 1\n"
-"    fromEnum (AUX_NGX_S_SS _)           = 2\n"
-"    fromEnum (AUX_NGX_S_LS _)           = 3\n"
-"    fromEnum (AUX_NGX_B_S _)            = 4\n"
-"    fromEnum (AUX_NGX_B_SS _)           = 5\n"
-"    fromEnum (AUX_NGX_B_LS _)           = 6\n"
-"    fromEnum (AUX_NGX_Y_Y _)            = 7\n"
-"    fromEnum (AUX_NGX_B_Y _)            = 8\n"
-"    fromEnum (AUX_NGX_IOY_Y _)          = 9\n"
-"    fromEnum (AUX_NGX_IOY_YY _)         = 10\n"
-"    fromEnum (AUX_NGX_HANDLER _)        = 11\n"
-"    fromEnum (AUX_NGX_UNSAFE_HANDLER _) = 12\n"
-"    fromEnum (AUX_NGX_ASYNC_HANDLER _)  = 13\n\n"
+"    fromEnum (AUX_NGX_S_S _)              = 1\n"
+"    fromEnum (AUX_NGX_S_SS _)             = 2\n"
+"    fromEnum (AUX_NGX_S_LS _)             = 3\n"
+"    fromEnum (AUX_NGX_B_S _)              = 4\n"
+"    fromEnum (AUX_NGX_B_SS _)             = 5\n"
+"    fromEnum (AUX_NGX_B_LS _)             = 6\n"
+"    fromEnum (AUX_NGX_Y_Y _)              = 7\n"
+"    fromEnum (AUX_NGX_B_Y _)              = 8\n"
+"    fromEnum (AUX_NGX_IOY_Y _)            = 9\n"
+"    fromEnum (AUX_NGX_IOY_YY _)           = 10\n"
+"    fromEnum (AUX_NGX_HANDLER _)          = 11\n"
+"    fromEnum (AUX_NGX_UNSAFE_HANDLER _)   = 12\n"
+"    fromEnum (AUX_NGX_ASYNC_HANDLER _)    = 13\n"
+"    fromEnum (AUX_NGX_ASYNC_HANDLER_RB _) = 14\n\n"
 
 "aux_ngx_exportType :: AUX_NGX_EXPORT -> IO AUX_NGX.CInt\n"
 "aux_ngx_exportType = return . fromIntegral . fromEnum\n\n"
@@ -962,6 +963,7 @@ typedef struct {
 #endif
     ngx_uint_t                                 code_loaded:1;
     ngx_uint_t                                 has_async_tasks:1;
+    ngx_uint_t                                 has_async_handlers:1;
 } ngx_http_haskell_main_conf_t;
 
 
@@ -1346,13 +1348,18 @@ ngx_http_haskell_init(ngx_conf_t *cf)
     ngx_http_handler_pt           *h, *hs_elts;
 
     mcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_haskell_module);
-    if (mcf == NULL || !mcf->code_loaded
-        || !(mcf->has_async_tasks || mcf->var_nocacheable.nelts > 0))
-    {
+    cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
+
+    if (mcf == NULL || !mcf->code_loaded) {
         return NGX_OK;
     }
 
-    cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
+    if (!mcf->has_async_tasks && mcf->var_nocacheable.nelts == 0) {
+        if (mcf->has_async_handlers) {
+            goto access_phase;
+        }
+        return NGX_OK;
+    }
 
     hs = &cmcf->phases[NGX_HTTP_REWRITE_PHASE].handlers;
 
@@ -1368,6 +1375,12 @@ ngx_http_haskell_init(ngx_conf_t *cf)
 
     *++h = ngx_http_haskell_rewrite_phase_handler;
     hs_elts[0] = ngx_http_haskell_rewrite_phase_handler;
+
+    if (!mcf->has_async_handlers) {
+        return NGX_OK;
+    }
+
+access_phase:
 
     hs = &cmcf->phases[NGX_HTTP_ACCESS_PHASE].handlers;
 
@@ -3444,6 +3457,8 @@ ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         async = 1;
         async_rb = 1;
     }
+
+    mcf->has_async_handlers = mcf->has_async_handlers ? 1 : async;
 
     handler_name.len = value[1].len + haskell_module_handler_prefix.len;
     handler_name.data = ngx_pnalloc(cf->pool, handler_name.len + 1);
