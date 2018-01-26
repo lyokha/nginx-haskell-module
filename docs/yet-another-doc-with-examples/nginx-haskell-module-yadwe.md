@@ -441,19 +441,36 @@ ngxExportAsyncHandlerOnReqBody 'convertToPng
 **File test.conf** (*additions*)
 
 ``` {.nginx hl="vim"}
+    haskell rts_options -N4 -A128m;
+
+    limit_req_zone all zone=one:10m rate=1r/s;
+
+    # ...
+
         location /convert/topng {
+            limit_req zone=one burst=4;
             client_max_body_size 20m;
             haskell_request_body_read_temp_file on;
             haskell_async_content_on_request_body convertToPng;
         }
 ```
 
-The first directive permits uploading of data that exceeds *20 megabytes*. The
-second directive *haskell_request_body_read_temp_file on* makes the Haskell part
-able to read huge POST data that is buffered in a temporary file by Nginx. We
-do not provide additional data for directive
-*haskell_async_content_on_request_body* besides the request chunks, and so the
-second argument is simply skipped.
+Directive *haskell rts_options* declares that we are going to use 4 CPU cores
+(*-N4*) for image conversion tasks: this is a good choice on a quad-core
+processor when high CPU utilization is expected. For dealing with huge images,
+we also increased Haskell GC allocation area up to *128Mb* (*-A128m*) to
+possibly minimize frequency of GC calls. Directives *limit_req_zone* and
+*limit_req* must effectively limit number of client requests to protect CPU
+from very high load: one request per second with maximum burst of *4* requests
+seems to be a good choice when expecting huge images.
+
+In location */convert/topng*, directive *client_max_body_size* declares that all
+requests whose bodies exceed *20Mb* will be rejected. Directive
+*haskell_request_body_read_temp_file on* makes the Haskell part able to read
+huge request bodies that have been buffered in a temporary file by Nginx.
+Notice that we do not pass any value into directive
+*haskell_async_content_on_request_body*, therefore its second argument is simply
+omitted.
 
 For running tests, an original file, say *sample.tif*, must be prepared. We will
 pipe command *display* from *ImageMagick* to the output of curl for more fun.
@@ -727,6 +744,7 @@ Run curl tests.
 /anything
 /basic-auth/user/passwd
 /brotli
+/bytes/1024
 
 ...
 ```

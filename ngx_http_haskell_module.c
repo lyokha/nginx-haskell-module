@@ -2803,6 +2803,9 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
                     ((char **) mcf->rts_options.elts)[i];
         }
     }
+
+    /* FIXME: hs_init() may exit(EXIT_FAILURE), and in this case Nginx master
+     * may begin to continuously restart workers; not sure if it's fixable */
     mcf->hs_init(&argc, &argv);
     ngx_pfree(cycle->pool, argv);
 

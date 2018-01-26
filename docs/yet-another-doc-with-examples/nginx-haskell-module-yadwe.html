@@ -395,14 +395,22 @@
 
 <p><strong>File test.conf</strong> (<em>additions</em>)</p>
 <pre style="overflow-x: auto; background: #FFE">
+<span style="color: #000000;">    haskell rts_options -N4 -A128m;</span>
+
+    <span style="color: #008700;">limit_req_zone</span><span style="color: #000000;"> all zone=one:10m rate=1r/s;</span>
+
+<span style="color: #808080;">    # ...</span>
+
         <span style="color: #005FAF;">location</span><span style="color: #000000;"> /convert/topng {</span>
+            <span style="color: #008700;">limit_req</span><span style="color: #000000;"> zone=one burst=4;</span>
             <span style="color: #008700;">client_max_body_size</span><span style="color: #000000;"> 20m;</span>
 <span style="color: #000000;">            haskell_request_body_read_temp_file </span><span style="color: #AF5F00;">on</span><span style="color: #000000;">;</span>
 <span style="color: #000000;">            haskell_async_content_on_request_body convertToPng;</span>
 <span style="color: #000000;">        }</span>
 </pre>
 
-<p>The first directive permits uploading of data that exceeds <em>20 megabytes</em>. The second directive <em>haskell_request_body_read_temp_file on</em> makes the Haskell part able to read huge POST data that is buffered in a temporary file by Nginx. We do not provide additional data for directive <em>haskell_async_content_on_request_body</em> besides the request chunks, and so the second argument is simply skipped.</p>
+<p>Directive <em>haskell rts_options</em> declares that we are going to use 4 CPU cores (<em>-N4</em>) for image conversion tasks: this is a good choice on a quad-core processor when high CPU utilization is expected. For dealing with huge images, we also increased Haskell GC allocation area up to <em>128Mb</em> (<em>-A128m</em>) to possibly minimize frequency of GC calls. Directives <em>limit_req_zone</em> and <em>limit_req</em> must effectively limit number of client requests to protect CPU from very high load: one request per second with maximum burst of <em>4</em> requests seems to be a good choice when expecting huge images.</p>
+<p>In location <em>/convert/topng</em>, directive <em>client_max_body_size</em> declares that all requests whose bodies exceed <em>20Mb</em> will be rejected. Directive <em>haskell_request_body_read_temp_file on</em> makes the Haskell part able to read huge request bodies that have been buffered in a temporary file by Nginx. Notice that we do not pass any value into directive <em>haskell_async_content_on_request_body</em>, therefore its second argument is simply omitted.</p>
 <p>For running tests, an original file, say <em>sample.tif</em>, must be prepared. We will pipe command <em>display</em> from <em>ImageMagick</em> to the output of curl for more fun.</p>
 <pre style="overflow-x: auto; border-style: none none none solid; border-color: #6DF; border-width: 10px; padding: 5px 10px">
 <span style="color: #005FAF;">curl --data-binary @sample.tif 'http://127.0.0.1:8010/convert/topng' | display</span>
@@ -575,6 +583,7 @@
 <span style="color: #808080;">/anything</span>
 <span style="color: #808080;">/basic-auth/user/passwd</span>
 <span style="color: #808080;">/brotli</span>
+<span style="color: #808080;">/bytes/1024</span>
 
 <span style="color: #808080;">...</span>
 </pre>
