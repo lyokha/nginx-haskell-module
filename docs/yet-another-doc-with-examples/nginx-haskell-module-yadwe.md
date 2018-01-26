@@ -443,12 +443,12 @@ ngxExportAsyncHandlerOnReqBody 'convertToPng
 ``` {.nginx hl="vim"}
     haskell rts_options -N4 -A128m;
 
-    limit_req_zone all zone=one:10m rate=1r/s;
+    limit_conn_zone all zone=all:10m;
 
     # ...
 
         location /convert/topng {
-            limit_req zone=one burst=4;
+            limit_conn all 4;
             client_max_body_size 20m;
             haskell_request_body_read_temp_file on;
             haskell_async_content_on_request_body convertToPng;
@@ -459,10 +459,10 @@ Directive *haskell rts_options* declares that we are going to use 4 CPU cores
 (*-N4*) for image conversion tasks: this is a good choice on a quad-core
 processor when high CPU utilization is expected. For dealing with huge images,
 we also increased Haskell GC allocation area up to *128Mb* (*-A128m*) to
-possibly minimize frequency of GC calls. Directives *limit_req_zone* and
-*limit_req* must effectively limit number of client requests to protect CPU
-from very high load: one request per second with maximum burst of *4* requests
-seems to be a good choice when expecting huge images.
+possibly minimize frequency of GC calls. Directives *limit_conn_zone* and
+*limit_conn* must effectively limit number of simultaneously processed client
+requests to the number of CPU cores (*4*) in order to protect CPU from
+overloading.
 
 In location */convert/topng*, directive *client_max_body_size* declares that all
 requests whose bodies exceed *20Mb* will be rejected. Directive
