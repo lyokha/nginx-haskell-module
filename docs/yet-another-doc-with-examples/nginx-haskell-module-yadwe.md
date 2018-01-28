@@ -438,10 +438,20 @@ convertToPng t = const $ return $
 ngxExportAsyncHandlerOnReqBody 'convertToPng
 ```
 
+We are going to run instances of *convertToPng* on multiple CPU cores, and
+therefore it's better now to compile this with option *-feager-blackholing*.
+
+``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
+||| ghc -O2 -feager-blackholing -dynamic -shared -fPIC -L$(ghc --print-libdir)/rts -lHSrts_thr-ghc$(ghc --numeric-version) test.hs -o test.so
+[1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )
+Linking test.so ...
+||| cp -i test.so /var/lib/nginx/
+```
+
 **File test.conf** (*additions*)
 
 ``` {.nginx hl="vim"}
-    haskell rts_options -N4 -A128m;
+    haskell rts_options -N4 -A32m -qg;
 
     limit_conn_zone all zone=all:10m;
 
@@ -458,11 +468,12 @@ ngxExportAsyncHandlerOnReqBody 'convertToPng
 Directive *haskell rts_options* declares that we are going to use 4 CPU cores
 (*-N4*) for image conversion tasks: this is a good choice on a quad-core
 processor when high CPU utilization is expected. For dealing with huge images,
-we also increased Haskell GC allocation area up to *128Mb* (*-A128m*) to
-possibly minimize frequency of GC calls. Directives *limit_conn_zone* and
-*limit_conn* must effectively limit number of simultaneously processed client
-requests to the number of CPU cores (*4*) in order to protect CPU from
-overloading.
+we also increased Haskell GC allocation area up to *32Mb* (*-A32m*) to possibly
+minimize frequency of GC calls. We also forcibly switched to sequential GC
+(*-qg*), which is quite appropriate in our intrinsically single-threaded handler
+*convertToPng*. Directives *limit_conn_zone* and *limit_conn* must effectively
+limit number of simultaneously processed client requests to the number of CPU
+cores (*4*) in order to protect the CPU from overloading.
 
 In location */convert/topng*, directive *client_max_body_size* declares that all
 requests whose bodies exceed *20Mb* will be rejected. Directive
