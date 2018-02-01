@@ -3,7 +3,7 @@ retrieved from a remote database according to *key/value* pairs found in the
 request: e.g. GET arguments, the request body, cookies, headers etc. Handler
 *fromRemoteDB* accepts address of the database and a list of key/value pairs.
 It traverses the list from its head: if a key is empty then it returns the
-non-empty value as is, if the key and the value are not empty then it asks
+non-empty value as is, if the key and the value are not empty then it asks for
 destination from the remote database, otherwise if a value is empty then it
 skips to the next pair. If the remote database returns empty string then it also
 skips to the next pair.
@@ -30,7 +30,7 @@ Here is the rule for searching in database.
 
 If *cookie* *dst* is present in the request then it gets proxied to the value of
 the cookie, otherwise if *arg_user* or field *user* from a *POSTed* form are
-present in the request then the destination is asked from the remote database,
+present in the request then destination is inquired from the remote database,
 if all of them fail (i.e. are not present in the request in this case) then the
 request gets proxied to backend *failover*.
 
