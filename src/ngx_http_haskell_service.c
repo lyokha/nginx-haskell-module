@@ -31,6 +31,23 @@
 #endif
 
 
+typedef struct {
+    time_t                                     modified;
+    size_t                                     size;
+    ngx_uint_t                                 changes;
+    ngx_uint_t                                 failures;
+    ngx_uint_t                                 failed;
+} ngx_http_haskell_shm_stats_var_t;
+
+
+typedef struct {
+    ngx_http_haskell_var_handle_t              handle;
+    ngx_http_haskell_async_data_t              data;
+    ngx_msec_t                                 modified;
+    ngx_http_haskell_shm_stats_var_t           stats;
+} ngx_http_haskell_shm_var_handle_t;
+
+
 static ngx_int_t ngx_http_haskell_run_service(ngx_cycle_t *cycle,
     ngx_http_haskell_service_code_var_data_t *service_code_var,
     ngx_uint_t service_first_run);

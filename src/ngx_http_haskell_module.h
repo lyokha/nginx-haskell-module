@@ -62,10 +62,12 @@ typedef HsStablePtr (*ngx_http_haskell_handler_ach_rb)
     (HsPtr, HsPtr, HsInt32, HsPtr, HsInt32, HsInt32, HsWord32, HsPtr, HsPtr,
      HsPtr, HsPtr, HsPtr, HsPtr, HsPtr, HsPtr);
 
+
 typedef enum {
     ngx_http_haskell_module_wrap_mode_modular = 0,
     ngx_http_haskell_module_wrap_mode_standalone
 } ngx_http_haskell_module_wrap_mode_e;
+
 
 typedef enum {
     ngx_http_haskell_handler_type_uninitialized = 0,
@@ -240,23 +242,6 @@ typedef struct {
     ngx_str_t                                  value;
     ngx_uint_t                                 checked;
 } ngx_http_haskell_var_cache_t;
-
-
-typedef struct {
-    time_t                                     modified;
-    size_t                                     size;
-    ngx_uint_t                                 changes;
-    ngx_uint_t                                 failures;
-    ngx_uint_t                                 failed;
-} ngx_http_haskell_shm_stats_var_t;
-
-
-typedef struct {
-    ngx_http_haskell_var_handle_t              handle;
-    ngx_http_haskell_async_data_t              data;
-    ngx_msec_t                                 modified;
-    ngx_http_haskell_shm_stats_var_t           stats;
-} ngx_http_haskell_shm_var_handle_t;
 
 
 typedef struct {

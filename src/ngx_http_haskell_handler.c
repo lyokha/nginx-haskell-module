@@ -93,9 +93,11 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
         if (ngx_http_complex_value(r, &args[1], &arg2) != NGX_OK) {
             return NGX_ERROR;
         }
+        /* fall through */
     case ngx_http_haskell_handler_type_y_y:
     case ngx_http_haskell_handler_type_ioy_y:
         res_yy = &buf_yy;
+        /* fall through */
     case ngx_http_haskell_handler_type_s_s:
     case ngx_http_haskell_handler_type_b_s:
     case ngx_http_haskell_handler_type_b_y:
