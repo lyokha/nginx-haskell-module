@@ -1,5 +1,6 @@
-Run unit tests in directory *t/* using Perl script *prove* (this can be run by a
-regular user).
+Run unit tests in directory *t/* using command *prove* from Perl module
+*Test::Harness*. Tests require additionally module *Test::Nginx::Socket*. They
+can be run by a regular user.
 
 ```ShellSession
 $ prove -r -v t
