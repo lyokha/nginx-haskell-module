@@ -12,15 +12,12 @@ __DATA__
  
 === TEST 1: toUpper
 --- http_config
-    haskell ghc_extra_options -ignore-package regex-pcre;
+    haskell ghc_extra_options
+                -ignore-package regex-pcre
+                -XFlexibleInstances -XMagicHash -XTupleSections;
 
-    haskell compile /tmp/ngx_haskell.hs '
+    haskell compile standalone /tmp/ngx_haskell.hs '
 
-{-# LANGUAGE MagicHash, ViewPatterns, FlexibleInstances, TupleSections #-}
-
-module NgxHaskellUserRuntime where
-
-import           NgxExport
 import qualified Data.Char as C
 import           Text.Regex.PCRE
 import           Data.Aeson
@@ -40,12 +37,35 @@ import           Control.Exception
 import           Safe
 
 toUpper = map C.toUpper
-ngxExportSS \'toUpper
+NGX_EXPORT_S_S (toUpper)
 
 takeN = take . readDef 0
-ngxExportSSS \'takeN
+NGX_EXPORT_S_SS (takeN)
 
-ngxExportSS \'reverse
+NGX_EXPORT_S_S (reverse)
+
+-- does not match when any of the 2 args is empty or not decodable
+matches = (fromMaybe False .) . liftM2 (=~) `on` (doURLDecode =<<) . toMaybe
+    where toMaybe [] = Nothing
+          toMaybe a  = Just a
+NGX_EXPORT_B_SS (matches)
+
+firstNotEmpty = headDef "" . filter (not . null)
+NGX_EXPORT_S_LS (firstNotEmpty)
+
+isInList [] = False
+isInList (x : xs) = x `elem` xs
+NGX_EXPORT_B_LS (isInList)
+
+jSONListOfInts :: B.ByteString -> Maybe [Int]
+jSONListOfInts = (decode =<<) . doURLDecode . L.fromStrict
+
+isJSONListOfInts = isJust . jSONListOfInts
+NGX_EXPORT_B_Y (isJSONListOfInts)
+
+jSONListOfIntsTakeN x = encode $ maybe [] (take n) $ jSONListOfInts y
+    where (readDef 0 . C8.unpack -> n, B.tail -> y) = B.break (== 124) x
+NGX_EXPORT_Y_Y (jSONListOfIntsTakeN)
 
 class UrlDecodable a
     where doURLDecode :: a -> Maybe a
@@ -76,31 +96,8 @@ instance UrlDecodable L.ByteString where
     doURLDecode (L.uncons -> Just (43, xs)) = (32 `L.cons`) <$> doURLDecode xs
     doURLDecode (L.uncons -> Just (x, xs)) = (x `L.cons`) <$> doURLDecode xs
 
--- does not match when any of the 2 args is empty or not decodable
-matches = (fromMaybe False .) . liftM2 (=~) `on` (doURLDecode =<<) . toMaybe
-    where toMaybe [] = Nothing
-          toMaybe a  = Just a
-ngxExportBSS \'matches
-
-firstNotEmpty = headDef "" . filter (not . null)
-ngxExportSLS \'firstNotEmpty
-
-isInList [] = False
-isInList (x : xs) = x `elem` xs
-ngxExportBLS \'isInList
-
-jSONListOfInts :: B.ByteString -> Maybe [Int]
-jSONListOfInts = (decode =<<) . doURLDecode . L.fromStrict
-
-isJSONListOfInts = isJust . jSONListOfInts
-ngxExportBY \'isJSONListOfInts
-
-jSONListOfIntsTakeN x = encode $ maybe [] (take n) $ jSONListOfInts y
-    where (readDef 0 . C8.unpack -> n, B.tail -> y) = B.break (== 124) x
-ngxExportYY \'jSONListOfIntsTakeN
-
 urlDecode = fromMaybe "" . doURLDecode
-ngxExportSS \'urlDecode
+NGX_EXPORT_S_S (urlDecode)
 
 -- compatible with Pandoc 2.0 (will not compile for older versions)
 fromMd (T.decodeUtf8 -> x) = uncurry (, packLiteral 9 "text/html"#, ) $
@@ -116,12 +113,12 @@ fromMd (T.decodeUtf8 -> x) = uncurry (, packLiteral 9 "text/html"#, ) $
           writeError = writeHtml . doc . para . singleton . Str
           defHtmlWriterOptions = def
               { writerTemplate = Just "<html>\\n<body>\\n$body$</body></html>" }
-ngxExportHandler \'fromMd
+NGX_EXPORT_HANDLER (fromMd)
 
 toYesNo "0" = "No"
 toYesNo "1" = "Yes"
 toYesNo  _  = "Unknown"
-ngxExportSS \'toYesNo
+NGX_EXPORT_S_S (toYesNo)
 
     ';
 --- config

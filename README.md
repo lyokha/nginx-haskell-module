@@ -52,7 +52,7 @@ http {
     sendfile            on;
 
     haskell ghc_extra_options
-                -hide-package regex-pcre
+                -ignore-package regex-pcre
                 -XFlexibleInstances -XMagicHash -XTupleSections;
 
     haskell compile standalone /tmp/ngx_haskell.hs '
@@ -263,11 +263,11 @@ In this example 10 custom haskell functions are exported: *toUpper*, *takeN*,
 *isJSONListOfInts*, *jSONListOfIntsTakeN*, *urlDecode* and *toYesNo*. In my case
 this code won't compile due to ambiguity involved by presence of the two
 installed packages *regex-pcre* and *regex-pcre-builtin*, so I had to add an
-extra *ghc* compilation flag *-hide-package regex-pcre* using directive *haskell
-ghc_extra_options*. Other flags include *-XFlexibleInstances* which allows
-declaration of *instance UrlDecodable String*. Class *UrlDecodable* provides
-function *doURLDecode* for decoding strings and bytestrings that was adopted
-from [here](http://www.rosettacode.org/wiki/URL_decoding#Haskell). The
+extra *ghc* compilation flag *-ignore-package regex-pcre* using directive
+*haskell ghc_extra_options*. Other flags include *-XFlexibleInstances* which
+allows declaration of *instance UrlDecodable String*. Class *UrlDecodable*
+provides function *doURLDecode* for decoding strings and bytestrings that was
+adopted from [here](http://www.rosettacode.org/wiki/URL_decoding#Haskell). The
 bytestring instance of *doURLDecode* makes use of *view patterns* in its
 clauses, however this extension does not have to be declared explicitly because
 it was already enabled in a pragma from the wrapping haskell code provided by
