@@ -295,8 +295,8 @@ jSONListOfIntsTakeN ([10,20,30,40], undefined) = []
 --- response_headers
 Content-Type: text/html
 Content-Length: 277
---- response_body eval
-"<html>
+--- response_body chomp
+<html>
 <body>
 <h2>Do some JSON parsing</h2>
 <h3>Given <code>[10,20,30,40]</code></h3>
@@ -309,6 +309,6 @@ Content-Length: 277
 <ul>
 <li><em><code>[10,20,30]</code></em></li>
 </ul></li>
-</ul></body></html>"
+</ul></body></html>
 --- error_code: 200
 
