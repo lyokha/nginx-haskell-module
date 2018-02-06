@@ -1,0 +1,3 @@
+*.h     linguist-language=C
+*.t     linguist-language=Perl
+
