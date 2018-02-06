@@ -7,5 +7,5 @@ $ prove -r t
 ```
 
 Add option *-v* for verbose output. Before run, you may need to adjust
-environment variable *PATH* to set up a specific Nginx build for testing.
+environment variable *PATH* to point to a specific Nginx build for testing.
 
