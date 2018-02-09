@@ -144,28 +144,6 @@ typedef struct {
 
 
 typedef struct {
-    /* ngx_connection_t stub to allow use c->fd as event ident */
-    void                                      *data;
-    ngx_event_t                               *read;
-    ngx_event_t                               *write;
-    ngx_fd_t                                   fd;
-} ngx_http_haskell_async_event_stub_t;
-
-
-typedef struct {
-    ngx_http_haskell_async_event_stub_t        s;
-    ngx_cycle_t                               *cycle;
-} ngx_http_haskell_service_hook_event_t;
-
-
-typedef struct {
-    ngx_event_t                                event;
-    ngx_http_haskell_service_hook_event_t      hev;
-    ngx_fd_t                                   event_channel[2];
-} ngx_http_haskell_service_hook_t;
-
-
-typedef struct {
     ngx_int_t                                  handler;
     ngx_http_complex_value_t                  *args;
 } ngx_http_haskell_content_handler_t;
@@ -266,6 +244,30 @@ typedef struct {
     ngx_str_t                                  value;
     ngx_uint_t                                 checked;
 } ngx_http_haskell_var_cache_t;
+
+
+typedef struct {
+    /* ngx_connection_t stub to allow use c->fd as event ident */
+    void                                             *data;
+    ngx_event_t                                      *read;
+    ngx_event_t                                      *write;
+    ngx_fd_t                                          fd;
+} ngx_http_haskell_async_event_stub_t;
+
+
+typedef struct {
+    ngx_http_haskell_async_event_stub_t               s;
+    ngx_cycle_t                                      *cycle;
+} ngx_http_haskell_service_hook_event_t;
+
+
+typedef struct {
+    ngx_event_t                                       event;
+    ngx_http_haskell_service_hook_event_t             hev;
+    ngx_fd_t                                          event_channel[2];
+    ngx_int_t                                         service_code_var_index;
+    struct ngx_http_haskell_service_code_var_data_s  *service_code_var;
+} ngx_http_haskell_service_hook_t;
 
 
 typedef struct {

@@ -547,7 +547,8 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
 
     service_hooks = mcf->service_hooks.elts;
     for (i = 0; i < mcf->service_hooks.nelts; i++) {
-        if (ngx_http_haskell_setup_service_hook(cycle, &service_hooks[i])
+        if (ngx_http_haskell_setup_service_hook(cycle, &mcf->service_code_vars,
+                                                cmvars, &service_hooks[i])
             != NGX_OK)
         {
             return NGX_ERROR;
@@ -1244,6 +1245,7 @@ ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_haskell_handler_t        *handlers;
     ngx_http_core_loc_conf_t          *clcf;
     ngx_http_haskell_service_hook_t   *hook;
+    ngx_int_t                          v_idx;
     ngx_uint_t                         n_last = 2;
     ngx_uint_t                         unsafe = 0, async = 0, async_rb = 0;
     ngx_uint_t                         service_hook = 0;
@@ -1379,6 +1381,19 @@ ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ++handlers[lcf->content_handler->handler].n_args[0];
 
     if (service_hook) {
+        if (value[2].len < 2 || value[2].data[0] != '$') {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid variable name \"%V\"", &value[2]);
+            return NGX_CONF_ERROR;
+        }
+        value[2].len--;
+        value[2].data++;
+
+        v_idx = ngx_http_get_variable_index(cf, &value[2]);
+        if (v_idx == NGX_ERROR) {
+            return NGX_CONF_ERROR;
+        }
+
         hook = ngx_array_push(&mcf->service_hooks);
         if (hook == NULL) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -1386,6 +1401,10 @@ ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             return NGX_CONF_ERROR;
         }
         lcf->service_hook_index = mcf->service_hooks.nelts - 1;
+
+        ngx_memzero(hook, sizeof(ngx_http_haskell_service_hook_t));
+        hook->service_code_var_index = v_idx;
+
         n_last = 3;
     }
 

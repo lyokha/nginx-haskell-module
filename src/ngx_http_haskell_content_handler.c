@@ -356,6 +356,17 @@ ngx_http_haskell_service_hook(ngx_http_request_t *r)
     lcf = ngx_http_get_module_loc_conf(r, ngx_http_haskell_module);
     mcf = ngx_http_get_module_main_conf(r, ngx_http_haskell_module);
 
+    service_hooks = mcf->service_hooks.elts;
+
+    if (service_hooks[lcf->service_hook_index].service_code_var_index
+        == NGX_DECLINED)
+    {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "service hook was disabled because of inappropriate "
+                      "variable handler");
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
     if (lcf->service_hook_index == NGX_CONF_UNSET_UINT
         || mcf->service_hooks.nelts < lcf->service_hook_index)
     {
@@ -364,8 +375,6 @@ ngx_http_haskell_service_hook(ngx_http_request_t *r)
                       lcf->service_hook_index);
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
-
-    service_hooks = mcf->service_hooks.elts;
 
     if (ngx_http_haskell_consume_from_async_event_channel(
                     service_hooks[lcf->service_hook_index].event_channel[1])

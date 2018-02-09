@@ -185,10 +185,33 @@ ngx_http_haskell_service_var_init_zone(ngx_shm_zone_t *shm_zone, void *data)
 
 ngx_int_t
 ngx_http_haskell_setup_service_hook(ngx_cycle_t *cycle,
+                                    ngx_array_t *service_code_vars,
+                                    ngx_http_variable_t *cmvars,
                                     ngx_http_haskell_service_hook_t *hook)
 {
+    ngx_uint_t                                 i;
+    ngx_http_haskell_service_code_var_data_t  *service_code_vars_elts;
     ngx_event_t                               *event;
     ngx_http_haskell_service_hook_event_t     *hev;
+
+    service_code_vars_elts = service_code_vars->elts;
+    for (i = 0; i < service_code_vars->nelts; i++) {
+        if (hook->service_code_var_index
+            == service_code_vars_elts[i].data->index)
+        {
+            hook->service_code_var = &service_code_vars_elts[i];
+            break;
+        }
+    }
+
+    if (hook->service_code_var == NULL) {
+        ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
+                      "service hook will not be enabled because variable "
+                      "\"%V\" is not a service variable",
+                      &cmvars[hook->service_code_var_index].name);
+        hook->service_code_var_index = NGX_DECLINED;
+        return NGX_OK;
+    }
 
     event = &hook->event;
     hev = &hook->hev;
