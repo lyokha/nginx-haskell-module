@@ -20,6 +20,14 @@
 #include "ngx_http_haskell_util.h"
 
 
+const ngx_uint_t  ngx_http_haskell_module_use_eventfd_channel =
+#if (NGX_HAVE_EVENTFD)
+    1;
+#else
+    0;
+#endif
+
+
 ngx_int_t
 ngx_http_haskell_yy_handler_result(ngx_log_t *log, ngx_pool_t *pool,
                                    ngx_str_t *bufs, HsInt32 n_bufs,
@@ -181,5 +189,35 @@ ngx_http_haskell_close_async_event_channel(ngx_log_t *log, ngx_fd_t fd[2])
                           "async event channel");
         }
     }
+}
+
+
+ssize_t
+ngx_http_haskell_signal_async_event_channel(ngx_fd_t fd)
+{
+#if (NGX_HAVE_EVENTFD)
+        uint64_t  v = 1;
+
+        return write(fd, &v, sizeof(uint64_t));
+#else
+        char v = '1';
+
+        return write(fd, &v, sizeof(char));
+#endif
+}
+
+
+ssize_t
+ngx_http_haskell_consume_from_async_event_channel(ngx_fd_t fd)
+{
+#if (NGX_HAVE_EVENTFD)
+        uint64_t  v;
+
+        return read(fd, &v, sizeof(uint64_t));
+#else
+        char v;
+
+        return read(fd, &v, sizeof(char));
+#endif
 }
 

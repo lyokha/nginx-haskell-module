@@ -21,6 +21,7 @@
 #include "ngx_http_haskell_content_handler.h"
 #include "ngx_http_haskell_async_handler.h"
 #include "ngx_http_haskell_service.h"
+#include "ngx_http_haskell_util.h"
 
 
 const ngx_str_t  ngx_http_haskell_module_handler_prefix =
@@ -35,12 +36,14 @@ ngx_string("_upd__");
 static const ngx_str_t  haskell_module_shm_stats_var_prefix =
 ngx_string("_shm__");
 
-const ngx_uint_t  ngx_http_haskell_module_use_eventfd_channel =
-#if (NGX_HAVE_EVENTFD)
-    1;
-#else
-    0;
-#endif
+
+typedef struct {
+    size_t                                     size;
+    ngx_fd_t                                 (*elts)[2];
+} ngx_http_haskell_service_hook_fd_t;
+
+
+static ngx_http_haskell_service_hook_fd_t  service_hook_fd;
 
 
 static char *ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
@@ -57,8 +60,11 @@ static void *ngx_http_haskell_create_main_conf(ngx_conf_t *cf);
 static void *ngx_http_haskell_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_haskell_merge_loc_conf(ngx_conf_t *cf, void *parent,
     void *child);
+static ngx_int_t ngx_http_haskell_init_module(ngx_cycle_t *cycle);
 static ngx_int_t ngx_http_haskell_init_worker(ngx_cycle_t *cycle);
 static void ngx_http_haskell_exit_worker(ngx_cycle_t *cycle);
+static void ngx_http_haskell_exit_master(ngx_cycle_t *cycle);
+static void ngx_http_haskell_cleanup_service_hook_fd(ngx_cycle_t *cycle);
 static void ngx_http_haskell_var_init(ngx_log_t *log, ngx_array_t *cmvar,
     ngx_array_t *var, ngx_http_get_variable_pt get_handler);
 static ngx_int_t ngx_http_haskell_shm_lock_init(ngx_cycle_t *cycle,
@@ -134,6 +140,12 @@ static ngx_command_t  ngx_http_haskell_module_commands[] = {
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
+    { ngx_string("haskell_service_hook"),
+      NGX_HTTP_LOC_CONF|NGX_CONF_TAKE23,
+      ngx_http_haskell_content,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      NULL },
     { ngx_string("haskell_var_nocacheable"),
       NGX_HTTP_MAIN_CONF|NGX_CONF_1MORE,
       ngx_http_haskell_var_configure,
@@ -190,12 +202,12 @@ ngx_module_t  ngx_http_haskell_module = {
     ngx_http_haskell_module_commands,        /* module directives */
     NGX_HTTP_MODULE,                         /* module type */
     NULL,                                    /* init master */
-    NULL,                                    /* init module */
+    ngx_http_haskell_init_module,            /* init module */
     ngx_http_haskell_init_worker,            /* init process */
     NULL,                                    /* init thread */
     NULL,                                    /* exit thread */
     ngx_http_haskell_exit_worker,            /* exit process */
-    NULL,                                    /* exit master */
+    ngx_http_haskell_exit_master,            /* exit master */
     NGX_MODULE_V1_PADDING
 };
 
@@ -285,6 +297,13 @@ ngx_http_haskell_create_main_conf(ngx_conf_t *cf)
         return NULL;
     }
 
+    if (ngx_array_init(&mcf->service_hooks, cf->pool, 1,
+                       sizeof(ngx_http_haskell_service_hook_t))
+        != NGX_OK)
+    {
+        return NULL;
+    }
+
 #ifdef NGX_HTTP_HASKELL_SHM_USE_SHARED_RLOCK
     mcf->shm_lock_fd = NGX_INVALID_FILE;
 #endif
@@ -310,6 +329,7 @@ ngx_http_haskell_create_loc_conf(ngx_conf_t *cf)
     }
 
     lcf->request_body_read_temp_file = NGX_CONF_UNSET;
+    lcf->service_hook_index = NGX_CONF_UNSET_UINT;
 
     return lcf;
 }
@@ -336,8 +356,51 @@ ngx_http_haskell_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_value(conf->request_body_read_temp_file,
                          prev->request_body_read_temp_file, 0);
+    ngx_conf_merge_uint_value(conf->service_hook_index,
+                              prev->service_hook_index, NGX_CONF_UNSET_UINT);
 
     return NGX_CONF_OK;
+}
+
+
+static ngx_int_t
+ngx_http_haskell_init_module(ngx_cycle_t *cycle)
+{
+    ngx_uint_t                                 i;
+    ngx_http_haskell_main_conf_t              *mcf;
+    ngx_http_haskell_service_hook_t           *service_hooks;
+
+    mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
+    if (mcf == NULL || !mcf->code_loaded) {
+        return NGX_OK;
+    }
+
+    ngx_http_haskell_cleanup_service_hook_fd(cycle);
+
+    service_hook_fd.size = mcf->service_hooks.nelts;
+    service_hook_fd.elts = ngx_alloc(service_hook_fd.size * sizeof(ngx_fd_t[2]),
+                                    cycle->log);
+
+    if (service_hook_fd.elts == NULL) {
+        ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
+                      "failed to allocate fd storage for service API");
+        return NGX_ERROR;
+    }
+
+    service_hooks = mcf->service_hooks.elts;
+    for (i = 0; i < mcf->service_hooks.nelts; i++) {
+        if (ngx_http_haskell_open_async_event_channel(
+                                            service_hooks[i].event_channel))
+        {
+            ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
+                          "failed to open event channel for service hook");
+            return NGX_ERROR;
+        }
+        service_hook_fd.elts[i][0] = service_hooks[i].event_channel[0];
+        service_hook_fd.elts[i][1] = service_hooks[i].event_channel[1];
+    }
+
+    return NGX_OK;
 }
 
 
@@ -350,6 +413,7 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
     ngx_http_variable_t                       *cmvars;
     ngx_http_haskell_var_handle_t             *vars;
     ngx_http_haskell_service_code_var_data_t  *service_code_vars;
+    ngx_http_haskell_service_hook_t           *service_hooks;
     ngx_file_t                                 out;
     ngx_int_t                                  index;
     ngx_uint_t                                 found;
@@ -481,6 +545,15 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
         return NGX_ERROR;
     }
 
+    service_hooks = mcf->service_hooks.elts;
+    for (i = 0; i < mcf->service_hooks.nelts; i++) {
+        if (ngx_http_haskell_setup_service_hook(cycle, &service_hooks[i])
+            != NGX_OK)
+        {
+            return NGX_ERROR;
+        }
+    }
+
     return ngx_http_haskell_init_services(cycle);
 }
 
@@ -532,6 +605,28 @@ ngx_http_haskell_exit_worker(ngx_cycle_t *cycle)
 
     }
 #endif
+}
+
+
+static void
+ngx_http_haskell_exit_master(ngx_cycle_t *cycle)
+{
+    ngx_http_haskell_cleanup_service_hook_fd(cycle);
+}
+
+
+static void
+ngx_http_haskell_cleanup_service_hook_fd(ngx_cycle_t *cycle)
+{
+    ngx_uint_t                                 i;
+
+    for (i = 0; i < service_hook_fd.size; i++) {
+        if (service_hook_fd.elts[i][0] != NGX_ERROR) {
+            ngx_http_haskell_close_async_event_channel(cycle->log,
+                                                       service_hook_fd.elts[i]);
+        }
+    }
+    ngx_free(service_hook_fd.elts);
 }
 
 
@@ -1148,7 +1243,10 @@ ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_str_t                          handler_name;
     ngx_http_haskell_handler_t        *handlers;
     ngx_http_core_loc_conf_t          *clcf;
+    ngx_http_haskell_service_hook_t   *hook;
+    ngx_uint_t                         n_last = 2;
     ngx_uint_t                         unsafe = 0, async = 0, async_rb = 0;
+    ngx_uint_t                         service_hook = 0;
 
     mcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_haskell_module);
 
@@ -1185,6 +1283,10 @@ ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     {
         async = 1;
         async_rb = 1;
+    } else if (value[0].len == 20
+        && ngx_strncmp(value[0].data, "haskell_service_hook", 20) == 0)
+    {
+        service_hook = 1;
     }
 
     mcf->has_async_handlers = mcf->has_async_handlers ? 1 : async;
@@ -1276,8 +1378,19 @@ ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ++handlers[lcf->content_handler->handler].n_args[0];
 
-    if (cf->args->nelts == 3) {
-        ngx_http_compile_complex_value_t   ccv;
+    if (service_hook) {
+        hook = ngx_array_push(&mcf->service_hooks);
+        if (hook == NULL) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "failed to allocate service hook");
+            return NGX_CONF_ERROR;
+        }
+        lcf->service_hook_index = mcf->service_hooks.nelts - 1;
+        n_last = 3;
+    }
+
+    if (cf->args->nelts == n_last + 1) {
+        ngx_http_compile_complex_value_t  ccv;
 
         lcf->content_handler->args = ngx_pcalloc(cf->pool,
                                             sizeof(ngx_http_complex_value_t));
@@ -1298,7 +1411,8 @@ ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
-    clcf->handler = ngx_http_haskell_content_handler;
+    clcf->handler = service_hook ? ngx_http_haskell_service_hook :
+            ngx_http_haskell_content_handler;
 
     return NGX_CONF_OK;
 }

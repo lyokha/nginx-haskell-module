@@ -52,6 +52,7 @@ static ngx_int_t ngx_http_haskell_run_service(ngx_cycle_t *cycle,
     ngx_http_haskell_service_code_var_data_t *service_code_var,
     ngx_uint_t service_first_run);
 static void ngx_http_haskell_service_event(ngx_event_t *ev);
+static void ngx_http_haskell_service_hook_event(ngx_event_t *ev);
 static void ngx_http_haskell_service_handler_cleanup(void *data);
 #ifdef NGX_HTTP_HASKELL_SHM_USE_SHARED_RLOCK
 static void ngx_http_haskell_wlock(ngx_fd_t fd);
@@ -177,6 +178,37 @@ ngx_http_haskell_service_var_init_zone(ngx_shm_zone_t *shm_zone, void *data)
 
     shpool->data = shm_vars;
     shm_zone->data = shm_vars;
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_http_haskell_setup_service_hook(ngx_cycle_t *cycle,
+                                    ngx_http_haskell_service_hook_t *hook)
+{
+    ngx_event_t                               *event;
+    ngx_http_haskell_service_hook_event_t     *hev;
+
+    event = &hook->event;
+    hev = &hook->hev;
+
+    ngx_memzero(event, sizeof(ngx_event_t));
+    event->data = hev;
+    event->handler = ngx_http_haskell_service_hook_event;
+    event->log = cycle->log;
+
+    ngx_memzero(hev, sizeof(ngx_http_haskell_service_hook_event_t));
+    hev->cycle = cycle;
+    hev->s.read = event;
+    hev->s.write = &dummy_write_event;
+    hev->s.fd = hook->event_channel[0];
+
+    if (ngx_add_event(event, NGX_READ_EVENT, NGX_CLEAR_EVENT) != NGX_OK) {
+        ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
+                      "failed to add event for service hook");
+        return NGX_ERROR;
+    }
 
     return NGX_OK;
 }
@@ -522,6 +554,16 @@ unlock_and_run_service:
 run_service:
 
     ngx_http_haskell_run_service(cycle, service_code_var, 0);
+}
+
+
+static void
+ngx_http_haskell_service_hook_event(ngx_event_t *ev)
+{
+    ngx_http_haskell_service_hook_event_t     *hev = ev->data;
+    ngx_cycle_t                               *cycle = hev->cycle;
+
+    ngx_log_error(NGX_LOG_ERR, cycle->log, 0, "EVENT HAPPENED");
 }
 
 

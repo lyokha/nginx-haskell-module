@@ -30,6 +30,11 @@ ngx_int_t ngx_http_haskell_yy_handler_result(ngx_log_t *log,
 void ngx_http_haskell_yy_handler_cleanup(void *data);
 ngx_int_t ngx_http_haskell_open_async_event_channel(ngx_fd_t fd[2]);
 void ngx_http_haskell_close_async_event_channel(ngx_log_t *log, ngx_fd_t fd[2]);
+ssize_t ngx_http_haskell_signal_async_event_channel(ngx_fd_t fd);
+ssize_t ngx_http_haskell_consume_from_async_event_channel(ngx_fd_t fd);
+
+
+extern const ngx_uint_t ngx_http_haskell_module_use_eventfd_channel;
 
 #endif /* NGX_HTTP_HASKELL_UTIL_H */
 

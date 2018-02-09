@@ -346,6 +346,54 @@ cleanup:
 }
 
 
+ngx_int_t
+ngx_http_haskell_service_hook(ngx_http_request_t *r)
+{
+    ngx_http_haskell_main_conf_t             *mcf;
+    ngx_http_haskell_loc_conf_t              *lcf;
+    ngx_http_haskell_service_hook_t          *service_hooks;
+
+    lcf = ngx_http_get_module_loc_conf(r, ngx_http_haskell_module);
+    mcf = ngx_http_get_module_main_conf(r, ngx_http_haskell_module);
+
+    if (lcf->service_hook_index == NGX_CONF_UNSET_UINT
+        || mcf->service_hooks.nelts < lcf->service_hook_index)
+    {
+        ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
+                      "unexpected service hook index %ui",
+                      lcf->service_hook_index);
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
+    service_hooks = mcf->service_hooks.elts;
+
+    if (ngx_http_haskell_consume_from_async_event_channel(
+                    service_hooks[lcf->service_hook_index].event_channel[1])
+        == -1)
+    {
+        if (ngx_errno != EAGAIN) {
+            ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
+                          "failed to read from service hook event channel");
+        }
+    }
+
+    if (ngx_http_haskell_signal_async_event_channel(
+                    service_hooks[lcf->service_hook_index].event_channel[1])
+        == -1)
+    {
+        ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
+                      "failed to write to service hook event channel");
+    }
+
+    r->header_only = 1;
+    r->headers_out.content_type_lowcase = NULL;
+    r->headers_out.status = NGX_HTTP_OK;
+    r->headers_out.content_length_n = 0;
+
+    return ngx_http_send_header(r);
+}
+
+
 static void
 ngx_http_haskell_content_handler_cleanup(void *data)
 {

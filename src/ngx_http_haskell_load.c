@@ -26,8 +26,8 @@
 static const ngx_str_t  haskell_module_type_checker_prefix =
 ngx_string("type_");
 
-static const ngx_int_t  haskell_module_ngx_export_api_version_major = 1;
-static const ngx_int_t  haskell_module_ngx_export_api_version_minor = 1;
+static const HsInt32  haskell_module_ngx_export_api_version_major = 1;
+static const HsInt32  haskell_module_ngx_export_api_version_minor = 1;
 
 
 ngx_int_t
@@ -187,8 +187,8 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
             || version[1] != haskell_module_ngx_export_api_version_minor)
         {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                          "bad API version of haskell library: %d.%d "
-                          "(expected %d.%d)", version[0], version[1],
+                          "bad API version of haskell library: %D.%D "
+                          "(expected %D.%D)", version[0], version[1],
                           haskell_module_ngx_export_api_version_major,
                           haskell_module_ngx_export_api_version_minor);
             goto unload_and_exit;

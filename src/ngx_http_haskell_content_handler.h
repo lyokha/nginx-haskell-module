@@ -24,6 +24,7 @@
 
 
 ngx_int_t ngx_http_haskell_content_handler(ngx_http_request_t *r);
+ngx_int_t ngx_http_haskell_service_hook(ngx_http_request_t *r);
 
 #endif /* NGX_HTTP_HASKELL_CONTENT_HANDLER_H */
 

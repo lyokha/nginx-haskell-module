@@ -133,6 +133,7 @@ typedef struct {
     ngx_array_t                                service_var_in_shm;
     ngx_shm_zone_t                            *shm_zone;
     ngx_str_t                                  shm_lock_files_path;
+    ngx_array_t                                service_hooks;
 #ifdef NGX_HTTP_HASKELL_SHM_USE_SHARED_RLOCK
     ngx_fd_t                                   shm_lock_fd;
 #endif
@@ -140,6 +141,28 @@ typedef struct {
     ngx_uint_t                                 has_async_tasks:1;
     ngx_uint_t                                 has_async_handlers:1;
 } ngx_http_haskell_main_conf_t;
+
+
+typedef struct {
+    /* ngx_connection_t stub to allow use c->fd as event ident */
+    void                                      *data;
+    ngx_event_t                               *read;
+    ngx_event_t                               *write;
+    ngx_fd_t                                   fd;
+} ngx_http_haskell_async_event_stub_t;
+
+
+typedef struct {
+    ngx_http_haskell_async_event_stub_t        s;
+    ngx_cycle_t                               *cycle;
+} ngx_http_haskell_service_hook_event_t;
+
+
+typedef struct {
+    ngx_event_t                                event;
+    ngx_http_haskell_service_hook_event_t      hev;
+    ngx_fd_t                                   event_channel[2];
+} ngx_http_haskell_service_hook_t;
 
 
 typedef struct {
@@ -174,6 +197,7 @@ typedef struct {
     ngx_http_haskell_content_handler_t        *content_handler;
     ngx_http_haskell_content_handler_data_t   *content_handler_data;
     ngx_flag_t                                 request_body_read_temp_file;
+    ngx_uint_t                                 service_hook_index;
     ngx_uint_t                                 static_content;
 } ngx_http_haskell_loc_conf_t;
 
@@ -245,15 +269,6 @@ typedef struct {
 
 
 typedef struct {
-    /* ngx_connection_t stub to allow use c->fd as event ident */
-    void                                             *data;
-    ngx_event_t                                      *read;
-    ngx_event_t                                      *write;
-    ngx_fd_t                                          fd;
-} ngx_http_haskell_async_event_stub_t;
-
-
-typedef struct {
     ngx_http_haskell_async_event_stub_t               s;
     ngx_http_request_t                               *r;
     ngx_uint_t                                       *complete;
@@ -289,7 +304,6 @@ typedef struct ngx_http_haskell_service_code_var_data_s
 
 
 extern const ngx_str_t ngx_http_haskell_module_handler_prefix;
-extern const ngx_uint_t ngx_http_haskell_module_use_eventfd_channel;
 
 extern ngx_module_t ngx_http_haskell_module;
 
