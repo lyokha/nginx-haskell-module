@@ -51,6 +51,8 @@ static char *ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_http_haskell_service_hooks_zone(ngx_conf_t *cf,
+    ngx_command_t *cmd, void *conf);
 static char *ngx_http_haskell_var_configure(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_haskell_service_var_in_shm(ngx_conf_t *cf,
@@ -144,6 +146,12 @@ static ngx_command_t  ngx_http_haskell_module_commands[] = {
       NGX_HTTP_LOC_CONF|NGX_CONF_TAKE23,
       ngx_http_haskell_content,
       NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      NULL },
+    { ngx_string("haskell_service_hooks_zone"),
+      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE2,
+      ngx_http_haskell_service_hooks_zone,
+      NGX_HTTP_MAIN_CONF_OFFSET,
       0,
       NULL },
     { ngx_string("haskell_var_nocacheable"),
@@ -1432,6 +1440,53 @@ ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
     clcf->handler = service_hook ? ngx_http_haskell_service_hook :
             ngx_http_haskell_content_handler;
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_http_haskell_service_hooks_zone(ngx_conf_t *cf, ngx_command_t *cmd,
+                                    void *conf)
+{
+    ngx_http_haskell_main_conf_t      *mcf = conf;
+
+    ngx_str_t                         *value;
+    ssize_t                            shm_size;
+
+    value = cf->args->elts;
+
+    if (mcf->service_hooks_shm_zone != NULL) {
+        return "is duplicate";
+    }
+
+    shm_size = ngx_parse_size(&value[2]);
+
+    if (shm_size == NGX_ERROR) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "invalid zone size \"%V\"", &value[2]);
+        return NGX_CONF_ERROR;
+    }
+
+    if (shm_size < (ssize_t) (8 * ngx_pagesize)) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "zone \"%V\" is too small", &value[1]);
+        return NGX_CONF_ERROR;
+    }
+
+    mcf->service_hooks_shm_zone = ngx_shared_memory_add(
+                            cf, &value[1], shm_size, &ngx_http_haskell_module);
+    if (mcf->service_hooks_shm_zone == NULL) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "failed to add memory for zone \"%V\"", &value[1]);
+        return NGX_CONF_ERROR;
+    }
+
+    mcf->service_hooks_shm_zone->init =
+                                ngx_http_haskell_service_hooks_init_zone;
+    mcf->service_hooks_shm_zone->data = &mcf->service_hooks;
+
+    mcf->service_hooks_shm_zone->noreuse = 1;
 
     return NGX_CONF_OK;
 }

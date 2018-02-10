@@ -48,6 +48,11 @@ typedef struct {
 } ngx_http_haskell_shm_var_handle_t;
 
 
+typedef struct {
+    ngx_str_t                                  data;
+} ngx_http_haskell_shm_service_hook_handle_t;
+
+
 static ngx_int_t ngx_http_haskell_run_service(ngx_cycle_t *cycle,
     ngx_http_haskell_service_code_var_data_t *service_code_var,
     ngx_uint_t service_first_run);
@@ -172,6 +177,46 @@ ngx_http_haskell_service_var_init_zone(ngx_shm_zone_t *shm_zone, void *data)
         ngx_memzero(&shm_vars[i], sizeof(ngx_http_haskell_shm_var_handle_t));
         shm_vars[i].handle = vars_elts[i];
         shm_vars[i].data.index = vars_elts[i].index;
+    }
+
+    ngx_shmtx_unlock(&shpool->mutex);
+
+    shpool->data = shm_vars;
+    shm_zone->data = shm_vars;
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_http_haskell_service_hooks_init_zone(ngx_shm_zone_t *shm_zone, void *data)
+{
+    ngx_uint_t                                   i;
+    ngx_slab_pool_t                             *shpool;
+    ngx_array_t                                 *hooks;
+    ngx_http_haskell_service_hook_t             *hooks_elts;
+    ngx_http_haskell_shm_service_hook_handle_t  *shm_vars;
+
+    if (shm_zone->shm.exists) {
+        return NGX_OK;
+    }
+
+    shpool = (ngx_slab_pool_t *) shm_zone->shm.addr;
+    hooks = shm_zone->data;
+    hooks_elts = hooks->elts;
+
+    ngx_shmtx_lock(&shpool->mutex);
+
+    shm_vars = ngx_slab_alloc_locked(shpool,
+            sizeof(ngx_http_haskell_shm_service_hook_handle_t) * hooks->nelts);
+    if (shm_vars == NULL) {
+        ngx_shmtx_unlock(&shpool->mutex);
+        return NGX_ERROR;
+    }
+
+    for (i = 0; i < hooks->nelts; i++) {
+        ngx_memzero(&shm_vars[i],
+                    sizeof(ngx_http_haskell_shm_service_hook_handle_t));
     }
 
     ngx_shmtx_unlock(&shpool->mutex);

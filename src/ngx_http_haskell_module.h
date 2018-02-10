@@ -133,10 +133,11 @@ typedef struct {
     ngx_array_t                                service_var_in_shm;
     ngx_shm_zone_t                            *shm_zone;
     ngx_str_t                                  shm_lock_files_path;
-    ngx_array_t                                service_hooks;
 #ifdef NGX_HTTP_HASKELL_SHM_USE_SHARED_RLOCK
     ngx_fd_t                                   shm_lock_fd;
 #endif
+    ngx_array_t                                service_hooks;
+    ngx_shm_zone_t                            *service_hooks_shm_zone;
     ngx_uint_t                                 code_loaded:1;
     ngx_uint_t                                 has_async_tasks:1;
     ngx_uint_t                                 has_async_handlers:1;

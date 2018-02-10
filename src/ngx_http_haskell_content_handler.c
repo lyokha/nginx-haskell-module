@@ -351,6 +351,8 @@ ngx_http_haskell_service_hook(ngx_http_request_t *r)
 {
     ngx_http_haskell_main_conf_t             *mcf;
     ngx_http_haskell_loc_conf_t              *lcf;
+    ngx_http_complex_value_t                 *args;
+    ngx_str_t                                 arg = ngx_null_string;
     ngx_http_haskell_service_hook_t          *service_hooks;
 
     lcf = ngx_http_get_module_loc_conf(r, ngx_http_haskell_module);
@@ -373,6 +375,19 @@ ngx_http_haskell_service_hook(ngx_http_request_t *r)
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
                       "unexpected service hook index %ui",
                       lcf->service_hook_index);
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
+    args = lcf->content_handler->args;
+
+    if (args && ngx_http_complex_value(r, args, &arg) != NGX_OK) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
+    if (arg.len > 0 && mcf->service_hooks_shm_zone == NULL) {
+        ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
+                      "service hook provides data, but service hooks shm zone "
+                      "was not initialized");
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
