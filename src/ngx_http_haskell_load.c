@@ -279,7 +279,10 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
              && handlers[i].type != ngx_http_haskell_handler_type_ioy_y)
             ||
             (handlers[i].role == ngx_http_haskell_handler_role_async_variable_rb
-             && handlers[i].type != ngx_http_haskell_handler_type_ioy_yy))
+             && handlers[i].type != ngx_http_haskell_handler_type_ioy_yy)
+            ||
+            (handlers[i].role == ngx_http_haskell_handler_role_service_hook
+             && handlers[i].type != ngx_http_haskell_handler_type_ioy_y))
         {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                           "haskell handler \"%V\" role and type mismatch",

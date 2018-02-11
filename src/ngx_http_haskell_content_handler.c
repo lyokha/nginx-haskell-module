@@ -18,6 +18,7 @@
 
 #include "ngx_http_haskell_module.h"
 #include "ngx_http_haskell_content_handler.h"
+#include "ngx_http_haskell_service.h"
 #include "ngx_http_haskell_util.h"
 
 
@@ -358,6 +359,15 @@ ngx_http_haskell_service_hook(ngx_http_request_t *r)
     lcf = ngx_http_get_module_loc_conf(r, ngx_http_haskell_module);
     mcf = ngx_http_get_module_main_conf(r, ngx_http_haskell_module);
 
+    if (lcf->service_hook_index == NGX_ERROR
+        || mcf->service_hooks.nelts < lcf->service_hook_index)
+    {
+        ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
+                      "unexpected service hook index %ui",
+                      lcf->service_hook_index);
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
     service_hooks = mcf->service_hooks.elts;
 
     if (service_hooks[lcf->service_hook_index].service_code_var_index
@@ -366,15 +376,6 @@ ngx_http_haskell_service_hook(ngx_http_request_t *r)
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "service hook was disabled because of inappropriate "
                       "variable handler");
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
-    }
-
-    if (lcf->service_hook_index == NGX_CONF_UNSET_UINT
-        || mcf->service_hooks.nelts < lcf->service_hook_index)
-    {
-        ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
-                      "unexpected service hook index %ui",
-                      lcf->service_hook_index);
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
@@ -391,11 +392,21 @@ ngx_http_haskell_service_hook(ngx_http_request_t *r)
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
+    if (mcf->service_hooks_shm_zone != NULL
+        && ngx_http_haskell_update_service_hook_data(r, lcf->service_hook_index,
+                                                     arg)
+        != NGX_OK)
+    {
+        ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
+                      "service hook data failed to update");
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
     if (ngx_http_haskell_consume_from_async_event_channel(
                     service_hooks[lcf->service_hook_index].event_channel[1])
         == -1)
     {
-        if (ngx_errno != EAGAIN) {
+        if (ngx_errno != NGX_EAGAIN) {
             ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
                           "failed to read from service hook event channel");
         }

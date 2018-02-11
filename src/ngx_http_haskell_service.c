@@ -268,6 +268,9 @@ ngx_http_haskell_setup_service_hook(ngx_cycle_t *cycle,
 
     ngx_memzero(hev, sizeof(ngx_http_haskell_service_hook_event_t));
     hev->cycle = cycle;
+    hev->handler = hook->handler;
+    hev->service_hook_index = hook->service_hook_index;
+
     hev->s.read = event;
     hev->s.write = &dummy_write_event;
     hev->s.fd = hook->event_channel[0];
@@ -628,10 +631,66 @@ run_service:
 static void
 ngx_http_haskell_service_hook_event(ngx_event_t *ev)
 {
-    ngx_http_haskell_service_hook_event_t     *hev = ev->data;
-    ngx_cycle_t                               *cycle = hev->cycle;
+    ngx_http_haskell_service_hook_event_t       *hev = ev->data;
+    ngx_cycle_t                                 *cycle = hev->cycle;
+
+    ngx_http_haskell_main_conf_t                *mcf;
+    ngx_slab_pool_t                             *shpool;
+    ngx_http_haskell_shm_service_hook_handle_t  *shm_vars;
 
     ngx_log_error(NGX_LOG_ERR, cycle->log, 0, "EVENT HAPPENED");
+
+    mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
+
+    shpool = (ngx_slab_pool_t *) mcf->service_hooks_shm_zone->shm.addr;
+    shm_vars = shpool->data;
+
+    NGX_HTTP_HASKELL_SHM_RLOCK
+
+    NGX_HTTP_HASKELL_SHM_UNLOCK
+}
+
+
+ngx_int_t
+ngx_http_haskell_update_service_hook_data(ngx_http_request_t *r,
+                                          ngx_int_t hook_index, ngx_str_t data)
+{
+    ngx_http_haskell_main_conf_t                *mcf;
+    ngx_slab_pool_t                             *shpool;
+    ngx_http_haskell_shm_service_hook_handle_t  *shm_vars;
+    ngx_str_t                                   *hook_data;
+    u_char                                      *hook_data_data;
+
+    mcf = ngx_http_get_module_main_conf(r, ngx_http_haskell_module);
+
+    shpool = (ngx_slab_pool_t *) mcf->service_hooks_shm_zone->shm.addr;
+    shm_vars = shpool->data;
+
+    NGX_HTTP_HASKELL_SHM_WLOCK
+
+    hook_data = &shm_vars[hook_index].data;
+
+    if (hook_data != NULL) {
+        ngx_slab_free_locked(shpool, hook_data);
+    }
+    ngx_str_null(hook_data);
+
+    hook_data_data = ngx_slab_alloc_locked(shpool, data.len);
+    if (hook_data_data == NULL) {
+        ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
+                      "failed to allocate memory to store service hook data");
+        NGX_HTTP_HASKELL_SHM_UNLOCK
+        return NGX_ERROR;
+    }
+
+    ngx_memcpy(hook_data_data, data.data, data.len);
+
+    hook_data->len = data.len;
+    hook_data->data = hook_data_data;
+
+    NGX_HTTP_HASKELL_SHM_UNLOCK
+
+    return NGX_OK;
 }
 
 

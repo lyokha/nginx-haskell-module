@@ -96,7 +96,8 @@ typedef enum {
     ngx_http_haskell_handler_role_service_variable,
     ngx_http_haskell_handler_role_content_handler,
     ngx_http_haskell_handler_role_async_content_handler,
-    ngx_http_haskell_handler_role_async_content_handler_rb
+    ngx_http_haskell_handler_role_async_content_handler_rb,
+    ngx_http_haskell_handler_role_service_hook
 } ngx_http_haskell_handler_role_e;
 
 
@@ -176,7 +177,7 @@ typedef struct {
     ngx_http_haskell_content_handler_t        *content_handler;
     ngx_http_haskell_content_handler_data_t   *content_handler_data;
     ngx_flag_t                                 request_body_read_temp_file;
-    ngx_uint_t                                 service_hook_index;
+    ngx_int_t                                  service_hook_index;
     ngx_uint_t                                 static_content;
 } ngx_http_haskell_loc_conf_t;
 
@@ -189,6 +190,7 @@ typedef struct {
     ngx_uint_t                                 n_args[3];
     ngx_uint_t                                 unsafe:1;
     ngx_uint_t                                 async:1;
+    ngx_uint_t                                 service_hook:1;
 } ngx_http_haskell_handler_t;
 
 
@@ -259,6 +261,8 @@ typedef struct {
 typedef struct {
     ngx_http_haskell_async_event_stub_t               s;
     ngx_cycle_t                                      *cycle;
+    ngx_int_t                                         handler;
+    ngx_int_t                                         service_hook_index;
 } ngx_http_haskell_service_hook_event_t;
 
 
@@ -266,6 +270,8 @@ typedef struct {
     ngx_event_t                                       event;
     ngx_http_haskell_service_hook_event_t             hev;
     ngx_fd_t                                          event_channel[2];
+    ngx_int_t                                         handler;
+    ngx_int_t                                         service_hook_index;
     ngx_int_t                                         service_code_var_index;
     struct ngx_http_haskell_service_code_var_data_s  *service_code_var;
 } ngx_http_haskell_service_hook_t;

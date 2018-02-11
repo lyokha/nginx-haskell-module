@@ -337,7 +337,7 @@ ngx_http_haskell_create_loc_conf(ngx_conf_t *cf)
     }
 
     lcf->request_body_read_temp_file = NGX_CONF_UNSET;
-    lcf->service_hook_index = NGX_CONF_UNSET_UINT;
+    lcf->service_hook_index = NGX_ERROR;
 
     return lcf;
 }
@@ -364,8 +364,8 @@ ngx_http_haskell_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_value(conf->request_body_read_temp_file,
                          prev->request_body_read_temp_file, 0);
-    ngx_conf_merge_uint_value(conf->service_hook_index,
-                              prev->service_hook_index, NGX_CONF_UNSET_UINT);
+    ngx_conf_merge_value(conf->service_hook_index,
+                         prev->service_hook_index, NGX_ERROR);
 
     return NGX_CONF_OK;
 }
@@ -1126,11 +1126,23 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                            handler_name.len) == 0)
         {
             if (handlers[i].role
-                == ngx_http_haskell_handler_role_content_handler)
+                == ngx_http_haskell_handler_role_content_handler
+                || handlers[i].role
+                == ngx_http_haskell_handler_role_async_content_handler
+                || handlers[i].role
+                == ngx_http_haskell_handler_role_async_content_handler_rb)
             {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                    "haskell handler \"%V\" was already "
                                    "declared as content handler", &value[1]);
+                return NGX_CONF_ERROR;
+            }
+            if (handlers[i].role
+                == ngx_http_haskell_handler_role_service_hook)
+            {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "haskell handler \"%V\" was already "
+                                   "declared as service hook", &value[1]);
                 return NGX_CONF_ERROR;
             }
             if ((handlers[i].role
@@ -1340,21 +1352,35 @@ ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                    "haskell handler \"%V\" was already "
-                                   "declared as a variable handler", &value[1]);
+                                   "declared as variable handler", &value[1]);
                 return NGX_CONF_ERROR;
             }
             if (handlers[i].unsafe != unsafe) {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                    "haskell handler \"%V\" was already "
-                                   "declared with a different safety attribute",
+                                   "declared with different safety attribute",
                                    &value[1]);
                 return NGX_CONF_ERROR;
             }
             if (handlers[i].async != async) {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                    "haskell handler \"%V\" was already "
-                                   "declared with a different async attribute",
+                                   "declared with different async attribute",
                                    &value[1]);
+                return NGX_CONF_ERROR;
+            }
+            if (handlers[i].service_hook != service_hook) {
+                if (service_hook) {
+                    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                       "haskell handler \"%V\" was already "
+                                       "declared as content handler",
+                                       &value[1]);
+                } else {
+                    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                       "haskell handler \"%V\" was already "
+                                       "declared as service hook",
+                                       &value[1]);
+                }
                 return NGX_CONF_ERROR;
             }
             lcf->content_handler->handler = i;
@@ -1378,9 +1404,11 @@ ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 (async_rb ?
                     ngx_http_haskell_handler_role_async_content_handler_rb :
                     ngx_http_haskell_handler_role_async_content_handler) :
-                ngx_http_haskell_handler_role_content_handler;
+                (service_hook ? ngx_http_haskell_handler_role_service_hook : 
+                    ngx_http_haskell_handler_role_content_handler);
         handler->unsafe = unsafe;
         handler->async = async;
+        handler->service_hook = service_hook;
 
         handlers = mcf->handlers.elts;
         lcf->content_handler->handler = mcf->handlers.nelts - 1;
@@ -1412,6 +1440,8 @@ ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         ngx_memzero(hook, sizeof(ngx_http_haskell_service_hook_t));
         hook->service_code_var_index = v_idx;
+        hook->service_hook_index = lcf->service_hook_index;
+        hook->handler = lcf->content_handler->handler;
 
         n_last = 3;
     }
