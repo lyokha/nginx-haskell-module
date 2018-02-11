@@ -54,6 +54,8 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
     ngx_uint_t                         rb, rb_skip;
     HsStablePtr                        res;
 
+    static HsWord32                    dummy_active;
+
     mcf = ngx_http_get_module_main_conf(r, ngx_http_haskell_module);
     lcf = ngx_http_get_module_loc_conf(r, ngx_http_haskell_module);
     handlers = mcf->handlers.elts;
@@ -198,7 +200,7 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
         } else {
             res = ((ngx_http_haskell_handler_async_ioy_y)
                    handlers[code_vars[i].handler].self)
-                    (arg1.data, arg1.len, fd[1], -1,
+                    (arg1.data, arg1.len, fd[1], -1, &dummy_active,
                      ngx_http_haskell_module_use_eventfd_channel, 0,
                      &async_data->yy_cleanup_data.bufs,
                      &async_data->yy_cleanup_data.n_bufs, &async_data->error,

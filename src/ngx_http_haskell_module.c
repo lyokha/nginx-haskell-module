@@ -1459,7 +1459,7 @@ ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
         ccv.cf = cf;
 
-        ccv.value = &value[2];
+        ccv.value = &value[n_last];
         ccv.complex_value = lcf->content_handler->args;
 
         if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {

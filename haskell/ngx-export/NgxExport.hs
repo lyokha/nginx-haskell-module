@@ -38,6 +38,7 @@ module NgxExport (
                  ,ngxExportUnsafeHandler
                  ,ngxExportAsyncHandler
                  ,ngxExportAsyncHandlerOnReqBody
+                 ,ngxExportServiceHook
     -- * Re-exported data constructors from /"Foreign.C"/
     --   (for marshalling in foreign calls)
                  ,Foreign.C.CInt (..)
@@ -250,7 +251,7 @@ ngxExportIOYY =
 ngxExportAsyncIOYY :: Name -> Q [Dec]
 ngxExportAsyncIOYY =
     ngxExportC 'IOYY 'asyncIOYY
-    [t|CString -> CInt -> CInt -> CInt -> CUInt -> CUInt ->
+    [t|CString -> CInt -> CInt -> CInt -> Ptr CUInt -> CUInt -> CUInt ->
        Ptr (Ptr NgxStrType) -> Ptr CInt ->
        Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO (StablePtr (Async ()))|]
 
@@ -277,7 +278,7 @@ ngxExportAsyncOnReqBody =
 ngxExportServiceIOYY :: Name -> Q [Dec]
 ngxExportServiceIOYY =
     ngxExport 'IOYY 'asyncIOYY
-    [t|CString -> CInt -> CInt -> CInt -> CUInt -> CUInt ->
+    [t|CString -> CInt -> CInt -> CInt -> Ptr CUInt -> CUInt -> CUInt ->
        Ptr (Ptr NgxStrType) -> Ptr CInt ->
        Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO (StablePtr (Async ()))|]
 
@@ -336,6 +337,16 @@ ngxExportAsyncHandlerOnReqBody =
        Ptr (Ptr NgxStrType) -> Ptr CInt ->
        Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO (StablePtr (Async ()))|]
 
+-- | Exports a function of type
+-- /'B.ByteString' -> 'IO' 'L.ByteString'/
+-- for using in directive /haskell_service_hook/.
+ngxExportServiceHook :: Name -> Q [Dec]
+ngxExportServiceHook =
+    ngxExportC 'IOYY 'ioyY
+    [t|CString -> CInt ->
+       Ptr (Ptr NgxStrType) -> Ptr CInt ->
+       Ptr (StablePtr L.ByteString) -> IO CUInt|]
+
 data NgxStrType = NgxStrType CSize CString
 
 instance Storable NgxStrType where
@@ -350,6 +361,11 @@ instance Storable NgxStrType where
     poke p x@(NgxStrType n s) = do
         poke (castPtr p) n
         poke (plusPtr p $ alignment x) s
+
+data ServiceHookInterrupt = ServiceHookInterrupt
+instance Exception ServiceHookInterrupt
+instance Show ServiceHookInterrupt where
+    show = const "Service was interrupted by a service hook"
 
 safeMallocBytes :: Int -> IO (Ptr a)
 safeMallocBytes =
@@ -551,9 +567,10 @@ asyncIOCommon a (I fd) efd p pl pr spd =
           closeChannel = closeFd fd `catchIOError` const (return ())
 
 asyncIOYY :: IOYY -> CString -> CInt ->
-    CInt -> CInt -> CUInt -> CUInt -> Ptr (Ptr NgxStrType) -> Ptr CInt ->
+    CInt -> CInt -> Ptr CUInt -> CUInt -> CUInt ->
+    Ptr (Ptr NgxStrType) -> Ptr CInt ->
     Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO (StablePtr (Async ()))
-asyncIOYY f x (I n) fd (I fdlk) (ToBool efd) (ToBool fstRun) =
+asyncIOYY f x (I n) fd (I fdlk) active (ToBool efd) (ToBool fstRun) =
     asyncIOCommon
     (do
         exiting <- if fstRun && fdlk /= -1
@@ -571,6 +588,7 @@ asyncIOYY f x (I n) fd (I fdlk) (ToBool efd) (ToBool fstRun) =
         if exiting
             then return (L.empty, True)
             else do
+                when fstRun $ poke active 1
                 x' <- B.unsafePackCStringLen (x, n)
                 flip (,) False <$> f x' fstRun
     ) fd efd
@@ -709,14 +727,24 @@ safeWaitToSetLock (Fd fd) lock = allocaLock lock $
 
 {- SPLICE: END -}
 
-foreign export ccall ngxExportTerminateTask :: StablePtr (Async ()) -> IO ()
+foreign export ccall ngxExportTerminateTask ::
+    StablePtr (Async ()) -> IO ()
+ngxExportTerminateTask ::
+    StablePtr (Async ()) -> IO ()
+ngxExportTerminateTask = deRefStablePtr >=>
+    cancel
 
-ngxExportTerminateTask :: StablePtr (Async ()) -> IO ()
-ngxExportTerminateTask = deRefStablePtr >=> cancel
+foreign export ccall ngxExportServiceHookInterrupt ::
+    StablePtr (Async ()) -> IO ()
+ngxExportServiceHookInterrupt ::
+    StablePtr (Async ()) -> IO ()
+ngxExportServiceHookInterrupt = deRefStablePtr >=>
+    flip throwTo ServiceHookInterrupt . asyncThreadId
 
-foreign export ccall ngxExportVersion :: Ptr CInt -> CInt -> IO CInt
-
-ngxExportVersion :: Ptr CInt -> CInt -> IO CInt
+foreign export ccall ngxExportVersion ::
+    Ptr CInt -> CInt -> IO CInt
+ngxExportVersion ::
+    Ptr CInt -> CInt -> IO CInt
 ngxExportVersion x (I n) = fromIntegral <$>
     foldM (\k (I v) -> pokeElemOff x k v >> return (k + 1)) 0
         (take n $ versionBranch version)

@@ -268,8 +268,7 @@ ngx_http_haskell_setup_service_hook(ngx_cycle_t *cycle,
 
     ngx_memzero(hev, sizeof(ngx_http_haskell_service_hook_event_t));
     hev->cycle = cycle;
-    hev->handler = hook->handler;
-    hev->service_hook_index = hook->service_hook_index;
+    hev->hook = hook;
 
     hev->s.read = event;
     hev->s.write = &dummy_write_event;
@@ -352,6 +351,7 @@ ngx_http_haskell_run_service(ngx_cycle_t *cycle,
         ((ngx_http_haskell_handler_async_ioy_y)
          handlers[service_code_var->data->handler].self)
             (arg1.data, arg1.len, fd[1], service_code_var->shm_lock_fd,
+             &service_code_var->active,
              ngx_http_haskell_module_use_eventfd_channel, service_first_run,
              &service_code_var->future_async_data.yy_cleanup_data.bufs,
              &service_code_var->future_async_data.yy_cleanup_data.n_bufs,
@@ -634,20 +634,103 @@ ngx_http_haskell_service_hook_event(ngx_event_t *ev)
     ngx_http_haskell_service_hook_event_t       *hev = ev->data;
     ngx_cycle_t                                 *cycle = hev->cycle;
 
+    ngx_uint_t                                   i, size;
     ngx_http_haskell_main_conf_t                *mcf;
-    ngx_slab_pool_t                             *shpool;
-    ngx_http_haskell_shm_service_hook_handle_t  *shm_vars;
+    ngx_http_haskell_handler_t                  *handlers;
+    ngx_http_haskell_service_code_var_data_t    *service_code_var;
+    ngx_str_t                                    arg = ngx_null_string;
+    ngx_str_t                                   *res_yy, buf_yy;
+    HsStablePtr                                  locked_bytestring = NULL;
+    HsInt32                                      len;
+    HsWord32                                     err;
+    ngx_str_t                                    reslen;
 
     ngx_log_error(NGX_LOG_ERR, cycle->log, 0, "EVENT HAPPENED");
 
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
 
-    shpool = (ngx_slab_pool_t *) mcf->service_hooks_shm_zone->shm.addr;
-    shm_vars = shpool->data;
+    if (mcf->service_hooks_shm_zone != NULL) {
+        ngx_slab_pool_t                             *shpool;
+        ngx_http_haskell_shm_service_hook_handle_t  *shm_vars;
+        ngx_str_t                                   *hook_data;
 
-    NGX_HTTP_HASKELL_SHM_RLOCK
+        shpool = (ngx_slab_pool_t *) mcf->service_hooks_shm_zone->shm.addr;
+        shm_vars = shpool->data;
 
-    NGX_HTTP_HASKELL_SHM_UNLOCK
+        NGX_HTTP_HASKELL_SHM_RLOCK
+
+        hook_data = &shm_vars[hev->hook->service_hook_index].data;
+        arg.len = hook_data->len;
+        arg.data = ngx_alloc(arg.len, cycle->log);
+        ngx_memcpy(arg.data, hook_data->data, arg.len);
+
+        NGX_HTTP_HASKELL_SHM_UNLOCK
+    }
+
+    handlers = mcf->handlers.elts;
+
+    res_yy = &buf_yy;
+
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
+                      "DATA: '%V'", &arg );
+    err = ((ngx_http_haskell_handler_ioy_y)
+               handlers[hev->hook->handler].self)
+                    (arg.data, arg.len, &res_yy, &len, &locked_bytestring);
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
+                      "RES_YY[1]: '%V'", &res_yy[1] );
+
+    if (len == -1) {
+        ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
+                      "memory allocation error while running service hook");
+    }
+
+    reslen.len = res_yy->len;
+    reslen.data = res_yy->data;
+
+    if (ngx_http_haskell_yy_handler_result(cycle->log, NULL, res_yy, len,
+                                           &reslen, NULL, NULL, NULL, 0, 1)
+        == NGX_ERROR)
+    {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
+                      "service hook returned bad result");
+    } else {
+        if (err) {
+            ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
+                          "an exception was caught while running service hook: "
+                          "\"%V\"", &reslen);
+        } else if (reslen.len > 0) {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
+                          "service hook reported \"%V\"", &reslen);
+        }
+    }
+
+    if (len > 0) {
+        if (len > 1) {
+            ngx_free(res_yy);
+            ngx_free(reslen.data);
+        }
+        mcf->hs_free_stable_ptr(locked_bytestring);
+    }
+
+    service_code_var = hev->hook->service_code_var;
+
+    /* BEWARE: flag active is set asynchronously and without notification from
+     * the Haskell service, however this is not really a problem as it is set
+     * only once on the first run of the service and before the service's
+     * handler actually starts */
+    /*if (service_code_var->active && service_code_var->running*/
+        /*&& service_code_var->has_locked_async_task)*/
+    /*{*/
+        /*mcf->service_hook_interrupt(service_code_var->locked_async_task);*/
+    /*}*/
+
+    /* keep (size - 1) previous consequent args */
+    size = sizeof(hev->arg) / sizeof(ngx_str_t);
+    ngx_free(hev->arg[size - 1].data);
+    for (i = 1; i < size; i++) {
+        hev->arg[i] = hev->arg[i - 1];
+    }
+    hev->arg[0] = arg;
 }
 
 
@@ -670,8 +753,8 @@ ngx_http_haskell_update_service_hook_data(ngx_http_request_t *r,
 
     hook_data = &shm_vars[hook_index].data;
 
-    if (hook_data != NULL) {
-        ngx_slab_free_locked(shpool, hook_data);
+    if (hook_data->data != NULL) {
+        ngx_slab_free_locked(shpool, hook_data->data);
     }
     ngx_str_null(hook_data);
 

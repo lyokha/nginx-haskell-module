@@ -44,8 +44,8 @@ typedef HsWord32 (*ngx_http_haskell_handler_b_y)
 typedef HsWord32 (*ngx_http_haskell_handler_ioy_y)
     (HsPtr, HsInt32, HsPtr, HsPtr, HsPtr);
 typedef HsStablePtr (*ngx_http_haskell_handler_async_ioy_y)
-    (HsPtr, HsInt32, HsInt32, HsInt32, HsWord32, HsWord32, HsPtr, HsPtr, HsPtr,
-     HsPtr);
+    (HsPtr, HsInt32, HsInt32, HsInt32, HsPtr, HsWord32, HsWord32, HsPtr, HsPtr,
+     HsPtr, HsPtr);
 typedef HsStablePtr (*ngx_http_haskell_handler_async_ioy_yy)
     (HsPtr, HsPtr, HsInt32, HsPtr, HsInt32, HsInt32, HsWord32, HsPtr, HsPtr,
      HsPtr, HsPtr);
@@ -125,6 +125,8 @@ typedef struct {
     void                                     (*hs_free_stable_ptr)
                                                                 (HsStablePtr);
     void                                     (*terminate_async_task)
+                                                                (HsStablePtr);
+    void                                     (*service_hook_interrupt)
                                                                 (HsStablePtr);
     ngx_http_haskell_compile_mode_e            compile_mode;
     ngx_array_t                                service_code_vars;
@@ -261,12 +263,12 @@ typedef struct {
 typedef struct {
     ngx_http_haskell_async_event_stub_t               s;
     ngx_cycle_t                                      *cycle;
-    ngx_int_t                                         handler;
-    ngx_int_t                                         service_hook_index;
+    struct ngx_http_haskell_service_hook_s           *hook;
+    ngx_str_t                                         arg[2];
 } ngx_http_haskell_service_hook_event_t;
 
 
-typedef struct {
+struct ngx_http_haskell_service_hook_s {
     ngx_event_t                                       event;
     ngx_http_haskell_service_hook_event_t             hev;
     ngx_fd_t                                          event_channel[2];
@@ -274,7 +276,9 @@ typedef struct {
     ngx_int_t                                         service_hook_index;
     ngx_int_t                                         service_code_var_index;
     struct ngx_http_haskell_service_code_var_data_s  *service_code_var;
-} ngx_http_haskell_service_hook_t;
+};
+
+typedef struct ngx_http_haskell_service_hook_s ngx_http_haskell_service_hook_t;
 
 
 typedef struct {
@@ -301,6 +305,7 @@ struct ngx_http_haskell_service_code_var_data_s {
     ngx_int_t                                         shm_index;
     ngx_fd_t                                          shm_lock_fd;
     HsStablePtr                                       locked_async_task;
+    ngx_uint_t                                        active;
     ngx_uint_t                                        cb:1;
     ngx_uint_t                                        noarg:1;
     ngx_uint_t                                        running:1;
