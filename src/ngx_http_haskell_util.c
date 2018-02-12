@@ -50,7 +50,7 @@ ngx_http_haskell_yy_handler_result(ngx_log_t *log, ngx_pool_t *pool,
     }
 
     if (bufs == NULL) {
-        rc = service ? NGX_ERROR : NGX_OK;
+        rc = service && cleanup ? NGX_ERROR : NGX_OK;
         if (n_bufs == 0) {
             res->len = 0;
             res->data = (u_char *) "";

@@ -26,6 +26,8 @@ import           Text.Regex.PCRE.ByteString
 import           Text.Regex.Base.RegexLike
 import qualified Data.Array as A
 import           Data.List
+import qualified Data.ByteString as B
+import           Data.Maybe
 
 toUpper :: String -> String
 toUpper = map C.toUpper
@@ -85,11 +87,33 @@ catchHttpException :: IO C8L.ByteString -> IO C8L.ByteString
 catchHttpException = (`catch` \e ->
         return $ C8L.pack $ "HTTP EXCEPTION: " ++ show (e :: HttpException))
 
+getUrlServiceLink :: IORef (Maybe ByteString)
+getUrlServiceLink = unsafePerformIO $ newIORef Nothing
+{-# NOINLINE getUrlServiceLink #-}
+
+getUrlServiceLinkUpdated :: IORef Bool
+getUrlServiceLinkUpdated = unsafePerformIO $ newIORef True
+{-# NOINLINE getUrlServiceLinkUpdated #-}
+
 getUrlService :: ByteString -> Bool -> IO L.ByteString
-getUrlService url firstRun = do
-    unless firstRun $ threadDelay $ 20 * 1000000
-    getUrl url
+getUrlService url = const $ do
+    url' <- fromMaybe url <$> readIORef getUrlServiceLink
+    updated <- readIORef getUrlServiceLinkUpdated
+    unless updated $ threadDelay $ 20 * 1000000
+    atomicWriteIORef getUrlServiceLinkUpdated False
+    getUrl url'
 ngxExportServiceIOYY 'getUrlService
+
+getUrlServiceHook :: ByteString -> IO L.ByteString
+getUrlServiceHook url = do
+    writeIORef getUrlServiceLink $ if B.null url
+                                       then Nothing
+                                       else Just url
+    atomicWriteIORef getUrlServiceLinkUpdated True
+    return $ if B.null url
+                 then ""
+                 else L.fromChunks ["getUrlService new URL ", url] 
+ngxExportServiceHook 'getUrlServiceHook
 
 gHttpbinLinks :: IORef [ByteString]
 gHttpbinLinks = unsafePerformIO $ newIORef []

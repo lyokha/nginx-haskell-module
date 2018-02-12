@@ -360,7 +360,7 @@ ngx_http_haskell_service_hook(ngx_http_request_t *r)
     mcf = ngx_http_get_module_main_conf(r, ngx_http_haskell_module);
 
     if (lcf->service_hook_index == NGX_ERROR
-        || mcf->service_hooks.nelts < lcf->service_hook_index)
+        || mcf->service_hooks.nelts < (ngx_uint_t) lcf->service_hook_index)
     {
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
                       "unexpected service hook index %ui",

@@ -342,7 +342,7 @@ ngxExportAsyncHandlerOnReqBody =
 -- for using in directive /haskell_service_hook/.
 ngxExportServiceHook :: Name -> Q [Dec]
 ngxExportServiceHook =
-    ngxExportC 'IOYY 'ioyY
+    ngxExportC 'IOYY 'ioyYWithFree
     [t|CString -> CInt ->
        Ptr (Ptr NgxStrType) -> Ptr CInt ->
        Ptr (StablePtr L.ByteString) -> IO CUInt|]
@@ -518,15 +518,26 @@ yY f x (I n) p pl spd = do
     pokeLazyByteString s p pl spd
     return r
 
-ioyY :: IOYY -> CString -> CInt ->
+ioyYCommon :: (CStringLen -> IO B.ByteString) ->
+    IOYY -> CString -> CInt ->
     Ptr (Ptr NgxStrType) -> Ptr CInt ->
     Ptr (StablePtr L.ByteString) -> IO CUInt
-ioyY f x (I n) p pl spd = do
+ioyYCommon pack f x (I n) p pl spd = do
     (s, (r, _)) <- safeYYHandler $ do
-        s <- B.unsafePackCStringLen (x, n) >>= flip f False
+        s <- pack (x, n) >>= flip f False
         fmap (flip (,) (0, False)) $ return $!! s
     pokeLazyByteString s p pl spd
     return r
+
+ioyY :: IOYY -> CString -> CInt ->
+    Ptr (Ptr NgxStrType) -> Ptr CInt ->
+    Ptr (StablePtr L.ByteString) -> IO CUInt
+ioyY = ioyYCommon B.unsafePackCStringLen
+
+ioyYWithFree :: IOYY -> CString -> CInt ->
+    Ptr (Ptr NgxStrType) -> Ptr CInt ->
+    Ptr (StablePtr L.ByteString) -> IO CUInt
+ioyYWithFree = ioyYCommon B.unsafePackMallocCStringLen
 
 asyncIOFlag1b :: B.ByteString
 asyncIOFlag1b = L.toStrict $ runPut $ putInt8 1

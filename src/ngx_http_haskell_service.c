@@ -194,7 +194,6 @@ ngx_http_haskell_service_hooks_init_zone(ngx_shm_zone_t *shm_zone, void *data)
     ngx_uint_t                                   i;
     ngx_slab_pool_t                             *shpool;
     ngx_array_t                                 *hooks;
-    ngx_http_haskell_service_hook_t             *hooks_elts;
     ngx_http_haskell_shm_service_hook_handle_t  *shm_vars;
 
     if (shm_zone->shm.exists) {
@@ -203,7 +202,6 @@ ngx_http_haskell_service_hooks_init_zone(ngx_shm_zone_t *shm_zone, void *data)
 
     shpool = (ngx_slab_pool_t *) shm_zone->shm.addr;
     hooks = shm_zone->data;
-    hooks_elts = hooks->elts;
 
     ngx_shmtx_lock(&shpool->mutex);
 
@@ -634,7 +632,6 @@ ngx_http_haskell_service_hook_event(ngx_event_t *ev)
     ngx_http_haskell_service_hook_event_t       *hev = ev->data;
     ngx_cycle_t                                 *cycle = hev->cycle;
 
-    ngx_uint_t                                   i, size;
     ngx_http_haskell_main_conf_t                *mcf;
     ngx_http_haskell_handler_t                  *handlers;
     ngx_http_haskell_service_code_var_data_t    *service_code_var;
@@ -643,9 +640,7 @@ ngx_http_haskell_service_hook_event(ngx_event_t *ev)
     HsStablePtr                                  locked_bytestring = NULL;
     HsInt32                                      len;
     HsWord32                                     err;
-    ngx_str_t                                    reslen;
-
-    ngx_log_error(NGX_LOG_ERR, cycle->log, 0, "EVENT HAPPENED");
+    ngx_str_t                                    reslen = ngx_null_string;
 
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
 
@@ -661,6 +656,8 @@ ngx_http_haskell_service_hook_event(ngx_event_t *ev)
 
         hook_data = &shm_vars[hev->hook->service_hook_index].data;
         arg.len = hook_data->len;
+
+        /* arg.data will be freed on the Haskell side */
         arg.data = ngx_alloc(arg.len, cycle->log);
         ngx_memcpy(arg.data, hook_data->data, arg.len);
 
@@ -671,21 +668,19 @@ ngx_http_haskell_service_hook_event(ngx_event_t *ev)
 
     res_yy = &buf_yy;
 
-        ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
-                      "DATA: '%V'", &arg );
     err = ((ngx_http_haskell_handler_ioy_y)
                handlers[hev->hook->handler].self)
                     (arg.data, arg.len, &res_yy, &len, &locked_bytestring);
-        ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
-                      "RES_YY[1]: '%V'", &res_yy[1] );
 
     if (len == -1) {
         ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
                       "memory allocation error while running service hook");
     }
 
-    reslen.len = res_yy->len;
-    reslen.data = res_yy->data;
+    if (res_yy != NULL) {
+        reslen.len = res_yy->len;
+        reslen.data = res_yy->data;
+    }
 
     if (ngx_http_haskell_yy_handler_result(cycle->log, NULL, res_yy, len,
                                            &reslen, NULL, NULL, NULL, 0, 1)
@@ -718,19 +713,11 @@ ngx_http_haskell_service_hook_event(ngx_event_t *ev)
      * the Haskell service, however this is not really a problem as it is set
      * only once on the first run of the service and before the service's
      * handler actually starts */
-    /*if (service_code_var->active && service_code_var->running*/
-        /*&& service_code_var->has_locked_async_task)*/
-    /*{*/
-        /*mcf->service_hook_interrupt(service_code_var->locked_async_task);*/
-    /*}*/
-
-    /* keep (size - 1) previous consequent args */
-    size = sizeof(hev->arg) / sizeof(ngx_str_t);
-    ngx_free(hev->arg[size - 1].data);
-    for (i = 1; i < size; i++) {
-        hev->arg[i] = hev->arg[i - 1];
+    if (service_code_var->active && service_code_var->running
+        && service_code_var->has_locked_async_task)
+    {
+        mcf->service_hook_interrupt(service_code_var->locked_async_task);
     }
-    hev->arg[0] = arg;
 }
 
 

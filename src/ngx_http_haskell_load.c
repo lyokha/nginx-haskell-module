@@ -145,6 +145,16 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         goto dlclose_and_exit;
     }
 
+    mcf->service_hook_interrupt = (void (*)(HsStablePtr)) dlsym(mcf->dl_handle,
+                                            "ngxExportServiceHookInterrupt");
+    dl_error = dlerror();
+    if (dl_error != NULL) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                      "failed to load function "
+                      "\"ngxExportServiceHookInterrupt\": %s", dl_error);
+        goto dlclose_and_exit;
+    }
+
     argc = mcf->program_options.nelts + 1;
     if (mcf->rts_options.nelts > 0) {
         argc += mcf->rts_options.nelts + 1;

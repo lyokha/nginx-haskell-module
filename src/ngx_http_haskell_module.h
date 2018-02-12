@@ -264,7 +264,6 @@ typedef struct {
     ngx_http_haskell_async_event_stub_t               s;
     ngx_cycle_t                                      *cycle;
     struct ngx_http_haskell_service_hook_s           *hook;
-    ngx_str_t                                         arg[2];
 } ngx_http_haskell_service_hook_event_t;
 
 
