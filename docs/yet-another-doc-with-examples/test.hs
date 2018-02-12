@@ -120,16 +120,16 @@ gHttpbinLinks = unsafePerformIO $ newIORef []
 {-# NOINLINE gHttpbinLinks #-}
 
 grepLinks :: ByteString -> [ByteString]
-grepLinks v =
+grepLinks =
     map (fst . snd) . filter ((1 ==) . fst) . concatMap A.assocs .
-        filter (not . null) . concatMap (matchAllText regex) $
-            C8.split '\n' v
+        filter (not . null) . concatMap (matchAllText regex) .
+            C8.split '\n'
     where regex = makeRegex $ C8.pack "a href=\"([^\"]+)\"" :: Regex
 
 grepHttpbinLinks :: ByteString -> IO L.ByteString
 grepHttpbinLinks "" = return ""
 grepHttpbinLinks v  = do
-    writeIORef gHttpbinLinks $ grepLinks v
+    writeIORef gHttpbinLinks $ grepLinks $ B.copy v
     return ""
 ngxExportIOYY 'grepHttpbinLinks
 
