@@ -27,7 +27,7 @@ static const ngx_str_t  haskell_module_type_checker_prefix =
 ngx_string("type_");
 
 static const HsInt32  haskell_module_ngx_export_api_version_major = 1;
-static const HsInt32  haskell_module_ngx_export_api_version_minor = 1;
+static const HsInt32  haskell_module_ngx_export_api_version_minor = 2;
 
 
 ngx_int_t

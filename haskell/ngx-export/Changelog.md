@@ -1,3 +1,8 @@
+### 1.2.0
+
+- Added exporter *ngxExportServiceHook* for service hooks. Implemented machinery
+  for interrupting services using exception *ServiceHookInterrupt*.
+
 ### 1.1.0
 
 - Added an asynchronous content handler with direct access to request body

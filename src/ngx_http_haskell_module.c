@@ -143,7 +143,7 @@ static ngx_command_t  ngx_http_haskell_module_commands[] = {
       0,
       NULL },
     { ngx_string("haskell_service_hook"),
-      NGX_HTTP_LOC_CONF|NGX_CONF_TAKE23,
+      NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE23,
       ngx_http_haskell_content,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,

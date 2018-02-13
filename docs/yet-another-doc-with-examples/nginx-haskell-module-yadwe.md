@@ -648,7 +648,7 @@ locks, and so require a directory where they will be put. The directory must be
 
 ## Update variables
 
-The active shared service put the value of the shared variable in a shared
+The active shared service puts the value of the shared variable in a shared
 memory, services on other workers wait and do nothing else. Requests may come to
 any worker (with active or inactive services), fortunately the service result is
 shared and they can return it as is. But what if the result must be somehow
@@ -689,6 +689,7 @@ import           Text.Regex.PCRE.ByteString
 import           Text.Regex.Base.RegexLike
 import qualified Data.Array as A
 import           Data.List
+import qualified Data.ByteString as B
 
 -- ...
 
@@ -697,23 +698,23 @@ gHttpbinLinks = unsafePerformIO $ newIORef []
 {-# NOINLINE gHttpbinLinks #-}
 
 grepLinks :: ByteString -> [ByteString]
-grepLinks v =
+grepLinks =
     map (fst . snd) . filter ((1 ==) . fst) . concatMap A.assocs .
-        filter (not . null) . concatMap (matchAllText regex) $
-            C8.split '\n' v
+        filter (not . null) . concatMap (matchAllText regex) .
+            C8.lines
     where regex = makeRegex $ C8.pack "a href=\"([^\"]+)\"" :: Regex
 
 grepHttpbinLinks :: ByteString -> IO L.ByteString
 grepHttpbinLinks "" = return ""
 grepHttpbinLinks v  = do
-    writeIORef gHttpbinLinks $ grepLinks v
+    writeIORef gHttpbinLinks $ grepLinks $ B.copy v
     return ""
 ngxExportIOYY 'grepHttpbinLinks
 
 sortLinks :: ByteString -> IO L.ByteString
 sortLinks "httpbin" = do
     links <- readIORef gHttpbinLinks
-    return $ L.fromChunks $ sort $ map (`C8.append` "\n") links
+    return $ L.fromChunks $ sort $ map (`C8.snoc` '\n') links
 sortLinks _ = return ""
 ngxExportIOYY 'sortLinks
 ```
@@ -721,10 +722,15 @@ ngxExportIOYY 'sortLinks
 Here *gHttpbinLinks* is the global state, *grepHttpbinLinks* is a handler for
 update variable *\_upd\_\_hs_service_httpbin*, almost all the time it does
 nothing --- just returns an empty string, but when the update variable becomes
-not empty, it updates the global state and returns an empty string again.
-Handler *sortLinks* is parameterized by data identifier: when it's equal to
-*httpbin*, it reads the global state and returns it sorted, otherwise it returns
-an empty string.
+not empty, it updates the global state and returns an empty string again. Notice
+that the original bytestring is copied with *B.copy* before its parts get
+collected as matches and put in the global state. This is an important step
+because the original bytestring's lifetime does not extend beyond the current
+request whereas the global state may last much longer! Sometimes copying is not
+necessary, for example when the bytestring gets deserialized into an object
+in-place. Handler *sortLinks* is parameterized by data identifier: when the
+identifier is equal to *httpbin*, it reads the global state and returns it
+sorted, otherwise it returns an empty string.
 
 **File test.conf** (*additions*)
 
@@ -872,6 +878,200 @@ Further the count will probably be steadily increasing.
 Httpbin service changes count: 3
 ```
 
+# Service hooks
+
+Service hooks allow for interaction with running services, both per-worker and
+shared. They are supposed to change global states that affect services behavior
+and can be thought of as service API handlers, thereto being run from dedicated
+Nginx locations.
+
+----------------------------------------------------------------------------------------------
+Type                                        Exporter
+------------------------------------------  --------------------------------------------------
+`ByteString -> IO L.ByteString`             `ngxExportServiceHook` (`NGX_EXPORT_SERVICE_HOOK`)
+----------------------------------------------------------------------------------------------
+
+Service hooks install a content handler when declared. In the following example,
+
+``` {.nginx hl="vim"}
+        location /httpbin/url {
+            haskell_service_hook getUrlServiceHook $hs_service_httpbin $arg_v;
+        }
+```
+
+location */httpbin/url* derives the content handler which signals all workers
+via an event channel upon receiving a request. Then the event handlers in all
+workers run the hook (*getUrlServiceHook* in our case) *synchronously*, and
+finally send an asynchronous exception *ServiceHookInterrupt* to the service
+to which the service variable from the service hook declaration corresponds
+(*hs_service_httpbin*). Being run *synchronously*, service hooks are expected to
+be fast, only writing data passed to them (value of *arg_v* in our case) into a
+global state. In contrast to *update variables*, this data has a longer lifetime
+being freed in the Haskell part when the original bytestring gets garbage
+collected.
+
+## An example
+
+Let's make it able to change the URL for the *httpbin* service in runtime. For
+this we must enable *getUrlService* to read from a global state where the URL
+value will reside.
+
+**File test.hs** (*additions, getUrlService reimplemented*)
+
+``` {.haskell hl="vim"}
+import           Data.Maybe
+
+-- ...
+
+getUrlServiceLink :: IORef (Maybe ByteString)
+getUrlServiceLink = unsafePerformIO $ newIORef Nothing
+{-# NOINLINE getUrlServiceLink #-}
+
+getUrlServiceLinkUpdated :: IORef Bool
+getUrlServiceLinkUpdated = unsafePerformIO $ newIORef True
+{-# NOINLINE getUrlServiceLinkUpdated #-}
+
+getUrlService :: ByteString -> Bool -> IO L.ByteString
+getUrlService url = const $ do
+    url' <- fromMaybe url <$> readIORef getUrlServiceLink
+    updated <- readIORef getUrlServiceLinkUpdated
+    atomicWriteIORef getUrlServiceLinkUpdated False
+    unless updated $ threadDelay $ 20 * 1000000
+    getUrl url'
+ngxExportServiceIOYY 'getUrlService
+
+getUrlServiceHook :: ByteString -> IO L.ByteString
+getUrlServiceHook url = do
+    writeIORef getUrlServiceLink $ if B.null url
+                                       then Nothing
+                                       else Just url
+    atomicWriteIORef getUrlServiceLinkUpdated True
+    return $ if B.null url
+                 then "getUrlService reset URL"
+                 else L.fromChunks ["getUrlService set URL ", url]
+ngxExportServiceHook 'getUrlServiceHook
+```
+
+Service hook *getUrlServiceHook* writes into two global states:
+*getUrlServiceLink* where the URL is stored, and *getUrlServiceLinkUpdated*
+which will signal service *getUrlService* that the URL has been updated.
+
+**File test.conf** (*additions*)
+
+``` {.nginx hl="vim"}
+    haskell_service_hooks_zone hooks 32k;
+
+    # ...
+
+        location /httpbin/url {
+            allow 127.0.0.1;
+            deny all;
+            haskell_service_hook getUrlServiceHook $hs_service_httpbin $arg_v;
+        }
+```
+
+Directive *haskell_service_hooks_zone* declares a shm zone where Nginx will
+temporarily store data for the hook (the value of *arg_v*). This directive is
+not mandatory: shm zone is not really needed when service hooks pass nothing.
+Location */httpbin/url* is protected from unauthorized access with Nginx
+directives *allow* and *deny*.
+
+Run curl tests.
+
+First let's check that *httpbin.org* replies as expected.
+
+``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
+||| curl 'http://127.0.0.1:8010/httpbin'
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv='content-type' value='text/html;charset=utf8'>
+  <meta name='generator' value='Ronn/v0.7.3 (http://github.com/rtomayko/ronn/tree/0.7.3)'>
+  <title>httpbin(1): HTTP Client Testing Service</title>
+
+...
+||| curl 'http://127.0.0.1:8010/httpbin/sortlinks'
+/
+/absolute-redirect/6
+/anything
+/basic-auth/user/passwd
+/brotli
+/bytes/1024
+
+...
+```
+
+Then change URL to, say, *example.com*,
+
+``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
+||| curl 'http://127.0.0.1:8010/httpbin/url?v=http://example.com'
+```
+
+and peek, by the way, into the Nginx error log.
+
+``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
+2018/02/13 16:12:33 [alert] 28794#0: service hook reported "getUrlService set URL http://example.com"
+2018/02/13 16:12:33 [alert] 28795#0: service hook reported "getUrlService set URL http://example.com"
+2018/02/13 16:12:33 [alert] 28797#0: service hook reported "getUrlService set URL http://example.com"
+2018/02/13 16:12:33 [alert] 28798#0: service hook reported "getUrlService set URL http://example.com"
+2018/02/13 16:12:33 [error] 28797#0: an exception was caught while getting value of service variable "hs_service_httpbin": "Service was interrupted by a service hook", using old value
+```
+
+All 4 workers were signaled, and the only *active* service (remember that
+*getUrlService* was made *shared*) was interrupted. Do not be deceived by *using
+old value*: the new URL will be read by the service from the global state and
+the service variable will be updated immediately after restart.
+
+Let's see what we are getting now.
+
+``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
+||| curl 'http://127.0.0.1:8010/httpbin'
+<!doctype html>
+<html>
+<head>
+    <title>Example Domain</title>
+
+    <meta charset="utf-8" />
+
+...
+||| curl 'http://127.0.0.1:8010/httpbin/sortlinks'
+http://www.iana.org/domains/example
+```
+
+Let's reset the URL.
+
+``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
+||| curl 'http://127.0.0.1:8010/httpbin/url'
+||| curl 'http://127.0.0.1:8010/httpbin'
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv='content-type' value='text/html;charset=utf8'>
+  <meta name='generator' value='Ronn/v0.7.3 (http://github.com/rtomayko/ronn/tree/0.7.3)'>
+  <title>httpbin(1): HTTP Client Testing Service</title>
+
+...
+||| curl 'http://127.0.0.1:8010/httpbin/sortlinks'
+/
+/absolute-redirect/6
+/anything
+/basic-auth/user/passwd
+/brotli
+/bytes/1024
+
+...
+```
+
+In the log we'll find
+
+``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
+2018/02/13 16:24:12 [alert] 28795#0: service hook reported "getUrlService reset URL"
+2018/02/13 16:24:12 [alert] 28794#0: service hook reported "getUrlService reset URL"
+2018/02/13 16:24:12 [alert] 28797#0: service hook reported "getUrlService reset URL"
+2018/02/13 16:24:12 [alert] 28798#0: service hook reported "getUrlService reset URL"
+2018/02/13 16:24:12 [error] 28797#0: an exception was caught while getting value of service variable "hs_service_httpbin": "Service was interrupted by a service hook", using old value
+```
+
 # Efficiency of data exchange between Nginx and Haskell parts
 
 Haskell handlers may accept strings (`String` or `[String]`) and *strict*
@@ -972,6 +1172,9 @@ Directive                                                                 Level 
 `haskell_async_content_on_request_body`                                   `location`,           Declare an asynchronous Haskell content handler with
                                                                           `location if`         access to request body.
 
+`haskell_service_hook`                                                    `location`,           Declare a service hook and create a content handler for
+                                                                          `location if`         managing the corresponding service.
+
 `haskell_request_body_read_temp_file`                                     `server`,             This flag (*on* or *off*) makes asynchronous tasks and
                                                                           `location`,           content handlers read buffered in a *temporary file* POST
                                                                           `location if`         data. If not set, then buffered data is not read.
@@ -987,5 +1190,8 @@ Directive                                                                 Level 
 
 `haskell_service_var_in_shm`                                              `http`                Store the service result in a shared memory. Implicitly
                                                                                                 declares a shared service.
+
+`haskell_service_hooks_zone`                                              `http`                Declare shm zone for temporary storage of service hooks
+                                                                                                data.
 ---------------------------------------------------------------------------------------------------------------------------------------------------------
 

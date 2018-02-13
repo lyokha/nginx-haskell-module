@@ -99,8 +99,8 @@ getUrlService :: ByteString -> Bool -> IO L.ByteString
 getUrlService url = const $ do
     url' <- fromMaybe url <$> readIORef getUrlServiceLink
     updated <- readIORef getUrlServiceLinkUpdated
-    unless updated $ threadDelay $ 20 * 1000000
     atomicWriteIORef getUrlServiceLinkUpdated False
+    unless updated $ threadDelay $ 20 * 1000000
     getUrl url'
 ngxExportServiceIOYY 'getUrlService
 
@@ -111,8 +111,8 @@ getUrlServiceHook url = do
                                        else Just url
     atomicWriteIORef getUrlServiceLinkUpdated True
     return $ if B.null url
-                 then ""
-                 else L.fromChunks ["getUrlService new URL ", url] 
+                 then "getUrlService reset URL"
+                 else L.fromChunks ["getUrlService set URL ", url]
 ngxExportServiceHook 'getUrlServiceHook
 
 gHttpbinLinks :: IORef [ByteString]
@@ -123,7 +123,7 @@ grepLinks :: ByteString -> [ByteString]
 grepLinks =
     map (fst . snd) . filter ((1 ==) . fst) . concatMap A.assocs .
         filter (not . null) . concatMap (matchAllText regex) .
-            C8.split '\n'
+            C8.lines
     where regex = makeRegex $ C8.pack "a href=\"([^\"]+)\"" :: Regex
 
 grepHttpbinLinks :: ByteString -> IO L.ByteString
@@ -136,7 +136,7 @@ ngxExportIOYY 'grepHttpbinLinks
 sortLinks :: ByteString -> IO L.ByteString
 sortLinks "httpbin" = do
     links <- readIORef gHttpbinLinks
-    return $ L.fromChunks $ sort $ map (`C8.append` "\n") links
+    return $ L.fromChunks $ sort $ map (`C8.snoc` '\n') links
 sortLinks _ = return ""
 ngxExportIOYY 'sortLinks
 
