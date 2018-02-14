@@ -134,9 +134,8 @@ grepHttpbinLinks v  = do
 ngxExportIOYY 'grepHttpbinLinks
 
 sortLinks :: ByteString -> IO L.ByteString
-sortLinks "httpbin" = do
-    links <- readIORef gHttpbinLinks
-    return $ L.fromChunks $ sort $ map (`C8.snoc` '\n') links
+sortLinks "httpbin" =
+    L.fromChunks . sort . map (`C8.snoc` '\n') <$> readIORef gHttpbinLinks
 sortLinks _ = return ""
 ngxExportIOYY 'sortLinks
 
