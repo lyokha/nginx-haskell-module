@@ -422,7 +422,9 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
     ngx_int_t                                  index;
     ngx_uint_t                                 found;
 
-    if (ngx_process == NGX_PROCESS_HELPER) {
+    if (ngx_process != NGX_PROCESS_WORKER
+        && ngx_process != NGX_PROCESS_SINGLE)
+    {
         return NGX_OK;
     }
 
@@ -570,9 +572,14 @@ ngx_http_haskell_exit_worker(ngx_cycle_t *cycle)
     ngx_http_haskell_main_conf_t              *mcf;
     ngx_http_haskell_service_code_var_data_t  *service_code_vars;
 
-    mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
+    if (ngx_process != NGX_PROCESS_WORKER
+        && ngx_process != NGX_PROCESS_SINGLE)
+    {
+        return;
+    }
 
-    if (ngx_process == NGX_PROCESS_HELPER || mcf == NULL) {
+    mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
+    if (mcf == NULL) {
         return;
     }
 
