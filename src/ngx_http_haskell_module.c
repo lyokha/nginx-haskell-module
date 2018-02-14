@@ -36,14 +36,10 @@ ngx_string("_upd__");
 static const ngx_str_t  haskell_module_shm_stats_var_prefix =
 ngx_string("_shm__");
 
-
-typedef struct {
-    size_t                                     size;
-    ngx_fd_t                                 (*elts)[2];
-} ngx_http_haskell_service_hook_fd_t;
-
-
-static ngx_http_haskell_service_hook_fd_t  service_hook_fd;
+static struct {
+    size_t      size;
+    ngx_fd_t  (*elts)[2];
+} service_hook_fd;
 
 
 static char *ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
