@@ -1104,8 +1104,8 @@ empty. Handler *updateGlobalState* updates the global state and returns an empty
 string in ``$_upd_``. Gluing its value to the payload data passed in
 *payloadProcess* ensures that the global state has been updated.
 
-Services hooks
---------------
+Service hooks
+-------------
 
 Service hooks are special *synchronous* Haskell handlers of type
 *strictByteString-to-IO(lazyByteString)* that can be used to interact with
