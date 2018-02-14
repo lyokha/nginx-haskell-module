@@ -1,7 +1,7 @@
 ### 1.2.0
 
-- Added exporter *ngxExportServiceHook* for service hooks. Implemented machinery
-  for interrupting services using exception *ServiceHookInterrupt*.
+- Added exporter *ngxExportServiceHook* for service hooks and exception
+  *ServiceHookInterrupt* for interrupting services.
 
 ### 1.1.0
 
