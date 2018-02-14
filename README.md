@@ -25,6 +25,7 @@ Table of contents
 - [Miscellaneous nginx directives](#miscellaneous-nginx-directives)
 - [Service variables in shared memory and integration with other nginx modules](#service-variables-in-shared-memory-and-integration-with-other-nginx-modules)
 - [Shared services and global states](#shared-services-and-global-states)
+- [Service hooks](#service-hooks)
 - [Reloading of haskell code and static content](#reloading-of-haskell-code-and-static-content)
 - [Wrapping haskell code organization](#wrapping-haskell-code-organization)
 - [Static linkage against basic haskell libraries](#static-linkage-against-basic-haskell-libraries)
@@ -1103,6 +1104,78 @@ empty. Handler *updateGlobalState* updates the global state and returns an empty
 string in ``$_upd_``. Gluing its value to the payload data passed in
 *payloadProcess* ensures that the global state has been updated.
 
+Services hooks
+--------------
+
+Service hooks are special *synchronous* Haskell handlers of type
+*strictByteString-to-IO(lazyByteString)* that can be used to interact with
+running services (both *per-worker* and *shared*). This interaction solely
+depends on implementation of the hook and the bound service, and may include
+*stop* and *(re)start* of the service, changing its parameters or complete
+replacement of its logic. Behind the scenes, declaration of a service hook
+installs a *content handler* which signals all the workers when requested using
+an event channel. Then in the event handler workers run the hook supplying it
+with data, which was preliminary saved in the temporary storage, that had been
+declared with directive *haskell_service_hooks_zone*. Hooks are supposed to
+change some global state and immediately return. After this, workers interrupt
+*active* services with an *asynchronous exception* *ServiceHookInterrupt*, that
+makes them restart and read new contents from the global state.
+
+Below is an example.
+
+```nginx
+    haskell_service_hooks_zone hooks 32k;
+
+    # ...
+
+        location /httpbin/url {
+            allow 127.0.0.1;
+            deny all;
+            haskell_service_hook getUrlServiceHook $hs_service_httpbin $arg_v;
+        }
+```
+
+Beware that setting shared zone for service hooks is not mandatory. It is only
+needed when they pass data in global states. In this example service hook
+*getUrlServiceHook* passes data found in variable ``$arg_v``.
+
+```haskell
+getUrlServiceLink :: IORef (Maybe ByteString)
+getUrlServiceLink = unsafePerformIO $ newIORef Nothing
+{-# NOINLINE getUrlServiceLink #-}
+
+getUrlServiceLinkUpdated :: IORef Bool
+getUrlServiceLinkUpdated = unsafePerformIO $ newIORef True
+{-# NOINLINE getUrlServiceLinkUpdated #-}
+
+getUrlService :: ByteString -> Bool -> IO L.ByteString
+getUrlService url = const $ do
+    url' <- fromMaybe url <$> readIORef getUrlServiceLink
+    updated <- readIORef getUrlServiceLinkUpdated
+    atomicWriteIORef getUrlServiceLinkUpdated False
+    unless updated $ threadDelay $ 20 * 1000000
+    getUrl url'
+ngxExportServiceIOYY 'getUrlService
+
+getUrlServiceHook :: ByteString -> IO L.ByteString
+getUrlServiceHook url = do
+    writeIORef getUrlServiceLink $ if B.null url
+                                       then Nothing
+                                       else Just url
+    atomicWriteIORef getUrlServiceLinkUpdated True
+    return $ if B.null url
+                 then "getUrlService reset URL"
+                 else L.fromChunks ["getUrlService set URL ", url]
+ngxExportServiceHook 'getUrlServiceHook
+```
+
+Now we can change the URL for service *getUrlService* in runtime by sending a
+simple request like
+
+```ShellSession
+$ curl 'http://127.0.0.1:8010/httpbin/url?v=http://example.com'
+```
+
 Reloading of haskell code and static content
 --------------------------------------------
 
@@ -1516,6 +1589,13 @@ Some facts about efficiency
       handlers (i.e. by all functions that return lazy bytestrings except for
       content handlers) are copied into a single buffer, but only when
       underlying lazy bytestrings have more than one chunks.
+    + Lifetime of handlers' arguments of bytestring type in all variable and
+      content handlers does not extend beyond current request's lifetime. It
+      means that the arguments or their parts must not be saved in global
+      states. In particular, copying the original argument when it's not going
+      to be deserialized or somehow consumed in-place, is an important step in
+      the [*update variables approach*](#shared-services-and-global-states).
+      Arguments of services and service hooks are not affected by this.
     + Haskell content handlers are not suspendable so you cannot use
       long-running haskell functions without hitting the overall nginx
       performance. Fortunately this does not refer to [asynchronous
