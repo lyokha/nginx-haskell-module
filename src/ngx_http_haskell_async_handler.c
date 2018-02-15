@@ -118,7 +118,9 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
             return NGX_DONE;
         }
 
-        if (rb && ngx_http_haskell_read_request_body(r, lcf, ctx) == NGX_AGAIN) {
+        if (rb
+            && ngx_http_haskell_read_request_body(r, lcf, ctx) == NGX_AGAIN)
+        {
             return NGX_DONE;
         }
 

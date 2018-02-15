@@ -1407,7 +1407,7 @@ ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 (async_rb ?
                     ngx_http_haskell_handler_role_async_content_handler_rb :
                     ngx_http_haskell_handler_role_async_content_handler) :
-                (service_hook ? ngx_http_haskell_handler_role_service_hook : 
+                (service_hook ? ngx_http_haskell_handler_role_service_hook :
                     ngx_http_haskell_handler_role_content_handler);
         handler->unsafe = unsafe;
         handler->async = async;
