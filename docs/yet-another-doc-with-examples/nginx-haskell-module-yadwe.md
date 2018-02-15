@@ -902,12 +902,12 @@ location */httpbin/url* derives the content handler which signals all workers
 via an event channel upon receiving a request. Then the event handlers in all
 workers run the hook (*getUrlServiceHook* in our case) *synchronously*, and
 finally send an asynchronous exception *ServiceHookInterrupt* to the service
-to which the service variable from the service hook declaration corresponds
-(*hs_service_httpbin*). Being run *synchronously*, service hooks are expected to
-be fast, only writing data passed to them (value of *arg_v* in our case) into a
-global state. In contrast to *update variables*, this data has a longer lifetime
-being freed in the Haskell part when the original bytestring gets garbage
-collected.
+to which the service variable from the service hook declaration
+(*hs_service_httpbin*) corresponds. Being run synchronously, service hooks are
+expected to be fast, only writing data passed to them (value of *arg_v* in our
+case) into a global state. In contrast to *update variables*, this data has a
+longer lifetime being freed in the Haskell part when the original bytestring
+gets garbage collected.
 
 ## An example
 
@@ -1018,8 +1018,8 @@ and peek, by the way, into the Nginx error log.
 
 All 4 workers were signaled, and the only *active* service (remember that
 *getUrlService* was made *shared*) was interrupted. Do not be deceived by *using
-old value*: the new URL will be read by the service from the global state and
-the service variable will be updated immediately after restart.
+old value*: the new URL will be read in by the service from the global state
+immediately after restart, and the service variable will be updated.
 
 Let's see what we are getting now.
 
@@ -1107,7 +1107,7 @@ with the service. Obviously, this is still not safe. Imagine that some request
 gets a reference to a service value from the variable handler, then lasts some
 time and later uses this reference again: the reference could probably be freed
 by this time because the service could have altered its data since the beginning
-of the request. This catastrophic situation could have been fixed by using a
+of the request. This catastrophic scenario could have been avoided by using a
 copy of the service value in every request like in shared services, but this
 would unnecessarily hit performance, therefore requests share *counted
 references*, and as soon as the count reaches *0*, the service value gets freed.
@@ -1190,7 +1190,7 @@ Directive                                                                 Level 
 `haskell_service_var_in_shm`                                              `http`                Store the service result in a shared memory. Implicitly
                                                                                                 declares a shared service.
 
-`haskell_service_hooks_zone`                                              `http`                Declare shm zone for temporary storage of service hooks
+`haskell_service_hooks_zone`                                              `http`                Declare shm zone for a temporary storage of service hooks
                                                                                                 data.
 ---------------------------------------------------------------------------------------------------------------------------------------------------------
 
