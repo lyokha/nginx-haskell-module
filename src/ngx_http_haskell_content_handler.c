@@ -409,7 +409,7 @@ ngx_http_haskell_service_hook(ngx_http_request_t *r)
     }
 
     if (ngx_http_haskell_consume_from_async_event_channel(
-                    service_hooks[lcf->service_hook_index].event_channel[1])
+                    service_hooks[lcf->service_hook_index].event_channel[0])
         == -1)
     {
         if (ngx_errno != NGX_EAGAIN) {

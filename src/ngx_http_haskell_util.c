@@ -200,9 +200,9 @@ ngx_http_haskell_signal_async_event_channel(ngx_fd_t fd)
 
         return write(fd, &v, sizeof(uint64_t));
 #else
-        char v = '1';
+        uint8_t  v = 1;
 
-        return write(fd, &v, sizeof(char));
+        return write(fd, &v, sizeof(uint8_t));
 #endif
 }
 
@@ -215,9 +215,9 @@ ngx_http_haskell_consume_from_async_event_channel(ngx_fd_t fd)
 
         return read(fd, &v, sizeof(uint64_t));
 #else
-        char v;
+        uint8_t  v;
 
-        return read(fd, &v, sizeof(char));
+        return read(fd, &v, sizeof(uint8_t));
 #endif
 }
 

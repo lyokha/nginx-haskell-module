@@ -1,3 +1,7 @@
+### 1.2.1
+
+- Bugfix: put *unsigned* integers in event channels (important for *eventfd*).
+
 ### 1.2.0
 
 - Added exporter *ngxExportServiceHook* for service hooks and exception

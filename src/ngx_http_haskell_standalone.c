@@ -548,11 +548,11 @@ ngx_string(
 
 "aux_ngx_asyncIOFlag1b :: AUX_NGX_BS.ByteString\n"
 "aux_ngx_asyncIOFlag1b =\n"
-"    AUX_NGX_BSL.toStrict $ AUX_NGX.runPut $ AUX_NGX.putInt8 1\n\n"
+"    AUX_NGX_BSL.toStrict $ AUX_NGX.runPut $ AUX_NGX.putWord8 1\n\n"
 
 "aux_ngx_asyncIOFlag8b :: AUX_NGX_BS.ByteString\n"
 "aux_ngx_asyncIOFlag8b =\n"
-"    AUX_NGX_BSL.toStrict $ AUX_NGX.runPut $ AUX_NGX.putInt64host 1\n\n"
+"    AUX_NGX_BSL.toStrict $ AUX_NGX.runPut $ AUX_NGX.putWord64host 1\n\n"
 
 "aux_ngx_asyncIOCommon :: IO (AUX_NGX_BSL.ByteString, Bool) ->\n"
 "    AUX_NGX.CInt -> Bool -> AUX_NGX.Ptr (AUX_NGX.Ptr AUX_NGX_STR_TYPE) ->\n"

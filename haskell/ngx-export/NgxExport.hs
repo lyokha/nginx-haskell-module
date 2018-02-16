@@ -535,10 +535,10 @@ ioyYWithFree :: IOYY -> CString -> CInt ->
 ioyYWithFree = ioyYCommon B.unsafePackMallocCStringLen
 
 asyncIOFlag1b :: B.ByteString
-asyncIOFlag1b = L.toStrict $ runPut $ putInt8 1
+asyncIOFlag1b = L.toStrict $ runPut $ putWord8 1
 
 asyncIOFlag8b :: B.ByteString
-asyncIOFlag8b = L.toStrict $ runPut $ putInt64host 1
+asyncIOFlag8b = L.toStrict $ runPut $ putWord64host 1
 
 asyncIOCommon :: IO (L.ByteString, Bool) ->
     CInt -> Bool -> Ptr (Ptr NgxStrType) -> Ptr CInt ->
