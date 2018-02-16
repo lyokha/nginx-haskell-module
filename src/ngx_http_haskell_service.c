@@ -292,6 +292,8 @@ ngx_http_haskell_close_service_hook(ngx_cycle_t *cycle,
         return;
     }
 
+    hook->service_code_var_index = NGX_AGAIN;
+
     if (ngx_del_event(&hook->event, NGX_READ_EVENT, 0) == NGX_ERROR) {
         ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
                       "failed to delete service hook event data");

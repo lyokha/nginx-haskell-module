@@ -379,6 +379,12 @@ ngx_http_haskell_service_hook(ngx_http_request_t *r)
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
+    if (service_hooks[lcf->service_hook_index].service_code_var_index
+        == NGX_AGAIN)
+    {
+        return NGX_HTTP_SERVICE_UNAVAILABLE;
+    }
+
     args = lcf->content_handler->args;
 
     if (args && ngx_http_complex_value(r, args, &arg) != NGX_OK) {
