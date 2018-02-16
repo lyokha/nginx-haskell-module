@@ -29,8 +29,10 @@ ngx_int_t ngx_http_haskell_service_var_init_zone(ngx_shm_zone_t *shm_zone,
     void *data);
 ngx_int_t ngx_http_haskell_service_hooks_init_zone(ngx_shm_zone_t *shm_zone,
     void *data);
-ngx_int_t ngx_http_haskell_setup_service_hook(ngx_cycle_t *cycle,
+ngx_int_t ngx_http_haskell_init_service_hook(ngx_cycle_t *cycle,
     ngx_array_t *service_code_vars, ngx_http_variable_t *cmvars,
+    ngx_http_haskell_service_hook_t *hook);
+void ngx_http_haskell_close_service_hook(ngx_cycle_t *cycle,
     ngx_http_haskell_service_hook_t *hook);
 ngx_int_t ngx_http_haskell_update_service_hook_data(ngx_http_request_t *r,
     ngx_int_t hook_index, ngx_str_t data);

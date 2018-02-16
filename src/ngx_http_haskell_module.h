@@ -44,8 +44,11 @@ typedef HsWord32 (*ngx_http_haskell_handler_b_y)
 typedef HsWord32 (*ngx_http_haskell_handler_ioy_y)
     (HsPtr, HsInt32, HsPtr, HsPtr, HsPtr);
 typedef HsStablePtr (*ngx_http_haskell_handler_async_ioy_y)
-    (HsPtr, HsInt32, HsInt32, HsInt32, HsPtr, HsWord32, HsWord32, HsPtr, HsPtr,
-     HsPtr, HsPtr);
+    (HsPtr, HsInt32, HsInt32, HsInt32, HsPtr, HsWord32, HsWord32,
+     HsPtr, HsPtr, HsPtr, HsPtr);
+typedef HsStablePtr (*ngx_http_haskell_handler_async_ioy_y_service)
+    (HsPtr, HsInt32, HsInt32, HsInt32, volatile HsWord32 *, HsWord32, HsWord32,
+     HsPtr, HsPtr, HsPtr, HsPtr);
 typedef HsStablePtr (*ngx_http_haskell_handler_async_ioy_yy)
     (HsPtr, HsPtr, HsInt32, HsPtr, HsInt32, HsInt32, HsWord32, HsPtr, HsPtr,
      HsPtr, HsPtr);
@@ -304,7 +307,7 @@ struct ngx_http_haskell_service_code_var_data_s {
     ngx_int_t                                         shm_index;
     ngx_fd_t                                          shm_lock_fd;
     HsStablePtr                                       locked_async_task;
-    ngx_uint_t                                        active;
+    volatile HsWord32                                 active;
     ngx_uint_t                                        cb:1;
     ngx_uint_t                                        noarg:1;
     ngx_uint_t                                        running:1;

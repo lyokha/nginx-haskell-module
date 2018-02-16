@@ -227,10 +227,10 @@ ngx_http_haskell_service_hooks_init_zone(ngx_shm_zone_t *shm_zone, void *data)
 
 
 ngx_int_t
-ngx_http_haskell_setup_service_hook(ngx_cycle_t *cycle,
-                                    ngx_array_t *service_code_vars,
-                                    ngx_http_variable_t *cmvars,
-                                    ngx_http_haskell_service_hook_t *hook)
+ngx_http_haskell_init_service_hook(ngx_cycle_t *cycle,
+                                   ngx_array_t *service_code_vars,
+                                   ngx_http_variable_t *cmvars,
+                                   ngx_http_haskell_service_hook_t *hook)
 {
     ngx_uint_t                                 i;
     ngx_http_haskell_service_code_var_data_t  *service_code_vars_elts;
@@ -275,10 +275,30 @@ ngx_http_haskell_setup_service_hook(ngx_cycle_t *cycle,
     if (ngx_add_event(event, NGX_READ_EVENT, NGX_CLEAR_EVENT) != NGX_OK) {
         ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
                       "failed to add event for service hook");
+        ngx_http_haskell_close_async_event_channel(cycle->log,
+                                                   hook->event_channel);
         return NGX_ERROR;
     }
 
     return NGX_OK;
+}
+
+
+void
+ngx_http_haskell_close_service_hook(ngx_cycle_t *cycle,
+                                    ngx_http_haskell_service_hook_t *hook)
+{
+    if (hook->service_code_var_index == NGX_DECLINED) {
+        return;
+    }
+
+    if (ngx_del_event(&hook->event, NGX_READ_EVENT, 0) == NGX_ERROR) {
+        ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
+                      "failed to delete service hook event data");
+    }
+
+    ngx_http_haskell_close_async_event_channel(cycle->log,
+                                               hook->event_channel);
 }
 
 
@@ -346,7 +366,7 @@ ngx_http_haskell_run_service(ngx_cycle_t *cycle,
     args = service_code_var->data->args.elts;
     arg1 = args[0].value;
     service_code_var->locked_async_task =
-        ((ngx_http_haskell_handler_async_ioy_y)
+        ((ngx_http_haskell_handler_async_ioy_y_service)
          handlers[service_code_var->data->handler].self)
             (arg1.data, arg1.len, fd[1], service_code_var->shm_lock_fd,
              &service_code_var->active,

@@ -318,11 +318,6 @@ ngx_string(
 "        AUX_NGX.poke (AUX_NGX.castPtr p) n\n"
 "        AUX_NGX.poke (AUX_NGX.plusPtr p $ AUX_NGX.alignment x) s\n\n"
 
-"data AUX_NGX_ServiceHookInterrupt = AUX_NGX_ServiceHookInterrupt\n"
-"instance AUX_NGX.Exception AUX_NGX_ServiceHookInterrupt\n"
-"instance Show AUX_NGX_ServiceHookInterrupt where\n"
-"    show = const \"Service was interrupted by a service hook\"\n\n"
-
 "aux_ngx_safeMallocBytes :: Int -> IO (AUX_NGX.Ptr a)\n"
 "aux_ngx_safeMallocBytes =\n"
 "    flip AUX_NGX.catchIOError (const $ return AUX_NGX.nullPtr) .\n"
@@ -837,6 +832,12 @@ ngx_string(
 "    AUX_NGX.StablePtr (AUX_NGX.Async ()) -> IO ()\n"
 "ngxExportTerminateTask =\n"
 "    AUX_NGX.deRefStablePtr AUX_NGX.>=> AUX_NGX.cancel\n\n"
+
+"data AUX_NGX_ServiceHookInterrupt = AUX_NGX_ServiceHookInterrupt\n\n"
+
+"instance AUX_NGX.Exception AUX_NGX_ServiceHookInterrupt\n"
+"instance Show AUX_NGX_ServiceHookInterrupt where\n"
+"    show = const \"Service was interrupted by a service hook\"\n\n"
 
 "foreign export ccall ngxExportServiceHookInterrupt ::\n"
 "    AUX_NGX.StablePtr (AUX_NGX.Async ()) -> IO ()\n"

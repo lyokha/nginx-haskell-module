@@ -553,8 +553,8 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
 
     service_hooks = mcf->service_hooks.elts;
     for (i = 0; i < mcf->service_hooks.nelts; i++) {
-        if (ngx_http_haskell_setup_service_hook(cycle, &mcf->service_code_vars,
-                                                cmvars, &service_hooks[i])
+        if (ngx_http_haskell_init_service_hook(cycle, &mcf->service_code_vars,
+                                               cmvars, &service_hooks[i])
             != NGX_OK)
         {
             return NGX_ERROR;
@@ -571,6 +571,7 @@ ngx_http_haskell_exit_worker(ngx_cycle_t *cycle)
     ngx_uint_t                                 i;
     ngx_http_haskell_main_conf_t              *mcf;
     ngx_http_haskell_service_code_var_data_t  *service_code_vars;
+    ngx_http_haskell_service_hook_t           *service_hooks;
 
     if (ngx_process != NGX_PROCESS_WORKER
         && ngx_process != NGX_PROCESS_SINGLE)
@@ -617,6 +618,11 @@ ngx_http_haskell_exit_worker(ngx_cycle_t *cycle)
 
     }
 #endif
+
+    service_hooks = mcf->service_hooks.elts;
+    for (i = 0; i < mcf->service_hooks.nelts; i++) {
+        ngx_http_haskell_close_service_hook(cycle, &service_hooks[i]);
+    }
 }
 
 
