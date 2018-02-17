@@ -372,23 +372,47 @@ ngx_http_haskell_init_module(ngx_cycle_t *cycle)
 {
     ngx_uint_t                                 i;
     ngx_http_haskell_main_conf_t              *mcf;
+    ngx_event_conf_t                          *ecf;
+    void                                    ***cf;
     ngx_http_haskell_service_hook_t           *service_hooks;
+
+    ngx_http_haskell_cleanup_service_hook_fd(cycle);
 
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
     if (mcf == NULL || !mcf->code_loaded) {
         return NGX_OK;
     }
 
-    ngx_http_haskell_cleanup_service_hook_fd(cycle);
+    if (mcf->has_async_tasks || mcf->has_async_handlers
+        || mcf->service_code_vars.nelts > 0 || mcf->service_hooks.nelts > 0)
+    {
+        cf = ngx_get_conf(cycle->conf_ctx, ngx_events_module);
+        ecf = (*cf)[ngx_event_core_module.ctx_index];
+
+        if (ngx_strcmp(ecf->name, "epoll") != 0
+            && ngx_strcmp(ecf->name, "kqueue") != 0)
+        {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                          "event engine \"%s\" is not compatible with "
+                          "implementation of async tasks and services, "
+                          "only \"epoll\" and \"kqueue\" are currently "
+                          "supported", ecf->name);
+            goto module_failed;
+        }
+    }
+
+    if (mcf->service_hooks.nelts == 0) {
+        return NGX_OK;
+    }
 
     service_hook_fd.size = mcf->service_hooks.nelts;
     service_hook_fd.elts = ngx_alloc(service_hook_fd.size * sizeof(ngx_fd_t[2]),
-                                    cycle->log);
+                                     cycle->log);
 
     if (service_hook_fd.elts == NULL) {
-        ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
-                      "failed to allocate fd storage for service API");
-        return NGX_ERROR;
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                      "failed to allocate fd storage for service hooks");
+        goto module_failed;
     }
 
     service_hooks = mcf->service_hooks.elts;
@@ -396,13 +420,19 @@ ngx_http_haskell_init_module(ngx_cycle_t *cycle)
         if (ngx_http_haskell_open_async_event_channel(
                                             service_hooks[i].event_channel))
         {
-            ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                           "failed to open event channel for service hook");
-            return NGX_ERROR;
+            goto module_failed;
         }
         service_hook_fd.elts[i][0] = service_hooks[i].event_channel[0];
         service_hook_fd.elts[i][1] = service_hooks[i].event_channel[1];
     }
+
+    return NGX_OK;
+
+module_failed:
+
+    mcf->module_failed = 1;
 
     return NGX_OK;
 }
@@ -431,6 +461,10 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
     if (mcf == NULL || !mcf->code_loaded) {
         return NGX_OK;
+    }
+
+    if (mcf->module_failed) {
+        return NGX_ERROR;
     }
 
     cmcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_core_module);
@@ -645,6 +679,8 @@ ngx_http_haskell_cleanup_service_hook_fd(ngx_cycle_t *cycle)
         }
     }
     ngx_free(service_hook_fd.elts);
+    service_hook_fd.size = 0;
+    service_hook_fd.elts = NULL;
 }
 
 

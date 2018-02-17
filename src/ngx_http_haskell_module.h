@@ -145,6 +145,7 @@ typedef struct {
     ngx_array_t                                service_hooks;
     ngx_shm_zone_t                            *service_hooks_shm_zone;
     ngx_uint_t                                 code_loaded:1;
+    ngx_uint_t                                 module_failed:1;
     ngx_uint_t                                 has_async_tasks:1;
     ngx_uint_t                                 has_async_handlers:1;
 } ngx_http_haskell_main_conf_t;
