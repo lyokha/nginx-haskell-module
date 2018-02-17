@@ -1,3 +1,7 @@
+### 1.2.2
+
+- Returning a special error code (*2*) on exception *ServiceHookInterrupt*.
+
 ### 1.2.1
 
 - Bugfix: put *unsigned* integers in event channels (important for *eventfd*).

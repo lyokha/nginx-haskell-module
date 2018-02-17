@@ -454,7 +454,8 @@ ngx_http_haskell_service_event(ngx_event_t *ev)
     }
 
     if (async_data->error) {
-        ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
+        ngx_log_error(async_data->error == 2 ? NGX_LOG_ALERT : NGX_LOG_ERR,
+                      cycle->log, 0,
                       "an exception was caught while getting "
                       "value of service variable \"%V\": \"%V\", "
                       "using old value",

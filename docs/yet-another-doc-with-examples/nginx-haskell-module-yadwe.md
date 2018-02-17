@@ -1013,7 +1013,7 @@ and peek, by the way, into the Nginx error log.
 2018/02/13 16:12:33 [alert] 28795#0: service hook reported "getUrlService set URL http://example.com"
 2018/02/13 16:12:33 [alert] 28797#0: service hook reported "getUrlService set URL http://example.com"
 2018/02/13 16:12:33 [alert] 28798#0: service hook reported "getUrlService set URL http://example.com"
-2018/02/13 16:12:33 [error] 28797#0: an exception was caught while getting value of service variable "hs_service_httpbin": "Service was interrupted by a service hook", using old value
+2018/02/13 16:12:33 [alert] 28797#0: an exception was caught while getting value of service variable "hs_service_httpbin": "Service was interrupted by a service hook", using old value
 ```
 
 All 4 workers were signaled, and the only *active* service (remember that
@@ -1068,7 +1068,7 @@ In the log we'll find
 2018/02/13 16:24:12 [alert] 28794#0: service hook reported "getUrlService reset URL"
 2018/02/13 16:24:12 [alert] 28797#0: service hook reported "getUrlService reset URL"
 2018/02/13 16:24:12 [alert] 28798#0: service hook reported "getUrlService reset URL"
-2018/02/13 16:24:12 [error] 28797#0: an exception was caught while getting value of service variable "hs_service_httpbin": "Service was interrupted by a service hook", using old value
+2018/02/13 16:24:12 [alert] 28797#0: an exception was caught while getting value of service variable "hs_service_httpbin": "Service was interrupted by a service hook", using old value
 ```
 
 # Efficiency of data exchange between Nginx and Haskell parts

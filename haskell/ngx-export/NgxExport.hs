@@ -362,6 +362,12 @@ instance Storable NgxStrType where
         poke (castPtr p) n
         poke (plusPtr p $ alignment x) s
 
+data ServiceHookInterrupt = ServiceHookInterrupt
+
+instance Exception ServiceHookInterrupt
+instance Show ServiceHookInterrupt where
+    show = const "Service was interrupted by a service hook"
+
 safeMallocBytes :: Int -> IO (Ptr a)
 safeMallocBytes =
     flip catchIOError (const $ return nullPtr) . mallocBytes
@@ -464,9 +470,12 @@ safeYYHandler :: IO (L.ByteString, (CUInt, Bool)) ->
     IO (L.ByteString, (CUInt, Bool))
 safeYYHandler = handle $ \e ->
     return (C8L.pack $ show e,
-            (1, case asyncExceptionFromException e of
-                    Nothing -> False
-                    Just ae -> ae == ThreadKilled
+            (case fromException e of
+                Just ServiceHookInterrupt -> 2
+                _ -> 1
+            ,case asyncExceptionFromException e of
+                Just ThreadKilled -> True
+                _ -> False
             )
            )
 {-# INLINE safeYYHandler #-}
@@ -739,12 +748,6 @@ ngxExportTerminateTask ::
     StablePtr (Async ()) -> IO ()
 ngxExportTerminateTask = deRefStablePtr >=>
     cancel
-
-data ServiceHookInterrupt = ServiceHookInterrupt
-
-instance Exception ServiceHookInterrupt
-instance Show ServiceHookInterrupt where
-    show = const "Service was interrupted by a service hook"
 
 foreign export ccall ngxExportServiceHookInterrupt ::
     StablePtr (Async ()) -> IO ()

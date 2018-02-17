@@ -777,7 +777,7 @@
 <span style="color: #808080;">2018/02/13 16:12:33 [alert] 28795#0: service hook reported &quot;getUrlService set URL http://example.com&quot;</span>
 <span style="color: #808080;">2018/02/13 16:12:33 [alert] 28797#0: service hook reported &quot;getUrlService set URL http://example.com&quot;</span>
 <span style="color: #808080;">2018/02/13 16:12:33 [alert] 28798#0: service hook reported &quot;getUrlService set URL http://example.com&quot;</span>
-<span style="color: #808080;">2018/02/13 16:12:33 [error] 28797#0: an exception was caught while getting value of service variable &quot;hs_service_httpbin&quot;: &quot;Service was interrupted by a service hook&quot;, using old value</span>
+<span style="color: #808080;">2018/02/13 16:12:33 [alert] 28797#0: an exception was caught while getting value of service variable &quot;hs_service_httpbin&quot;: &quot;Service was interrupted by a service hook&quot;, using old value</span>
 </pre>
 
 <p>All 4 workers were signaled, and the only <em>active</em> service (remember that <em>getUrlService</em> was made <em>shared</em>) was interrupted. Do not be deceived by <em>using old value</em>: the new URL will be read in by the service from the global state immediately after restart, and the service variable will be updated.</p>
@@ -825,7 +825,7 @@
 <span style="color: #808080;">2018/02/13 16:24:12 [alert] 28794#0: service hook reported &quot;getUrlService reset URL&quot;</span>
 <span style="color: #808080;">2018/02/13 16:24:12 [alert] 28797#0: service hook reported &quot;getUrlService reset URL&quot;</span>
 <span style="color: #808080;">2018/02/13 16:24:12 [alert] 28798#0: service hook reported &quot;getUrlService reset URL&quot;</span>
-<span style="color: #808080;">2018/02/13 16:24:12 [error] 28797#0: an exception was caught while getting value of service variable &quot;hs_service_httpbin&quot;: &quot;Service was interrupted by a service hook&quot;, using old value</span>
+<span style="color: #808080;">2018/02/13 16:24:12 [alert] 28797#0: an exception was caught while getting value of service variable &quot;hs_service_httpbin&quot;: &quot;Service was interrupted by a service hook&quot;, using old value</span>
 </pre>
 
 <h1 id="efficiency-of-data-exchange-between-nginx-and-haskell-parts">Efficiency of data exchange between Nginx and Haskell parts</h1>
