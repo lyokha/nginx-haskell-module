@@ -26,6 +26,13 @@
 static const ngx_str_t  haskell_module_type_checker_prefix =
 ngx_string("type_");
 
+/* FIXME: installing signal handlers ("yes", which is default) makes a worker
+ * defunct when sending SIGINT to it, disabling signal handlers by setting "no"
+ * fixes this but may make a worker hang on terminate_async_task() when sending
+ * any signal to it, which is apparently worse */
+static char  *haskell_module_install_signal_handlers_option =
+"--install-signal-handlers=yes";
+
 static const HsInt32  haskell_module_ngx_export_api_version_major = 1;
 static const HsInt32  haskell_module_ngx_export_api_version_minor = 2;
 
@@ -156,12 +163,14 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         argv[1 + i] = ((char **) mcf->program_options.elts)[i];
         if (ngx_strcmp(argv[1 + i], "+RTS") == 0) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
-                          "found option \"+RTS\" in Haskell program options, "
-                          "consider using \"ghc rts_options\" for RTS options");
+                          "found option \"+RTS\" in the list of "
+                          "\"ghc program_options\", consider using directive "
+                          "\"ghc rts_options\" for RTS options");
         }
     }
     argv[mcf->program_options.nelts + 1] = "+RTS";
-    argv[mcf->program_options.nelts + 2] = "--install-signal-handlers=no";
+    argv[mcf->program_options.nelts + 2] =
+            haskell_module_install_signal_handlers_option;
     for (i = 0; i < mcf->rts_options.nelts; i++) {
         argv[mcf->program_options.nelts + 3 + i] =
                 ((char **) mcf->rts_options.elts)[i];
