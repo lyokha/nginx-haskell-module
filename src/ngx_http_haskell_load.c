@@ -42,7 +42,6 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     char                           *dl_error;
     char                          **argv = NULL;
     int                             argc;
-    char                           *hs_init = "hs_init";
     version_f_t                     version_f = NULL;
     HsInt32                         version[4], version_len;
 
@@ -76,23 +75,13 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         }
     }
 
-    if (mcf->rts_options.nelts > 0) {
-        hs_init = "hs_init_with_rtsopts";
-    } else {
-        for (i = 0; i < mcf->program_options.nelts; i++) {
-            if (ngx_strcmp(((char **) mcf->program_options.elts)[i], "+RTS")
-                == 0)
-            {
-                hs_init = "hs_init_with_rtsopts";
-                break;
-            }
-        }
-    }
-    mcf->hs_init = (void (*)(int *, char ***)) dlsym(mcf->dl_handle, hs_init);
+    mcf->hs_init = (void (*)(int *, char ***)) dlsym(mcf->dl_handle,
+                                                     "hs_init_with_rtsopts");
     dl_error = dlerror();
     if (dl_error != NULL) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                      "failed to load function \"%s\": %s", hs_init, dl_error);
+                      "failed to load function \"hs_init_with_rtsopts\": %s",
+                      dl_error);
         goto dlclose_and_exit;
     }
 
@@ -155,10 +144,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         goto dlclose_and_exit;
     }
 
-    argc = mcf->program_options.nelts + 1;
-    if (mcf->rts_options.nelts > 0) {
-        argc += mcf->rts_options.nelts + 1;
-    }
+    argc = mcf->program_options.nelts + 3 + mcf->rts_options.nelts;
     argv = ngx_palloc(cycle->pool, argc * sizeof(char *));
     if (argv == NULL) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
@@ -167,14 +153,18 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     }
     argv[0] = "NgxHaskellUserRuntime";
     for (i = 0; i < mcf->program_options.nelts; i++) {
-        argv[i + 1] = ((char **) mcf->program_options.elts)[i];
-    }
-    if (mcf->rts_options.nelts > 0) {
-        argv[mcf->program_options.nelts + 1] = "+RTS";
-        for (i = 0; i < mcf->rts_options.nelts; i++) {
-            argv[mcf->program_options.nelts + 2 + i] =
-                    ((char **) mcf->rts_options.elts)[i];
+        argv[1 + i] = ((char **) mcf->program_options.elts)[i];
+        if (ngx_strcmp(argv[1 + i], "+RTS") == 0) {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
+                          "found option \"+RTS\" in Haskell program options, "
+                          "consider using \"ghc rts_options\" for RTS options");
         }
+    }
+    argv[mcf->program_options.nelts + 1] = "+RTS";
+    argv[mcf->program_options.nelts + 2] = "--install-signal-handlers=no";
+    for (i = 0; i < mcf->rts_options.nelts; i++) {
+        argv[mcf->program_options.nelts + 3 + i] =
+                ((char **) mcf->rts_options.elts)[i];
     }
 
     /* FIXME: hs_init() may exit(EXIT_FAILURE), and in this case Nginx master
