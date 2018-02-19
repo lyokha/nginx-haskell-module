@@ -231,6 +231,7 @@ ngx_string(
 "import qualified System.IO.Error as AUX_NGX\n"
 "import qualified System.Posix.IO as AUX_NGX\n"
 "import qualified System.Posix.Types as AUX_NGX\n"
+"import qualified System.Posix.Signals as AUX_NGX\n"
 "import qualified System.Posix.Internals as AUX_NGX\n"
 "import qualified Control.Monad as AUX_NGX\n"
 "import qualified Control.Monad.Loops as AUX_NGX\n"
@@ -834,6 +835,11 @@ ngx_string(
 "        aux_ngx_safe_c_fcntl_lock fd 7 p_flock\n\n"
 
 "{- SPLICE: END -}\n\n"
+
+"foreign export ccall ngxExportInstallSignalHandler :: IO ()\n"
+"ngxExportInstallSignalHandler :: IO ()\n"
+"ngxExportInstallSignalHandler = AUX_NGX.void $\n"
+"    AUX_NGX.installHandler AUX_NGX.keyboardSignal AUX_NGX.Ignore Nothing\n\n"
 
 "foreign export ccall ngxExportTerminateTask ::\n"
 "    AUX_NGX.StablePtr (AUX_NGX.Async ()) -> IO ()\n"

@@ -54,6 +54,7 @@ import           Foreign.Marshal.Utils
 import           System.IO.Error
 import           System.Posix.IO
 import           System.Posix.Types
+import           System.Posix.Signals hiding (Handler)
 import           System.Posix.Internals
 import           Control.Monad
 import           Control.Monad.Loops
@@ -741,6 +742,11 @@ safeWaitToSetLock (Fd fd) lock = allocaLock lock $
         safe_c_fcntl_lock fd 7 p_flock
 
 {- SPLICE: END -}
+
+foreign export ccall ngxExportInstallSignalHandler :: IO ()
+ngxExportInstallSignalHandler :: IO ()
+ngxExportInstallSignalHandler = void $
+    installHandler keyboardSignal Ignore Nothing
 
 foreign export ccall ngxExportTerminateTask ::
     StablePtr (Async ()) -> IO ()

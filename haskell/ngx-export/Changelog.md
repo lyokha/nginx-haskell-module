@@ -1,3 +1,7 @@
+### 1.3.0
+
+- Export function *ngxExportInstallSignalHandler* to ignore SIGINT.
+
 ### 1.2.2
 
 - Returning a special error code (*2*) on exception *ServiceHookInterrupt*.

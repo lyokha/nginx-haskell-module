@@ -29,12 +29,14 @@ ngx_string("type_");
 /* FIXME: installing signal handlers ("yes", which is default) makes a worker
  * defunct when sending SIGINT to it, disabling signal handlers by setting "no"
  * fixes this but may make a worker hang on terminate_async_task() when sending
- * any signal to it, which is apparently worse */
+ * any signal to it, which is apparently worse; current workaround makes use of
+ * "yes" with further calling of install_signal_handler() that makes a worker
+ * ignore SIGINT while still keeping it killable by the master's SIGINT */
 static char  *haskell_module_install_signal_handlers_option =
 "--install-signal-handlers=yes";
 
 static const HsInt32  haskell_module_ngx_export_api_version_major = 1;
-static const HsInt32  haskell_module_ngx_export_api_version_minor = 2;
+static const HsInt32  haskell_module_ngx_export_api_version_minor = 3;
 
 
 ngx_int_t
@@ -51,6 +53,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     int                             argc;
     version_f_t                     version_f = NULL;
     HsInt32                         version[4], version_len;
+    void                          (*install_signal_handler)(void);
 
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
     if (mcf == NULL || !mcf->code_loaded) {
@@ -151,6 +154,16 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         goto dlclose_and_exit;
     }
 
+    install_signal_handler = (void (*)(void)) dlsym(mcf->dl_handle,
+                                            "ngxExportInstallSignalHandler");
+    dl_error = dlerror();
+    if (dl_error != NULL) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                      "failed to load function "
+                      "\"ngxExportInstallSignalHandler\": %s", dl_error);
+        goto dlclose_and_exit;
+    }
+
     argc = mcf->program_options.nelts + 3 + mcf->rts_options.nelts;
     argv = ngx_palloc(cycle->pool, argc * sizeof(char *));
     if (argv == NULL) {
@@ -184,6 +197,8 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ < 702
     mcf->hs_add_root(mcf->init_HsModule);
 #endif
+
+    install_signal_handler();
 
     if (mcf->wrap_mode == ngx_http_haskell_module_wrap_mode_modular) {
         version_len = version_f(version, sizeof(version) / sizeof(version[0]));
