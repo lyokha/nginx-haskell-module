@@ -408,6 +408,7 @@ ngx_http_haskell_service_event(ngx_event_t *ev)
     ngx_msec_t                                 old_modified;
     time_t                                     modified;
     ngx_uint_t                                 run_cb = 0;
+    ngx_uint_t                                 log_level;
     ngx_int_t                                  rc;
 
     service_code_var = hev->service_code_var;
@@ -454,8 +455,8 @@ ngx_http_haskell_service_event(ngx_event_t *ev)
     }
 
     if (async_data->error) {
-        ngx_log_error(async_data->error == 2 ? NGX_LOG_ALERT : NGX_LOG_ERR,
-                      cycle->log, 0,
+        log_level = async_data->error == 2 ? NGX_LOG_ALERT : NGX_LOG_ERR;
+        ngx_log_error(log_level, cycle->log, 0,
                       "an exception was caught while getting "
                       "value of service variable \"%V\": \"%V\", "
                       "using old value",
