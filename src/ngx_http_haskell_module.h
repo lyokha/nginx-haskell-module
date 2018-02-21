@@ -278,6 +278,7 @@ struct ngx_http_haskell_service_hook_s {
     ngx_int_t                                         handler;
     ngx_int_t                                         service_hook_index;
     ngx_int_t                                         service_code_var_index;
+    ngx_uint_t                                        update_hook;
     struct ngx_http_haskell_service_code_var_data_s  *service_code_var;
 };
 
@@ -313,6 +314,7 @@ struct ngx_http_haskell_service_code_var_data_s {
     ngx_uint_t                                        noarg:1;
     ngx_uint_t                                        running:1;
     ngx_uint_t                                        ignore_empty:1;
+    ngx_uint_t                                        has_update_hooks:1;
     ngx_uint_t                                        has_locked_async_task:1;
 };
 

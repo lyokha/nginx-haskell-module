@@ -47,6 +47,8 @@ static char *ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_http_haskell_service_update_hook(ngx_conf_t *cf,
+    ngx_command_t *cmd, void *conf);
 static char *ngx_http_haskell_service_hooks_zone(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf);
 static char *ngx_http_haskell_var_configure(ngx_conf_t *cf, ngx_command_t *cmd,
@@ -142,6 +144,12 @@ static ngx_command_t  ngx_http_haskell_module_commands[] = {
       NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE23,
       ngx_http_haskell_content,
       NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      NULL },
+    { ngx_string("haskell_service_update_hook"),
+      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE2,
+      ngx_http_haskell_service_update_hook,
+      NGX_HTTP_MAIN_CONF_OFFSET,
       0,
       NULL },
     { ngx_string("haskell_service_hooks_zone"),
@@ -468,6 +476,12 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
     }
 
     cmcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_core_module);
+
+    /* make scan-build happy */
+    if (cmcf == NULL) {
+        return NGX_ERROR;
+    }
+
     cmvars = cmcf->variables.elts;
 
     vars = mcf->var_nocacheable.elts;
@@ -1515,6 +1529,130 @@ ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
     clcf->handler = service_hook ? ngx_http_haskell_service_hook :
             ngx_http_haskell_content_handler;
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_http_haskell_service_update_hook(ngx_conf_t *cf, ngx_command_t *cmd,
+                                     void *conf)
+{
+    ngx_http_haskell_main_conf_t      *mcf = conf;
+
+    ngx_uint_t                         i;
+    ngx_str_t                         *value;
+    ngx_str_t                          handler_name;
+    ngx_http_haskell_handler_t        *handlers;
+    ngx_http_haskell_service_hook_t   *service_hooks, *hook;
+    ngx_int_t                          handler_idx = NGX_ERROR;
+    ngx_int_t                          v_idx;
+
+    mcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_haskell_module);
+
+    if (!mcf->code_loaded) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "haskell code was not loaded");
+        return NGX_CONF_ERROR;
+    }
+
+    value = cf->args->elts;
+
+    handler_name.len = value[1].len +
+            ngx_http_haskell_module_handler_prefix.len;
+    handler_name.data = ngx_pnalloc(cf->pool, handler_name.len + 1);
+    if (handler_name.data == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    ngx_memcpy(handler_name.data,
+               ngx_http_haskell_module_handler_prefix.data,
+               ngx_http_haskell_module_handler_prefix.len);
+    ngx_memcpy(handler_name.data + ngx_http_haskell_module_handler_prefix.len,
+               value[1].data, value[1].len);
+    handler_name.data[handler_name.len] ='\0';
+
+    handlers = mcf->handlers.elts;
+
+    for (i = 0; i < mcf->handlers.nelts; i++) {
+        if (handler_name.len == handlers[i].name.len
+            && ngx_strncmp(handler_name.data, handlers[i].name.data,
+                           handler_name.len) == 0)
+        {
+            if (handlers[i].role
+                != ngx_http_haskell_handler_role_service_hook)
+            {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "haskell handler \"%V\" was already "
+                                   "declared as variable or content handler",
+                                   &value[1]);
+                return NGX_CONF_ERROR;
+            }
+            handler_idx = i;
+            break;
+        }
+    }
+
+    if (handler_idx == NGX_ERROR) {
+        ngx_http_haskell_handler_t  *handler;
+
+        handler = ngx_array_push(&mcf->handlers);
+        if (handler == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        handler->self = NULL;
+        handler->type = ngx_http_haskell_handler_type_uninitialized;
+        handler->name = handler_name;
+        ngx_memzero(&handler->n_args, sizeof(handler->n_args));
+        handler->role = ngx_http_haskell_handler_role_service_hook;
+        handler->unsafe = 0;
+        handler->async = 0;
+        handler->service_hook = 1;
+
+        handlers = mcf->handlers.elts;
+        handler_idx = mcf->handlers.nelts - 1;
+    }
+
+    ++handlers[handler_idx].n_args[0];
+
+    if (value[2].len < 2 || value[2].data[0] != '$') {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "invalid variable name \"%V\"", &value[2]);
+        return NGX_CONF_ERROR;
+    }
+    value[2].len--;
+    value[2].data++;
+
+    v_idx = ngx_http_get_variable_index(cf, &value[2]);
+    if (v_idx == NGX_ERROR) {
+        return NGX_CONF_ERROR;
+    }
+
+    service_hooks = mcf->service_hooks.elts;
+    for (i = 0; i < mcf->service_hooks.nelts; i++) {
+        if (v_idx == service_hooks[i].service_code_var_index
+            && service_hooks[i].update_hook)
+        {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "update hook for variable \"%V\" was already ",
+                               "declared", &value[2]);
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    hook = ngx_array_push(&mcf->service_hooks);
+    if (hook == NULL) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "failed to allocate service hook");
+        return NGX_CONF_ERROR;
+    }
+
+    ngx_memzero(hook, sizeof(ngx_http_haskell_service_hook_t));
+    hook->service_code_var_index = v_idx;
+    hook->service_hook_index = mcf->service_hooks.nelts - 1;
+    hook->handler = handler_idx;
+    hook->update_hook = 1;
 
     return NGX_CONF_OK;
 }
