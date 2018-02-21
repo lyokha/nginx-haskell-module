@@ -148,10 +148,10 @@ ngxExportServiceIOYY 'cbHttpbin
 grepHttpbinLinksHook :: ByteString -> IO L.ByteString
 grepHttpbinLinksHook v  = do
     let links = grepLinks v
-        linksList = let l = B.intercalate " " links
-                    in if B.null l
+        linksList = let ls = B.intercalate " " links
+                    in if B.null ls
                         then "<NULL>"
-                        else l
+                        else ls
     writeIORef gHttpbinLinks links
     return $ L.fromChunks ["getUrlService set links ", linksList]
 ngxExportServiceHook 'grepHttpbinLinksHook

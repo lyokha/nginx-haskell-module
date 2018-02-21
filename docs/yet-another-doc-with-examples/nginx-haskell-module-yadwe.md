@@ -1071,6 +1071,52 @@ In the log we'll find
 2018/02/13 16:24:12 [alert] 28797#0: an exception was caught while getting value of service variable "hs_service_httpbin": "Service was interrupted by a service hook", using old value
 ```
 
+## Service update hooks
+
+This is reimplementation of *update variables* for shared services by means of
+service hooks. Update hooks have a number of advantages over update variables.
+
+1. No need for obscure treatment of update variables in configuration files.
+2. No need to copy the original argument: its data will be freed on the Haskell
+   part.
+3. Nginx don't need to access shared memory on every single request for checking
+   if the service data was altered.
+
+An update hook is exported with exporter *ngxExportServiceHook*, and declared
+using directive *haskell_service_update_hook* on the *http* configuration level.
+
+### An example
+
+Let's reimplement the example with update of service links.
+
+**File test.hs** (*additions*)
+
+``` {.haskell hl="vim"}
+grepHttpbinLinksHook :: ByteString -> IO L.ByteString
+grepHttpbinLinksHook v  = do
+    let links = grepLinks v
+        linksList = let ls = B.intercalate " " links
+                    in if B.null ls
+                        then "<NULL>"
+                        else ls
+    writeIORef gHttpbinLinks links
+    return $ L.fromChunks ["getUrlService set links ", linksList]
+ngxExportServiceHook 'grepHttpbinLinksHook
+```
+
+**File test.conf** (*additions*)
+
+``` {.nginx hl="vim"}
+    haskell_service_update_hook grepHttpbinLinksHook $hs_service_httpbin;
+
+    # ...
+
+        location /httpbin/sortlinks/hook {
+            haskell_run sortLinks $hs_links httpbin;
+            echo $hs_links;
+        }
+```
+
 # Efficiency of data exchange between Nginx and Haskell parts
 
 Haskell handlers may accept strings (`String` or `[String]`) and *strict*
@@ -1174,6 +1220,8 @@ Directive                                                                 Level 
 `haskell_service_hook`                                                    `location`,           Declare a service hook and create a content handler for
                                                                           `location if`         managing the corresponding service.
 
+`haskell_service_update_hook`                                             `http`                Declare a service update hook.
+
 `haskell_request_body_read_temp_file`                                     `server`,             This flag (*on* or *off*) makes asynchronous tasks and
                                                                           `location`,           content handlers read buffered in a *temporary file* POST
                                                                           `location if`         data. If not set, then buffered data is not read.
@@ -1193,4 +1241,285 @@ Directive                                                                 Level 
 `haskell_service_hooks_zone`                                              `http`                Declare shm zone for a temporary storage of service hooks
                                                                                                 data.
 ---------------------------------------------------------------------------------------------------------------------------------------------------------
+
+\newpage
+
+# Appendix
+
+## File *test.hs*
+
+``` {.haskell hl="vim"}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE MagicHash #-}
+{-# LANGUAGE OverloadedStrings #-}
+
+module NgxHaskellUserRuntime where
+
+import           NgxExport
+import qualified Data.Char as C
+import           Data.ByteString (ByteString)
+import qualified Data.ByteString.Lazy as L
+import qualified Data.ByteString.Char8 as C8
+import qualified Data.ByteString.Lazy.Char8 as C8L
+import           Control.Concurrent
+import           Safe
+import           GHC.Prim
+import           Data.ByteString.Unsafe
+import           Data.ByteString.Internal (accursedUnutterablePerformIO)
+import           Codec.Picture
+import           Network.HTTP.Client
+import           Control.Exception
+import           System.IO.Unsafe
+import           Control.Monad
+import           Data.IORef
+import           Text.Regex.PCRE.ByteString
+import           Text.Regex.Base.RegexLike
+import qualified Data.Array as A
+import           Data.List
+import qualified Data.ByteString as B
+import           Data.Maybe
+
+toUpper :: String -> String
+toUpper = map C.toUpper
+ngxExportSS 'toUpper
+
+ngxExportSS 'reverse
+
+isInList :: [String] -> Bool
+isInList [] = False
+isInList (x : xs) = x `elem` xs
+ngxExportBLS 'isInList
+
+echo :: ByteString -> L.ByteString
+echo = L.fromStrict
+ngxExportDefHandler 'echo
+
+reqFld :: L.ByteString -> ByteString -> IO L.ByteString
+reqFld a fld = return $ maybe C8L.empty C8L.tail $
+    lookup (C8L.fromStrict fld) $ map (C8L.break (== '=')) $ C8L.split '&' a
+ngxExportAsyncOnReqBody 'reqFld
+
+delay :: ByteString -> IO L.ByteString
+delay v = do
+    let t = readDef 0 $ C8.unpack v
+    threadDelay $ t * 1000000
+    return $ C8L.pack $ show t
+ngxExportAsyncIOYY 'delay
+
+packLiteral :: Int -> GHC.Prim.Addr# -> ByteString
+packLiteral l s = accursedUnutterablePerformIO $ unsafePackAddressLen l s
+
+delayContent :: ByteString -> IO ContentHandlerResult
+delayContent v = do
+    v' <- delay v
+    return $ (, packLiteral 10 "text/plain"#, 200) $
+        L.concat ["Waited ", v', " sec\n"]
+ngxExportAsyncHandler 'delayContent
+
+convertToPng :: L.ByteString -> ByteString -> IO ContentHandlerResult
+convertToPng t = const $ return $
+    case decodeImage $ L.toStrict t of
+        Left e -> (C8L.pack e, packLiteral 10 "text/plain"#, 500)
+        Right image -> case encodeDynamicPng image of
+                Left e -> (C8L.pack e, packLiteral 10 "text/plain"#, 500)
+                Right png -> (png, packLiteral 9 "image/png"#, 200)
+ngxExportAsyncHandlerOnReqBody 'convertToPng
+
+httpManager :: Manager
+httpManager = unsafePerformIO $ newManager defaultManagerSettings
+{-# NOINLINE httpManager #-}
+
+getUrl :: ByteString -> IO C8L.ByteString
+getUrl url = catchHttpException $ getResponse url $ flip httpLbs httpManager
+    where getResponse u = fmap responseBody . (parseRequest (C8.unpack u) >>=)
+
+catchHttpException :: IO C8L.ByteString -> IO C8L.ByteString
+catchHttpException = (`catch` \e ->
+        return $ C8L.pack $ "HTTP EXCEPTION: " ++ show (e :: HttpException))
+
+getUrlServiceLink :: IORef (Maybe ByteString)
+getUrlServiceLink = unsafePerformIO $ newIORef Nothing
+{-# NOINLINE getUrlServiceLink #-}
+
+getUrlServiceLinkUpdated :: IORef Bool
+getUrlServiceLinkUpdated = unsafePerformIO $ newIORef True
+{-# NOINLINE getUrlServiceLinkUpdated #-}
+
+getUrlService :: ByteString -> Bool -> IO L.ByteString
+getUrlService url = const $ do
+    url' <- fromMaybe url <$> readIORef getUrlServiceLink
+    updated <- readIORef getUrlServiceLinkUpdated
+    atomicWriteIORef getUrlServiceLinkUpdated False
+    unless updated $ threadDelay $ 20 * 1000000
+    getUrl url'
+ngxExportServiceIOYY 'getUrlService
+
+getUrlServiceHook :: ByteString -> IO L.ByteString
+getUrlServiceHook url = do
+    writeIORef getUrlServiceLink $ if B.null url
+                                       then Nothing
+                                       else Just url
+    atomicWriteIORef getUrlServiceLinkUpdated True
+    return $ if B.null url
+                 then "getUrlService reset URL"
+                 else L.fromChunks ["getUrlService set URL ", url]
+ngxExportServiceHook 'getUrlServiceHook
+
+gHttpbinLinks :: IORef [ByteString]
+gHttpbinLinks = unsafePerformIO $ newIORef []
+{-# NOINLINE gHttpbinLinks #-}
+
+grepLinks :: ByteString -> [ByteString]
+grepLinks =
+    map (fst . snd) . filter ((1 ==) . fst) . concatMap A.assocs .
+        filter (not . null) . concatMap (matchAllText regex) .
+            C8.lines
+    where regex = makeRegex $ C8.pack "a href=\"([^\"]+)\"" :: Regex
+
+grepHttpbinLinks :: ByteString -> IO L.ByteString
+grepHttpbinLinks "" = return ""
+grepHttpbinLinks v  = do
+    writeIORef gHttpbinLinks $ grepLinks $ B.copy v
+    return ""
+ngxExportIOYY 'grepHttpbinLinks
+
+sortLinks :: ByteString -> IO L.ByteString
+sortLinks "httpbin" =
+    L.fromChunks . sort . map (`C8.snoc` '\n') <$> readIORef gHttpbinLinks
+sortLinks _ = return ""
+ngxExportIOYY 'sortLinks
+
+cbHttpbin :: ByteString -> Bool -> IO L.ByteString
+cbHttpbin url firstRun = do
+    when firstRun $ threadDelay $ 5 * 1000000
+    getUrl url
+ngxExportServiceIOYY 'cbHttpbin
+
+grepHttpbinLinksHook :: ByteString -> IO L.ByteString
+grepHttpbinLinksHook v  = do
+    let links = grepLinks v
+        linksList = let ls = B.intercalate " " links
+                    in if B.null ls
+                        then "<NULL>"
+                        else ls
+    writeIORef gHttpbinLinks links
+    return $ L.fromChunks ["getUrlService set links ", linksList]
+ngxExportServiceHook 'grepHttpbinLinksHook
+```
+
+## File *test.conf*
+
+``` {.nginx hl="vim"}
+user                    nginx;
+worker_processes        4;
+
+events {
+    worker_connections  1024;
+}
+
+http {
+    default_type        application/octet-stream;
+    sendfile            on;
+
+    haskell load /var/lib/nginx/test.so;
+
+    # Use 4 cores (-N4) and a large GC allocation area (-A32m), and force
+    # sequential GC (-qg) for image conversion tasks.
+    #haskell rts_options -N4 -A32m -qg;
+
+    limit_conn_zone all zone=all:10m;
+
+    haskell_run_service getUrlService $hs_service_httpbin "http://httpbin.org";
+
+    haskell_service_var_in_shm httpbin 512k /tmp $hs_service_httpbin;
+
+    haskell_service_var_update_callback cbHttpbin $hs_service_httpbin
+                                        "http://127.0.0.1:8010/httpbin/count";
+
+    haskell_service_hooks_zone hooks 32k;
+
+    haskell_service_update_hook grepHttpbinLinksHook $hs_service_httpbin;
+
+    server {
+        listen          8010;
+        server_name     main;
+
+        location / {
+            haskell_run toUpper $hs_upper $arg_u;
+            haskell_run reverse $hs_reverse $arg_r;
+            haskell_run isInList $hs_isInList $arg_a $arg_b $arg_c $arg_d;
+            echo "toUpper $arg_u = $hs_upper";
+            echo "reverse $arg_r = $hs_reverse";
+            echo "$arg_a `isInList` [$arg_b, $arg_c, $arg_d] = $hs_isInList";
+        }
+
+        location /ch {
+            haskell_run toUpper $hs_upper $arg_u;
+            haskell_run reverse $hs_reverse $arg_r;
+            haskell_run isInList $hs_isInList $arg_a $arg_b $arg_c $arg_d;
+            haskell_content echo
+"toUpper $arg_u = $hs_upper
+reverse $arg_r = $hs_reverse
+$arg_a `isInList` [$arg_b, $arg_c, $arg_d] = $hs_isInList
+";
+        }
+
+        location /timer {
+            haskell_run_async_on_request_body reqFld $hs_timeout timer;
+            haskell_run_async delay $hs_waited $hs_timeout;
+            echo "Waited $hs_waited sec";
+        }
+
+        location /timer/ch {
+            haskell_run_async_on_request_body reqFld $hs_timeout timer;
+            haskell_async_content delayContent $hs_timeout;
+        }
+
+        location /convert/topng {
+            limit_conn all 4;
+            client_max_body_size 20m;
+            haskell_request_body_read_temp_file on;
+            haskell_async_content_on_request_body convertToPng;
+        }
+
+        location /httpbin {
+            echo $hs_service_httpbin;
+        }
+
+        location /httpbin/sortlinks {
+            haskell_run grepHttpbinLinks $_upd_links_ $_upd__hs_service_httpbin;
+            haskell_run sortLinks $hs_links "${_upd_links_}httpbin";
+            echo $hs_links;
+        }
+
+        location /httpbin/sortlinks/hook {
+            haskell_run sortLinks $hs_links httpbin;
+            echo $hs_links;
+        }
+
+        location /httpbin/shmstats {
+            echo "Httpbin service shm stats: $_shm__hs_service_httpbin";
+        }
+
+        location /httpbin/url {
+            allow 127.0.0.1;
+            deny all;
+            haskell_service_hook getUrlServiceHook $hs_service_httpbin $arg_v;
+        }
+
+        # Counters require Nginx module nginx-custom-counters-module,
+        # enable the next 2 locations if your Nginx build has support for them.
+
+        #location /httpbin/count {
+            #counter $cnt_httpbin inc;
+            #return 200;
+        #}
+
+        #location /counters {
+            #echo "Httpbin service changes count: $cnt_httpbin";
+        #}
+    }
+}
+```
 

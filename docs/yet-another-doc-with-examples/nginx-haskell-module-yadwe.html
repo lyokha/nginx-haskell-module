@@ -828,6 +828,42 @@
 <span style="color: #808080;">2018/02/13 16:24:12 [alert] 28797#0: an exception was caught while getting value of service variable &quot;hs_service_httpbin&quot;: &quot;Service was interrupted by a service hook&quot;, using old value</span>
 </pre>
 
+<h2 id="service-update-hooks">Service update hooks</h2>
+<p>This is reimplementation of <em>update variables</em> for shared services by means of service hooks. Update hooks have a number of advantages over update variables.</p>
+<ol type="1">
+<li>No need for obscure treatment of update variables in configuration files.</li>
+<li>No need to copy the original argument: its data will be freed on the Haskell part.</li>
+<li>Nginx don’t need to access shared memory on every single request for checking if the service data was altered.</li>
+</ol>
+<p>An update hook is exported with exporter <em>ngxExportServiceHook</em>, and declared using directive <em>haskell_service_update_hook</em> on the <em>http</em> configuration level.</p>
+<h3 id="an-example-7">An example</h3>
+<p>Let’s reimplement the example with update of service links.</p>
+<p><strong>File test.hs</strong> (<em>additions</em>)</p>
+<pre style="overflow-x: auto; background: #FFE">
+<span style="color: #008700;">grepHttpbinLinksHook</span> <span style="color: #005FAF;">::</span> <span style="color: #005F87;">ByteString</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">IO</span> <span style="color: #005F87;">L</span><span style="color: #005FAF;">.</span><span style="color: #005F87;">ByteString</span>
+<span style="color: #008700;">grepHttpbinLinksHook</span> <span style="color: #000000;">v</span>  <span style="color: #005FAF;">=</span> <span style="color: #005FAF;">do</span>
+    <span style="color: #005FAF;">let</span> <span style="color: #000000;">links</span> <span style="color: #005FAF;">=</span> <span style="color: #000000;">grepLinks</span> <span style="color: #000000;">v</span>
+        <span style="color: #000000;">linksList</span> <span style="color: #005FAF;">=</span> <span style="color: #005FAF;">let</span> <span style="color: #000000;">ls</span> <span style="color: #005FAF;">=</span> <span style="color: #005F87;">B</span><span style="color: #005FAF;">.</span><span style="color: #000000;">intercalate</span> <span style="color: #AF5F00;">&quot; &quot;</span> <span style="color: #000000;">links</span>
+                    <span style="color: #005FAF;">in</span> <span style="color: #005FAF;">if</span> <span style="color: #005F87;">B</span><span style="color: #005FAF;">.</span><span style="color: #008700;">null</span> <span style="color: #000000;">ls</span>
+                        <span style="color: #005FAF;">then</span> <span style="color: #AF5F00;">&quot;&lt;NULL&gt;&quot;</span>
+                        <span style="color: #005FAF;">else</span> <span style="color: #000000;">ls</span>
+    <span style="color: #000000;">writeIORef</span> <span style="color: #000000;">gHttpbinLinks</span> <span style="color: #000000;">links</span>
+    <span style="color: #008700;">return</span> <span style="color: #005FAF;">$</span> <span style="color: #005F87;">L</span><span style="color: #005FAF;">.</span><span style="color: #000000;">fromChunks</span> <span style="color: #870087;">[</span><span style="color: #AF5F00;">&quot;getUrlService set links &quot;</span><span style="color: #870087;">,</span> <span style="color: #000000;">linksList</span><span style="color: #870087;">]</span>
+<span style="color: #008787;">ngxExportServiceHook</span><span style="color: #000000;"> '</span><span style="color: #000000;">grepHttpbinLinksHook</span>
+</pre>
+
+<p><strong>File test.conf</strong> (<em>additions</em>)</p>
+<pre style="overflow-x: auto; background: #FFE">
+<span style="color: #000000;">    haskell_service_update_hook grepHttpbinLinksHook </span><span style="color: #008700;">$hs_service_httpbin</span><span style="color: #000000;">;</span>
+
+<span style="color: #808080;">    # ...</span>
+
+        <span style="color: #005FAF;">location</span><span style="color: #000000;"> /httpbin/sortlinks/hook {</span>
+<span style="color: #000000;">            haskell_run sortLinks </span><span style="color: #008700;">$hs_links</span><span style="color: #000000;"> httpbin;</span>
+            <span style="color: #870087;">echo</span> <span style="color: #008700;">$hs_links</span><span style="color: #000000;">;</span>
+<span style="color: #000000;">        }</span>
+</pre>
+
 <h1 id="efficiency-of-data-exchange-between-nginx-and-haskell-parts">Efficiency of data exchange between Nginx and Haskell parts</h1>
 <p>Haskell handlers may accept strings (<code>String</code> or <code>[String]</code>) and <em>strict</em> bytestrings (<code>ByteString</code>), and return strings, <em>lazy</em> bytestrings and booleans. Input C-strings are marshaled into a <em>String</em> with <em>peekCStringLen</em> which has linear complexity <span class="math inline"><em>O</em>(<em>n</em>)</span>, output <em>Strings</em> are marshaled into C-strings with <em>newCStringLen</em> which is also <span class="math inline"><em>O</em>(<em>n</em>)</span>. The new C-strings get freed upon the request termination in the Nginx part.</p>
 <p>The bytestring counterparts are much faster. Both input and output are <span class="math inline"><em>O</em>(1)</span>, using <em>unsafePackCStringLen</em> and a Haskell <em>stable pointer</em> to lazy bytestring buffers created inside Haskell handlers. If an output lazy bytestring has more than one chunk, a new single-chunked C-string will be created in variable and service handlers, but not in content handlers because the former use the chunks directly when constructing contents. Holding a stable pointer to a bytestring’s chunks on the Nginx part ensures that they won’t be garbage collected until the pointer gets freed. Stable pointers get freed upon the request termination for variable and content handlers, and before the next service iteration for service handlers.</p>
@@ -932,36 +968,317 @@
 <td style="text-align: left;">Declare a service hook and create a content handler for managing the corresponding service.</td>
 </tr>
 <tr class="odd">
+<td style="text-align: left;"><code>haskell_service_update_hook</code></td>
+<td style="text-align: left;"><code>http</code></td>
+<td style="text-align: left;">Declare a service update hook.</td>
+</tr>
+<tr class="even">
 <td style="text-align: left;"><code>haskell_request_body_read_temp_file</code></td>
 <td style="text-align: left;"><code>server</code>, <code>location</code>, <code>location if</code></td>
 <td style="text-align: left;">This flag (<em>on</em> or <em>off</em>) makes asynchronous tasks and content handlers read buffered in a <em>temporary file</em> POST data. If not set, then buffered data is not read.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;"><code>haskell_var_nocacheable</code></td>
 <td style="text-align: left;"><code>http</code></td>
 <td style="text-align: left;">All variables in the list become no cacheable and safe for using in ad-hoc iterations over <em>error_page</em> cycles.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;"><code>haskell_var_compensate_uri_changes</code></td>
 <td style="text-align: left;"><code>http</code></td>
 <td style="text-align: left;">All variables in the list allow to cheat <em>error_page</em> when used in its redirections and make the cycle infinite.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;"><code>haskell_service_var_ignore_empty</code></td>
 <td style="text-align: left;"><code>http</code></td>
 <td style="text-align: left;">Do not write the service result when its value is empty.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;"><code>haskell_service_var_in_shm</code></td>
 <td style="text-align: left;"><code>http</code></td>
 <td style="text-align: left;">Store the service result in a shared memory. Implicitly declares a shared service.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;"><code>haskell_service_hooks_zone</code></td>
 <td style="text-align: left;"><code>http</code></td>
 <td style="text-align: left;">Declare shm zone for a temporary storage of service hooks data.</td>
 </tr>
 </tbody>
 </table>
+
+<h1 id="appendix">Appendix</h1>
+<h2 id="file-test.hs">File <em>test.hs</em></h2>
+<pre style="overflow-x: auto; background: #FFE">
+<span style="color: #870087;">{-# LANGUAGE TemplateHaskell #-}</span>
+<span style="color: #870087;">{-# LANGUAGE TupleSections #-}</span>
+<span style="color: #870087;">{-# LANGUAGE MagicHash #-}</span>
+<span style="color: #870087;">{-# LANGUAGE OverloadedStrings #-}</span>
+
+<span style="color: #005F87;">module</span> <span style="color: #000000;">NgxHaskellUserRuntime</span> <span style="color: #005F87;">where</span>
+
+<span style="color: #008787;">import</span>           <span style="color: #000000;">NgxExport</span>
+<span style="color: #008787;">import</span> <span style="color: #008787;">qualified</span> <span style="color: #000000;">Data.Char</span> <span style="color: #008787;">as</span> <span style="color: #000000;">C</span>
+<span style="color: #008787;">import</span>           <span style="color: #000000;">Data.ByteString</span> <span style="color: #000000;">(</span><span style="color: #005F87;">ByteString</span><span style="color: #000000;">)</span>
+<span style="color: #008787;">import</span> <span style="color: #008787;">qualified</span> <span style="color: #000000;">Data.ByteString.Lazy</span> <span style="color: #008787;">as</span> <span style="color: #000000;">L</span>
+<span style="color: #008787;">import</span> <span style="color: #008787;">qualified</span> <span style="color: #000000;">Data.ByteString.Char8</span> <span style="color: #008787;">as</span> <span style="color: #000000;">C8</span>
+<span style="color: #008787;">import</span> <span style="color: #008787;">qualified</span> <span style="color: #000000;">Data.ByteString.Lazy.Char8</span> <span style="color: #008787;">as</span> <span style="color: #000000;">C8L</span>
+<span style="color: #008787;">import</span>           <span style="color: #000000;">Control.Concurrent</span>
+<span style="color: #008787;">import</span>           <span style="color: #000000;">Safe</span>
+<span style="color: #008787;">import</span>           <span style="color: #000000;">GHC.Prim</span>
+<span style="color: #008787;">import</span>           <span style="color: #000000;">Data.ByteString.Unsafe</span>
+<span style="color: #008787;">import</span>           <span style="color: #000000;">Data.ByteString.Internal</span> <span style="color: #000000;">(</span><span style="color: #008700;">accursedUnutterablePerformIO</span><span style="color: #000000;">)</span>
+<span style="color: #008787;">import</span>           <span style="color: #000000;">Codec.Picture</span>
+<span style="color: #008787;">import</span>           <span style="color: #000000;">Network.HTTP.Client</span>
+<span style="color: #008787;">import</span>           <span style="color: #000000;">Control.Exception</span>
+<span style="color: #008787;">import</span>           <span style="color: #000000;">System.IO.Unsafe</span>
+<span style="color: #008787;">import</span>           <span style="color: #000000;">Control.Monad</span>
+<span style="color: #008787;">import</span>           <span style="color: #000000;">Data.IORef</span>
+<span style="color: #008787;">import</span>           <span style="color: #000000;">Text.Regex.PCRE.ByteString</span>
+<span style="color: #008787;">import</span>           <span style="color: #000000;">Text.Regex.Base.RegexLike</span>
+<span style="color: #008787;">import</span> <span style="color: #008787;">qualified</span> <span style="color: #000000;">Data.Array</span> <span style="color: #008787;">as</span> <span style="color: #000000;">A</span>
+<span style="color: #008787;">import</span>           <span style="color: #000000;">Data.List</span>
+<span style="color: #008787;">import</span> <span style="color: #008787;">qualified</span> <span style="color: #000000;">Data.ByteString</span> <span style="color: #008787;">as</span> <span style="color: #000000;">B</span>
+<span style="color: #008787;">import</span>           <span style="color: #000000;">Data.Maybe</span>
+
+<span style="color: #008700;">toUpper</span> <span style="color: #005FAF;">::</span> <span style="color: #005F87;">String</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">String</span>
+<span style="color: #008700;">toUpper</span> <span style="color: #005FAF;">=</span> <span style="color: #008700;">map</span> <span style="color: #005F87;">C</span><span style="color: #005FAF;">.</span><span style="color: #000000;">toUpper</span>
+<span style="color: #008787;">ngxExportSS</span><span style="color: #000000;"> '</span><span style="color: #000000;">toUpper</span>
+
+<span style="color: #008787;">ngxExportSS</span><span style="color: #000000;"> '</span><span style="color: #008700;">reverse</span>
+
+<span style="color: #008700;">isInList</span> <span style="color: #005FAF;">::</span> <span style="color: #870087;">[</span><span style="color: #005F87;">String</span><span style="color: #870087;">]</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">Bool</span>
+<span style="color: #008700;">isInList</span> <span style="color: #870087;">[]</span> <span style="color: #005FAF;">=</span> <span style="color: #AF5F00;">False</span>
+<span style="color: #008700;">isInList</span> <span style="color: #870087;">(</span><span style="color: #000000;">x</span> <span style="color: #005FAF;">:</span> <span style="color: #000000;">xs</span><span style="color: #870087;">)</span> <span style="color: #005FAF;">=</span> <span style="color: #000000;">x</span> <span style="color: #005FAF;">`elem`</span> <span style="color: #000000;">xs</span>
+<span style="color: #008787;">ngxExportBLS</span><span style="color: #000000;"> '</span><span style="color: #000000;">isInList</span>
+
+<span style="color: #008700;">echo</span> <span style="color: #005FAF;">::</span> <span style="color: #005F87;">ByteString</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">L</span><span style="color: #005FAF;">.</span><span style="color: #005F87;">ByteString</span>
+<span style="color: #008700;">echo</span> <span style="color: #005FAF;">=</span> <span style="color: #005F87;">L</span><span style="color: #005FAF;">.</span><span style="color: #000000;">fromStrict</span>
+<span style="color: #008787;">ngxExportDefHandler</span><span style="color: #000000;"> '</span><span style="color: #000000;">echo</span>
+
+<span style="color: #008700;">reqFld</span> <span style="color: #005FAF;">::</span> <span style="color: #005F87;">L</span><span style="color: #005FAF;">.</span><span style="color: #005F87;">ByteString</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">ByteString</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">IO</span> <span style="color: #005F87;">L</span><span style="color: #005FAF;">.</span><span style="color: #005F87;">ByteString</span>
+<span style="color: #008700;">reqFld</span> <span style="color: #000000;">a</span> <span style="color: #000000;">fld</span> <span style="color: #005FAF;">=</span> <span style="color: #008700;">return</span> <span style="color: #005FAF;">$</span> <span style="color: #008700;">maybe</span> <span style="color: #005F87;">C8L</span><span style="color: #005FAF;">.</span><span style="color: #000000;">empty</span> <span style="color: #005F87;">C8L</span><span style="color: #005FAF;">.</span><span style="color: #008700;">tail</span> <span style="color: #005FAF;">$</span>
+    <span style="color: #008700;">lookup</span> <span style="color: #870087;">(</span><span style="color: #005F87;">C8L</span><span style="color: #005FAF;">.</span><span style="color: #000000;">fromStrict</span> <span style="color: #000000;">fld</span><span style="color: #870087;">)</span> <span style="color: #005FAF;">$</span> <span style="color: #008700;">map</span> <span style="color: #870087;">(</span><span style="color: #005F87;">C8L</span><span style="color: #005FAF;">.</span><span style="color: #008700;">break</span> <span style="color: #870087;">(</span><span style="color: #005FAF;">==</span> <span style="color: #AF5F00;">'='</span><span style="color: #870087;">))</span> <span style="color: #005FAF;">$</span> <span style="color: #005F87;">C8L</span><span style="color: #005FAF;">.</span><span style="color: #000000;">split</span> <span style="color: #AF5F00;">'&amp;'</span> <span style="color: #000000;">a</span>
+<span style="color: #008787;">ngxExportAsyncOnReqBody</span><span style="color: #000000;"> '</span><span style="color: #000000;">reqFld</span>
+
+<span style="color: #008700;">delay</span> <span style="color: #005FAF;">::</span> <span style="color: #005F87;">ByteString</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">IO</span> <span style="color: #005F87;">L</span><span style="color: #005FAF;">.</span><span style="color: #005F87;">ByteString</span>
+<span style="color: #008700;">delay</span> <span style="color: #000000;">v</span> <span style="color: #005FAF;">=</span> <span style="color: #005FAF;">do</span>
+    <span style="color: #005FAF;">let</span> <span style="color: #000000;">t</span> <span style="color: #005FAF;">=</span> <span style="color: #000000;">readDef</span> <span style="color: #AF5F00;">0</span> <span style="color: #005FAF;">$</span> <span style="color: #005F87;">C8</span><span style="color: #005FAF;">.</span><span style="color: #000000;">unpack</span> <span style="color: #000000;">v</span>
+    <span style="color: #000000;">threadDelay</span> <span style="color: #005FAF;">$</span> <span style="color: #000000;">t</span> <span style="color: #005FAF;">*</span> <span style="color: #AF5F00;">1000000</span>
+    <span style="color: #008700;">return</span> <span style="color: #005FAF;">$</span> <span style="color: #005F87;">C8L</span><span style="color: #005FAF;">.</span><span style="color: #000000;">pack</span> <span style="color: #005FAF;">$</span> <span style="color: #008700;">show</span> <span style="color: #000000;">t</span>
+<span style="color: #008787;">ngxExportAsyncIOYY</span><span style="color: #000000;"> '</span><span style="color: #000000;">delay</span>
+
+<span style="color: #008700;">packLiteral</span> <span style="color: #005FAF;">::</span> <span style="color: #005F87;">Int</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">GHC</span><span style="color: #005FAF;">.</span><span style="color: #005F87;">Prim</span><span style="color: #005FAF;">.</span><span style="color: #005F87;">Addr</span><span style="color: #005FAF;">#</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">ByteString</span>
+<span style="color: #008700;">packLiteral</span> <span style="color: #000000;">l</span> <span style="color: #000000;">s</span> <span style="color: #005FAF;">=</span> <span style="color: #000000;">accursedUnutterablePerformIO</span> <span style="color: #005FAF;">$</span> <span style="color: #000000;">unsafePackAddressLen</span> <span style="color: #000000;">l</span> <span style="color: #000000;">s</span>
+
+<span style="color: #008700;">delayContent</span> <span style="color: #005FAF;">::</span> <span style="color: #005F87;">ByteString</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">IO</span> <span style="color: #005F87;">ContentHandlerResult</span>
+<span style="color: #008700;">delayContent</span> <span style="color: #000000;">v</span> <span style="color: #005FAF;">=</span> <span style="color: #005FAF;">do</span>
+    <span style="color: #000000;">v</span><span style="color: #000000;">' </span><span style="color: #005FAF;">&lt;-</span> <span style="color: #000000;">delay</span> <span style="color: #000000;">v</span>
+    <span style="color: #008700;">return</span> <span style="color: #005FAF;">$</span> <span style="color: #870087;">(,</span> <span style="color: #000000;">packLiteral</span> <span style="color: #AF5F00;">10</span> <span style="color: #AF5F00;">&quot;text/plain&quot;</span><span style="color: #005FAF;">#</span><span style="color: #870087;">,</span> <span style="color: #AF5F00;">200</span><span style="color: #870087;">)</span> <span style="color: #005FAF;">$</span>
+        <span style="color: #005F87;">L</span><span style="color: #005FAF;">.</span><span style="color: #008700;">concat</span> <span style="color: #870087;">[</span><span style="color: #AF5F00;">&quot;Waited &quot;</span><span style="color: #870087;">,</span> <span style="color: #000000;">v</span><span style="color: #000000;">'</span><span style="color: #870087;">,</span> <span style="color: #AF5F00;">&quot; sec</span><span style="color: #870087;">\n</span><span style="color: #AF5F00;">&quot;</span><span style="color: #870087;">]</span>
+<span style="color: #008787;">ngxExportAsyncHandler</span><span style="color: #000000;"> '</span><span style="color: #000000;">delayContent</span>
+
+<span style="color: #008700;">convertToPng</span> <span style="color: #005FAF;">::</span> <span style="color: #005F87;">L</span><span style="color: #005FAF;">.</span><span style="color: #005F87;">ByteString</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">ByteString</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">IO</span> <span style="color: #005F87;">ContentHandlerResult</span>
+<span style="color: #008700;">convertToPng</span> <span style="color: #000000;">t</span> <span style="color: #005FAF;">=</span> <span style="color: #008700;">const</span> <span style="color: #005FAF;">$</span> <span style="color: #008700;">return</span> <span style="color: #005FAF;">$</span>
+    <span style="color: #005FAF;">case</span> <span style="color: #000000;">decodeImage</span> <span style="color: #005FAF;">$</span> <span style="color: #005F87;">L</span><span style="color: #005FAF;">.</span><span style="color: #000000;">toStrict</span> <span style="color: #000000;">t</span> <span style="color: #005FAF;">of</span>
+        <span style="color: #AF5F00;">Left</span> <span style="color: #000000;">e</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #870087;">(</span><span style="color: #005F87;">C8L</span><span style="color: #005FAF;">.</span><span style="color: #000000;">pack</span> <span style="color: #000000;">e</span><span style="color: #870087;">,</span> <span style="color: #000000;">packLiteral</span> <span style="color: #AF5F00;">10</span> <span style="color: #AF5F00;">&quot;text/plain&quot;</span><span style="color: #005FAF;">#</span><span style="color: #870087;">,</span> <span style="color: #AF5F00;">500</span><span style="color: #870087;">)</span>
+        <span style="color: #AF5F00;">Right</span> <span style="color: #000000;">image</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005FAF;">case</span> <span style="color: #000000;">encodeDynamicPng</span> <span style="color: #000000;">image</span> <span style="color: #005FAF;">of</span>
+                <span style="color: #AF5F00;">Left</span> <span style="color: #000000;">e</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #870087;">(</span><span style="color: #005F87;">C8L</span><span style="color: #005FAF;">.</span><span style="color: #000000;">pack</span> <span style="color: #000000;">e</span><span style="color: #870087;">,</span> <span style="color: #000000;">packLiteral</span> <span style="color: #AF5F00;">10</span> <span style="color: #AF5F00;">&quot;text/plain&quot;</span><span style="color: #005FAF;">#</span><span style="color: #870087;">,</span> <span style="color: #AF5F00;">500</span><span style="color: #870087;">)</span>
+                <span style="color: #AF5F00;">Right</span> <span style="color: #000000;">png</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #870087;">(</span><span style="color: #000000;">png</span><span style="color: #870087;">,</span> <span style="color: #000000;">packLiteral</span> <span style="color: #AF5F00;">9</span> <span style="color: #AF5F00;">&quot;image/png&quot;</span><span style="color: #005FAF;">#</span><span style="color: #870087;">,</span> <span style="color: #AF5F00;">200</span><span style="color: #870087;">)</span>
+<span style="color: #008787;">ngxExportAsyncHandlerOnReqBody</span><span style="color: #000000;"> '</span><span style="color: #000000;">convertToPng</span>
+
+<span style="color: #008700;">httpManager</span> <span style="color: #005FAF;">::</span> <span style="color: #005F87;">Manager</span>
+<span style="color: #008700;">httpManager</span> <span style="color: #005FAF;">=</span> <span style="color: #000000;">unsafePerformIO</span> <span style="color: #005FAF;">$</span> <span style="color: #000000;">newManager</span> <span style="color: #000000;">defaultManagerSettings</span>
+<span style="color: #870087;">{-# NOINLINE httpManager #-}</span>
+
+<span style="color: #008700;">getUrl</span> <span style="color: #005FAF;">::</span> <span style="color: #005F87;">ByteString</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">IO</span> <span style="color: #005F87;">C8L</span><span style="color: #005FAF;">.</span><span style="color: #005F87;">ByteString</span>
+<span style="color: #008700;">getUrl</span> <span style="color: #000000;">url</span> <span style="color: #005FAF;">=</span> <span style="color: #000000;">catchHttpException</span> <span style="color: #005FAF;">$</span> <span style="color: #000000;">getResponse</span> <span style="color: #000000;">url</span> <span style="color: #005FAF;">$</span> <span style="color: #008700;">flip</span> <span style="color: #000000;">httpLbs</span> <span style="color: #000000;">httpManager</span>
+    <span style="color: #005F87;">where</span> <span style="color: #000000;">getResponse</span> <span style="color: #000000;">u</span> <span style="color: #005FAF;">=</span> <span style="color: #008700;">fmap</span> <span style="color: #000000;">responseBody</span> <span style="color: #005FAF;">.</span> <span style="color: #870087;">(</span><span style="color: #000000;">parseRequest</span> <span style="color: #870087;">(</span><span style="color: #005F87;">C8</span><span style="color: #005FAF;">.</span><span style="color: #000000;">unpack</span> <span style="color: #000000;">u</span><span style="color: #870087;">)</span> <span style="color: #005FAF;">&gt;&gt;=</span><span style="color: #870087;">)</span>
+
+<span style="color: #008700;">catchHttpException</span> <span style="color: #005FAF;">::</span> <span style="color: #005F87;">IO</span> <span style="color: #005F87;">C8L</span><span style="color: #005FAF;">.</span><span style="color: #005F87;">ByteString</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">IO</span> <span style="color: #005F87;">C8L</span><span style="color: #005FAF;">.</span><span style="color: #005F87;">ByteString</span>
+<span style="color: #008700;">catchHttpException</span> <span style="color: #005FAF;">=</span> <span style="color: #870087;">(</span><span style="color: #005FAF;">`catch`</span> <span style="color: #005FAF;">\</span><span style="color: #000000;">e</span> <span style="color: #005FAF;">-&gt;</span>
+        <span style="color: #008700;">return</span> <span style="color: #005FAF;">$</span> <span style="color: #005F87;">C8L</span><span style="color: #005FAF;">.</span><span style="color: #000000;">pack</span> <span style="color: #005FAF;">$</span> <span style="color: #AF5F00;">&quot;HTTP EXCEPTION: &quot;</span> <span style="color: #005FAF;">++</span> <span style="color: #008700;">show</span> <span style="color: #870087;">(</span><span style="color: #000000;">e</span> <span style="color: #005FAF;">::</span> <span style="color: #005F87;">HttpException</span><span style="color: #870087;">))</span>
+
+<span style="color: #008700;">getUrlServiceLink</span> <span style="color: #005FAF;">::</span> <span style="color: #005F87;">IORef</span> <span style="color: #870087;">(</span><span style="color: #005F87;">Maybe</span> <span style="color: #005F87;">ByteString</span><span style="color: #870087;">)</span>
+<span style="color: #008700;">getUrlServiceLink</span> <span style="color: #005FAF;">=</span> <span style="color: #000000;">unsafePerformIO</span> <span style="color: #005FAF;">$</span> <span style="color: #000000;">newIORef</span> <span style="color: #AF5F00;">Nothing</span>
+<span style="color: #870087;">{-# NOINLINE getUrlServiceLink #-}</span>
+
+<span style="color: #008700;">getUrlServiceLinkUpdated</span> <span style="color: #005FAF;">::</span> <span style="color: #005F87;">IORef</span> <span style="color: #005F87;">Bool</span>
+<span style="color: #008700;">getUrlServiceLinkUpdated</span> <span style="color: #005FAF;">=</span> <span style="color: #000000;">unsafePerformIO</span> <span style="color: #005FAF;">$</span> <span style="color: #000000;">newIORef</span> <span style="color: #AF5F00;">True</span>
+<span style="color: #870087;">{-# NOINLINE getUrlServiceLinkUpdated #-}</span>
+
+<span style="color: #008700;">getUrlService</span> <span style="color: #005FAF;">::</span> <span style="color: #005F87;">ByteString</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">Bool</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">IO</span> <span style="color: #005F87;">L</span><span style="color: #005FAF;">.</span><span style="color: #005F87;">ByteString</span>
+<span style="color: #008700;">getUrlService</span> <span style="color: #000000;">url</span> <span style="color: #005FAF;">=</span> <span style="color: #008700;">const</span> <span style="color: #005FAF;">$</span> <span style="color: #005FAF;">do</span>
+    <span style="color: #000000;">url</span><span style="color: #000000;">' </span><span style="color: #005FAF;">&lt;-</span> <span style="color: #000000;">fromMaybe</span> <span style="color: #000000;">url</span> <span style="color: #005FAF;">&lt;$&gt;</span> <span style="color: #000000;">readIORef</span> <span style="color: #000000;">getUrlServiceLink</span>
+    <span style="color: #000000;">updated</span> <span style="color: #005FAF;">&lt;-</span> <span style="color: #000000;">readIORef</span> <span style="color: #000000;">getUrlServiceLinkUpdated</span>
+    <span style="color: #000000;">atomicWriteIORef</span> <span style="color: #000000;">getUrlServiceLinkUpdated</span> <span style="color: #AF5F00;">False</span>
+    <span style="color: #000000;">unless</span> <span style="color: #000000;">updated</span> <span style="color: #005FAF;">$</span> <span style="color: #000000;">threadDelay</span> <span style="color: #005FAF;">$</span> <span style="color: #AF5F00;">20</span> <span style="color: #005FAF;">*</span> <span style="color: #AF5F00;">1000000</span>
+    <span style="color: #000000;">getUrl</span> <span style="color: #000000;">url</span><span style="color: #000000;">'</span>
+<span style="color: #008787;">ngxExportServiceIOYY</span><span style="color: #000000;"> '</span><span style="color: #000000;">getUrlService</span>
+
+<span style="color: #008700;">getUrlServiceHook</span> <span style="color: #005FAF;">::</span> <span style="color: #005F87;">ByteString</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">IO</span> <span style="color: #005F87;">L</span><span style="color: #005FAF;">.</span><span style="color: #005F87;">ByteString</span>
+<span style="color: #008700;">getUrlServiceHook</span> <span style="color: #000000;">url</span> <span style="color: #005FAF;">=</span> <span style="color: #005FAF;">do</span>
+    <span style="color: #000000;">writeIORef</span> <span style="color: #000000;">getUrlServiceLink</span> <span style="color: #005FAF;">$</span> <span style="color: #005FAF;">if</span> <span style="color: #005F87;">B</span><span style="color: #005FAF;">.</span><span style="color: #008700;">null</span> <span style="color: #000000;">url</span>
+                                       <span style="color: #005FAF;">then</span> <span style="color: #AF5F00;">Nothing</span>
+                                       <span style="color: #005FAF;">else</span> <span style="color: #AF5F00;">Just</span> <span style="color: #000000;">url</span>
+    <span style="color: #000000;">atomicWriteIORef</span> <span style="color: #000000;">getUrlServiceLinkUpdated</span> <span style="color: #AF5F00;">True</span>
+    <span style="color: #008700;">return</span> <span style="color: #005FAF;">$</span> <span style="color: #005FAF;">if</span> <span style="color: #005F87;">B</span><span style="color: #005FAF;">.</span><span style="color: #008700;">null</span> <span style="color: #000000;">url</span>
+                 <span style="color: #005FAF;">then</span> <span style="color: #AF5F00;">&quot;getUrlService reset URL&quot;</span>
+                 <span style="color: #005FAF;">else</span> <span style="color: #005F87;">L</span><span style="color: #005FAF;">.</span><span style="color: #000000;">fromChunks</span> <span style="color: #870087;">[</span><span style="color: #AF5F00;">&quot;getUrlService set URL &quot;</span><span style="color: #870087;">,</span> <span style="color: #000000;">url</span><span style="color: #870087;">]</span>
+<span style="color: #008787;">ngxExportServiceHook</span><span style="color: #000000;"> '</span><span style="color: #000000;">getUrlServiceHook</span>
+
+<span style="color: #008700;">gHttpbinLinks</span> <span style="color: #005FAF;">::</span> <span style="color: #005F87;">IORef</span> <span style="color: #870087;">[</span><span style="color: #005F87;">ByteString</span><span style="color: #870087;">]</span>
+<span style="color: #008700;">gHttpbinLinks</span> <span style="color: #005FAF;">=</span> <span style="color: #000000;">unsafePerformIO</span> <span style="color: #005FAF;">$</span> <span style="color: #000000;">newIORef</span> <span style="color: #870087;">[]</span>
+<span style="color: #870087;">{-# NOINLINE gHttpbinLinks #-}</span>
+
+<span style="color: #008700;">grepLinks</span> <span style="color: #005FAF;">::</span> <span style="color: #005F87;">ByteString</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #870087;">[</span><span style="color: #005F87;">ByteString</span><span style="color: #870087;">]</span>
+<span style="color: #008700;">grepLinks</span> <span style="color: #005FAF;">=</span>
+    <span style="color: #008700;">map</span> <span style="color: #870087;">(</span><span style="color: #008700;">fst</span> <span style="color: #005FAF;">.</span> <span style="color: #008700;">snd</span><span style="color: #870087;">)</span> <span style="color: #005FAF;">.</span> <span style="color: #008700;">filter</span> <span style="color: #870087;">((</span><span style="color: #AF5F00;">1</span> <span style="color: #005FAF;">==</span><span style="color: #870087;">)</span> <span style="color: #005FAF;">.</span> <span style="color: #008700;">fst</span><span style="color: #870087;">)</span> <span style="color: #005FAF;">.</span> <span style="color: #008700;">concatMap</span> <span style="color: #005F87;">A</span><span style="color: #005FAF;">.</span><span style="color: #000000;">assocs</span> <span style="color: #005FAF;">.</span>
+        <span style="color: #008700;">filter</span> <span style="color: #870087;">(</span><span style="color: #008700;">not</span> <span style="color: #005FAF;">.</span> <span style="color: #008700;">null</span><span style="color: #870087;">)</span> <span style="color: #005FAF;">.</span> <span style="color: #008700;">concatMap</span> <span style="color: #870087;">(</span><span style="color: #000000;">matchAllText</span> <span style="color: #000000;">regex</span><span style="color: #870087;">)</span> <span style="color: #005FAF;">.</span>
+            <span style="color: #005F87;">C8</span><span style="color: #005FAF;">.</span><span style="color: #008700;">lines</span>
+    <span style="color: #005F87;">where</span> <span style="color: #000000;">regex</span> <span style="color: #005FAF;">=</span> <span style="color: #000000;">makeRegex</span> <span style="color: #005FAF;">$</span> <span style="color: #005F87;">C8</span><span style="color: #005FAF;">.</span><span style="color: #000000;">pack</span> <span style="color: #AF5F00;">&quot;a href=</span><span style="color: #870087;">\&quot;</span><span style="color: #AF5F00;">([^</span><span style="color: #870087;">\&quot;</span><span style="color: #AF5F00;">]+)</span><span style="color: #870087;">\&quot;</span><span style="color: #AF5F00;">&quot;</span> <span style="color: #005FAF;">::</span> <span style="color: #005F87;">Regex</span>
+
+<span style="color: #008700;">grepHttpbinLinks</span> <span style="color: #005FAF;">::</span> <span style="color: #005F87;">ByteString</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">IO</span> <span style="color: #005F87;">L</span><span style="color: #005FAF;">.</span><span style="color: #005F87;">ByteString</span>
+<span style="color: #008700;">grepHttpbinLinks</span> <span style="color: #AF5F00;">&quot;&quot;</span> <span style="color: #005FAF;">=</span> <span style="color: #008700;">return</span> <span style="color: #AF5F00;">&quot;&quot;</span>
+<span style="color: #008700;">grepHttpbinLinks</span> <span style="color: #000000;">v</span>  <span style="color: #005FAF;">=</span> <span style="color: #005FAF;">do</span>
+    <span style="color: #000000;">writeIORef</span> <span style="color: #000000;">gHttpbinLinks</span> <span style="color: #005FAF;">$</span> <span style="color: #000000;">grepLinks</span> <span style="color: #005FAF;">$</span> <span style="color: #005F87;">B</span><span style="color: #005FAF;">.</span><span style="color: #000000;">copy</span> <span style="color: #000000;">v</span>
+    <span style="color: #008700;">return</span> <span style="color: #AF5F00;">&quot;&quot;</span>
+<span style="color: #008787;">ngxExportIOYY</span><span style="color: #000000;"> '</span><span style="color: #000000;">grepHttpbinLinks</span>
+
+<span style="color: #008700;">sortLinks</span> <span style="color: #005FAF;">::</span> <span style="color: #005F87;">ByteString</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">IO</span> <span style="color: #005F87;">L</span><span style="color: #005FAF;">.</span><span style="color: #005F87;">ByteString</span>
+<span style="color: #008700;">sortLinks</span> <span style="color: #AF5F00;">&quot;httpbin&quot;</span> <span style="color: #005FAF;">=</span>
+    <span style="color: #005F87;">L</span><span style="color: #005FAF;">.</span><span style="color: #000000;">fromChunks</span> <span style="color: #005FAF;">.</span> <span style="color: #000000;">sort</span> <span style="color: #005FAF;">.</span> <span style="color: #008700;">map</span> <span style="color: #870087;">(</span><span style="color: #005FAF;">`C8.snoc`</span> <span style="color: #AF5F00;">'</span><span style="color: #870087;">\n</span><span style="color: #AF5F00;">'</span><span style="color: #870087;">)</span> <span style="color: #005FAF;">&lt;$&gt;</span> <span style="color: #000000;">readIORef</span> <span style="color: #000000;">gHttpbinLinks</span>
+<span style="color: #008700;">sortLinks</span> <span style="color: #870087;">_</span> <span style="color: #005FAF;">=</span> <span style="color: #008700;">return</span> <span style="color: #AF5F00;">&quot;&quot;</span>
+<span style="color: #008787;">ngxExportIOYY</span><span style="color: #000000;"> '</span><span style="color: #000000;">sortLinks</span>
+
+<span style="color: #008700;">cbHttpbin</span> <span style="color: #005FAF;">::</span> <span style="color: #005F87;">ByteString</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">Bool</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">IO</span> <span style="color: #005F87;">L</span><span style="color: #005FAF;">.</span><span style="color: #005F87;">ByteString</span>
+<span style="color: #008700;">cbHttpbin</span> <span style="color: #000000;">url</span> <span style="color: #000000;">firstRun</span> <span style="color: #005FAF;">=</span> <span style="color: #005FAF;">do</span>
+    <span style="color: #000000;">when</span> <span style="color: #000000;">firstRun</span> <span style="color: #005FAF;">$</span> <span style="color: #000000;">threadDelay</span> <span style="color: #005FAF;">$</span> <span style="color: #AF5F00;">5</span> <span style="color: #005FAF;">*</span> <span style="color: #AF5F00;">1000000</span>
+    <span style="color: #000000;">getUrl</span> <span style="color: #000000;">url</span>
+<span style="color: #008787;">ngxExportServiceIOYY</span><span style="color: #000000;"> '</span><span style="color: #000000;">cbHttpbin</span>
+
+<span style="color: #008700;">grepHttpbinLinksHook</span> <span style="color: #005FAF;">::</span> <span style="color: #005F87;">ByteString</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">IO</span> <span style="color: #005F87;">L</span><span style="color: #005FAF;">.</span><span style="color: #005F87;">ByteString</span>
+<span style="color: #008700;">grepHttpbinLinksHook</span> <span style="color: #000000;">v</span>  <span style="color: #005FAF;">=</span> <span style="color: #005FAF;">do</span>
+    <span style="color: #005FAF;">let</span> <span style="color: #000000;">links</span> <span style="color: #005FAF;">=</span> <span style="color: #000000;">grepLinks</span> <span style="color: #000000;">v</span>
+        <span style="color: #000000;">linksList</span> <span style="color: #005FAF;">=</span> <span style="color: #005FAF;">let</span> <span style="color: #000000;">ls</span> <span style="color: #005FAF;">=</span> <span style="color: #005F87;">B</span><span style="color: #005FAF;">.</span><span style="color: #000000;">intercalate</span> <span style="color: #AF5F00;">&quot; &quot;</span> <span style="color: #000000;">links</span>
+                    <span style="color: #005FAF;">in</span> <span style="color: #005FAF;">if</span> <span style="color: #005F87;">B</span><span style="color: #005FAF;">.</span><span style="color: #008700;">null</span> <span style="color: #000000;">ls</span>
+                        <span style="color: #005FAF;">then</span> <span style="color: #AF5F00;">&quot;&lt;NULL&gt;&quot;</span>
+                        <span style="color: #005FAF;">else</span> <span style="color: #000000;">ls</span>
+    <span style="color: #000000;">writeIORef</span> <span style="color: #000000;">gHttpbinLinks</span> <span style="color: #000000;">links</span>
+    <span style="color: #008700;">return</span> <span style="color: #005FAF;">$</span> <span style="color: #005F87;">L</span><span style="color: #005FAF;">.</span><span style="color: #000000;">fromChunks</span> <span style="color: #870087;">[</span><span style="color: #AF5F00;">&quot;getUrlService set links &quot;</span><span style="color: #870087;">,</span> <span style="color: #000000;">linksList</span><span style="color: #870087;">]</span>
+<span style="color: #008787;">ngxExportServiceHook</span><span style="color: #000000;"> '</span><span style="color: #000000;">grepHttpbinLinksHook</span>
+</pre>
+
+<h2 id="file-test.conf">File <em>test.conf</em></h2>
+<pre style="overflow-x: auto; background: #FFE">
+<span style="color: #008700;">user</span><span style="color: #000000;">                    nginx;</span>
+<span style="color: #008700;">worker_processes</span><span style="color: #000000;">        4;</span>
+
+<span style="color: #005FAF;">events</span><span style="color: #000000;"> {</span>
+    <span style="color: #008700;">worker_connections</span><span style="color: #000000;">  1024;</span>
+<span style="color: #000000;">}</span>
+
+<span style="color: #005FAF;">http</span><span style="color: #000000;"> {</span>
+    <span style="color: #008700;">default_type</span><span style="color: #000000;">        application/octet-stream;</span>
+    <span style="color: #008700;">sendfile</span>            <span style="color: #AF5F00;">on</span><span style="color: #000000;">;</span>
+
+<span style="color: #000000;">    haskell load /var/lib/nginx/test.so;</span>
+
+<span style="color: #808080;">    # Use 4 cores (-N4) and a large GC allocation area (-A32m), and force</span>
+<span style="color: #808080;">    # sequential GC (-qg) for image conversion tasks.</span>
+<span style="color: #808080;">    #haskell rts_options -N4 -A32m -qg;</span>
+
+<span style="color: #000000;">    limit_conn_zone all zone=all:10m;</span>
+
+<span style="color: #000000;">    haskell_run_service getUrlService </span><span style="color: #008700;">$hs_service_httpbin</span> <span style="color: #AF5F00;">&quot;http://httpbin.org&quot;</span><span style="color: #000000;">;</span>
+
+<span style="color: #000000;">    haskell_service_var_in_shm httpbin 512k /tmp </span><span style="color: #008700;">$hs_service_httpbin</span><span style="color: #000000;">;</span>
+
+<span style="color: #000000;">    haskell_service_var_update_callback cbHttpbin </span><span style="color: #008700;">$hs_service_httpbin</span>
+                                        <span style="color: #AF5F00;">&quot;http://127.0.0.1:8010/httpbin/count&quot;</span><span style="color: #000000;">;</span>
+
+<span style="color: #000000;">    haskell_service_hooks_zone hooks 32k;</span>
+
+<span style="color: #000000;">    haskell_service_update_hook grepHttpbinLinksHook </span><span style="color: #008700;">$hs_service_httpbin</span><span style="color: #000000;">;</span>
+
+    <span style="color: #005FAF;">server</span><span style="color: #000000;"> {</span>
+        <span style="color: #005F87;">listen</span><span style="color: #000000;">          8010;</span>
+        <span style="color: #005F87;">server_name</span><span style="color: #000000;">     main;</span>
+
+        <span style="color: #005FAF;">location</span><span style="color: #000000;"> / {</span>
+<span style="color: #000000;">            haskell_run toUpper </span><span style="color: #008700;">$hs_upper</span> <span style="color: #008700;">$arg_u</span><span style="color: #000000;">;</span>
+<span style="color: #000000;">            haskell_run reverse </span><span style="color: #008700;">$hs_reverse</span> <span style="color: #008700;">$arg_r</span><span style="color: #000000;">;</span>
+<span style="color: #000000;">            haskell_run isInList </span><span style="color: #008700;">$hs_isInList</span> <span style="color: #008700;">$arg_a</span> <span style="color: #008700;">$arg_b</span> <span style="color: #008700;">$arg_c</span> <span style="color: #008700;">$arg_d</span><span style="color: #000000;">;</span>
+            <span style="color: #870087;">echo</span> <span style="color: #AF5F00;">&quot;toUpper </span><span style="color: #008787;">$arg_u</span><span style="color: #AF5F00;"> = </span><span style="color: #008787;">$hs_upper</span><span style="color: #AF5F00;">&quot;</span><span style="color: #000000;">;</span>
+            <span style="color: #870087;">echo</span> <span style="color: #AF5F00;">&quot;reverse </span><span style="color: #008787;">$arg_r</span><span style="color: #AF5F00;"> = </span><span style="color: #008787;">$hs_reverse</span><span style="color: #AF5F00;">&quot;</span><span style="color: #000000;">;</span>
+            <span style="color: #870087;">echo</span> <span style="color: #AF5F00;">&quot;</span><span style="color: #008787;">$arg_a</span><span style="color: #AF5F00;"> `isInList` [</span><span style="color: #008787;">$arg_b</span><span style="color: #AF5F00;">, </span><span style="color: #008787;">$arg_c</span><span style="color: #AF5F00;">, </span><span style="color: #008787;">$arg_d</span><span style="color: #AF5F00;">] = </span><span style="color: #008787;">$hs_isInList</span><span style="color: #AF5F00;">&quot;</span><span style="color: #000000;">;</span>
+<span style="color: #000000;">        }</span>
+
+        <span style="color: #005FAF;">location</span><span style="color: #000000;"> /ch {</span>
+<span style="color: #000000;">            haskell_run toUpper </span><span style="color: #008700;">$hs_upper</span> <span style="color: #008700;">$arg_u</span><span style="color: #000000;">;</span>
+<span style="color: #000000;">            haskell_run reverse </span><span style="color: #008700;">$hs_reverse</span> <span style="color: #008700;">$arg_r</span><span style="color: #000000;">;</span>
+<span style="color: #000000;">            haskell_run isInList </span><span style="color: #008700;">$hs_isInList</span> <span style="color: #008700;">$arg_a</span> <span style="color: #008700;">$arg_b</span> <span style="color: #008700;">$arg_c</span> <span style="color: #008700;">$arg_d</span><span style="color: #000000;">;</span>
+<span style="color: #000000;">            haskell_content </span><span style="color: #870087;">echo</span>
+<span style="color: #000000;">&quot;toUpper </span><span style="color: #008700;">$arg_u</span><span style="color: #000000;"> = </span><span style="color: #008700;">$hs_upper</span>
+<span style="color: #000000;">reverse </span><span style="color: #008700;">$arg_r</span><span style="color: #000000;"> = </span><span style="color: #008700;">$hs_reverse</span>
+<span style="color: #008700;">$arg_a</span><span style="color: #000000;"> `isInList` [</span><span style="color: #008700;">$arg_b</span><span style="color: #000000;">, </span><span style="color: #008700;">$arg_c</span><span style="color: #000000;">, </span><span style="color: #008700;">$arg_d</span><span style="color: #000000;">] = </span><span style="color: #008700;">$hs_isInList</span>
+<span style="color: #000000;">&quot;;</span>
+<span style="color: #000000;">        }</span>
+
+        <span style="color: #005FAF;">location</span><span style="color: #000000;"> /timer {</span>
+<span style="color: #000000;">            haskell_run_async_on_request_body reqFld </span><span style="color: #008700;">$hs_timeout</span><span style="color: #000000;"> timer;</span>
+<span style="color: #000000;">            haskell_run_async delay </span><span style="color: #008700;">$hs_waited</span> <span style="color: #008700;">$hs_timeout</span><span style="color: #000000;">;</span>
+            <span style="color: #870087;">echo</span> <span style="color: #AF5F00;">&quot;Waited </span><span style="color: #008787;">$hs_waited</span><span style="color: #AF5F00;"> sec&quot;</span><span style="color: #000000;">;</span>
+<span style="color: #000000;">        }</span>
+
+        <span style="color: #005FAF;">location</span><span style="color: #000000;"> /timer/ch {</span>
+<span style="color: #000000;">            haskell_run_async_on_request_body reqFld </span><span style="color: #008700;">$hs_timeout</span><span style="color: #000000;"> timer;</span>
+<span style="color: #000000;">            haskell_async_content delayContent </span><span style="color: #008700;">$hs_timeout</span><span style="color: #000000;">;</span>
+<span style="color: #000000;">        }</span>
+
+        <span style="color: #005FAF;">location</span><span style="color: #000000;"> /convert/topng {</span>
+            <span style="color: #008700;">limit_conn</span><span style="color: #000000;"> all 4;</span>
+            <span style="color: #008700;">client_max_body_size</span><span style="color: #000000;"> 20m;</span>
+<span style="color: #000000;">            haskell_request_body_read_temp_file </span><span style="color: #AF5F00;">on</span><span style="color: #000000;">;</span>
+<span style="color: #000000;">            haskell_async_content_on_request_body convertToPng;</span>
+<span style="color: #000000;">        }</span>
+
+        <span style="color: #005FAF;">location</span><span style="color: #000000;"> /httpbin {</span>
+            <span style="color: #870087;">echo</span> <span style="color: #008700;">$hs_service_httpbin</span><span style="color: #000000;">;</span>
+<span style="color: #000000;">        }</span>
+
+        <span style="color: #005FAF;">location</span><span style="color: #000000;"> /httpbin/sortlinks {</span>
+<span style="color: #000000;">            haskell_run grepHttpbinLinks </span><span style="color: #008700;">$_upd_links_</span> <span style="color: #008700;">$_upd__hs_service_httpbin</span><span style="color: #000000;">;</span>
+<span style="color: #000000;">            haskell_run sortLinks </span><span style="color: #008700;">$hs_links</span> <span style="color: #AF5F00;">&quot;${_upd_links_}httpbin&quot;</span><span style="color: #000000;">;</span>
+            <span style="color: #870087;">echo</span> <span style="color: #008700;">$hs_links</span><span style="color: #000000;">;</span>
+<span style="color: #000000;">        }</span>
+
+        <span style="color: #005FAF;">location</span><span style="color: #000000;"> /httpbin/sortlinks/hook {</span>
+<span style="color: #000000;">            haskell_run sortLinks </span><span style="color: #008700;">$hs_links</span><span style="color: #000000;"> httpbin;</span>
+            <span style="color: #870087;">echo</span> <span style="color: #008700;">$hs_links</span><span style="color: #000000;">;</span>
+<span style="color: #000000;">        }</span>
+
+        <span style="color: #005FAF;">location</span><span style="color: #000000;"> /httpbin/shmstats {</span>
+            <span style="color: #870087;">echo</span> <span style="color: #AF5F00;">&quot;Httpbin service shm stats: </span><span style="color: #008787;">$_shm__hs_service_httpbin</span><span style="color: #AF5F00;">&quot;</span><span style="color: #000000;">;</span>
+<span style="color: #000000;">        }</span>
+
+        <span style="color: #005FAF;">location</span><span style="color: #000000;"> /httpbin/url {</span>
+            <span style="color: #008700;">allow</span><span style="color: #000000;"> 127.0.0.1;</span>
+            <span style="color: #008700;">deny</span><span style="color: #000000;"> all;</span>
+<span style="color: #000000;">            haskell_service_hook getUrlServiceHook </span><span style="color: #008700;">$hs_service_httpbin</span> <span style="color: #008700;">$arg_v</span><span style="color: #000000;">;</span>
+<span style="color: #000000;">        }</span>
+
+<span style="color: #808080;">        # Counters require Nginx module nginx-custom-counters-module,</span>
+<span style="color: #808080;">        # enable the next 2 locations if your Nginx build has support for them.</span>
+
+<span style="color: #808080;">        #location /httpbin/count {</span>
+<span style="color: #808080;">            #counter $cnt_httpbin inc;</span>
+<span style="color: #808080;">            #return 200;</span>
+<span style="color: #808080;">        #}</span>
+
+<span style="color: #808080;">        #location /counters {</span>
+<span style="color: #808080;">            #echo &quot;Httpbin service changes count: $cnt_httpbin&quot;;</span>
+<span style="color: #808080;">        #}</span>
+<span style="color: #000000;">    }</span>
+<span style="color: #000000;">}</span>
+</pre>
 </body>
 </html>
