@@ -1073,14 +1073,21 @@ In the log we'll find
 
 ## Service update hooks
 
-This is reimplementation of *update variables* for shared services by means of
+This is a reimplementation of *update variables* for shared services by means of
 service hooks. Update hooks have a number of advantages over update variables.
 
 1. No need for obscure treatment of update variables in configuration files.
-2. No need to copy the original argument: its data will be freed on the Haskell
+2. No need for copying the original argument: its data is freed on the Haskell
    part.
 3. Nginx don't need to access shared memory on every single request for checking
-   if the service data was altered.
+   if the service data has been altered.
+
+There is a subtle difference with update variables. As soon as with update hooks
+new service variable data is propagated to worker processes asynchronously via
+an event channel, there always exists a very short transient period between the
+moments when the service variable gets altered in shared memory and the global
+state gets updated in a worker, during which events related to client requests
+may occur.
 
 An update hook is exported with exporter *ngxExportServiceHook*, and declared
 using directive *haskell_service_update_hook* on the *http* configuration level.
@@ -1116,6 +1123,9 @@ ngxExportServiceHook 'grepHttpbinLinksHook
             echo $hs_links;
         }
 ```
+
+For testing this, watch the Nginx error log and change the URL of the service
+with requests to location */httpbin/url* like in the previous example.
 
 # Efficiency of data exchange between Nginx and Haskell parts
 

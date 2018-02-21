@@ -829,12 +829,13 @@
 </pre>
 
 <h2 id="service-update-hooks">Service update hooks</h2>
-<p>This is reimplementation of <em>update variables</em> for shared services by means of service hooks. Update hooks have a number of advantages over update variables.</p>
+<p>This is a reimplementation of <em>update variables</em> for shared services by means of service hooks. Update hooks have a number of advantages over update variables.</p>
 <ol type="1">
 <li>No need for obscure treatment of update variables in configuration files.</li>
-<li>No need to copy the original argument: its data will be freed on the Haskell part.</li>
-<li>Nginx don’t need to access shared memory on every single request for checking if the service data was altered.</li>
+<li>No need for copying the original argument: its data is freed on the Haskell part.</li>
+<li>Nginx don’t need to access shared memory on every single request for checking if the service data has been altered.</li>
 </ol>
+<p>There is a subtle difference with update variables. As soon as with update hooks new service variable data is propagated to worker processes asynchronously via an event channel, there always exists a very short transient period between the moments when the service variable gets altered in shared memory and the global state gets updated in a worker, during which events related to client requests may occur.</p>
 <p>An update hook is exported with exporter <em>ngxExportServiceHook</em>, and declared using directive <em>haskell_service_update_hook</em> on the <em>http</em> configuration level.</p>
 <h3 id="an-example-7">An example</h3>
 <p>Let’s reimplement the example with update of service links.</p>
@@ -864,6 +865,7 @@
 <span style="color: #000000;">        }</span>
 </pre>
 
+<p>For testing this, watch the Nginx error log and change the URL of the service with requests to location <em>/httpbin/url</em> like in the previous example.</p>
 <h1 id="efficiency-of-data-exchange-between-nginx-and-haskell-parts">Efficiency of data exchange between Nginx and Haskell parts</h1>
 <p>Haskell handlers may accept strings (<code>String</code> or <code>[String]</code>) and <em>strict</em> bytestrings (<code>ByteString</code>), and return strings, <em>lazy</em> bytestrings and booleans. Input C-strings are marshaled into a <em>String</em> with <em>peekCStringLen</em> which has linear complexity <span class="math inline"><em>O</em>(<em>n</em>)</span>, output <em>Strings</em> are marshaled into C-strings with <em>newCStringLen</em> which is also <span class="math inline"><em>O</em>(<em>n</em>)</span>. The new C-strings get freed upon the request termination in the Nginx part.</p>
 <p>The bytestring counterparts are much faster. Both input and output are <span class="math inline"><em>O</em>(1)</span>, using <em>unsafePackCStringLen</em> and a Haskell <em>stable pointer</em> to lazy bytestring buffers created inside Haskell handlers. If an output lazy bytestring has more than one chunk, a new single-chunked C-string will be created in variable and service handlers, but not in content handlers because the former use the chunks directly when constructing contents. Holding a stable pointer to a bytestring’s chunks on the Nginx part ensures that they won’t be garbage collected until the pointer gets freed. Stable pointers get freed upon the request termination for variable and content handlers, and before the next service iteration for service handlers.</p>
