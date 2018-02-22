@@ -1172,6 +1172,10 @@ ngxExportServiceHook 'getUrlServiceHook
 Now we can change the URL for service *getUrlService* in runtime by sending a
 simple request like
 
+```ShellSession
+$ curl 'http://127.0.0.1:8010/httpbin/url?v=http://example.com'
+```
+
 Starting from version *1.8.4*, service hooks can be used as an alternative
 implementation of *update variables* for shared services. For this, directive
 *haskell_service_update_hook* in the *http* clause of the nginx configuration
@@ -1207,10 +1211,6 @@ via an event channel, there always exists a very short transient period between
 the moments when the service variable gets altered in shared memory and the
 global state gets updated in a worker, during which events related to client
 requests may occur.
-
-```ShellSession
-$ curl 'http://127.0.0.1:8010/httpbin/url?v=http://example.com'
-```
 
 Reloading of haskell code and static content
 --------------------------------------------
