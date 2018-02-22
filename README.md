@@ -1172,6 +1172,42 @@ ngxExportServiceHook 'getUrlServiceHook
 Now we can change the URL for service *getUrlService* in runtime by sending a
 simple request like
 
+Starting from version *1.8.4*, service hooks can be used as an alternative
+implementation of *update variables* for shared services. For this, directive
+*haskell_service_update_hook* in the *http* clause of the nginx configuration
+must be used. Here is an example.
+
+```nginx
+    haskell_service_update_hook getUrlServiceUpdateHook $hs_service_httpbin;
+```
+
+```haskell
+getUrlServiceData :: IORef L.ByteString
+getUrlServiceData = unsafePerformIO $ newIORef L.empty
+{-# NOINLINE getUrlServiceData #-}
+
+getUrlServiceUpdateHook :: ByteString -> IO L.ByteString
+getUrlServiceUpdateHook v = do
+    writeIORef getUrlServiceData $ L.fromStrict v
+    return L.empty
+ngxExportServiceHook 'getUrlServiceUpdateHook
+```
+
+Update hooks have at least 3 advantages over update variables.
+
+1. No need for obscure treatment of update variables in configuration files.
+2. No need for copying the original argument: its data is freed on the haskell
+   side.
+3. Nginx don't need to access shared memory on every single request for checking
+   if the service data has been altered.
+
+There is also a subtle difference with update variables. As soon as with update
+hooks new service variable data is propagated to worker processes asynchronously
+via an event channel, there always exists a very short transient period between
+the moments when the service variable gets altered in shared memory and the
+global state gets updated in a worker, during which events related to client
+requests may occur.
+
 ```ShellSession
 $ curl 'http://127.0.0.1:8010/httpbin/url?v=http://example.com'
 ```
