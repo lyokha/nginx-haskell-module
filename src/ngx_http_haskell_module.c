@@ -70,6 +70,8 @@ static void ngx_http_haskell_var_init(ngx_log_t *log, ngx_array_t *cmvar,
 static ngx_int_t ngx_http_haskell_shm_lock_init(ngx_cycle_t *cycle,
     ngx_file_t *out, ngx_str_t path, ngx_str_t zone_name, ngx_str_t *var_name,
     int mode);
+static ngx_int_t ngx_http_haskell_make_handler_name(ngx_pool_t *pool,
+    ngx_str_t *from, ngx_str_t *handler_name);
 
 
 static ngx_command_t  ngx_http_haskell_module_commands[] = {
@@ -1110,19 +1112,14 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     value[2].len--;
     value[2].data++;
 
-    handler_name.len = value[1].len +
-            ngx_http_haskell_module_handler_prefix.len;
-    handler_name.data = ngx_pnalloc(cf->pool, handler_name.len + 1);
-    if (handler_name.data == NULL) {
+    if (ngx_http_haskell_make_handler_name(cf->pool, &value[1], &handler_name)
+        != NGX_OK)
+    {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "failed to make handler name from \"%V\"",
+                           &value[1]);
         return NGX_CONF_ERROR;
     }
-
-    ngx_memcpy(handler_name.data,
-               ngx_http_haskell_module_handler_prefix.data,
-               ngx_http_haskell_module_handler_prefix.len);
-    ngx_memcpy(handler_name.data + ngx_http_haskell_module_handler_prefix.len,
-               value[1].data, value[1].len);
-    handler_name.data[handler_name.len] ='\0';
 
     if (service) {
         service_code_var_data = ngx_array_push(&mcf->service_code_vars);
@@ -1179,6 +1176,7 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     handlers = mcf->handlers.elts;
+
     for (i = 0; i < mcf->handlers.nelts; i++) {
         if (handler_name.len == handlers[i].name.len
             && ngx_strncmp(handler_name.data, handlers[i].name.data,
@@ -1372,19 +1370,14 @@ ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     mcf->has_async_handlers = mcf->has_async_handlers ? 1 : async;
 
-    handler_name.len = value[1].len +
-            ngx_http_haskell_module_handler_prefix.len;
-    handler_name.data = ngx_pnalloc(cf->pool, handler_name.len + 1);
-    if (handler_name.data == NULL) {
+    if (ngx_http_haskell_make_handler_name(cf->pool, &value[1], &handler_name)
+        != NGX_OK)
+    {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "failed to make handler name from \"%V\"",
+                           &value[1]);
         return NGX_CONF_ERROR;
     }
-
-    ngx_memcpy(handler_name.data,
-               ngx_http_haskell_module_handler_prefix.data,
-               ngx_http_haskell_module_handler_prefix.len);
-    ngx_memcpy(handler_name.data + ngx_http_haskell_module_handler_prefix.len,
-               value[1].data, value[1].len);
-    handler_name.data[handler_name.len] ='\0';
 
     lcf->content_handler = ngx_pcalloc(cf->pool,
                                     sizeof(ngx_http_haskell_content_handler_t));
@@ -1558,19 +1551,14 @@ ngx_http_haskell_service_update_hook(ngx_conf_t *cf, ngx_command_t *cmd,
 
     value = cf->args->elts;
 
-    handler_name.len = value[1].len +
-            ngx_http_haskell_module_handler_prefix.len;
-    handler_name.data = ngx_pnalloc(cf->pool, handler_name.len + 1);
-    if (handler_name.data == NULL) {
+    if (ngx_http_haskell_make_handler_name(cf->pool, &value[1], &handler_name)
+        != NGX_OK)
+    {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "failed to make handler name from \"%V\"",
+                           &value[1]);
         return NGX_CONF_ERROR;
     }
-
-    ngx_memcpy(handler_name.data,
-               ngx_http_haskell_module_handler_prefix.data,
-               ngx_http_haskell_module_handler_prefix.len);
-    ngx_memcpy(handler_name.data + ngx_http_haskell_module_handler_prefix.len,
-               value[1].data, value[1].len);
-    handler_name.data[handler_name.len] ='\0';
 
     handlers = mcf->handlers.elts;
 
@@ -1903,5 +1891,27 @@ ngx_http_haskell_service_var_in_shm(ngx_conf_t *cf, ngx_command_t *cmd,
     mcf->shm_lock_files_path = value[3];
 
     return ngx_http_haskell_var_configure(cf, cmd, conf);
+}
+
+
+static ngx_int_t
+ngx_http_haskell_make_handler_name(ngx_pool_t *pool, ngx_str_t *from,
+                                   ngx_str_t *handler_name)
+{
+    handler_name->len = from->len + ngx_http_haskell_module_handler_prefix.len;
+    handler_name->data = ngx_pnalloc(pool, handler_name->len + 1);
+
+    if (handler_name->data == NULL) {
+        return NGX_ERROR;
+    }
+
+    ngx_memcpy(handler_name->data,
+               ngx_http_haskell_module_handler_prefix.data,
+               ngx_http_haskell_module_handler_prefix.len);
+    ngx_memcpy(handler_name->data + ngx_http_haskell_module_handler_prefix.len,
+               from->data, from->len);
+    handler_name->data[handler_name->len] = '\0';
+
+    return NGX_OK;
 }
 
