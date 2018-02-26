@@ -72,6 +72,8 @@ static ngx_int_t ngx_http_haskell_shm_lock_init(ngx_cycle_t *cycle,
     int mode);
 static ngx_int_t ngx_http_haskell_make_handler_name(ngx_pool_t *pool,
     ngx_str_t *from, ngx_str_t *handler_name);
+static ngx_inline ngx_uint_t ngx_http_haskell_has_async_tasks(
+    ngx_http_haskell_main_conf_t *mcf);
 
 
 static ngx_command_t  ngx_http_haskell_module_commands[] = {
@@ -393,9 +395,7 @@ ngx_http_haskell_init_module(ngx_cycle_t *cycle)
         return NGX_OK;
     }
 
-    if (mcf->has_async_tasks || mcf->has_async_handlers
-        || mcf->service_code_vars.nelts > 0 || mcf->service_hooks.nelts > 0)
-    {
+    if (ngx_http_haskell_has_async_tasks(mcf)) {
         cf = ngx_get_conf(cycle->conf_ctx, ngx_events_module);
         ecf = (*cf)[ngx_event_core_module.ctx_index];
 
@@ -598,6 +598,16 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
 #endif
 
     if (ngx_http_haskell_load(cycle) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    if (ngx_http_haskell_has_async_tasks(mcf)
+        && mcf->rts_has_thread_support() == HS_BOOL_FALSE)
+    {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                      "haskell module was compiled without thread "
+                      "support, using async tasks will inevitably cause "
+                      "stalls of requests in runtime");
         return NGX_ERROR;
     }
 
@@ -1158,25 +1168,14 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     mcf->has_async_tasks = mcf->has_async_tasks ? 1 : async;
 
     async = async ? 1 : service;
-    if (async) {
-        if (mcf->compile_mode == ngx_http_haskell_compile_mode_no_threaded) {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "haskell module was compiled without thread "
-                               "support, using async tasks will inevitably "
-                               "cause stalls of requests in runtime");
-            return NGX_CONF_ERROR;
-        }
-        /* FIXME: is there a way to check whether the library was indeed
-         * compiled as not threaded, both for dynamic and static linkage? */
-#if 0
-        if (mcf->compile_mode == ngx_http_haskell_compile_mode_load_existing) {
-            ngx_conf_log_error(NGX_LOG_NOTICE, cf, 0,
-                               "haskell module was loaded from existing "
-                               "library, please make sure that it was compiled "
-                               "as threaded, otherwise async tasks may stall "
-                               "in runtime");
-        }
-#endif
+    if (async
+        && mcf->compile_mode == ngx_http_haskell_compile_mode_no_threaded)
+    {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "haskell module was compiled without thread "
+                           "support, using async tasks will inevitably cause "
+                           "stalls of requests in runtime");
+        return NGX_CONF_ERROR;
     }
 
     handlers = mcf->handlers.elts;
@@ -1917,5 +1916,15 @@ ngx_http_haskell_make_handler_name(ngx_pool_t *pool, ngx_str_t *from,
     handler_name->data[handler_name->len] = '\0';
 
     return NGX_OK;
+}
+
+
+static ngx_inline ngx_uint_t
+ngx_http_haskell_has_async_tasks(ngx_http_haskell_main_conf_t *mcf)
+{
+    return mcf->has_async_tasks
+            || mcf->has_async_handlers
+            || mcf->service_code_vars.nelts > 0
+            || mcf->service_hooks.nelts > 0;
 }
 
