@@ -1021,8 +1021,8 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                         "as threaded, please make sure that it was indeed "
                         "compiled as threaded, otherwise async tasks may "
                         "stall in runtime");
-                mcf->compile_mode = ngx_http_haskell_compile_mode_load_existing;
             }
+            mcf->compile_mode = ngx_http_haskell_compile_mode_load_existing;
         }
     }
 
@@ -1166,13 +1166,17 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                                "cause stalls of requests in runtime");
             return NGX_CONF_ERROR;
         }
-        if (mcf->compile_mode == ngx_http_haskell_compile_mode_no_threaded) {
+        /* FIXME: is there a way to check whether the library was indeed
+         * compiled as not threaded, both for dynamic and static linkage? */
+#if 0
+        if (mcf->compile_mode == ngx_http_haskell_compile_mode_load_existing) {
             ngx_conf_log_error(NGX_LOG_NOTICE, cf, 0,
                                "haskell module was loaded from existing "
                                "library, please make sure that it was compiled "
                                "as threaded, otherwise async tasks may stall "
                                "in runtime");
         }
+#endif
     }
 
     handlers = mcf->handlers.elts;
