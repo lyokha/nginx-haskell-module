@@ -67,9 +67,18 @@ typedef HsStablePtr (*ngx_http_haskell_handler_ach_rb)
 
 
 typedef enum {
-    ngx_http_haskell_module_wrap_mode_modular = 0,
-    ngx_http_haskell_module_wrap_mode_standalone
+    ngx_http_haskell_module_wrap_mode_uninitialized = 0,
+    ngx_http_haskell_module_wrap_mode_standalone,
+    ngx_http_haskell_module_wrap_mode_modular
 } ngx_http_haskell_module_wrap_mode_e;
+
+
+typedef enum {
+    ngx_http_haskell_compile_mode_uninitialized = 0,
+    ngx_http_haskell_compile_mode_no_threaded,
+    ngx_http_haskell_compile_mode_threaded,
+    ngx_http_haskell_compile_mode_load_existing
+} ngx_http_haskell_compile_mode_e;
 
 
 typedef enum {
@@ -104,15 +113,9 @@ typedef enum {
 } ngx_http_haskell_handler_role_e;
 
 
-typedef enum {
-    ngx_http_haskell_compile_mode_threaded = 0,
-    ngx_http_haskell_compile_mode_no_threaded,
-    ngx_http_haskell_compile_mode_load_existing
-} ngx_http_haskell_compile_mode_e;
-
-
 typedef struct {
     ngx_http_haskell_module_wrap_mode_e        wrap_mode;
+    ngx_http_haskell_compile_mode_e            compile_mode;
     ngx_str_t                                  ghc_extra_options;
     ngx_array_t                                rts_options;
     ngx_array_t                                program_options;
@@ -132,7 +135,6 @@ typedef struct {
     void                                     (*service_hook_interrupt)
                                                                 (HsStablePtr);
     HsBool                                   (*rts_has_thread_support)(void);
-    ngx_http_haskell_compile_mode_e            compile_mode;
     ngx_array_t                                service_code_vars;
     ngx_array_t                                var_nocacheable;
     ngx_array_t                                var_compensate_uri_changes;

@@ -946,6 +946,8 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     idx = 2 + has_threaded;
 
+    mcf->wrap_mode = ngx_http_haskell_module_wrap_mode_modular;
+
     if (value[idx].len == 10
         && ngx_strncmp(value[idx].data, "standalone", 10) == 0)
     {
@@ -1016,6 +1018,8 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_memcpy(mcf->lib_path.data, value[idx].data, value[idx].len - 3);
     ngx_memcpy(mcf->lib_path.data + value[idx].len - 3, ".so", 4);
 
+    mcf->compile_mode = ngx_http_haskell_compile_mode_load_existing;
+
     if (load) {
         if (ngx_file_info(mcf->lib_path.data, &lib_info) == NGX_FILE_ERROR) {
             if (load_existing) {
@@ -1024,15 +1028,10 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 return NGX_CONF_ERROR;
             }
             load = 0;
-        } else {
-            if (has_threaded) {
-                ngx_conf_log_error(NGX_LOG_NOTICE, cf, 0,
-                        "haskell library exists but is asked to be compiled "
-                        "as threaded, please make sure that it was indeed "
-                        "compiled as threaded, otherwise async tasks may "
-                        "stall in runtime");
-            }
-            mcf->compile_mode = ngx_http_haskell_compile_mode_load_existing;
+        } else if (has_wrap_mode || has_threaded || !load_existing) {
+            ngx_conf_log_error(NGX_LOG_NOTICE, cf, 0,
+                        "haskell library exists, wrap mode and threaded flags "
+                        "as well as haskell source code will be ignored");
         }
     }
 
