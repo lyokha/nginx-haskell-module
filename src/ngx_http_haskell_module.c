@@ -608,7 +608,7 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
                       "haskell module was compiled without thread "
                       "support, using async tasks will inevitably cause "
                       "stalls of requests in runtime");
-        return NGX_ERROR;
+        goto unload_and_exit;
     }
 
     service_hooks = mcf->service_hooks.elts;
@@ -617,11 +617,21 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
                                                cmvars, &service_hooks[i])
             != NGX_OK)
         {
-            return NGX_ERROR;
+            goto unload_and_exit;
         }
     }
 
-    return ngx_http_haskell_init_services(cycle);
+    if (ngx_http_haskell_init_services(cycle) != NGX_OK) {
+        goto unload_and_exit;
+    }
+
+    return NGX_OK;
+
+unload_and_exit:
+
+    ngx_http_haskell_unload(cycle, 0);
+
+    return NGX_ERROR;
 }
 
 
