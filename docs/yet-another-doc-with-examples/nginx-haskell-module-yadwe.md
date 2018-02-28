@@ -1256,6 +1256,10 @@ Directive                                                                 Level 
 
 # Appendix
 
+\appendixpagenumbering
+
+<!--\appendixpagenumbering[TEST.HS]-->
+
 ## File *test.hs*
 
 ``` {.haskell hl="vim"}
@@ -1417,6 +1421,8 @@ grepHttpbinLinksHook v  = do
     return $ L.fromChunks ["getUrlService set links ", linksList]
 ngxExportServiceHook 'grepHttpbinLinksHook
 ```
+
+<!--\appendixpagenumbering[TEST.CONF]-->
 
 ## File *test.conf*
 

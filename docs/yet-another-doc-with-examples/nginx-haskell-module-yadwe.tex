@@ -145,6 +145,12 @@
 \setitemize{itemsep=2pt, topsep=0pt}
 \usepackage[normalem]{ulem}
 
+\newcommand{\appendixpagenumbering}[1][A]{
+  %\break
+  \pagenumbering{arabic}
+  \renewcommand{\thepage}{{#1}-\arabic{page}}
+}
+
 \title{%
     Nginx Haskell module \\
     (yet another doc with examples)}
