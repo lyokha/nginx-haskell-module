@@ -1835,5 +1835,5 @@ example*](http://lin-techdet.blogspot.com/2017/01/nginx-haskell-module-labeled-m
 3. [*Passing ByteString contents reliably into C
 code*](http://lin-techdet.blogspot.com/2017/08/passing-bytestring-contents-reliably.html).
 4. [*Signaling all worker processes in Nginx via an event
-channel*](http://lin-techdet.blogspot.ru/2018/03/signaling-all-worker-processes-in-nginx.html).
+channel*](http://lin-techdet.blogspot.com/2018/03/signaling-all-worker-processes-in-nginx.html).
 
