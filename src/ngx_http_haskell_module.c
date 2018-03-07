@@ -55,6 +55,8 @@ static char *ngx_http_haskell_var_configure(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_haskell_service_var_in_shm(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf);
+static char *ngx_http_haskell_request_variable_name(ngx_conf_t *cf,
+    ngx_command_t *cmd, void *conf);
 static ngx_int_t ngx_http_haskell_init(ngx_conf_t *cf);
 static void *ngx_http_haskell_create_main_conf(ngx_conf_t *cf);
 static void *ngx_http_haskell_create_loc_conf(ngx_conf_t *cf);
@@ -70,6 +72,8 @@ static void ngx_http_haskell_var_init(ngx_log_t *log, ngx_array_t *cmvar,
 static ngx_int_t ngx_http_haskell_shm_lock_init(ngx_cycle_t *cycle,
     ngx_file_t *out, ngx_str_t path, ngx_str_t zone_name, ngx_str_t *var_name,
     int mode);
+static ngx_int_t ngx_http_haskell_request_ptr_var_handler(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_haskell_make_handler_name(ngx_pool_t *pool,
     ngx_str_t *from, ngx_str_t *handler_name);
 static ngx_inline ngx_uint_t ngx_http_haskell_has_async_tasks(
@@ -183,6 +187,12 @@ static ngx_command_t  ngx_http_haskell_module_commands[] = {
     { ngx_string("haskell_service_var_in_shm"),
       NGX_HTTP_MAIN_CONF|NGX_CONF_2MORE,
       ngx_http_haskell_service_var_in_shm,
+      NGX_HTTP_MAIN_CONF_OFFSET,
+      0,
+      NULL },
+    { ngx_string("haskell_request_variable_name"),
+      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
+      ngx_http_haskell_request_variable_name,
       NGX_HTTP_MAIN_CONF_OFFSET,
       0,
       NULL },
@@ -323,6 +333,8 @@ ngx_http_haskell_create_main_conf(ngx_conf_t *cf)
 #ifdef NGX_HTTP_HASKELL_SHM_USE_SHARED_RLOCK
     mcf->shm_lock_fd = NGX_INVALID_FILE;
 #endif
+
+    ngx_str_set(&mcf->request_var_name, "_r_ptr");
 
     return mcf;
 }
@@ -830,6 +842,7 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_uint_t                      base_name_start = 0;
     ngx_uint_t                      has_wrap_mode = 0, has_threaded = 0;
     char                          **options;
+    ngx_http_variable_t            *v;
     ngx_int_t                       len;
 
     value = cf->args->elts;
@@ -1071,6 +1084,12 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                                "chmod() \"%V\" failed", &mcf->lib_path);
         }
     }
+
+    v = ngx_http_add_variable(cf, &mcf->request_var_name, 0);
+    if (v == NULL) {
+        return NGX_CONF_ERROR;
+    }
+    v->get_handler = ngx_http_haskell_request_ptr_var_handler;
 
     mcf->code_loaded = 1;
 
@@ -1903,6 +1922,73 @@ ngx_http_haskell_service_var_in_shm(ngx_conf_t *cf, ngx_command_t *cmd,
     mcf->shm_lock_files_path = value[3];
 
     return ngx_http_haskell_var_configure(cf, cmd, conf);
+}
+
+
+static char *
+ngx_http_haskell_request_variable_name(ngx_conf_t *cf, ngx_command_t *cmd,
+                                       void *conf)
+{
+    ngx_http_haskell_main_conf_t      *mcf = conf;
+
+    ngx_str_t                         *value;
+
+    value = cf->args->elts;
+
+    if (mcf->request_var_name_done) {
+        return "is duplicate";
+    }
+
+    if (value[1].len < 2 || value[1].data[0] != '$') {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "invalid variable name \"%V\"", &value[1]);
+        return NGX_CONF_ERROR;
+    }
+    value[1].len--;
+    value[1].data++;
+
+    mcf->request_var_name = value[1];
+    mcf->request_var_name_done = 1;
+
+    return NGX_CONF_OK;
+}
+
+
+static ngx_int_t
+ngx_http_haskell_request_ptr_var_handler(ngx_http_request_t *r,
+                                         ngx_http_variable_value_t *v,
+                                         uintptr_t data)
+{
+    uintptr_t  r_ptr = (uintptr_t) r;
+    ngx_str_t  res;
+
+    res.len = sizeof(uintptr_t);
+    res.data = ngx_pnalloc(r->pool, res.len);
+    if (res.data == NULL) {
+        /* FIXME: dereferencing request pointer that failed to allocate must be
+         * catastrophic! Currently, there is only one workaround: the Haskell
+         * handler (say, of bytestring-to-bytestring flavor) must somehow guess
+         * that the allocation has been failed. For example, if the argument of
+         * the handler contains no other data besides the pointer, then the
+         * handler will not segfault and only return the exception because it
+         * will fail to deserialize the pointer as far as the passed bytestring
+         * should be of zero size in this case */
+        ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
+                      "failed to allocate storage for request pointer, "
+                      "using dereferenced value in handlers may lead to "
+                      "catastrophic consequences");
+        return NGX_ERROR;
+    }
+
+    ngx_memcpy(res.data, (u_char *) &r_ptr, res.len);
+
+    v->len = res.len;
+    v->data = res.data;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+
+    return NGX_OK;
 }
 
 

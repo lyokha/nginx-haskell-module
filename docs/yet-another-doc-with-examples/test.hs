@@ -28,6 +28,9 @@ import qualified Data.Array as A
 import           Data.List
 import qualified Data.ByteString as B
 import           Data.Maybe
+import           Data.Binary.Get
+import           Foreign.C.Types
+import           Foreign.Ptr
 
 toUpper :: String -> String
 toUpper = map C.toUpper
@@ -128,7 +131,7 @@ grepLinks =
 
 grepHttpbinLinks :: ByteString -> IO L.ByteString
 grepHttpbinLinks "" = return ""
-grepHttpbinLinks v  = do
+grepHttpbinLinks v = do
     writeIORef gHttpbinLinks $ grepLinks $ B.copy v
     return ""
 ngxExportIOYY 'grepHttpbinLinks
@@ -146,7 +149,7 @@ cbHttpbin url firstRun = do
 ngxExportServiceIOYY 'cbHttpbin
 
 grepHttpbinLinksHook :: ByteString -> IO L.ByteString
-grepHttpbinLinksHook v  = do
+grepHttpbinLinksHook v = do
     let links = grepLinks v
         linksList = let ls = B.intercalate " " links
                     in if B.null ls
@@ -155,4 +158,16 @@ grepHttpbinLinksHook v  = do
     writeIORef gHttpbinLinks links
     return $ L.fromChunks ["getUrlService set links ", linksList]
 ngxExportServiceHook 'grepHttpbinLinksHook
+
+foreign import ccall "test_c_plugin.h ngx_http_haskell_test_c_plugin"
+    test_c_plugin :: Ptr () -> IO CIntPtr;
+
+testCPlugin :: ByteString -> IO L.ByteString
+testCPlugin v = do
+    let p = runGet getWordhost $ L.fromStrict v
+    res <- test_c_plugin $ wordPtrToPtr $ fromIntegral p
+    return $ if res == 0
+                 then "Success!"
+                 else "Failure!"
+ngxExportIOYY 'testCPlugin
 

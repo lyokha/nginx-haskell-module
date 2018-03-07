@@ -706,7 +706,7 @@ grepLinks =
 
 grepHttpbinLinks :: ByteString -> IO L.ByteString
 grepHttpbinLinks "" = return ""
-grepHttpbinLinks v  = do
+grepHttpbinLinks v = do
     writeIORef gHttpbinLinks $ grepLinks $ B.copy v
     return ""
 ngxExportIOYY 'grepHttpbinLinks
@@ -1100,7 +1100,7 @@ Let's reimplement the example with update of service links.
 
 ``` {.haskell hl="vim"}
 grepHttpbinLinksHook :: ByteString -> IO L.ByteString
-grepHttpbinLinksHook v  = do
+grepHttpbinLinksHook v = do
     let links = grepLinks v
         linksList = let ls = B.intercalate " " links
                     in if B.null ls
@@ -1393,7 +1393,7 @@ grepLinks =
 
 grepHttpbinLinks :: ByteString -> IO L.ByteString
 grepHttpbinLinks "" = return ""
-grepHttpbinLinks v  = do
+grepHttpbinLinks v = do
     writeIORef gHttpbinLinks $ grepLinks $ B.copy v
     return ""
 ngxExportIOYY 'grepHttpbinLinks
@@ -1411,7 +1411,7 @@ cbHttpbin url firstRun = do
 ngxExportServiceIOYY 'cbHttpbin
 
 grepHttpbinLinksHook :: ByteString -> IO L.ByteString
-grepHttpbinLinksHook v  = do
+grepHttpbinLinksHook v = do
     let links = grepLinks v
         linksList = let ls = B.intercalate " " links
                     in if B.null ls
