@@ -79,7 +79,6 @@ static ngx_int_t ngx_http_haskell_make_handler_name(ngx_pool_t *pool,
 static ngx_inline ngx_uint_t ngx_http_haskell_has_async_tasks(
     ngx_http_haskell_main_conf_t *mcf);
 
-
 static u_char  haskell_module_r_ptr0[sizeof(uintptr_t) / sizeof(u_char)];
 
 
@@ -1963,7 +1962,6 @@ ngx_http_haskell_request_ptr_var_handler(ngx_http_request_t *r,
                                          uintptr_t data)
 {
     uintptr_t  r_ptr = (uintptr_t) r;
-
     ngx_str_t  res;
 
     res.len = sizeof(uintptr_t);
