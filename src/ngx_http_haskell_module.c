@@ -80,6 +80,9 @@ static ngx_inline ngx_uint_t ngx_http_haskell_has_async_tasks(
     ngx_http_haskell_main_conf_t *mcf);
 
 
+static u_char  haskell_module_r_ptr0[sizeof(uintptr_t) / sizeof(u_char)];
+
+
 static ngx_command_t  ngx_http_haskell_module_commands[] = {
 
     { ngx_string("haskell"),
@@ -1960,27 +1963,19 @@ ngx_http_haskell_request_ptr_var_handler(ngx_http_request_t *r,
                                          uintptr_t data)
 {
     uintptr_t  r_ptr = (uintptr_t) r;
+
     ngx_str_t  res;
 
     res.len = sizeof(uintptr_t);
     res.data = ngx_pnalloc(r->pool, res.len);
     if (res.data == NULL) {
-        /* FIXME: dereferencing request pointer that failed to allocate must be
-         * catastrophic! Currently, there is only one workaround: the Haskell
-         * handler (say, of bytestring-to-bytestring flavor) must somehow guess
-         * that the allocation has been failed. For example, if the argument of
-         * the handler contains no other data besides the pointer, then the
-         * handler will not segfault and only return the exception because it
-         * will fail to deserialize the pointer as far as the passed bytestring
-         * should be of zero size in this case */
-        ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
+        res.data = haskell_module_r_ptr0;
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "failed to allocate storage for request pointer, "
-                      "using dereferenced value in handlers may lead to "
-                      "catastrophic consequences");
-        return NGX_ERROR;
+                      "a null pointer will be serialized instead");
+    } else {
+        ngx_memcpy(res.data, (u_char *) &r_ptr, res.len);
     }
-
-    ngx_memcpy(res.data, (u_char *) &r_ptr, res.len);
 
     v->len = res.len;
     v->data = res.data;

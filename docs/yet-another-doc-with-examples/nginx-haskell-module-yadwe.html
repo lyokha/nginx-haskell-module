@@ -556,7 +556,7 @@
 
 <span style="color: #008700;">grepHttpbinLinks</span> <span style="color: #005FAF;">::</span> <span style="color: #005F87;">ByteString</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">IO</span> <span style="color: #005F87;">L</span><span style="color: #005FAF;">.</span><span style="color: #005F87;">ByteString</span>
 <span style="color: #008700;">grepHttpbinLinks</span> <span style="color: #AF5F00;">&quot;&quot;</span> <span style="color: #005FAF;">=</span> <span style="color: #008700;">return</span> <span style="color: #AF5F00;">&quot;&quot;</span>
-<span style="color: #008700;">grepHttpbinLinks</span> <span style="color: #000000;">v</span>  <span style="color: #005FAF;">=</span> <span style="color: #005FAF;">do</span>
+<span style="color: #008700;">grepHttpbinLinks</span> <span style="color: #000000;">v</span> <span style="color: #005FAF;">=</span> <span style="color: #005FAF;">do</span>
     <span style="color: #000000;">writeIORef</span> <span style="color: #000000;">gHttpbinLinks</span> <span style="color: #005FAF;">$</span> <span style="color: #000000;">grepLinks</span> <span style="color: #005FAF;">$</span> <span style="color: #005F87;">B</span><span style="color: #005FAF;">.</span><span style="color: #000000;">copy</span> <span style="color: #000000;">v</span>
     <span style="color: #008700;">return</span> <span style="color: #AF5F00;">&quot;&quot;</span>
 <span style="color: #008787;">ngxExportIOYY</span><span style="color: #000000;"> '</span><span style="color: #000000;">grepHttpbinLinks</span>
@@ -842,7 +842,7 @@
 <p><strong>File test.hs</strong> (<em>additions</em>)</p>
 <pre style="overflow-x: auto; background: #FFE">
 <span style="color: #008700;">grepHttpbinLinksHook</span> <span style="color: #005FAF;">::</span> <span style="color: #005F87;">ByteString</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">IO</span> <span style="color: #005F87;">L</span><span style="color: #005FAF;">.</span><span style="color: #005F87;">ByteString</span>
-<span style="color: #008700;">grepHttpbinLinksHook</span> <span style="color: #000000;">v</span>  <span style="color: #005FAF;">=</span> <span style="color: #005FAF;">do</span>
+<span style="color: #008700;">grepHttpbinLinksHook</span> <span style="color: #000000;">v</span> <span style="color: #005FAF;">=</span> <span style="color: #005FAF;">do</span>
     <span style="color: #005FAF;">let</span> <span style="color: #000000;">links</span> <span style="color: #005FAF;">=</span> <span style="color: #000000;">grepLinks</span> <span style="color: #000000;">v</span>
         <span style="color: #000000;">linksList</span> <span style="color: #005FAF;">=</span> <span style="color: #005FAF;">let</span> <span style="color: #000000;">ls</span> <span style="color: #005FAF;">=</span> <span style="color: #005F87;">B</span><span style="color: #005FAF;">.</span><span style="color: #000000;">intercalate</span> <span style="color: #AF5F00;">&quot; &quot;</span> <span style="color: #000000;">links</span>
                     <span style="color: #005FAF;">in</span> <span style="color: #005FAF;">if</span> <span style="color: #005F87;">B</span><span style="color: #005FAF;">.</span><span style="color: #008700;">null</span> <span style="color: #000000;">ls</span>
@@ -866,6 +866,117 @@
 </pre>
 
 <p>For testing this, watch the Nginx error log and change the URL of the service with requests to location <em>/httpbin/url</em> like in the previous example.</p>
+<h1 id="c-plugins-with-low-level-access-to-the-nginx-request-object">C plugins with low level access to the Nginx request object</h1>
+<p>Serialized pointer to the Nginx <em>request object</em> is accessible via a special variable <em>_r_ptr</em>. Haskell handlers have no benefit from this because they do not know how the request object is built. However they may run C code that is compiled with this knowledge. The low level access to the Nginx request data allows for making things not available without this. As soon as a C plugin can do whatever a usual Nginx module can, using it from a Haskell handler must be very cautious. All synchronous and asynchronous Haskell handler can access the Nginx request object and pass it to a C plugin. Using a C plugin in asynchronous context has not been investigated, and is probably dangerous in many aspects. After all, an Nginx worker is a single-threaded process, and available Nginx tools were not designed for using in multi-threaded environment. As such, using C plugins in asynchronous Haskell handlers must be regarded as strictly experimental!</p>
+<h2 id="an-example-8">An example</h2>
+<p>Let’s write a plugin that will add an HTTP header to the response.</p>
+<p><strong>File test_c_plugin.h</strong></p>
+<pre style="overflow-x: auto; background: #FFE">
+<span style="color: #008787;">#include </span><span style="color: #AF5F00;">&lt;ngx_core.h&gt;</span>
+<span style="color: #008787;">#include </span><span style="color: #AF5F00;">&lt;ngx_http.h&gt;</span>
+
+<span style="color: #008787;">#ifndef NGX_HTTP_HASKELL_TEST_C_PLUGIN_H</span>
+<span style="color: #008787;">#define NGX_HTTP_HASKELL_TEST_C_PLUGIN_H</span>
+
+<span style="color: #000000;">ngx_int_t </span><span style="color: #008700;">ngx_http_haskell_test_c_plugin</span><span style="color: #870087;">(</span><span style="color: #000000;">ngx_http_request_t </span><span style="color: #005FAF;">*</span><span style="color: #000000;">r</span><span style="color: #870087;">);</span>
+
+<span style="color: #008787;">#endif</span>
+</pre>
+
+<p><strong>File test_c_plugin.c</strong></p>
+<pre style="overflow-x: auto; background: #FFE">
+<span style="color: #008787;">#include </span><span style="color: #AF5F00;">&quot;test_c_plugin.h&quot;</span>
+
+<span style="color: #005F87;">static</span> <span style="color: #005F87;">const</span><span style="color: #000000;"> ngx_str_t haskell_module </span><span style="color: #005FAF;">=</span> <span style="color: #008700;">ngx_string</span><span style="color: #870087;">(</span><span style="color: #AF5F00;">&quot;Nginx Haskell module&quot;</span><span style="color: #870087;">);</span>
+
+<span style="color: #000000;">ngx_int_t</span>
+<span style="color: #008700;">ngx_http_haskell_test_c_plugin</span><span style="color: #870087;">(</span><span style="color: #000000;">ngx_http_request_t </span><span style="color: #005FAF;">*</span><span style="color: #000000;">r</span><span style="color: #870087;">)</span> <span style="color: #870087;">{</span>
+<span style="color: #000000;">    ngx_table_elt_t </span><span style="color: #005FAF;">*</span><span style="color: #000000;">x_powered_by</span><span style="color: #870087;">;</span>
+
+    <span style="color: #005FAF;">if</span> <span style="color: #870087;">(</span><span style="color: #000000;">r </span><span style="color: #005FAF;">==</span> <span style="color: #AF5F00;">NULL</span><span style="color: #870087;">)</span> <span style="color: #870087;">{</span>
+        <span style="color: #005FAF;">return</span><span style="color: #000000;"> NGX_ERROR</span><span style="color: #870087;">;</span>
+    <span style="color: #870087;">}</span>
+
+<span style="color: #000000;">    x_powered_by </span><span style="color: #005FAF;">=</span> <span style="color: #008700;">ngx_list_push</span><span style="color: #870087;">(</span><span style="color: #005FAF;">&amp;</span><span style="color: #000000;">r</span><span style="color: #005FAF;">-&gt;</span><span style="color: #000000;">headers_out</span><span style="color: #005FAF;">.</span><span style="color: #000000;">headers</span><span style="color: #870087;">);</span>
+
+    <span style="color: #005FAF;">if</span> <span style="color: #870087;">(</span><span style="color: #005FAF;">!</span><span style="color: #000000;">x_powered_by</span><span style="color: #870087;">)</span> <span style="color: #870087;">{</span>
+        <span style="color: #008700;">ngx_log_error</span><span style="color: #870087;">(</span><span style="color: #000000;">NGX_LOG_CRIT</span><span style="color: #005FAF;">,</span><span style="color: #000000;"> r</span><span style="color: #005FAF;">-&gt;</span><span style="color: #000000;">connection</span><span style="color: #005FAF;">-&gt;</span><span style="color: #008700;">log</span><span style="color: #005FAF;">,</span> <span style="color: #AF5F00;">0</span><span style="color: #005FAF;">,</span>
+                      <span style="color: #AF5F00;">&quot;Unable to allocate memory to set X-Powered-By header&quot;</span><span style="color: #870087;">);</span>
+        <span style="color: #005FAF;">return</span><span style="color: #000000;"> NGX_ERROR</span><span style="color: #870087;">;</span>
+    <span style="color: #870087;">}</span>
+
+<span style="color: #000000;">    x_powered_by</span><span style="color: #005FAF;">-&gt;</span><span style="color: #000000;">hash </span><span style="color: #005FAF;">=</span> <span style="color: #AF5F00;">1</span><span style="color: #870087;">;</span>
+    <span style="color: #008700;">ngx_str_set</span><span style="color: #870087;">(</span><span style="color: #005FAF;">&amp;</span><span style="color: #000000;">x_powered_by</span><span style="color: #005FAF;">-&gt;</span><span style="color: #000000;">key</span><span style="color: #005FAF;">,</span> <span style="color: #AF5F00;">&quot;X-Powered-By&quot;</span><span style="color: #870087;">);</span>
+<span style="color: #000000;">    x_powered_by</span><span style="color: #005FAF;">-&gt;</span><span style="color: #000000;">value </span><span style="color: #005FAF;">=</span><span style="color: #000000;"> haskell_module</span><span style="color: #870087;">;</span>
+
+    <span style="color: #005FAF;">return</span><span style="color: #000000;"> NGX_OK</span><span style="color: #870087;">;</span>
+<span style="color: #870087;">}</span>
+</pre>
+
+<p>Notice that the request object <em>r</em> gets checked in function <em>ngx_http_haskell_test_c_plugin()</em> against <em>NULL</em> value. Normally in an Nginx C code this check is redundant, however in our plugin this is important because serialization of the request object may fail, and in this case the Nginx module will serialize a null pointer.</p>
+<p>Let’s compile this. For this we need a directory where Nginx sources were compiled. Let’s refer to it in an environment variable <em>NGX_HOME</em>.</p>
+<pre style="overflow-x: auto; border-style: none none none solid; border-color: #6DF; border-width: 10px; padding: 5px 10px">
+<span style="color: #005FAF;">NGX_HOME=/path/to/nginx_sources</span>
+</pre>
+
+<p>Here we are going to mimic the Nginx build process.</p>
+<pre style="overflow-x: auto; border-style: none none none solid; border-color: #6DF; border-width: 10px; padding: 5px 10px">
+<span style="color: #005FAF;">gcc -O2 -fPIC -c -o test_c_plugin.o -I $NGX_HOME/src/core -I $NGX_HOME/src/http -I $NGX_HOME/src/http/modules -I $NGX_HOME/src/event -I $NGX_HOME/src/evwnt/modules -I $NGX_HOME/src/os/unix -I $NGX_HOME/objs test_c_plugin.c</span>
+</pre>
+
+<p>Now we have an object file <em>test_c_plugin.o</em> to link with the Haskell code. Below is the Haskell code itself.</p>
+<p><strong>File test.hs</strong> (<em>additions</em>)</p>
+<pre style="overflow-x: auto; background: #FFE">
+<span style="color: #008787;">import</span>           <span style="color: #000000;">Data.Binary.Get</span>
+<span style="color: #008787;">import</span>           <span style="color: #000000;">Foreign.C.Types</span>
+<span style="color: #008787;">import</span>           <span style="color: #000000;">Foreign.Ptr</span>
+
+<span style="color: #808080;">-- ...</span>
+
+<span style="color: #005FAF;">foreign</span> <span style="color: #008700;">import</span> <span style="color: #005FAF;">ccall</span> <span style="color: #AF5F00;">&quot;test_c_plugin.h ngx_http_haskell_test_c_plugin&quot;</span>
+    <span style="color: #008700;">test_c_plugin</span><span style="color: #000000;"> ::</span> <span style="color: #005F87;">Ptr</span> <span style="color: #005F87;">()</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">IO</span> <span style="color: #005F87;">CIntPtr</span><span style="color: #870087;">;</span>
+
+<span style="color: #008700;">testCPlugin</span> <span style="color: #005FAF;">::</span> <span style="color: #005F87;">ByteString</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">IO</span> <span style="color: #005F87;">L</span><span style="color: #005FAF;">.</span><span style="color: #005F87;">ByteString</span>
+<span style="color: #008700;">testCPlugin</span> <span style="color: #000000;">v</span> <span style="color: #005FAF;">=</span> <span style="color: #005FAF;">do</span>
+    <span style="color: #005FAF;">let</span> <span style="color: #000000;">p</span> <span style="color: #005FAF;">=</span> <span style="color: #000000;">runGet</span> <span style="color: #000000;">getWordhost</span> <span style="color: #005FAF;">$</span> <span style="color: #005F87;">L</span><span style="color: #005FAF;">.</span><span style="color: #000000;">fromStrict</span> <span style="color: #000000;">v</span>
+    <span style="color: #000000;">res</span> <span style="color: #005FAF;">&lt;-</span> <span style="color: #000000;">test_c_plugin</span> <span style="color: #005FAF;">$</span> <span style="color: #000000;">wordPtrToPtr</span> <span style="color: #005FAF;">$</span> <span style="color: #008700;">fromIntegral</span> <span style="color: #000000;">p</span>
+    <span style="color: #008700;">return</span> <span style="color: #005FAF;">$</span> <span style="color: #005FAF;">if</span> <span style="color: #000000;">res</span> <span style="color: #005FAF;">==</span> <span style="color: #AF5F00;">0</span>
+                 <span style="color: #005FAF;">then</span> <span style="color: #AF5F00;">&quot;Success!&quot;</span>
+                 <span style="color: #005FAF;">else</span> <span style="color: #AF5F00;">&quot;Failure!&quot;</span>
+<span style="color: #008787;">ngxExportIOYY</span><span style="color: #000000;"> '</span><span style="color: #000000;">testCPlugin</span>
+</pre>
+
+<p>It will run function <em>ngx_http_haskell_test_c_plugin()</em> from the C plugin and return <em>Success!</em> or <em>Failure!</em> in cases when the C function returns <em>NGX_OK</em> or <em>NGX_ERROR</em> respectively. When compiled with <em>ghc</em>, this code now has to be linked with <em>test_c_plugin.o</em>.</p>
+<pre style="overflow-x: auto; border-style: none none none solid; border-color: #6DF; border-width: 10px; padding: 5px 10px">
+<span style="color: #005FAF;">ghc -O2 -dynamic -shared -fPIC -L$(ghc --print-libdir)/rts -lHSrts_thr-ghc$(ghc --numeric-version) test_c_plugin.o test.hs -o test.so</span>
+<span style="color: #808080;">[1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )</span>
+<span style="color: #808080;">Linking test.so ...</span>
+</pre>
+
+
+<p><strong>File test.conf</strong> (<em>additions</em>)</p>
+<pre style="overflow-x: auto; background: #FFE">
+        <span style="color: #005FAF;">location</span><span style="color: #000000;"> /cplugin {</span>
+<span style="color: #000000;">            haskell_run testCPlugin </span><span style="color: #008700;">$hs_test_c_plugin</span> <span style="color: #008700;">$_r_ptr</span><span style="color: #000000;">;</span>
+            <span style="color: #870087;">echo</span> <span style="color: #AF5F00;">&quot;Test C plugin returned </span><span style="color: #008787;">$hs_test_c_plugin</span><span style="color: #AF5F00;">&quot;</span><span style="color: #000000;">;</span>
+<span style="color: #000000;">        }</span>
+</pre>
+
+<p>Run curl tests.</p>
+<pre style="overflow-x: auto; border-style: none none none solid; border-color: #6DF; border-width: 10px; padding: 5px 10px">
+<span style="color: #005FAF;">curl -D- 'http://localhost:8010/cplugin'</span>
+<span style="color: #808080;">HTTP/1.1 200 OK</span>
+<span style="color: #808080;">Server: nginx/1.12.1</span>
+<span style="color: #808080;">Date: Thu, 08 Mar 2018 12:09:52 GMT</span>
+<span style="color: #808080;">Content-Type: application/octet-stream</span>
+<span style="color: #808080;">Transfer-Encoding: chunked</span>
+<span style="color: #808080;">Connection: keep-alive</span>
+<span style="color: #808080;">X-Powered-By: Nginx Haskell module</span>
+
+<span style="color: #808080;">Test C plugin returned Success!</span>
+</pre>
+
+<p>The header <em>X-Powered-By</em> is in the response!</p>
 <h1 id="efficiency-of-data-exchange-between-nginx-and-haskell-parts">Efficiency of data exchange between Nginx and Haskell parts</h1>
 <p>Haskell handlers may accept strings (<code>String</code> or <code>[String]</code>) and <em>strict</em> bytestrings (<code>ByteString</code>), and return strings, <em>lazy</em> bytestrings and booleans. Input C-strings are marshaled into a <em>String</em> with <em>peekCStringLen</em> which has linear complexity <span class="math inline"><em>O</em>(<em>n</em>)</span>, output <em>Strings</em> are marshaled into C-strings with <em>newCStringLen</em> which is also <span class="math inline"><em>O</em>(<em>n</em>)</span>. The new C-strings get freed upon the request termination in the Nginx part.</p>
 <p>The bytestring counterparts are much faster. Both input and output are <span class="math inline"><em>O</em>(1)</span>, using <em>unsafePackCStringLen</em> and a Haskell <em>stable pointer</em> to lazy bytestring buffers created inside Haskell handlers. If an output lazy bytestring has more than one chunk, a new single-chunked C-string will be created in variable and service handlers, but not in content handlers because the former use the chunks directly when constructing contents. Holding a stable pointer to a bytestring’s chunks on the Nginx part ensures that they won’t be garbage collected until the pointer gets freed. Stable pointers get freed upon the request termination for variable and content handlers, and before the next service iteration for service handlers.</p>
@@ -1004,6 +1115,11 @@
 <td style="text-align: left;"><code>http</code></td>
 <td style="text-align: left;">Declare shm zone for a temporary storage of service hooks data.</td>
 </tr>
+<tr class="even">
+<td style="text-align: left;"><code>haskell_request_variable_name</code></td>
+<td style="text-align: left;"><code>http</code></td>
+<td style="text-align: left;">Change the name of the request variable if default value <em>_r_ptr</em> is already used.</td>
+</tr>
 </tbody>
 </table>
 
@@ -1042,6 +1158,9 @@
 <span style="color: #008787;">import</span>           <span style="color: #000000;">Data.List</span>
 <span style="color: #008787;">import</span> <span style="color: #008787;">qualified</span> <span style="color: #000000;">Data.ByteString</span> <span style="color: #008787;">as</span> <span style="color: #000000;">B</span>
 <span style="color: #008787;">import</span>           <span style="color: #000000;">Data.Maybe</span>
+<span style="color: #008787;">import</span>           <span style="color: #000000;">Data.Binary.Get</span>
+<span style="color: #008787;">import</span>           <span style="color: #000000;">Foreign.C.Types</span>
+<span style="color: #008787;">import</span>           <span style="color: #000000;">Foreign.Ptr</span>
 
 <span style="color: #008700;">toUpper</span> <span style="color: #005FAF;">::</span> <span style="color: #005F87;">String</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">String</span>
 <span style="color: #008700;">toUpper</span> <span style="color: #005FAF;">=</span> <span style="color: #008700;">map</span> <span style="color: #005F87;">C</span><span style="color: #005FAF;">.</span><span style="color: #000000;">toUpper</span>
@@ -1142,7 +1261,7 @@
 
 <span style="color: #008700;">grepHttpbinLinks</span> <span style="color: #005FAF;">::</span> <span style="color: #005F87;">ByteString</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">IO</span> <span style="color: #005F87;">L</span><span style="color: #005FAF;">.</span><span style="color: #005F87;">ByteString</span>
 <span style="color: #008700;">grepHttpbinLinks</span> <span style="color: #AF5F00;">&quot;&quot;</span> <span style="color: #005FAF;">=</span> <span style="color: #008700;">return</span> <span style="color: #AF5F00;">&quot;&quot;</span>
-<span style="color: #008700;">grepHttpbinLinks</span> <span style="color: #000000;">v</span>  <span style="color: #005FAF;">=</span> <span style="color: #005FAF;">do</span>
+<span style="color: #008700;">grepHttpbinLinks</span> <span style="color: #000000;">v</span> <span style="color: #005FAF;">=</span> <span style="color: #005FAF;">do</span>
     <span style="color: #000000;">writeIORef</span> <span style="color: #000000;">gHttpbinLinks</span> <span style="color: #005FAF;">$</span> <span style="color: #000000;">grepLinks</span> <span style="color: #005FAF;">$</span> <span style="color: #005F87;">B</span><span style="color: #005FAF;">.</span><span style="color: #000000;">copy</span> <span style="color: #000000;">v</span>
     <span style="color: #008700;">return</span> <span style="color: #AF5F00;">&quot;&quot;</span>
 <span style="color: #008787;">ngxExportIOYY</span><span style="color: #000000;"> '</span><span style="color: #000000;">grepHttpbinLinks</span>
@@ -1160,7 +1279,7 @@
 <span style="color: #008787;">ngxExportServiceIOYY</span><span style="color: #000000;"> '</span><span style="color: #000000;">cbHttpbin</span>
 
 <span style="color: #008700;">grepHttpbinLinksHook</span> <span style="color: #005FAF;">::</span> <span style="color: #005F87;">ByteString</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">IO</span> <span style="color: #005F87;">L</span><span style="color: #005FAF;">.</span><span style="color: #005F87;">ByteString</span>
-<span style="color: #008700;">grepHttpbinLinksHook</span> <span style="color: #000000;">v</span>  <span style="color: #005FAF;">=</span> <span style="color: #005FAF;">do</span>
+<span style="color: #008700;">grepHttpbinLinksHook</span> <span style="color: #000000;">v</span> <span style="color: #005FAF;">=</span> <span style="color: #005FAF;">do</span>
     <span style="color: #005FAF;">let</span> <span style="color: #000000;">links</span> <span style="color: #005FAF;">=</span> <span style="color: #000000;">grepLinks</span> <span style="color: #000000;">v</span>
         <span style="color: #000000;">linksList</span> <span style="color: #005FAF;">=</span> <span style="color: #005FAF;">let</span> <span style="color: #000000;">ls</span> <span style="color: #005FAF;">=</span> <span style="color: #005F87;">B</span><span style="color: #005FAF;">.</span><span style="color: #000000;">intercalate</span> <span style="color: #AF5F00;">&quot; &quot;</span> <span style="color: #000000;">links</span>
                     <span style="color: #005FAF;">in</span> <span style="color: #005FAF;">if</span> <span style="color: #005F87;">B</span><span style="color: #005FAF;">.</span><span style="color: #008700;">null</span> <span style="color: #000000;">ls</span>
@@ -1169,6 +1288,18 @@
     <span style="color: #000000;">writeIORef</span> <span style="color: #000000;">gHttpbinLinks</span> <span style="color: #000000;">links</span>
     <span style="color: #008700;">return</span> <span style="color: #005FAF;">$</span> <span style="color: #005F87;">L</span><span style="color: #005FAF;">.</span><span style="color: #000000;">fromChunks</span> <span style="color: #870087;">[</span><span style="color: #AF5F00;">&quot;getUrlService set links &quot;</span><span style="color: #870087;">,</span> <span style="color: #000000;">linksList</span><span style="color: #870087;">]</span>
 <span style="color: #008787;">ngxExportServiceHook</span><span style="color: #000000;"> '</span><span style="color: #000000;">grepHttpbinLinksHook</span>
+
+<span style="color: #005FAF;">foreign</span> <span style="color: #008700;">import</span> <span style="color: #005FAF;">ccall</span> <span style="color: #AF5F00;">&quot;test_c_plugin.h ngx_http_haskell_test_c_plugin&quot;</span>
+    <span style="color: #008700;">test_c_plugin</span><span style="color: #000000;"> ::</span> <span style="color: #005F87;">Ptr</span> <span style="color: #005F87;">()</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">IO</span> <span style="color: #005F87;">CIntPtr</span><span style="color: #870087;">;</span>
+
+<span style="color: #008700;">testCPlugin</span> <span style="color: #005FAF;">::</span> <span style="color: #005F87;">ByteString</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">IO</span> <span style="color: #005F87;">L</span><span style="color: #005FAF;">.</span><span style="color: #005F87;">ByteString</span>
+<span style="color: #008700;">testCPlugin</span> <span style="color: #000000;">v</span> <span style="color: #005FAF;">=</span> <span style="color: #005FAF;">do</span>
+    <span style="color: #005FAF;">let</span> <span style="color: #000000;">p</span> <span style="color: #005FAF;">=</span> <span style="color: #000000;">runGet</span> <span style="color: #000000;">getWordhost</span> <span style="color: #005FAF;">$</span> <span style="color: #005F87;">L</span><span style="color: #005FAF;">.</span><span style="color: #000000;">fromStrict</span> <span style="color: #000000;">v</span>
+    <span style="color: #000000;">res</span> <span style="color: #005FAF;">&lt;-</span> <span style="color: #000000;">test_c_plugin</span> <span style="color: #005FAF;">$</span> <span style="color: #000000;">wordPtrToPtr</span> <span style="color: #005FAF;">$</span> <span style="color: #008700;">fromIntegral</span> <span style="color: #000000;">p</span>
+    <span style="color: #008700;">return</span> <span style="color: #005FAF;">$</span> <span style="color: #005FAF;">if</span> <span style="color: #000000;">res</span> <span style="color: #005FAF;">==</span> <span style="color: #AF5F00;">0</span>
+                 <span style="color: #005FAF;">then</span> <span style="color: #AF5F00;">&quot;Success!&quot;</span>
+                 <span style="color: #005FAF;">else</span> <span style="color: #AF5F00;">&quot;Failure!&quot;</span>
+<span style="color: #008787;">ngxExportIOYY</span><span style="color: #000000;"> '</span><span style="color: #000000;">testCPlugin</span>
 </pre>
 
 <!--\appendixpagenumbering[TEST.CONF]-->
@@ -1282,8 +1413,70 @@
 <span style="color: #808080;">        #location /counters {</span>
 <span style="color: #808080;">            #echo &quot;Httpbin service changes count: $cnt_httpbin&quot;;</span>
 <span style="color: #808080;">        #}</span>
+
+        <span style="color: #005FAF;">location</span><span style="color: #000000;"> /cplugin {</span>
+<span style="color: #000000;">            haskell_run testCPlugin </span><span style="color: #008700;">$hs_test_c_plugin</span> <span style="color: #008700;">$_r_ptr</span><span style="color: #000000;">;</span>
+            <span style="color: #870087;">echo</span> <span style="color: #AF5F00;">&quot;Test C plugin returned </span><span style="color: #008787;">$hs_test_c_plugin</span><span style="color: #AF5F00;">&quot;</span><span style="color: #000000;">;</span>
+<span style="color: #000000;">        }</span>
 <span style="color: #000000;">    }</span>
 <span style="color: #000000;">}</span>
+</pre>
+
+<!--\appendixpagenumbering[TEST_C_PLUGIN.H]-->
+<h2 id="file-test_c_plugin.h">File <em>test_c_plugin.h</em></h2>
+<pre style="overflow-x: auto; background: #FFE">
+<span style="color: #808080;">/*</span><span style="color: #808080;"> Compile:</span>
+<span style="color: #808080;"> *      NGX_HOME=/path/to/nginx_sources</span>
+<span style="color: #808080;"> *      gcc -fPIC -c -o test_c_plugin.o \</span>
+<span style="color: #808080;"> *          -I $NGX_HOME/src/core \</span>
+<span style="color: #808080;"> *          -I $NGX_HOME/src/http \</span>
+<span style="color: #808080;"> *          -I $NGX_HOME/src/http/modules \</span>
+<span style="color: #808080;"> *          -I $NGX_HOME/src/event \</span>
+<span style="color: #808080;"> *          -I $NGX_HOME/src/evwnt/modules \</span>
+<span style="color: #808080;"> *          -I $NGX_HOME/src/os/unix \</span>
+<span style="color: #808080;"> *          -I $NGX_HOME/objs test_c_plugin.c</span>
+ <span style="color: #808080;">*/</span>
+
+<span style="color: #008787;">#ifndef NGX_HTTP_HASKELL_TEST_C_PLUGIN_H</span>
+<span style="color: #008787;">#define NGX_HTTP_HASKELL_TEST_C_PLUGIN_H</span>
+
+<span style="color: #008787;">#include </span><span style="color: #AF5F00;">&lt;ngx_core.h&gt;</span>
+<span style="color: #008787;">#include </span><span style="color: #AF5F00;">&lt;ngx_http.h&gt;</span>
+
+<span style="color: #000000;">ngx_int_t </span><span style="color: #008700;">ngx_http_haskell_test_c_plugin</span><span style="color: #870087;">(</span><span style="color: #000000;">ngx_http_request_t </span><span style="color: #005FAF;">*</span><span style="color: #000000;">r</span><span style="color: #870087;">);</span>
+
+<span style="color: #008787;">#endif</span>
+</pre>
+
+<!--\appendixpagenumbering[TEST_C_PLUGIN.C]-->
+<h2 id="file-test_c_plugin.c">File <em>test_c_plugin.c</em></h2>
+<pre style="overflow-x: auto; background: #FFE">
+<span style="color: #008787;">#include </span><span style="color: #AF5F00;">&quot;test_c_plugin.h&quot;</span>
+
+<span style="color: #005F87;">static</span> <span style="color: #005F87;">const</span><span style="color: #000000;"> ngx_str_t haskell_module </span><span style="color: #005FAF;">=</span> <span style="color: #008700;">ngx_string</span><span style="color: #870087;">(</span><span style="color: #AF5F00;">&quot;Nginx Haskell module&quot;</span><span style="color: #870087;">);</span>
+
+<span style="color: #000000;">ngx_int_t</span>
+<span style="color: #008700;">ngx_http_haskell_test_c_plugin</span><span style="color: #870087;">(</span><span style="color: #000000;">ngx_http_request_t </span><span style="color: #005FAF;">*</span><span style="color: #000000;">r</span><span style="color: #870087;">)</span> <span style="color: #870087;">{</span>
+<span style="color: #000000;">    ngx_table_elt_t </span><span style="color: #005FAF;">*</span><span style="color: #000000;">x_powered_by</span><span style="color: #870087;">;</span>
+
+    <span style="color: #005FAF;">if</span> <span style="color: #870087;">(</span><span style="color: #000000;">r </span><span style="color: #005FAF;">==</span> <span style="color: #AF5F00;">NULL</span><span style="color: #870087;">)</span> <span style="color: #870087;">{</span>
+        <span style="color: #005FAF;">return</span><span style="color: #000000;"> NGX_ERROR</span><span style="color: #870087;">;</span>
+    <span style="color: #870087;">}</span>
+
+<span style="color: #000000;">    x_powered_by </span><span style="color: #005FAF;">=</span> <span style="color: #008700;">ngx_list_push</span><span style="color: #870087;">(</span><span style="color: #005FAF;">&amp;</span><span style="color: #000000;">r</span><span style="color: #005FAF;">-&gt;</span><span style="color: #000000;">headers_out</span><span style="color: #005FAF;">.</span><span style="color: #000000;">headers</span><span style="color: #870087;">);</span>
+
+    <span style="color: #005FAF;">if</span> <span style="color: #870087;">(</span><span style="color: #005FAF;">!</span><span style="color: #000000;">x_powered_by</span><span style="color: #870087;">)</span> <span style="color: #870087;">{</span>
+        <span style="color: #008700;">ngx_log_error</span><span style="color: #870087;">(</span><span style="color: #000000;">NGX_LOG_CRIT</span><span style="color: #005FAF;">,</span><span style="color: #000000;"> r</span><span style="color: #005FAF;">-&gt;</span><span style="color: #000000;">connection</span><span style="color: #005FAF;">-&gt;</span><span style="color: #008700;">log</span><span style="color: #005FAF;">,</span> <span style="color: #AF5F00;">0</span><span style="color: #005FAF;">,</span>
+                      <span style="color: #AF5F00;">&quot;Unable to allocate memory to set X-Powered-By header&quot;</span><span style="color: #870087;">);</span>
+        <span style="color: #005FAF;">return</span><span style="color: #000000;"> NGX_ERROR</span><span style="color: #870087;">;</span>
+    <span style="color: #870087;">}</span>
+
+<span style="color: #000000;">    x_powered_by</span><span style="color: #005FAF;">-&gt;</span><span style="color: #000000;">hash </span><span style="color: #005FAF;">=</span> <span style="color: #AF5F00;">1</span><span style="color: #870087;">;</span>
+    <span style="color: #008700;">ngx_str_set</span><span style="color: #870087;">(</span><span style="color: #005FAF;">&amp;</span><span style="color: #000000;">x_powered_by</span><span style="color: #005FAF;">-&gt;</span><span style="color: #000000;">key</span><span style="color: #005FAF;">,</span> <span style="color: #AF5F00;">&quot;X-Powered-By&quot;</span><span style="color: #870087;">);</span>
+<span style="color: #000000;">    x_powered_by</span><span style="color: #005FAF;">-&gt;</span><span style="color: #000000;">value </span><span style="color: #005FAF;">=</span><span style="color: #000000;"> haskell_module</span><span style="color: #870087;">;</span>
+
+    <span style="color: #005FAF;">return</span><span style="color: #000000;"> NGX_OK</span><span style="color: #870087;">;</span>
+<span style="color: #870087;">}</span>
 </pre>
 </body>
 </html>

@@ -1127,6 +1127,154 @@ ngxExportServiceHook 'grepHttpbinLinksHook
 For testing this, watch the Nginx error log and change the URL of the service
 with requests to location */httpbin/url* like in the previous example.
 
+# C plugins with low level access to the Nginx request object
+
+Serialized pointer to the Nginx *request object* is accessible via a special
+variable *\_r\_ptr*. Haskell handlers have no benefit from this because they do
+not know how the request object is built. However they may run C code that is
+compiled with this knowledge. The low level access to the Nginx request data
+allows for making things not available without this. As soon as a C plugin can
+do whatever a usual Nginx module can, using it from a Haskell handler must be
+very cautious. All synchronous and asynchronous Haskell handler can access the
+Nginx request object and pass it to a C plugin. Using a C plugin in asynchronous
+context has not been investigated, and is probably dangerous in many aspects.
+After all, an Nginx worker is a single-threaded process, and available Nginx
+tools were not designed for using in multi-threaded environment. As such, using
+C plugins in asynchronous Haskell handlers must be regarded as strictly
+experimental!
+
+## An example
+
+Let's write a plugin that will add an HTTP header to the response.
+
+**File test_c_plugin.h**
+
+``` {.c hl="vim"}
+#include <ngx_core.h>
+#include <ngx_http.h>
+
+#ifndef NGX_HTTP_HASKELL_TEST_C_PLUGIN_H
+#define NGX_HTTP_HASKELL_TEST_C_PLUGIN_H
+
+ngx_int_t ngx_http_haskell_test_c_plugin(ngx_http_request_t *r);
+
+#endif
+```
+
+**File test_c_plugin.c**
+
+``` {.c hl="vim"}
+#include "test_c_plugin.h"
+
+static const ngx_str_t haskell_module = ngx_string("Nginx Haskell module");
+
+ngx_int_t
+ngx_http_haskell_test_c_plugin(ngx_http_request_t *r) {
+    ngx_table_elt_t *x_powered_by;
+
+    if (r == NULL) {
+        return NGX_ERROR;
+    }
+
+    x_powered_by = ngx_list_push(&r->headers_out.headers);
+
+    if (!x_powered_by) {
+        ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
+                      "Unable to allocate memory to set X-Powered-By header");
+        return NGX_ERROR;
+    }
+
+    x_powered_by->hash = 1;
+    ngx_str_set(&x_powered_by->key, "X-Powered-By");
+    x_powered_by->value = haskell_module;
+
+    return NGX_OK;
+}
+```
+
+Notice that the request object *r* gets checked in function
+*ngx_http_haskell_test_c_plugin()* against *NULL* value. Normally in an Nginx C
+code this check is redundant, however in our plugin this is important because
+serialization of the request object may fail, and in this case the Nginx module
+will serialize a null pointer.
+
+Let's compile this. For this we need a directory where Nginx sources were
+compiled. Let's refer to it in an environment variable *NGX_HOME*.
+
+``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
+||| NGX_HOME=/path/to/nginx_sources
+```
+
+Here we are going to mimic the Nginx build process.
+
+``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
+||| gcc -O2 -fPIC -c -o test_c_plugin.o -I $NGX_HOME/src/core -I $NGX_HOME/src/http -I $NGX_HOME/src/http/modules -I $NGX_HOME/src/event -I $NGX_HOME/src/evwnt/modules -I $NGX_HOME/src/os/unix -I $NGX_HOME/objs test_c_plugin.c
+```
+
+Now we have an object file *test_c_plugin.o* to link with the Haskell code.
+Below is the Haskell code itself.
+
+**File test.hs** (*additions*)
+
+``` {.haskell hl="vim"}
+import           Data.Binary.Get
+import           Foreign.C.Types
+import           Foreign.Ptr
+
+-- ...
+
+foreign import ccall "test_c_plugin.h ngx_http_haskell_test_c_plugin"
+    test_c_plugin :: Ptr () -> IO CIntPtr;
+
+testCPlugin :: ByteString -> IO L.ByteString
+testCPlugin v = do
+    let p = runGet getWordhost $ L.fromStrict v
+    res <- test_c_plugin $ wordPtrToPtr $ fromIntegral p
+    return $ if res == 0
+                 then "Success!"
+                 else "Failure!"
+ngxExportIOYY 'testCPlugin
+```
+
+It will run function *ngx_http_haskell_test_c_plugin()* from the C plugin and
+return *Success!* or *Failure!* in cases when the C function returns *NGX_OK* or
+*NGX_ERROR* respectively. When compiled with *ghc*, this code now has to be
+linked with *test_c_plugin.o*.
+
+``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
+||| ghc -O2 -dynamic -shared -fPIC -L$(ghc --print-libdir)/rts -lHSrts_thr-ghc$(ghc --numeric-version) test_c_plugin.o test.hs -o test.so
+[1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )
+Linking test.so ...
+```
+
+\pagebreak
+
+**File test.conf** (*additions*)
+
+``` {.nginx hl="vim"}
+        location /cplugin {
+            haskell_run testCPlugin $hs_test_c_plugin $_r_ptr;
+            echo "Test C plugin returned $hs_test_c_plugin";
+        }
+```
+
+Run curl tests.
+
+``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
+||| curl -D- 'http://localhost:8010/cplugin'
+HTTP/1.1 200 OK
+Server: nginx/1.12.1
+Date: Thu, 08 Mar 2018 12:09:52 GMT
+Content-Type: application/octet-stream
+Transfer-Encoding: chunked
+Connection: keep-alive
+X-Powered-By: Nginx Haskell module
+
+Test C plugin returned Success!
+```
+
+The header *X-Powered-By* is in the response!
+
 # Efficiency of data exchange between Nginx and Haskell parts
 
 Haskell handlers may accept strings (`String` or `[String]`) and *strict*
@@ -1250,6 +1398,9 @@ Directive                                                                 Level 
 
 `haskell_service_hooks_zone`                                              `http`                Declare shm zone for a temporary storage of service hooks
                                                                                                 data.
+
+`haskell_request_variable_name`                                           `http`                Change the name of the request variable if default
+                                                                                                value *\_r\_ptr* is already used.
 ---------------------------------------------------------------------------------------------------------------------------------------------------------
 
 \newpage
@@ -1293,6 +1444,9 @@ import qualified Data.Array as A
 import           Data.List
 import qualified Data.ByteString as B
 import           Data.Maybe
+import           Data.Binary.Get
+import           Foreign.C.Types
+import           Foreign.Ptr
 
 toUpper :: String -> String
 toUpper = map C.toUpper
@@ -1420,6 +1574,18 @@ grepHttpbinLinksHook v = do
     writeIORef gHttpbinLinks links
     return $ L.fromChunks ["getUrlService set links ", linksList]
 ngxExportServiceHook 'grepHttpbinLinksHook
+
+foreign import ccall "test_c_plugin.h ngx_http_haskell_test_c_plugin"
+    test_c_plugin :: Ptr () -> IO CIntPtr;
+
+testCPlugin :: ByteString -> IO L.ByteString
+testCPlugin v = do
+    let p = runGet getWordhost $ L.fromStrict v
+    res <- test_c_plugin $ wordPtrToPtr $ fromIntegral p
+    return $ if res == 0
+                 then "Success!"
+                 else "Failure!"
+ngxExportIOYY 'testCPlugin
 ```
 
 <!--\appendixpagenumbering[TEST.CONF]-->
@@ -1535,7 +1701,73 @@ $arg_a `isInList` [$arg_b, $arg_c, $arg_d] = $hs_isInList
         #location /counters {
             #echo "Httpbin service changes count: $cnt_httpbin";
         #}
+
+        location /cplugin {
+            haskell_run testCPlugin $hs_test_c_plugin $_r_ptr;
+            echo "Test C plugin returned $hs_test_c_plugin";
+        }
     }
+}
+```
+
+<!--\appendixpagenumbering[TEST_C_PLUGIN.H]-->
+
+## File *test_c_plugin.h*
+
+``` {.c hl="vim"}
+/* Compile:
+ *      NGX_HOME=/path/to/nginx_sources
+ *      gcc -fPIC -c -o test_c_plugin.o \
+ *          -I $NGX_HOME/src/core \
+ *          -I $NGX_HOME/src/http \
+ *          -I $NGX_HOME/src/http/modules \
+ *          -I $NGX_HOME/src/event \
+ *          -I $NGX_HOME/src/evwnt/modules \
+ *          -I $NGX_HOME/src/os/unix \
+ *          -I $NGX_HOME/objs test_c_plugin.c
+ */
+
+#ifndef NGX_HTTP_HASKELL_TEST_C_PLUGIN_H
+#define NGX_HTTP_HASKELL_TEST_C_PLUGIN_H
+
+#include <ngx_core.h>
+#include <ngx_http.h>
+
+ngx_int_t ngx_http_haskell_test_c_plugin(ngx_http_request_t *r);
+
+#endif
+```
+
+<!--\appendixpagenumbering[TEST_C_PLUGIN.C]-->
+
+## File *test_c_plugin.c*
+
+``` {.c hl="vim"}
+#include "test_c_plugin.h"
+
+static const ngx_str_t haskell_module = ngx_string("Nginx Haskell module");
+
+ngx_int_t
+ngx_http_haskell_test_c_plugin(ngx_http_request_t *r) {
+    ngx_table_elt_t *x_powered_by;
+
+    if (r == NULL) {
+        return NGX_ERROR;
+    }
+
+    x_powered_by = ngx_list_push(&r->headers_out.headers);
+
+    if (!x_powered_by) {
+        ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
+                      "Unable to allocate memory to set X-Powered-By header");
+        return NGX_ERROR;
+    }
+
+    x_powered_by->hash = 1;
+    ngx_str_set(&x_powered_by->key, "X-Powered-By");
+    x_powered_by->value = haskell_module;
+
+    return NGX_OK;
 }
 ```
 

@@ -26,6 +26,7 @@ Table of contents
 - [Service variables in shared memory and integration with other nginx modules](#service-variables-in-shared-memory-and-integration-with-other-nginx-modules)
 - [Shared services and global states](#shared-services-and-global-states)
 - [Service hooks](#service-hooks)
+- [C plugins with low level access to the Nginx request object](#c-plugins-with-low-level-access-to-the-nginx-request-object)
 - [Reloading of haskell code and static content](#reloading-of-haskell-code-and-static-content)
 - [Wrapping haskell code organization](#wrapping-haskell-code-organization)
 - [Static linkage against basic haskell libraries](#static-linkage-against-basic-haskell-libraries)
@@ -1211,6 +1212,148 @@ via an event channel, there always exists a very short transient period between
 the moments when the service variable gets altered in shared memory and the
 global state gets updated in a worker, during which events related to client
 requests may occur.
+
+C plugins with low level access to the Nginx request object
+-----------------------------------------------------------
+
+Serialized pointer to the Nginx *request object* is accessible via a special
+variable *\_r\_ptr*. Haskell handlers have no benefit from this because they do
+not know how the request object is built. However they may run C code that is
+compiled with this knowledge. The low level access to the Nginx request data
+allows for making things not available without this. As soon as a C plugin can
+do whatever a usual Nginx module can, using it from a Haskell handler must be
+very cautious. All synchronous and asynchronous Haskell handler can access the
+Nginx request object and pass it to a C plugin. Using a C plugin in asynchronous
+context has not been investigated, and is probably dangerous in many aspects.
+After all, an Nginx worker is a single-threaded process, and available Nginx
+tools were not designed for using in multi-threaded environment. As such, using
+C plugins in asynchronous Haskell handlers must be regarded as strictly
+experimental!
+
+Let's write a plugin that will insert into the request HTTP headers a header
+*X-Powered-By*.
+
+C header file *test_c_plugin.h*.
+
+```c
+#include <ngx_core.h>
+#include <ngx_http.h>
+
+#ifndef NGX_HTTP_HASKELL_TEST_C_PLUGIN_H
+#define NGX_HTTP_HASKELL_TEST_C_PLUGIN_H
+
+ngx_int_t ngx_http_haskell_test_c_plugin(ngx_http_request_t *r);
+
+#endif
+```
+
+C source file *test_c_plugin.c*.
+
+```c
+#include "test_c_plugin.h"
+
+static const ngx_str_t haskell_module = ngx_string("Nginx Haskell module");
+
+ngx_int_t
+ngx_http_haskell_test_c_plugin(ngx_http_request_t *r) {
+    ngx_table_elt_t *x_powered_by;
+
+    if (r == NULL) {
+        return NGX_ERROR;
+    }
+
+    x_powered_by = ngx_list_push(&r->headers_out.headers);
+
+    if (!x_powered_by) {
+        ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
+                      "Unable to allocate memory to set X-Powered-By header");
+        return NGX_ERROR;
+    }
+
+    x_powered_by->hash = 1;
+    ngx_str_set(&x_powered_by->key, "X-Powered-By");
+    x_powered_by->value = haskell_module;
+
+    return NGX_OK;
+}
+```
+
+Notice that the request object *r* gets checked in function
+*ngx_http_haskell_test_c_plugin()* against *NULL* value. Normally in an Nginx C
+code this check is redundant, however in our plugin this is important because
+serialization of the request object may fail, and in this case the Nginx module
+will serialize a null pointer.
+
+Let's compile this. For this we need a directory where Nginx sources were
+compiled. Let's refer to it in an environment variable *NGX_HOME*.
+
+```ShellSession
+$ NGX_HOME=/path/to/nginx_sources
+```
+
+Here we are going to mimic the Nginx build process.
+
+```ShellSession
+$ gcc -O2 -fPIC -c -o test_c_plugin.o -I $NGX_HOME/src/core -I $NGX_HOME/src/http -I $NGX_HOME/src/http/modules -I $NGX_HOME/src/event -I $NGX_HOME/src/evwnt/modules -I $NGX_HOME/src/os/unix -I $NGX_HOME/objs test_c_plugin.c
+```
+
+Now we have an object file *test_c_plugin.o* to link with the Haskell code.
+Below is the Haskell handler (in file *test.hs*).
+
+```haskell
+import           Data.Binary.Get
+import           Foreign.C.Types
+import           Foreign.Ptr
+
+-- ...
+
+foreign import ccall "test_c_plugin.h ngx_http_haskell_test_c_plugin"
+    test_c_plugin :: Ptr () -> IO CIntPtr;
+
+testCPlugin :: ByteString -> IO L.ByteString
+testCPlugin v = do
+    let p = runGet getWordhost $ L.fromStrict v
+    res <- test_c_plugin $ wordPtrToPtr $ fromIntegral p
+    return $ if res == 0
+                 then "Success!"
+                 else "Failure!"
+ngxExportIOYY 'testCPlugin
+```
+
+It will run function *ngx_http_haskell_test_c_plugin()* from the C plugin and
+return *Success!* or *Failure!* in cases when the C function returns *NGX_OK* or
+*NGX_ERROR* respectively. When compiled with *ghc*, this code now has to be
+linked with *test_c_plugin.o*.
+
+```ShellSession
+$ ghc -O2 -dynamic -shared -fPIC -L$(ghc --print-libdir)/rts -lHSrts_thr-ghc$(ghc --numeric-version) test_c_plugin.o test.hs -o test.so
+[1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )
+Linking test.so ...
+```
+
+If we add to the nginx configuration file a new location,
+
+```nginx
+        location /cplugin {
+            haskell_run testCPlugin $hs_test_c_plugin $_r_ptr;
+            echo "Test C plugin returned $hs_test_c_plugin";
+        }
+```
+
+and run a curl test, then we'll get our header in the response.
+
+```ShellSession
+$ curl -D- 'http://localhost:8010/cplugin'
+HTTP/1.1 200 OK
+Server: nginx/1.12.1
+Date: Thu, 08 Mar 2018 12:09:52 GMT
+Content-Type: application/octet-stream
+Transfer-Encoding: chunked
+Connection: keep-alive
+X-Powered-By: Nginx Haskell module
+
+Test C plugin returned Success!
+```
 
 Reloading of haskell code and static content
 --------------------------------------------
