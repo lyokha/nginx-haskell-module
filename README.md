@@ -1310,20 +1310,23 @@ import           Foreign.Ptr
 foreign import ccall "test_c_plugin.h ngx_http_haskell_test_c_plugin"
     test_c_plugin :: Ptr () -> IO CIntPtr;
 
+toRequestPtr :: ByteString -> Ptr ()
+toRequestPtr = wordPtrToPtr . fromIntegral . runGet getWordhost . L.fromStrict
+
 testCPlugin :: ByteString -> IO L.ByteString
 testCPlugin v = do
-    let p = runGet getWordhost $ L.fromStrict v
-    res <- test_c_plugin $ wordPtrToPtr $ fromIntegral p
+    res <- test_c_plugin $ toRequestPtr v
     return $ if res == 0
                  then "Success!"
                  else "Failure!"
 ngxExportIOYY 'testCPlugin
 ```
 
-It will run function *ngx_http_haskell_test_c_plugin()* from the C plugin and
-return *Success!* or *Failure!* in cases when the C function returns *NGX_OK* or
-*NGX_ERROR* respectively. When compiled with *ghc*, this code now has to be
-linked with *test_c_plugin.o*.
+Handler *testCPlugin* runs function *ngx_http_haskell_test_c_plugin()* from the
+C plugin and returns *Success!* or *Failure!* in cases when the C function
+returns *NGX_OK* or *NGX_ERROR* respectively. When compiled with *ghc*, this
+code has to be linked with *test_c_plugin.o*.
+
 
 ```ShellSession
 $ ghc -O2 -dynamic -shared -fPIC -L$(ghc --print-libdir)/rts -lHSrts_thr-ghc$(ghc --numeric-version) test_c_plugin.o test.hs -o test.so

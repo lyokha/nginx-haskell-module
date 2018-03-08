@@ -162,10 +162,12 @@ ngxExportServiceHook 'grepHttpbinLinksHook
 foreign import ccall "test_c_plugin.h ngx_http_haskell_test_c_plugin"
     test_c_plugin :: Ptr () -> IO CIntPtr;
 
+toRequestPtr :: ByteString -> Ptr ()
+toRequestPtr = wordPtrToPtr . fromIntegral . runGet getWordhost . L.fromStrict
+
 testCPlugin :: ByteString -> IO L.ByteString
 testCPlugin v = do
-    let p = runGet getWordhost $ L.fromStrict v
-    res <- test_c_plugin $ wordPtrToPtr $ fromIntegral p
+    res <- test_c_plugin $ toRequestPtr v
     return $ if res == 0
                  then "Success!"
                  else "Failure!"
