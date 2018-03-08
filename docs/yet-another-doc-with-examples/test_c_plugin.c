@@ -4,7 +4,7 @@ static const ngx_str_t haskell_module = ngx_string("Nginx Haskell module");
 
 ngx_int_t
 ngx_http_haskell_test_c_plugin(ngx_http_request_t *r) {
-    ngx_table_elt_t *x_powered_by;
+    ngx_table_elt_t  *x_powered_by;
 
     if (r == NULL) {
         return NGX_ERROR;
