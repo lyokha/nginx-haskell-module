@@ -1941,6 +1941,13 @@ ngx_http_haskell_request_variable_name(ngx_conf_t *cf, ngx_command_t *cmd,
         return "is duplicate";
     }
 
+    if (mcf->code_loaded) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "directive haskell_request_variable_name must "
+                           "precede directive haskell");
+        return NGX_CONF_ERROR;
+    }
+
     if (value[1].len < 2 || value[1].data[0] != '$') {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "invalid variable name \"%V\"", &value[1]);
