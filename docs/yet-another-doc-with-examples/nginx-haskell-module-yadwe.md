@@ -91,7 +91,7 @@ a directory, from where we will load this.
 ||| ghc -O2 -dynamic -shared -fPIC -L$(ghc --print-libdir)/rts -lHSrts-ghc$(ghc --numeric-version) test.hs -o test.so
 [1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )
 Linking test.so ...
-||| cp -i test.so /var/lib/nginx/
+||| cp test.so /var/lib/nginx/
 ```
 
 **File test.conf**
@@ -297,7 +297,7 @@ This code must be linked with *threaded* Haskell RTS this time!
 ||| ghc -O2 -dynamic -shared -fPIC -L$(ghc --print-libdir)/rts -lHSrts_thr-ghc$(ghc --numeric-version) test.hs -o test.so
 [1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )
 Linking test.so ...
-||| cp -i test.so /var/lib/nginx/
+||| cp test.so /var/lib/nginx/
 ```
 
 Let's make location */timer*, where we will read how many seconds to wait in
@@ -445,7 +445,7 @@ therefore it's better now to compile this with option *-feager-blackholing*.
 ||| ghc -O2 -feager-blackholing -dynamic -shared -fPIC -L$(ghc --print-libdir)/rts -lHSrts_thr-ghc$(ghc --numeric-version) test.hs -o test.so
 [1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )
 Linking test.so ...
-||| cp -i test.so /var/lib/nginx/
+||| cp test.so /var/lib/nginx/
 ```
 
 **File test.conf** (*additions*)
@@ -1247,9 +1247,8 @@ code has to be linked with *test_c_plugin.o*.
 ||| ghc -O2 -dynamic -shared -fPIC -L$(ghc --print-libdir)/rts -lHSrts_thr-ghc$(ghc --numeric-version) test_c_plugin.o test.hs -o test.so
 [1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )
 Linking test.so ...
+||| cp test.so /var/lib/nginx/
 ```
-
-\pagebreak
 
 **File test.conf** (*additions*)
 
