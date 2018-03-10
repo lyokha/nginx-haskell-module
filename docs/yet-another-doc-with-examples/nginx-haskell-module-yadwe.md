@@ -1135,11 +1135,11 @@ not know how the request object is built. However they may run C code that is
 compiled with this knowledge. The low level access to the Nginx request data
 allows for making things not available without this. As soon as a C plugin can
 do whatever a usual Nginx module can, using it from a Haskell handler must be
-very cautious. All synchronous and asynchronous Haskell handler can access the
+very cautious. All synchronous and asynchronous Haskell handlers can access the
 Nginx request object and pass it to a C plugin. Using a C plugin in asynchronous
-context has not been investigated, and is probably dangerous in many aspects.
+context has not been investigated and is probably dangerous in many aspects.
 After all, an Nginx worker is a single-threaded process, and available Nginx
-tools were not designed for using in multi-threaded environment. As such, using
+tools were not designed for using in multi-threaded environments. As such, using
 C plugins in asynchronous Haskell handlers must be regarded as strictly
 experimental!
 
@@ -1198,8 +1198,8 @@ code this check is redundant, however in our plugin this is important because
 serialization of the request object may fail, and in this case the Nginx module
 will serialize a null pointer.
 
-Let's compile this. For this we need a directory where Nginx sources were
-compiled. Let's refer to it in an environment variable *NGX_HOME*.
+Let's compile the C code. For this we need a directory where Nginx sources were
+sometime compiled. Let's refer to it in an environment variable *NGX_HOME*.
 
 ``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
 ||| NGX_HOME=/path/to/nginx_sources

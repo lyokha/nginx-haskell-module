@@ -867,7 +867,7 @@
 
 <p>For testing this, watch the Nginx error log and change the URL of the service with requests to location <em>/httpbin/url</em> like in the previous example.</p>
 <h1 id="c-plugins-with-low-level-access-to-the-nginx-request-object">C plugins with low level access to the Nginx request object</h1>
-<p>Serialized pointer to the Nginx <em>request object</em> is accessible via a special variable <em>_r_ptr</em>. Haskell handlers have no benefit from this because they do not know how the request object is built. However they may run C code that is compiled with this knowledge. The low level access to the Nginx request data allows for making things not available without this. As soon as a C plugin can do whatever a usual Nginx module can, using it from a Haskell handler must be very cautious. All synchronous and asynchronous Haskell handler can access the Nginx request object and pass it to a C plugin. Using a C plugin in asynchronous context has not been investigated, and is probably dangerous in many aspects. After all, an Nginx worker is a single-threaded process, and available Nginx tools were not designed for using in multi-threaded environment. As such, using C plugins in asynchronous Haskell handlers must be regarded as strictly experimental!</p>
+<p>Serialized pointer to the Nginx <em>request object</em> is accessible via a special variable <em>_r_ptr</em>. Haskell handlers have no benefit from this because they do not know how the request object is built. However they may run C code that is compiled with this knowledge. The low level access to the Nginx request data allows for making things not available without this. As soon as a C plugin can do whatever a usual Nginx module can, using it from a Haskell handler must be very cautious. All synchronous and asynchronous Haskell handlers can access the Nginx request object and pass it to a C plugin. Using a C plugin in asynchronous context has not been investigated and is probably dangerous in many aspects. After all, an Nginx worker is a single-threaded process, and available Nginx tools were not designed for using in multi-threaded environments. As such, using C plugins in asynchronous Haskell handlers must be regarded as strictly experimental!</p>
 <h2 id="an-example-8">An example</h2>
 <p>Let’s write a plugin that will add an HTTP header to the response.</p>
 <p><strong>File test_c_plugin.h</strong></p>
@@ -914,7 +914,7 @@
 </pre>
 
 <p>Notice that the request object <em>r</em> gets checked in function <em>ngx_http_haskell_test_c_plugin()</em> against <em>NULL</em> value. Normally in an Nginx C code this check is redundant, however in our plugin this is important because serialization of the request object may fail, and in this case the Nginx module will serialize a null pointer.</p>
-<p>Let’s compile this. For this we need a directory where Nginx sources were compiled. Let’s refer to it in an environment variable <em>NGX_HOME</em>.</p>
+<p>Let’s compile the C code. For this we need a directory where Nginx sources were sometime compiled. Let’s refer to it in an environment variable <em>NGX_HOME</em>.</p>
 <pre style="overflow-x: auto; border-style: none none none solid; border-color: #6DF; border-width: 10px; padding: 5px 10px">
 <span style="color: #005FAF;">NGX_HOME=/path/to/nginx_sources</span>
 </pre>
