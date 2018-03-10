@@ -1236,11 +1236,11 @@ Let's write a plugin that will insert into the request HTTP headers a header
 C header file *test_c_plugin.h*.
 
 ```c
-#include <ngx_core.h>
-#include <ngx_http.h>
-
 #ifndef NGX_HTTP_HASKELL_TEST_C_PLUGIN_H
 #define NGX_HTTP_HASKELL_TEST_C_PLUGIN_H
+
+#include <ngx_core.h>
+#include <ngx_http.h>
 
 ngx_int_t ngx_http_haskell_test_c_plugin(ngx_http_request_t *r);
 
@@ -1255,7 +1255,8 @@ C source file *test_c_plugin.c*.
 static const ngx_str_t haskell_module = ngx_string("Nginx Haskell module");
 
 ngx_int_t
-ngx_http_haskell_test_c_plugin(ngx_http_request_t *r) {
+ngx_http_haskell_test_c_plugin(ngx_http_request_t *r)
+{
     ngx_table_elt_t  *x_powered_by;
 
     if (r == NULL) {

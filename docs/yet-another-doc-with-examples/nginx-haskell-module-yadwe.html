@@ -872,11 +872,11 @@
 <p>Let’s write a plugin that will add an HTTP header to the response.</p>
 <p><strong>File test_c_plugin.h</strong></p>
 <pre style="overflow-x: auto; background: #FFE">
-<span style="color: #008787;">#include </span><span style="color: #AF5F00;">&lt;ngx_core.h&gt;</span>
-<span style="color: #008787;">#include </span><span style="color: #AF5F00;">&lt;ngx_http.h&gt;</span>
-
 <span style="color: #008787;">#ifndef NGX_HTTP_HASKELL_TEST_C_PLUGIN_H</span>
 <span style="color: #008787;">#define NGX_HTTP_HASKELL_TEST_C_PLUGIN_H</span>
+
+<span style="color: #008787;">#include </span><span style="color: #AF5F00;">&lt;ngx_core.h&gt;</span>
+<span style="color: #008787;">#include </span><span style="color: #AF5F00;">&lt;ngx_http.h&gt;</span>
 
 <span style="color: #000000;">ngx_int_t </span><span style="color: #008700;">ngx_http_haskell_test_c_plugin</span><span style="color: #870087;">(</span><span style="color: #000000;">ngx_http_request_t </span><span style="color: #005FAF;">*</span><span style="color: #000000;">r</span><span style="color: #870087;">);</span>
 
@@ -890,7 +890,8 @@
 <span style="color: #005F87;">static</span> <span style="color: #005F87;">const</span><span style="color: #000000;"> ngx_str_t haskell_module </span><span style="color: #005FAF;">=</span> <span style="color: #008700;">ngx_string</span><span style="color: #870087;">(</span><span style="color: #AF5F00;">&quot;Nginx Haskell module&quot;</span><span style="color: #870087;">);</span>
 
 <span style="color: #000000;">ngx_int_t</span>
-<span style="color: #008700;">ngx_http_haskell_test_c_plugin</span><span style="color: #870087;">(</span><span style="color: #000000;">ngx_http_request_t </span><span style="color: #005FAF;">*</span><span style="color: #000000;">r</span><span style="color: #870087;">)</span> <span style="color: #870087;">{</span>
+<span style="color: #008700;">ngx_http_haskell_test_c_plugin</span><span style="color: #870087;">(</span><span style="color: #000000;">ngx_http_request_t </span><span style="color: #005FAF;">*</span><span style="color: #000000;">r</span><span style="color: #870087;">)</span>
+<span style="color: #870087;">{</span>
 <span style="color: #000000;">    ngx_table_elt_t  </span><span style="color: #005FAF;">*</span><span style="color: #000000;">x_powered_by</span><span style="color: #870087;">;</span>
 
     <span style="color: #005FAF;">if</span> <span style="color: #870087;">(</span><span style="color: #000000;">r </span><span style="color: #005FAF;">==</span> <span style="color: #AF5F00;">NULL</span><span style="color: #870087;">)</span> <span style="color: #870087;">{</span>
@@ -1460,7 +1461,8 @@
 <span style="color: #005F87;">static</span> <span style="color: #005F87;">const</span><span style="color: #000000;"> ngx_str_t haskell_module </span><span style="color: #005FAF;">=</span> <span style="color: #008700;">ngx_string</span><span style="color: #870087;">(</span><span style="color: #AF5F00;">&quot;Nginx Haskell module&quot;</span><span style="color: #870087;">);</span>
 
 <span style="color: #000000;">ngx_int_t</span>
-<span style="color: #008700;">ngx_http_haskell_test_c_plugin</span><span style="color: #870087;">(</span><span style="color: #000000;">ngx_http_request_t </span><span style="color: #005FAF;">*</span><span style="color: #000000;">r</span><span style="color: #870087;">)</span> <span style="color: #870087;">{</span>
+<span style="color: #008700;">ngx_http_haskell_test_c_plugin</span><span style="color: #870087;">(</span><span style="color: #000000;">ngx_http_request_t </span><span style="color: #005FAF;">*</span><span style="color: #000000;">r</span><span style="color: #870087;">)</span>
+<span style="color: #870087;">{</span>
 <span style="color: #000000;">    ngx_table_elt_t  </span><span style="color: #005FAF;">*</span><span style="color: #000000;">x_powered_by</span><span style="color: #870087;">;</span>
 
     <span style="color: #005FAF;">if</span> <span style="color: #870087;">(</span><span style="color: #000000;">r </span><span style="color: #005FAF;">==</span> <span style="color: #AF5F00;">NULL</span><span style="color: #870087;">)</span> <span style="color: #870087;">{</span>
