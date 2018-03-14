@@ -1082,19 +1082,24 @@ service hooks. Update hooks have a number of advantages over update variables.
 3. Nginx don't need to access shared memory on every single request for checking
    if the service data has been altered.
 
-There is a subtle difference with update variables. As soon as with update hooks
-new service variable data is propagated to worker processes asynchronously via
-an event channel, there always exists a very short transient period between the
-moments when the service variable gets altered in shared memory and the global
-state gets updated in a worker, during which events related to client requests
-may occur.
+There is a subtle difference with update variables though. As soon as with
+update hooks new service variable data is propagated to worker processes
+asynchronously via an event channel, there always exists a very short transient
+period between the moments when the service variable gets altered in shared
+memory and the global state gets updated in a worker, during which events
+related to client requests may occur.
+
+Service update hooks can also be used to replace service *update callbacks*.
+Indeed, being run *synchronously* from an event handler, a service hook could
+safely call a C function which would acquire related to Nginx context from the
+global Nginx variable *ngx_cycle* for doing a variety of low level actions.
 
 An update hook is exported with exporter *ngxExportServiceHook*, and declared
 using directive *haskell_service_update_hook* on the *http* configuration level.
 
 ### An example
 
-Let's reimplement the example with update of service links.
+Let's reimplement the example with update of service links using a service hook.
 
 **File test.hs** (*additions*)
 
