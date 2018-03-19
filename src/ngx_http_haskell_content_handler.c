@@ -353,13 +353,14 @@ ngx_http_haskell_async_content_handler(ngx_http_request_t *r)
 {
     ngx_int_t                                 rc;
 
+    /* start the async task */
     rc = ngx_http_haskell_run_async_content_handler(r);
     if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
         return rc;
     }
 
     /* postpone the response until the async task finishes and finalizes
-     * the request */
+     * the request with ngx_http_haskell_content_handler() */
     r->main->count++;
 
     return NGX_DONE;
