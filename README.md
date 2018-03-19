@@ -768,9 +768,9 @@ They are declared with directives *haskell_async_content* and
 *haskell_async_content_on_request_body* respectively. The type of the first
 variant corresponds to that of the normal content handler, except it runs in the
 *IO Monad*, the second variant accepts additionally request body chunks in its
-first argument. The task runs in a late *access phase*, and the lazy bytestring
-from the *3tuple* &mdash; the contents &mdash; gets used in the content handler
-as is, with all of its originally computed chunks.
+first argument. The task starts from the content handler asynchronously, and the
+lazy bytestring from the *3tuple* &mdash; the contents &mdash; gets used in the
+task as is, with all of its originally computed chunks.
 
 The *echo*-example with an async content handler will look like the following.
 

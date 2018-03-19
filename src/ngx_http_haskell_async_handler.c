@@ -18,16 +18,18 @@
 
 #include "ngx_http_haskell_module.h"
 #include "ngx_http_haskell_async_handler.h"
+#include "ngx_http_haskell_content_handler.h"
 #include "ngx_http_haskell_util.h"
 
 
 static ngx_int_t ngx_http_haskell_create_async_task(ngx_http_request_t *r,
-    ngx_fd_t fd[2], ngx_uint_t *complete);
+    ngx_fd_t fd[2], ngx_event_handler_pt handler, ngx_uint_t *complete);
 static void ngx_http_haskell_delete_async_task(void *data);
 static void ngx_http_haskell_post_handler(ngx_http_request_t *r);
 static ngx_int_t ngx_http_haskell_read_request_body(ngx_http_request_t *r,
     ngx_http_haskell_loc_conf_t *lcf, ngx_http_haskell_ctx_t *ctx);
 static void ngx_http_haskell_async_event(ngx_event_t *ev);
+static void ngx_http_haskell_async_content_handler_event(ngx_event_t *ev);
 static void ngx_http_haskell_async_content_handler_cleanup(void *data);
 
 static ngx_event_t  dummy_write_event;
@@ -171,7 +173,9 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
             continue;
         }
 
-        if (ngx_http_haskell_create_async_task(r, fd, &async_data->complete)
+        if (ngx_http_haskell_create_async_task(r, fd,
+                                               ngx_http_haskell_async_event,
+                                               &async_data->complete)
             != NGX_OK)
         {
             async_data->complete = 1;
@@ -228,7 +232,7 @@ decline_phase_handler:
 
 
 ngx_int_t
-ngx_http_haskell_access_phase_handler(ngx_http_request_t *r)
+ngx_http_haskell_run_async_content_handler(ngx_http_request_t *r)
 {
     ngx_http_haskell_main_conf_t             *mcf;
     ngx_http_haskell_loc_conf_t              *lcf;
@@ -241,12 +245,16 @@ ngx_http_haskell_access_phase_handler(ngx_http_request_t *r)
     ngx_http_haskell_content_handler_data_t  *clnd = NULL;
     ngx_uint_t                                rb;
     HsStablePtr                               res;
+    ngx_int_t                                 rc = NGX_OK;
 
     mcf = ngx_http_get_module_main_conf(r, ngx_http_haskell_module);
     lcf = ngx_http_get_module_loc_conf(r, ngx_http_haskell_module);
 
     if (lcf->content_handler == NULL) {
-        return NGX_DECLINED;
+        ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
+                      "impossible branch while running "
+                      "haskell async content handler");
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
     handlers = mcf->handlers.elts;
@@ -257,7 +265,10 @@ ngx_http_haskell_access_phase_handler(ngx_http_request_t *r)
         != ngx_http_haskell_handler_type_ach
         && !rb)
     {
-        return NGX_DECLINED;
+        ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
+                      "impossible branch while running "
+                      "haskell async content handler");
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_haskell_module);
@@ -266,8 +277,8 @@ ngx_http_haskell_access_phase_handler(ngx_http_request_t *r)
         if (ctx == NULL) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                           "failed to create an async task for content handler, "
-                          "declining phase handler");
-            return NGX_DECLINED;
+                          "declining async content handler");
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
         ngx_http_set_ctx(r, ctx, ngx_http_haskell_module);
     }
@@ -276,8 +287,14 @@ ngx_http_haskell_access_phase_handler(ngx_http_request_t *r)
         return NGX_DONE;
     }
 
-    if (rb && ngx_http_haskell_read_request_body(r, lcf, ctx) == NGX_AGAIN) {
-        return NGX_DONE;
+    if (rb) {
+        rc = ngx_http_haskell_read_request_body(r, lcf, ctx);
+        if (rc == NGX_AGAIN) {
+            return NGX_DONE;
+        }
+        if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
+            return rc;
+        }
     }
 
     clnd = ctx->content_handler_data;
@@ -288,13 +305,17 @@ ngx_http_haskell_access_phase_handler(ngx_http_request_t *r)
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                           "failed to create an async task for content handler, "
                           "declining phase handler");
-            return NGX_DECLINED;
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
         ctx->content_handler_data = clnd;
     }
 
     if (clnd->complete) {
-        return NGX_DECLINED;
+        ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
+                      "impossible branch while running "
+                      "haskell async content handler: "
+                      "async task is already complete");
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
     args = lcf->content_handler->args;
@@ -304,12 +325,16 @@ ngx_http_haskell_access_phase_handler(ngx_http_request_t *r)
                       "failed to compile complex value for future "
                       "content handler result, skipping IO task");
         clnd->complete = 1;
-        return NGX_DECLINED;
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    if (ngx_http_haskell_create_async_task(r, fd, &clnd->complete) != NGX_OK) {
+    if (ngx_http_haskell_create_async_task(r, fd,
+                                ngx_http_haskell_async_content_handler_event,
+                                &clnd->complete)
+        != NGX_OK)
+    {
         clnd->complete = 1;
-        return NGX_DECLINED;
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
     cln = ngx_pool_cleanup_add(r->pool, 0);
@@ -318,7 +343,7 @@ ngx_http_haskell_access_phase_handler(ngx_http_request_t *r)
                       "failed to register cleanup handler for future "
                       "content handler result, skipping IO task");
         clnd->complete = 1;
-        return NGX_DECLINED;
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
     clnd->yy_cleanup_data.bufs = ngx_pnalloc(r->pool, sizeof(ngx_str_t));
@@ -327,7 +352,7 @@ ngx_http_haskell_access_phase_handler(ngx_http_request_t *r)
                       "failed to allocate initial buffer for future "
                       "content handler result, skipping IO task");
         clnd->complete = 1;
-        return NGX_DECLINED;
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
     clnd->yy_cleanup_data.n_bufs = 0;
     clnd->yy_cleanup_data.hs_free_stable_ptr = mcf->hs_free_stable_ptr;
@@ -367,6 +392,7 @@ ngx_http_haskell_access_phase_handler(ngx_http_request_t *r)
 
 static ngx_int_t
 ngx_http_haskell_create_async_task(ngx_http_request_t *r, ngx_fd_t fd[2],
+                                   ngx_event_handler_pt handler,
                                    ngx_uint_t *complete)
 {
     ngx_http_haskell_async_event_t    *hev;
@@ -391,7 +417,7 @@ ngx_http_haskell_create_async_task(ngx_http_request_t *r, ngx_fd_t fd[2],
     }
 
     event->data = hev;
-    event->handler = ngx_http_haskell_async_event;
+    event->handler = handler;
     event->log = r->connection->log;
 
     hev->s.fd = fd[0];
@@ -567,12 +593,21 @@ ngx_http_haskell_async_event(ngx_event_t *ev)
     ngx_http_haskell_async_event_t    *hev = ev->data;
 
     *hev->complete = 1;
-
     ngx_http_haskell_delete_async_task(hev);
-
     *hev->complete = 3;
-
     ngx_http_core_run_phases(hev->r);
+}
+
+
+static void
+ngx_http_haskell_async_content_handler_event(ngx_event_t *ev)
+{
+    ngx_http_haskell_async_event_t    *hev = ev->data;
+
+    *hev->complete = 1;
+    ngx_http_haskell_delete_async_task(hev);
+    *hev->complete = 3;
+    ngx_http_finalize_request(hev->r, ngx_http_haskell_content_handler(hev->r));
 }
 
 

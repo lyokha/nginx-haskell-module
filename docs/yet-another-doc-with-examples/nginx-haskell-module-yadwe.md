@@ -362,8 +362,8 @@ location: handler *getUrl* will run before redirection, but variable
 *hs_async_httpbin* will never be used because we'll get out from the current
 location.
 
-The asynchronous task runs in a late *access phase*, and the lazy bytestring ---
-the contents --- gets used in the content handler as is, with all of its
+The task starts from the content handler asynchronously, and the lazy
+bytestring --- the contents --- gets used in the task as is, with all of its
 originally computed chunks.
 
 ## Examples (including online image converter)

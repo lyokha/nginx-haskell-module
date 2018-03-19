@@ -257,9 +257,6 @@ ngx_http_haskell_init(ngx_conf_t *cf)
     }
 
     if (!mcf->has_async_tasks && mcf->var_nocacheable.nelts == 0) {
-        if (mcf->has_async_handlers) {
-            goto access_phase;
-        }
         return NGX_OK;
     }
 
@@ -277,26 +274,6 @@ ngx_http_haskell_init(ngx_conf_t *cf)
 
     *++h = ngx_http_haskell_rewrite_phase_handler;
     hs_elts[0] = ngx_http_haskell_rewrite_phase_handler;
-
-    if (!mcf->has_async_handlers) {
-        return NGX_OK;
-    }
-
-access_phase:
-
-    hs = &cmcf->phases[NGX_HTTP_ACCESS_PHASE].handlers;
-
-    h = ngx_array_push(hs);
-    if (h == NULL) {
-        return NGX_ERROR;
-    }
-
-    hs_elts = hs->elts;
-    for (i = hs->nelts - 1 ; i > 0; i--) {
-        hs_elts[i] = hs_elts[i - 1];
-    }
-
-    hs_elts[0] = ngx_http_haskell_access_phase_handler;
 
     return NGX_OK;
 }
@@ -1554,7 +1531,8 @@ ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
     clcf->handler = service_hook ? ngx_http_haskell_service_hook :
-            ngx_http_haskell_content_handler;
+            (async ? ngx_http_haskell_async_content_handler :
+             ngx_http_haskell_content_handler);
 
     return NGX_CONF_OK;
 }

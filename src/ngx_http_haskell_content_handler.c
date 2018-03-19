@@ -18,6 +18,7 @@
 
 #include "ngx_http_haskell_module.h"
 #include "ngx_http_haskell_content_handler.h"
+#include "ngx_http_haskell_async_handler.h"
 #include "ngx_http_haskell_service.h"
 #include "ngx_http_haskell_util.h"
 
@@ -344,6 +345,24 @@ cleanup:
     }
 
     return NGX_HTTP_INTERNAL_SERVER_ERROR;
+}
+
+
+ngx_int_t
+ngx_http_haskell_async_content_handler(ngx_http_request_t *r)
+{
+    ngx_int_t                                 rc;
+
+    rc = ngx_http_haskell_run_async_content_handler(r);
+    if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
+        return rc;
+    }
+
+    /* postpone the response until the async task finishes and finalizes
+     * the request */
+    r->main->count++;
+
+    return NGX_DONE;
 }
 
 
