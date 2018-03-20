@@ -376,6 +376,10 @@ ngx_http_haskell_service_hook(ngx_http_request_t *r)
     ngx_str_t                                 arg = ngx_null_string;
     ngx_http_haskell_service_hook_t          *service_hooks;
 
+    if (ngx_http_discard_request_body(r) != NGX_OK) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
     lcf = ngx_http_get_module_loc_conf(r, ngx_http_haskell_module);
     mcf = ngx_http_get_module_main_conf(r, ngx_http_haskell_module);
 

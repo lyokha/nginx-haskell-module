@@ -568,19 +568,25 @@ asyncIOCommon a (I fd) efd p pl pr spd =
                         then writeFlag8b
                         else writeFlag1b >> closeChannel
     ) >>= newStablePtr
-    where writeBufN n s = void $
+    where writeBufN n s =
               iterateUntilM (>= n)
               (\w -> (w +) <$>
                   fdWriteBuf fd (plusPtr s $ fromIntegral w) (n - w)
                   `catchIOError`
                   (\e -> return $ if isEINTR e
                                       then 0
-                                      else n
+                                      else n + 1
                   )
-              ) 0
+              ) 0 >>= \w -> when (w > n) cleanupOnWriteError
           writeFlag1b = B.unsafeUseAsCString asyncIOFlag1b $ writeBufN 1
           writeFlag8b = B.unsafeUseAsCString asyncIOFlag8b $ writeBufN 8
           closeChannel = closeFd fd `catchIOError` const (return ())
+          -- FIXME: cleanupOnWriteError should free contents of p, spd,
+          -- and spct. However leaving this not implemented seems to be safe
+          -- because Nginx won't close the event channel or delete the request
+          -- object (for request-driven handlers) regardless of the Haskell
+          -- handler's duration.
+          cleanupOnWriteError = return ()
 
 asyncIOYY :: IOYY -> CString -> CInt ->
     CInt -> CInt -> Ptr CUInt -> CUInt -> CUInt ->
