@@ -582,7 +582,7 @@ asyncIOCommon a (I fd) efd p pl pr spd =
           writeFlag8b = B.unsafeUseAsCString asyncIOFlag8b $ writeBufN 8
           closeChannel = closeFd fd `catchIOError` const (return ())
           -- FIXME: cleanupOnWriteError should free contents of p, spd,
-          -- and spct. However leaving this not implemented seems to be safe
+          -- and spct. However, leaving this not implemented seems to be safe
           -- because Nginx won't close the event channel or delete the request
           -- object (for request-driven handlers) regardless of the Haskell
           -- handler's duration.
