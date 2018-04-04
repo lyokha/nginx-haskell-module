@@ -936,7 +936,7 @@
 <span style="color: #808080;">-- ...</span>
 
 <span style="color: #005FAF;">foreign</span> <span style="color: #008700;">import</span> <span style="color: #005FAF;">ccall</span> <span style="color: #AF5F00;">&quot;test_c_plugin.h ngx_http_haskell_test_c_plugin&quot;</span>
-    <span style="color: #008700;">test_c_plugin</span><span style="color: #000000;"> ::</span> <span style="color: #005F87;">Ptr</span> <span style="color: #005F87;">()</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">IO</span> <span style="color: #005F87;">CIntPtr</span><span style="color: #870087;">;</span>
+    <span style="color: #008700;">test_c_plugin</span><span style="color: #000000;"> ::</span> <span style="color: #005F87;">Ptr</span> <span style="color: #005F87;">()</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">IO</span> <span style="color: #005F87;">CIntPtr</span>
 
 <span style="color: #008700;">toRequestPtr</span> <span style="color: #005FAF;">::</span> <span style="color: #005F87;">ByteString</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">Ptr</span> <span style="color: #005F87;">()</span>
 <span style="color: #008700;">toRequestPtr</span> <span style="color: #005FAF;">=</span> <span style="color: #000000;">wordPtrToPtr</span> <span style="color: #005FAF;">.</span> <span style="color: #008700;">fromIntegral</span> <span style="color: #005FAF;">.</span> <span style="color: #000000;">runGet</span> <span style="color: #000000;">getWordhost</span> <span style="color: #005FAF;">.</span> <span style="color: #005F87;">L</span><span style="color: #005FAF;">.</span><span style="color: #000000;">fromStrict</span>
@@ -1294,7 +1294,7 @@
 <span style="color: #008787;">ngxExportServiceHook</span><span style="color: #000000;"> '</span><span style="color: #000000;">grepHttpbinLinksHook</span>
 
 <span style="color: #005FAF;">foreign</span> <span style="color: #008700;">import</span> <span style="color: #005FAF;">ccall</span> <span style="color: #AF5F00;">&quot;test_c_plugin.h ngx_http_haskell_test_c_plugin&quot;</span>
-    <span style="color: #008700;">test_c_plugin</span><span style="color: #000000;"> ::</span> <span style="color: #005F87;">Ptr</span> <span style="color: #005F87;">()</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">IO</span> <span style="color: #005F87;">CIntPtr</span><span style="color: #870087;">;</span>
+    <span style="color: #008700;">test_c_plugin</span><span style="color: #000000;"> ::</span> <span style="color: #005F87;">Ptr</span> <span style="color: #005F87;">()</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">IO</span> <span style="color: #005F87;">CIntPtr</span>
 
 <span style="color: #008700;">toRequestPtr</span> <span style="color: #005FAF;">::</span> <span style="color: #005F87;">ByteString</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">Ptr</span> <span style="color: #005F87;">()</span>
 <span style="color: #008700;">toRequestPtr</span> <span style="color: #005FAF;">=</span> <span style="color: #000000;">wordPtrToPtr</span> <span style="color: #005FAF;">.</span> <span style="color: #008700;">fromIntegral</span> <span style="color: #005FAF;">.</span> <span style="color: #000000;">runGet</span> <span style="color: #000000;">getWordhost</span> <span style="color: #005FAF;">.</span> <span style="color: #005F87;">L</span><span style="color: #005FAF;">.</span><span style="color: #000000;">fromStrict</span>

@@ -595,6 +595,7 @@ ngx_http_haskell_async_event(ngx_event_t *ev)
     *hev->complete = 1;
     ngx_http_haskell_delete_async_task(hev);
     *hev->complete = 3;
+
     ngx_http_core_run_phases(hev->r);
 }
 
@@ -607,6 +608,7 @@ ngx_http_haskell_async_content_handler_event(ngx_event_t *ev)
     *hev->complete = 1;
     ngx_http_haskell_delete_async_task(hev);
     *hev->complete = 3;
+
     ngx_http_finalize_request(hev->r, ngx_http_haskell_content_handler(hev->r));
 }
 

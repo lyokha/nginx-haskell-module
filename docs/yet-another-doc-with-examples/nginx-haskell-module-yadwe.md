@@ -1230,7 +1230,7 @@ import           Foreign.Ptr
 -- ...
 
 foreign import ccall "test_c_plugin.h ngx_http_haskell_test_c_plugin"
-    test_c_plugin :: Ptr () -> IO CIntPtr;
+    test_c_plugin :: Ptr () -> IO CIntPtr
 
 toRequestPtr :: ByteString -> Ptr ()
 toRequestPtr = wordPtrToPtr . fromIntegral . runGet getWordhost . L.fromStrict
@@ -1583,7 +1583,7 @@ grepHttpbinLinksHook v = do
 ngxExportServiceHook 'grepHttpbinLinksHook
 
 foreign import ccall "test_c_plugin.h ngx_http_haskell_test_c_plugin"
-    test_c_plugin :: Ptr () -> IO CIntPtr;
+    test_c_plugin :: Ptr () -> IO CIntPtr
 
 toRequestPtr :: ByteString -> Ptr ()
 toRequestPtr = wordPtrToPtr . fromIntegral . runGet getWordhost . L.fromStrict
