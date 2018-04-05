@@ -1,3 +1,8 @@
+### 1.4.0
+
+- Added a new function *ngxCyclePtr* which returns the Nginx cycle object for
+  using in C plugins.
+
 ### 1.3.0
 
 - Export function *ngxExportInstallSignalHandler* to ignore SIGINT.

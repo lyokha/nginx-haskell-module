@@ -39,6 +39,8 @@ module NgxExport (
                  ,ngxExportAsyncHandler
                  ,ngxExportAsyncHandlerOnReqBody
                  ,ngxExportServiceHook
+    -- * Utilities
+                 ,ngxCyclePtr
     -- * Re-exported data constructors from /"Foreign.C"/
     --   (for marshalling in foreign calls)
                  ,Foreign.C.CInt (..)
@@ -51,6 +53,8 @@ import           Foreign.StablePtr
 import           Foreign.Storable
 import           Foreign.Marshal.Alloc
 import           Foreign.Marshal.Utils
+import           Data.IORef
+import           System.IO.Unsafe
 import           System.IO.Error
 import           System.Posix.IO
 import           System.Posix.Types
@@ -775,4 +779,16 @@ ngxExportVersion ::
 ngxExportVersion x (I n) = fromIntegral <$>
     foldM (\k (I v) -> pokeElemOff x k v >> return (k + 1)) 0
         (take n $ versionBranch version)
+
+ngxCyclePtrStore :: IORef (Ptr ())
+ngxCyclePtrStore = unsafePerformIO $ newIORef nullPtr
+{-# NOINLINE ngxCyclePtrStore #-}
+
+-- | Returns a pointer to the Nginx cycle object for using in C plugins.
+ngxCyclePtr :: IO (Ptr ())
+ngxCyclePtr = readIORef ngxCyclePtrStore
+
+foreign export ccall ngxExportSetCyclePtr :: Ptr () -> IO ()
+ngxExportSetCyclePtr :: Ptr () -> IO ()
+ngxExportSetCyclePtr = writeIORef ngxCyclePtrStore
 

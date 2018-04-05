@@ -228,6 +228,8 @@ ngx_string(
 "import qualified Foreign.Storable as AUX_NGX\n"
 "import qualified Foreign.Marshal.Alloc as AUX_NGX\n"
 "import qualified Foreign.Marshal.Utils as AUX_NGX\n"
+"import qualified Data.IORef as AUX_NGX\n"
+"import qualified System.IO.Unsafe as AUX_NGX\n"
 "import qualified System.IO.Error as AUX_NGX\n"
 "import qualified System.Posix.IO as AUX_NGX\n"
 "import qualified System.Posix.Types as AUX_NGX\n"
@@ -864,5 +866,18 @@ ngx_string(
 "    AUX_NGX.deRefStablePtr AUX_NGX.>=>\n"
 "        flip AUX_NGX.throwTo AUX_NGX_ServiceHookInterrupt .\n"
 "            AUX_NGX.asyncThreadId\n\n"
+
+"aux_ngx_ngxCyclePtrStore :: AUX_NGX.IORef (AUX_NGX.Ptr ())\n"
+"aux_ngx_ngxCyclePtrStore =\n"
+"    AUX_NGX.unsafePerformIO $ AUX_NGX.newIORef AUX_NGX.nullPtr\n"
+"{-# NOINLINE aux_ngx_ngxCyclePtrStore #-}\n\n"
+
+"aux_ngx_ngxCyclePtr :: IO (AUX_NGX.Ptr ())\n"
+"aux_ngx_ngxCyclePtr = AUX_NGX.readIORef aux_ngx_ngxCyclePtrStore\n\n"
+
+"foreign export ccall ngxExportSetCyclePtr :: AUX_NGX.Ptr () -> IO ()\n"
+"ngxExportSetCyclePtr :: AUX_NGX.Ptr () -> IO ()\n"
+"ngxExportSetCyclePtr = AUX_NGX.writeIORef aux_ngx_ngxCyclePtrStore\n\n"
+
 );
 

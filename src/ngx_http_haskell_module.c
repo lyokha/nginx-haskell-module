@@ -606,6 +606,8 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
         goto unload_and_exit;
     }
 
+    mcf->set_cycle_ptr(cycle);
+
     service_hooks = mcf->service_hooks.elts;
     for (i = 0; i < mcf->service_hooks.nelts; i++) {
         if (ngx_http_haskell_init_service_hook(cycle, &mcf->service_code_vars,

@@ -36,7 +36,7 @@ static char  *haskell_module_install_signal_handlers_option =
 "--install-signal-handlers=yes";
 
 static const HsInt32  haskell_module_ngx_export_api_version_major = 1;
-static const HsInt32  haskell_module_ngx_export_api_version_minor = 3;
+static const HsInt32  haskell_module_ngx_export_api_version_minor = 4;
 
 
 ngx_int_t
@@ -161,6 +161,16 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                       "failed to load function "
                       "\"rtsSupportsBoundThreads\": %s", dl_error);
+        goto dlclose_and_exit;
+    }
+
+    mcf->set_cycle_ptr = (void (*)(HsPtr)) dlsym(mcf->dl_handle,
+                                                 "ngxExportSetCyclePtr");
+    dl_error = dlerror();
+    if (dl_error != NULL) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                      "failed to load function "
+                      "\"ngxExportSetCyclePtr\": %s", dl_error);
         goto dlclose_and_exit;
     }
 
