@@ -814,7 +814,7 @@ are declared like
 Here *cbHttpbin* is a Haskell handler exported by *ngxExportServiceIOYY* as
 always. Variable *hs_service_httpbin* must be declared in directive
 *haskell_service_var_in_shm*. Argument *optional_value* is a string, it can be
-omitted in which case handler *cbHttpbin* gets an empty string as its first
+omitted, in which case handler *cbHttpbin* gets an empty string as its first
 argument.
 
 Update callbacks do not return results. They run from a worker that holds the
@@ -1093,6 +1093,8 @@ Service update hooks can also be used to replace service *update callbacks*.
 Indeed, being run *synchronously* from an event handler, a service hook could
 safely call a C function which would acquire related to Nginx context from the
 global Nginx variable *ngx_cycle* for doing a variety of low level actions.
+Notice that unlike update callbacks, service hooks get triggered in all worker
+processes.
 
 An update hook is exported with exporter *ngxExportServiceHook*, and declared
 using directive *haskell_service_update_hook* on the *http* configuration level.

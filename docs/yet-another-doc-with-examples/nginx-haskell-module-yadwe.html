@@ -620,7 +620,7 @@
 <span style="color: #000000;">    haskell_service_var_update_callback cbHttpbin </span><span style="color: #008700;">$hs_service_httpbin</span><span style="color: #000000;"> optional_value;</span>
 </pre>
 
-<p>Here <em>cbHttpbin</em> is a Haskell handler exported by <em>ngxExportServiceIOYY</em> as always. Variable <em>hs_service_httpbin</em> must be declared in directive <em>haskell_service_var_in_shm</em>. Argument <em>optional_value</em> is a string, it can be omitted in which case handler <em>cbHttpbin</em> gets an empty string as its first argument.</p>
+<p>Here <em>cbHttpbin</em> is a Haskell handler exported by <em>ngxExportServiceIOYY</em> as always. Variable <em>hs_service_httpbin</em> must be declared in directive <em>haskell_service_var_in_shm</em>. Argument <em>optional_value</em> is a string, it can be omitted, in which case handler <em>cbHttpbin</em> gets an empty string as its first argument.</p>
 <p>Update callbacks do not return results. They run from a worker that holds the active service on every change of the service variable, and shall be supposedly used to integrate with other Nginx modules by signaling specific Nginx locations via an HTTP client.</p>
 <h3 id="an-example-5">An example</h3>
 <p>Let’s count changes in service variable <em>hs_service_httpbin</em> during Nginx lifetime (originally I supposed that its content won’t change after the first initialization because <em>httpbin.org</em> looks like a static page, but responses appeared to be able to vary from time to time). For this we will use counters from <a href="https://github.com/lyokha/nginx-custom-counters-module"><em>nginx-custom-counters-module</em></a>.</p>
@@ -836,7 +836,7 @@
 <li>Nginx don’t need to access shared memory on every single request for checking if the service data has been altered.</li>
 </ol>
 <p>There is a subtle difference with update variables though. As soon as with update hooks new service variable data is propagated to worker processes asynchronously via an event channel, there always exists a very short transient period between the moments when the service variable gets altered in shared memory and the global state gets updated in a worker, during which events related to client requests may occur.</p>
-<p>Service update hooks can also be used to replace service <em>update callbacks</em>. Indeed, being run <em>synchronously</em> from an event handler, a service hook could safely call a C function which would acquire related to Nginx context from the global Nginx variable <em>ngx_cycle</em> for doing a variety of low level actions.</p>
+<p>Service update hooks can also be used to replace service <em>update callbacks</em>. Indeed, being run <em>synchronously</em> from an event handler, a service hook could safely call a C function which would acquire related to Nginx context from the global Nginx variable <em>ngx_cycle</em> for doing a variety of low level actions. Notice that unlike update callbacks, service hooks get triggered in all worker processes.</p>
 <p>An update hook is exported with exporter <em>ngxExportServiceHook</em>, and declared using directive <em>haskell_service_update_hook</em> on the <em>http</em> configuration level.</p>
 <h3 id="an-example-7">An example</h3>
 <p>Let’s reimplement the example with update of service links using a service hook.</p>

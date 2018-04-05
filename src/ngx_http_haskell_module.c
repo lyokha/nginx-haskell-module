@@ -418,6 +418,10 @@ ngx_http_haskell_init_module(ngx_cycle_t *cycle)
 
     service_hooks = mcf->service_hooks.elts;
     for (i = 0; i < mcf->service_hooks.nelts; i++) {
+        service_hook_fd.elts[i][0] = NGX_INVALID_FILE;
+        service_hook_fd.elts[i][1] = NGX_INVALID_FILE;
+    }
+    for (i = 0; i < mcf->service_hooks.nelts; i++) {
         if (ngx_http_haskell_open_async_event_channel(
                                             service_hooks[i].event_channel))
         {
@@ -700,7 +704,7 @@ ngx_http_haskell_cleanup_service_hook_fd(ngx_cycle_t *cycle)
     ngx_uint_t                                 i;
 
     for (i = 0; i < service_hook_fd.size; i++) {
-        if (service_hook_fd.elts[i][0] != NGX_ERROR) {
+        if (service_hook_fd.elts[i][0] != NGX_INVALID_FILE) {
             ngx_http_haskell_close_async_event_channel(cycle->log,
                                                        service_hook_fd.elts[i]);
         }
