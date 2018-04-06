@@ -607,6 +607,9 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
     }
 
     mcf->set_cycle_ptr(cycle);
+    mcf->set_upstream_main_conf_ptr(
+                ngx_http_cycle_get_module_main_conf(cycle,
+                                                    ngx_http_upstream_module));
 
     service_hooks = mcf->service_hooks.elts;
     for (i = 0; i < mcf->service_hooks.nelts; i++) {

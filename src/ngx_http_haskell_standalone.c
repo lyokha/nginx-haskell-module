@@ -879,5 +879,20 @@ ngx_string(
 "ngxExportSetCyclePtr :: AUX_NGX.Ptr () -> IO ()\n"
 "ngxExportSetCyclePtr = AUX_NGX.writeIORef aux_ngx_ngxCyclePtrStore\n\n"
 
+"ngxUpstreamMainConfPtr :: IO (AUX_NGX.Ptr ())\n"
+"ngxUpstreamMainConfPtr = AUX_NGX.readIORef aux_ngx_ngxUpstreamMainConfPtrStore"
+"\n\n"
+
+"aux_ngx_ngxUpstreamMainConfPtrStore :: AUX_NGX.IORef (AUX_NGX.Ptr ())\n"
+"aux_ngx_ngxUpstreamMainConfPtrStore =\n"
+"    AUX_NGX.unsafePerformIO $ AUX_NGX.newIORef AUX_NGX.nullPtr\n"
+"{-# NOINLINE aux_ngx_ngxUpstreamMainConfPtrStore #-}\n\n"
+
+"foreign export ccall ngxExportSetUpstreamMainConfPtr :: AUX_NGX.Ptr () -> IO "
+"()\n"
+"ngxExportSetUpstreamMainConfPtr :: AUX_NGX.Ptr () -> IO ()\n"
+"ngxExportSetUpstreamMainConfPtr =\n"
+"    AUX_NGX.writeIORef aux_ngx_ngxUpstreamMainConfPtrStore\n\n"
+
 );
 

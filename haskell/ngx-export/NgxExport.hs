@@ -41,6 +41,7 @@ module NgxExport (
                  ,ngxExportServiceHook
     -- * Utilities
                  ,ngxCyclePtr
+                 ,ngxUpstreamMainConfPtr
     -- * Re-exported data constructors from /"Foreign.C"/
     --   (for marshalling in foreign calls)
                  ,Foreign.C.CInt (..)
@@ -792,4 +793,17 @@ ngxCyclePtrStore = unsafePerformIO $ newIORef nullPtr
 foreign export ccall ngxExportSetCyclePtr :: Ptr () -> IO ()
 ngxExportSetCyclePtr :: Ptr () -> IO ()
 ngxExportSetCyclePtr = writeIORef ngxCyclePtrStore
+
+-- | Returns an opaque pointer to the Nginx upstream main configuration
+-- for using in C plugins.
+ngxUpstreamMainConfPtr :: IO (Ptr ())
+ngxUpstreamMainConfPtr = readIORef ngxUpstreamMainConfPtrStore
+
+ngxUpstreamMainConfPtrStore :: IORef (Ptr ())
+ngxUpstreamMainConfPtrStore = unsafePerformIO $ newIORef nullPtr
+{-# NOINLINE ngxUpstreamMainConfPtrStore #-}
+
+foreign export ccall ngxExportSetUpstreamMainConfPtr :: Ptr () -> IO ()
+ngxExportSetUpstreamMainConfPtr :: Ptr () -> IO ()
+ngxExportSetUpstreamMainConfPtr = writeIORef ngxUpstreamMainConfPtrStore
 

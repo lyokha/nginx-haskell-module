@@ -1,7 +1,8 @@
 ### 1.4.0
 
-- Added a new function *ngxCyclePtr* which returns the Nginx cycle object for
-  using in C plugins.
+- Added new functions *ngxCyclePtr* and *ngxUpstreamMainConfPtr* that return
+  the Nginx cycle object and the Nginx upstream main configuration respectively
+  for using in C plugins.
 
 ### 1.3.0
 

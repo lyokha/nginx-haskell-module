@@ -135,6 +135,8 @@ typedef struct {
     void                                     (*service_hook_interrupt)
                                                                 (HsStablePtr);
     void                                     (*set_cycle_ptr)(HsPtr);
+    void                                     (*set_upstream_main_conf_ptr)
+                                                                (HsPtr);
     HsBool                                   (*rts_has_thread_support)(void);
     ngx_array_t                                service_code_vars;
     ngx_array_t                                var_nocacheable;
