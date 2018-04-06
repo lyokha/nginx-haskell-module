@@ -1213,6 +1213,13 @@ the moments when the service variable gets altered in shared memory and the
 global state gets updated in a worker, during which events related to client
 requests may occur.
 
+Service update hooks can also be used to replace service *update callbacks*.
+Indeed, being run *synchronously* from an event handler, a service hook could
+safely call a C function which would acquire related to Nginx context from the
+global Nginx variable *ngx_cycle* (which is accessible from the Haskell part via
+function *ngxCyclePtr*) for doing a variety of low level actions. Notice that
+unlike update callbacks, service hooks get triggered in all worker processes.
+
 C plugins with low level access to the Nginx request object
 -----------------------------------------------------------
 

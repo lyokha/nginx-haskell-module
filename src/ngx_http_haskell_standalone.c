@@ -867,13 +867,13 @@ ngx_string(
 "        flip AUX_NGX.throwTo AUX_NGX_ServiceHookInterrupt .\n"
 "            AUX_NGX.asyncThreadId\n\n"
 
+"ngxCyclePtr :: IO (AUX_NGX.Ptr ())\n"
+"ngxCyclePtr = AUX_NGX.readIORef aux_ngx_ngxCyclePtrStore\n\n"
+
 "aux_ngx_ngxCyclePtrStore :: AUX_NGX.IORef (AUX_NGX.Ptr ())\n"
 "aux_ngx_ngxCyclePtrStore =\n"
 "    AUX_NGX.unsafePerformIO $ AUX_NGX.newIORef AUX_NGX.nullPtr\n"
 "{-# NOINLINE aux_ngx_ngxCyclePtrStore #-}\n\n"
-
-"aux_ngx_ngxCyclePtr :: IO (AUX_NGX.Ptr ())\n"
-"aux_ngx_ngxCyclePtr = AUX_NGX.readIORef aux_ngx_ngxCyclePtrStore\n\n"
 
 "foreign export ccall ngxExportSetCyclePtr :: AUX_NGX.Ptr () -> IO ()\n"
 "ngxExportSetCyclePtr :: AUX_NGX.Ptr () -> IO ()\n"

@@ -1092,9 +1092,9 @@ related to client requests may occur.
 Service update hooks can also be used to replace service *update callbacks*.
 Indeed, being run *synchronously* from an event handler, a service hook could
 safely call a C function which would acquire related to Nginx context from the
-global Nginx variable *ngx_cycle* for doing a variety of low level actions.
-Notice that unlike update callbacks, service hooks get triggered in all worker
-processes.
+global Nginx variable *ngx_cycle* (which is accessible from the Haskell part via
+function *ngxCyclePtr*) for doing a variety of low level actions. Notice that
+unlike update callbacks, service hooks get triggered in all worker processes.
 
 An update hook is exported with exporter *ngxExportServiceHook*, and declared
 using directive *haskell_service_update_hook* on the *http* configuration level.

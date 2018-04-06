@@ -780,13 +780,14 @@ ngxExportVersion x (I n) = fromIntegral <$>
     foldM (\k (I v) -> pokeElemOff x k v >> return (k + 1)) 0
         (take n $ versionBranch version)
 
+-- | Returns an opaque pointer to the Nginx cycle object
+-- for using in C plugins.
+ngxCyclePtr :: IO (Ptr ())
+ngxCyclePtr = readIORef ngxCyclePtrStore
+
 ngxCyclePtrStore :: IORef (Ptr ())
 ngxCyclePtrStore = unsafePerformIO $ newIORef nullPtr
 {-# NOINLINE ngxCyclePtrStore #-}
-
--- | Returns a pointer to the Nginx cycle object for using in C plugins.
-ngxCyclePtr :: IO (Ptr ())
-ngxCyclePtr = readIORef ngxCyclePtrStore
 
 foreign export ccall ngxExportSetCyclePtr :: Ptr () -> IO ()
 ngxExportSetCyclePtr :: Ptr () -> IO ()
