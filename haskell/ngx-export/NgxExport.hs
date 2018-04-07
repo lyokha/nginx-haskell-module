@@ -782,7 +782,7 @@ ngxExportVersion x (I n) = fromIntegral <$>
         (take n $ versionBranch version)
 
 -- | Returns an opaque pointer to the Nginx cycle object
--- for using in C plugins.
+-- for using it in C plugins.
 ngxCyclePtr :: IO (Ptr ())
 ngxCyclePtr = readIORef ngxCyclePtrStore
 
@@ -795,7 +795,7 @@ ngxExportSetCyclePtr :: Ptr () -> IO ()
 ngxExportSetCyclePtr = writeIORef ngxCyclePtrStore
 
 -- | Returns an opaque pointer to the Nginx upstream main configuration
--- for using in C plugins.
+-- for using it in C plugins.
 ngxUpstreamMainConfPtr :: IO (Ptr ())
 ngxUpstreamMainConfPtr = readIORef ngxUpstreamMainConfPtrStore
 
