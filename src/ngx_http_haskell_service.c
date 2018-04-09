@@ -58,6 +58,9 @@ static ngx_int_t ngx_http_haskell_run_service(ngx_cycle_t *cycle,
     ngx_uint_t service_first_run);
 static void ngx_http_haskell_service_event(ngx_event_t *ev);
 static void ngx_http_haskell_service_hook_event(ngx_event_t *ev);
+static void ngx_http_haskell_run_service_hook(ngx_cycle_t *cycle,
+    ngx_http_haskell_main_conf_t *mcf, ngx_http_haskell_service_hook_t *hook,
+    ngx_str_t *arg);
 static void ngx_http_haskell_service_handler_cleanup(void *data);
 #ifdef NGX_HTTP_HASKELL_SHM_USE_SHARED_RLOCK
 static void ngx_http_haskell_wlock(ngx_fd_t fd);
@@ -253,19 +256,14 @@ ngx_http_haskell_init_service_hook(ngx_cycle_t *cycle,
                       "variable \"%V\" is not a service variable",
                       &cmvars[hook->service_code_var_index].name);
         hook->service_code_var_index = NGX_DECLINED;
-        return NGX_OK;
+        goto close_event_channel;
     }
 
     if (hook->update_hook) {
-        if (hook->service_code_var->shm_index == NGX_ERROR) {
-            ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
-                          "service update hook will not be enabled because "
-                          "variable \"%V\" is not in shm",
-                          &cmvars[hook->service_code_var_index].name);
-            hook->service_code_var_index = NGX_DECLINED;
-            return NGX_OK;
-        }
         hook->service_code_var->has_update_hooks = 1;
+        if (hook->service_code_var->shm_index == NGX_ERROR) {
+            goto close_event_channel;
+        }
     }
 
     event = &hook->event;
@@ -293,6 +291,12 @@ ngx_http_haskell_init_service_hook(ngx_cycle_t *cycle,
     }
 
     return NGX_OK;
+
+close_event_channel:
+
+    ngx_http_haskell_close_async_event_channel(cycle->log, hook->event_channel);
+
+    return NGX_OK;
 }
 
 
@@ -300,7 +304,8 @@ void
 ngx_http_haskell_close_service_hook(ngx_cycle_t *cycle,
                                     ngx_http_haskell_service_hook_t *hook)
 {
-    if (hook->service_code_var_index == NGX_DECLINED) {
+    if (hook->service_code_var_index < 0
+        || hook->service_code_var->shm_index == NGX_ERROR) {
         return;
     }
 
@@ -420,7 +425,7 @@ ngx_http_haskell_service_event(ngx_event_t *ev)
     ngx_slab_pool_t                           *shpool;
     ngx_http_haskell_shm_var_handle_t         *shm_vars;
     ngx_int_t                                  shm_index = NGX_ERROR;
-    ngx_str_t                                 *var;
+    ngx_str_t                                 *var, arg = ngx_null_string;
     u_char                                    *var_data;
     ngx_http_haskell_async_data_t             *async_data;
     ngx_http_complex_value_t                  *args;
@@ -668,6 +673,8 @@ unlock_and_run_service:
 
     NGX_HTTP_HASKELL_SHM_UNLOCK
 
+run_service:
+
     service_hooks = mcf->service_hooks.elts;
     if (service_code_var->has_update_hooks) {
         for (i = 0; i < mcf->service_hooks.nelts; i++) {
@@ -676,6 +683,26 @@ unlock_and_run_service:
                 != service_code_var->data->index)
             {
                 continue;
+            }
+            if (shm_index == NGX_ERROR) {
+                if (async_data->result.data.len > 0) {
+                    /* var_data will be freed on the Haskell side */
+                    var_data = ngx_alloc(async_data->result.data.len,
+                                         cycle->log);
+                    if (var_data == NULL) {
+                        ngx_log_error(NGX_LOG_CRIT, cycle->log, 0,
+                                    "failed to allocate memory for "
+                                    "service update hook data");
+                        break;
+                    }
+                    ngx_memcpy(var_data, async_data->result.data.data,
+                               async_data->result.data.len);
+                    arg.data = var_data;
+                    arg.len = async_data->result.data.len;
+                }
+                ngx_http_haskell_run_service_hook(cycle, mcf,
+                                                  &service_hooks[i], &arg);
+                break;
             }
             if (ngx_http_haskell_consume_from_async_event_channel(
                                     service_hooks[i].event_channel[0]) == -1)
@@ -697,13 +724,14 @@ unlock_and_run_service:
         }
     }
 
-    if (async_data->result.complete == 2) {
-        ngx_free(async_data->result.data.data);
-    } else if (async_data->result.complete == 1) {
-        mcf->hs_free_stable_ptr(async_data->yy_cleanup_data.locked_bytestring);
+    if (shm_index != NGX_ERROR) {
+        if (async_data->result.complete == 2) {
+            ngx_free(async_data->result.data.data);
+        } else if (async_data->result.complete == 1) {
+            mcf->hs_free_stable_ptr(
+                            async_data->yy_cleanup_data.locked_bytestring);
+        }
     }
-
-run_service:
 
     ngx_http_haskell_run_service(cycle, service_code_var, 0);
 }
@@ -716,15 +744,9 @@ ngx_http_haskell_service_hook_event(ngx_event_t *ev)
     ngx_cycle_t                                 *cycle = hev->cycle;
 
     ngx_http_haskell_main_conf_t                *mcf;
-    ngx_http_haskell_handler_t                  *handlers;
     ngx_http_haskell_service_code_var_data_t    *service_code_var;
     ngx_slab_pool_t                             *shpool;
     ngx_str_t                                    arg = ngx_null_string;
-    ngx_str_t                                   *res_yy, buf_yy;
-    HsStablePtr                                  locked_bytestring = NULL;
-    HsInt32                                      len;
-    HsWord32                                     err;
-    ngx_str_t                                    reslen = ngx_null_string;
 
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
 
@@ -810,13 +832,44 @@ ngx_http_haskell_service_hook_event(ngx_event_t *ev)
 
 run_handler:
 
+    ngx_http_haskell_run_service_hook(cycle, mcf, hev->hook, &arg);
+
+    if (hev->hook->update_hook) {
+        return;
+    }
+
+    /* BEWARE: flag active is set asynchronously and without notification from
+     * the Haskell service, however this is not really a problem as it is set
+     * only once on the first run of the service and before the service's
+     * handler actually starts */
+    if (service_code_var->active && service_code_var->running
+        && service_code_var->has_locked_async_task)
+    {
+        mcf->service_hook_interrupt(service_code_var->locked_async_task);
+    }
+}
+
+
+static void
+ngx_http_haskell_run_service_hook(ngx_cycle_t *cycle,
+                                  ngx_http_haskell_main_conf_t *mcf,
+                                  ngx_http_haskell_service_hook_t *hook,
+                                  ngx_str_t *arg)
+{
+    ngx_http_haskell_handler_t                  *handlers;
+    ngx_str_t                                   *res_yy, buf_yy;
+    HsStablePtr                                  locked_bytestring = NULL;
+    HsInt32                                      len;
+    HsWord32                                     err;
+    ngx_str_t                                    reslen = ngx_null_string;
+
     handlers = mcf->handlers.elts;
 
     res_yy = &buf_yy;
 
     err = ((ngx_http_haskell_handler_ioy_y)
-               handlers[hev->hook->handler].self)
-                    (arg.data, arg.len, &res_yy, &len, &locked_bytestring);
+               handlers[hook->handler].self)
+                    (arg->data, arg->len, &res_yy, &len, &locked_bytestring);
 
     if (len == -1) {
         ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
@@ -851,20 +904,6 @@ run_handler:
             ngx_free(reslen.data);
         }
         mcf->hs_free_stable_ptr(locked_bytestring);
-    }
-
-    if (hev->hook->update_hook) {
-        return;
-    }
-
-    /* BEWARE: flag active is set asynchronously and without notification from
-     * the Haskell service, however this is not really a problem as it is set
-     * only once on the first run of the service and before the service's
-     * handler actually starts */
-    if (service_code_var->active && service_code_var->running
-        && service_code_var->has_locked_async_task)
-    {
-        mcf->service_hook_interrupt(service_code_var->locked_async_task);
     }
 }
 
