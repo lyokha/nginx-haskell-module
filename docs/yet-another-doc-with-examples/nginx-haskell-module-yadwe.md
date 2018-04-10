@@ -1089,13 +1089,6 @@ period between the moments when the service variable gets altered in shared
 memory and the global state gets updated in a worker, during which events
 related to client requests may occur.
 
-Service update hooks can also be used to replace service *update callbacks*.
-Indeed, being run *synchronously* from an event handler, a service hook could
-safely call a C function which would acquire related to Nginx context from the
-global Nginx variable *ngx_cycle* (which is accessible from the Haskell part via
-function *ngxCyclePtr*) for doing a variety of low level actions. Notice that
-unlike update callbacks, service hooks get triggered in all worker processes.
-
 An update hook is exported with exporter *ngxExportServiceHook*, and declared
 using directive *haskell_service_update_hook* on the *http* configuration level.
 
@@ -1134,7 +1127,7 @@ ngxExportServiceHook 'grepHttpbinLinksHook
 For testing this, watch the Nginx error log and change the URL of the service
 with requests to location */httpbin/url* like in the previous example.
 
-# C plugins with low level access to the Nginx request object
+# C plugins with low level access to Nginx objects
 
 Serialized pointer to the Nginx *request object* is accessible via a special
 variable *\_r\_ptr*. Haskell handlers have no benefit from this because they do
@@ -1258,6 +1251,8 @@ Linking test.so ...
 ||| cp test.so /var/lib/nginx/
 ```
 
+\pagebreak
+
 **File test.conf** (*additions*)
 
 ``` {.nginx hl="vim"}
@@ -1283,6 +1278,34 @@ Test C plugin returned Success!
 ```
 
 The header *X-Powered-By* is in the response!
+
+## C plugins in service update hooks
+
+Service update hooks can be used to replace service *update callbacks*. Indeed,
+being run *synchronously* from an event handler, a service hook could safely
+call a C function which would acquire related to Nginx context from Nginx global
+variables such as *ngx_cycle* for doing a variety of low level actions.
+
+Below is a table of functions exported from the Haskell module that return
+opaque pointers to Nginx global variables for using in C plugins.
+
+-----------------------------------------------------------------------------------------------
+Function                                    Returned Nginx global variable
+------------------------------------------  ---------------------------------------------------
+`ngxCyclePtr`                               `volatile ngx_cycle_t  *ngx_cycle`
+
+`ngxUpstreamMainConfPtr`                    a pointer of type `ngx_http_upstream_main_conf_t *`
+                                            returned in a call to
+                                            `ngx_http_cycle_get_module_main_conf()` on
+                                            initialization of a worker
+
+`ngxCachedTimePtr`                          `volatile ngx_time_t  *ngx_cached_time`
+-----------------------------------------------------------------------------------------------
+
+Notice that unlike update callbacks, service hooks get triggered in all worker
+processes. Notice also that as soon as running C plugins can be useful not only
+in shared services, but in normal per-worker services too, service update hooks
+are allowed in both the cases.
 
 # Efficiency of data exchange between Nginx and Haskell parts
 
@@ -1336,6 +1359,8 @@ Fortunately, all exceptions, synchronous and asynchronous, are caught on top of
 the module's Haskell code. If a handler does not catch an exception itself, the
 exception gets caught higher and logged by Nginx. However, using exception
 handlers in Haskell handlers, when it's possible, should be preferred.
+
+\pagebreak
 
 # Summary table of all Nginx directives of the module
 

@@ -836,7 +836,6 @@
 <li>Nginx don’t need to access shared memory on every single request for checking if the service data has been altered.</li>
 </ol>
 <p>There is a subtle difference with update variables though. As soon as with update hooks new service variable data is propagated to worker processes asynchronously via an event channel, there always exists a very short transient period between the moments when the service variable gets altered in shared memory and the global state gets updated in a worker, during which events related to client requests may occur.</p>
-<p>Service update hooks can also be used to replace service <em>update callbacks</em>. Indeed, being run <em>synchronously</em> from an event handler, a service hook could safely call a C function which would acquire related to Nginx context from the global Nginx variable <em>ngx_cycle</em> (which is accessible from the Haskell part via function <em>ngxCyclePtr</em>) for doing a variety of low level actions. Notice that unlike update callbacks, service hooks get triggered in all worker processes.</p>
 <p>An update hook is exported with exporter <em>ngxExportServiceHook</em>, and declared using directive <em>haskell_service_update_hook</em> on the <em>http</em> configuration level.</p>
 <h3 id="an-example-7">An example</h3>
 <p>Let’s reimplement the example with update of service links using a service hook.</p>
@@ -867,7 +866,7 @@
 </pre>
 
 <p>For testing this, watch the Nginx error log and change the URL of the service with requests to location <em>/httpbin/url</em> like in the previous example.</p>
-<h1 id="c-plugins-with-low-level-access-to-the-nginx-request-object">C plugins with low level access to the Nginx request object</h1>
+<h1 id="c-plugins-with-low-level-access-to-nginx-objects">C plugins with low level access to Nginx objects</h1>
 <p>Serialized pointer to the Nginx <em>request object</em> is accessible via a special variable <em>_r_ptr</em>. Haskell handlers have no benefit from this because they do not know how the request object is built. However they may run C code that is compiled with this knowledge. The low level access to the Nginx request data allows for making things not available without this. As soon as a C plugin can do whatever a usual Nginx module can, using it from a Haskell handler must be very cautious. All synchronous and asynchronous Haskell handlers can access the Nginx request object and pass it to a C plugin. Using a C plugin in asynchronous context has not been investigated and is probably dangerous in many aspects. After all, an Nginx worker is a single-threaded process, and available Nginx tools were not designed for using in multi-threaded environments. As such, using C plugins in asynchronous Haskell handlers must be regarded as strictly experimental!</p>
 <h2 id="an-example-8">An example</h2>
 <p>Let’s write a plugin that will add an HTTP header to the response.</p>
@@ -958,6 +957,7 @@
 <span style="color: #005FAF;">cp test.so /var/lib/nginx/</span>
 </pre>
 
+
 <p><strong>File test.conf</strong> (<em>additions</em>)</p>
 <pre style="overflow-x: auto; background: #FFE">
         <span style="color: #005FAF;">location</span><span style="color: #000000;"> /cplugin {</span>
@@ -981,6 +981,36 @@
 </pre>
 
 <p>The header <em>X-Powered-By</em> is in the response!</p>
+<h2 id="c-plugins-in-service-update-hooks">C plugins in service update hooks</h2>
+<p>Service update hooks can be used to replace service <em>update callbacks</em>. Indeed, being run <em>synchronously</em> from an event handler, a service hook could safely call a C function which would acquire related to Nginx context from Nginx global variables such as <em>ngx_cycle</em> for doing a variety of low level actions.</p>
+<p>Below is a table of functions exported from the Haskell module that return opaque pointers to Nginx global variables for using in C plugins.</p>
+<table>
+<colgroup>
+<col style="width: 46%" />
+<col style="width: 53%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Function</th>
+<th style="text-align: left;">Returned Nginx global variable</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><code>ngxCyclePtr</code></td>
+<td style="text-align: left;"><code>volatile ngx_cycle_t  *ngx_cycle</code></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>ngxUpstreamMainConfPtr</code></td>
+<td style="text-align: left;">a pointer of type <code>ngx_http_upstream_main_conf_t *</code> returned in a call to <code>ngx_http_cycle_get_module_main_conf()</code> on initialization of a worker</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>ngxCachedTimePtr</code></td>
+<td style="text-align: left;"><code>volatile ngx_time_t  *ngx_cached_time</code></td>
+</tr>
+</tbody>
+</table>
+<p>Notice that unlike update callbacks, service hooks get triggered in all worker processes. Notice also that as soon as running C plugins can be useful not only in shared services, but in normal per-worker services too, service update hooks are allowed in both the cases.</p>
 <h1 id="efficiency-of-data-exchange-between-nginx-and-haskell-parts">Efficiency of data exchange between Nginx and Haskell parts</h1>
 <p>Haskell handlers may accept strings (<code>String</code> or <code>[String]</code>) and <em>strict</em> bytestrings (<code>ByteString</code>), and return strings, <em>lazy</em> bytestrings and booleans. Input C-strings are marshaled into a <em>String</em> with <em>peekCStringLen</em> which has linear complexity <span class="math inline"><em>O</em>(<em>n</em>)</span>, output <em>Strings</em> are marshaled into C-strings with <em>newCStringLen</em> which is also <span class="math inline"><em>O</em>(<em>n</em>)</span>. The new C-strings get freed upon the request termination in the Nginx part.</p>
 <p>The bytestring counterparts are much faster. Both input and output are <span class="math inline"><em>O</em>(1)</span>, using <em>unsafePackCStringLen</em> and a Haskell <em>stable pointer</em> to lazy bytestring buffers created inside Haskell handlers. If an output lazy bytestring has more than one chunk, a new single-chunked C-string will be created in variable and service handlers, but not in content handlers because the former use the chunks directly when constructing contents. Holding a stable pointer to a bytestring’s chunks on the Nginx part ensures that they won’t be garbage collected until the pointer gets freed. Stable pointers get freed upon the request termination for variable and content handlers, and before the next service iteration for service handlers.</p>
@@ -989,6 +1019,7 @@
 <h1 id="exceptions-in-haskell-handlers">Exceptions in Haskell handlers</h1>
 <p>There is no way to catch exceptions in <em>pure</em> handlers. However they can arise from using <em>partial</em> functions such as <em>head</em> and <em>tail</em>! Switching to their <em>total</em> counterparts from module <em>Safe</em> can mitigate this issue, but it is not possible to eliminate it completely.</p>
 <p>Fortunately, all exceptions, synchronous and asynchronous, are caught on top of the module’s Haskell code. If a handler does not catch an exception itself, the exception gets caught higher and logged by Nginx. However, using exception handlers in Haskell handlers, when it’s possible, should be preferred.</p>
+
 <h1 id="summary-table-of-all-nginx-directives-of-the-module">Summary table of all Nginx directives of the module</h1>
 <table>
 <colgroup>
