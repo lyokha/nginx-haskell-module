@@ -427,10 +427,11 @@ ngx_http_haskell_service_event(ngx_event_t *ev)
     ngx_slab_pool_t                           *shpool;
     ngx_http_haskell_shm_var_handle_t         *shm_vars;
     ngx_int_t                                  shm_index = NGX_ERROR;
-    ngx_str_t                                 *var, arg = ngx_null_string;
+    ngx_str_t                                 *var;
     u_char                                    *var_data;
     ngx_http_haskell_async_data_t             *async_data;
     ngx_http_complex_value_t                  *args;
+    ngx_str_t                                  arg = ngx_null_string;
     ngx_msec_t                                 old_modified;
     time_t                                     modified;
     ngx_uint_t                                 run_cb = 0;
