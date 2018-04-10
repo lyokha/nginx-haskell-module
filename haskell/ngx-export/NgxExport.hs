@@ -39,9 +39,10 @@ module NgxExport (
                  ,ngxExportAsyncHandler
                  ,ngxExportAsyncHandlerOnReqBody
                  ,ngxExportServiceHook
-    -- * Utilities
+    -- * Opaque pointers to Nginx global objects
                  ,ngxCyclePtr
                  ,ngxUpstreamMainConfPtr
+                 ,ngxCachedTimePtr
     -- * Re-exported data constructors from /"Foreign.C"/
     --   (for marshalling in foreign calls)
                  ,Foreign.C.CInt (..)
@@ -786,24 +787,37 @@ ngxExportVersion x (I n) = fromIntegral <$>
 ngxCyclePtr :: IO (Ptr ())
 ngxCyclePtr = readIORef ngxCyclePtrStore
 
-ngxCyclePtrStore :: IORef (Ptr ())
-ngxCyclePtrStore = unsafePerformIO $ newIORef nullPtr
-{-# NOINLINE ngxCyclePtrStore #-}
-
-foreign export ccall ngxExportSetCyclePtr :: Ptr () -> IO ()
-ngxExportSetCyclePtr :: Ptr () -> IO ()
-ngxExportSetCyclePtr = writeIORef ngxCyclePtrStore
-
 -- | Returns an opaque pointer to the Nginx upstream main configuration
 -- for using it in C plugins.
 ngxUpstreamMainConfPtr :: IO (Ptr ())
 ngxUpstreamMainConfPtr = readIORef ngxUpstreamMainConfPtrStore
 
-ngxUpstreamMainConfPtrStore :: IORef (Ptr ())
-ngxUpstreamMainConfPtrStore = unsafePerformIO $ newIORef nullPtr
-{-# NOINLINE ngxUpstreamMainConfPtrStore #-}
+-- | Returns an opaque pointer to the Nginx cached time object
+-- for using it in C plugins.
+ngxCachedTimePtr :: IO (Ptr ())
+ngxCachedTimePtr = readIORef ngxCachedTimePtrStore
+
+foreign export ccall ngxExportSetCyclePtr :: Ptr () -> IO ()
+ngxExportSetCyclePtr :: Ptr () -> IO ()
+ngxExportSetCyclePtr = writeIORef ngxCyclePtrStore
 
 foreign export ccall ngxExportSetUpstreamMainConfPtr :: Ptr () -> IO ()
 ngxExportSetUpstreamMainConfPtr :: Ptr () -> IO ()
 ngxExportSetUpstreamMainConfPtr = writeIORef ngxUpstreamMainConfPtrStore
+
+foreign export ccall ngxExportSetCachedTimePtr :: Ptr () -> IO ()
+ngxExportSetCachedTimePtr :: Ptr () -> IO ()
+ngxExportSetCachedTimePtr = writeIORef ngxCachedTimePtrStore
+
+ngxCyclePtrStore :: IORef (Ptr ())
+ngxCyclePtrStore = unsafePerformIO $ newIORef nullPtr
+{-# NOINLINE ngxCyclePtrStore #-}
+
+ngxUpstreamMainConfPtrStore :: IORef (Ptr ())
+ngxUpstreamMainConfPtrStore = unsafePerformIO $ newIORef nullPtr
+{-# NOINLINE ngxUpstreamMainConfPtrStore #-}
+
+ngxCachedTimePtrStore :: IORef (Ptr ())
+ngxCachedTimePtrStore = unsafePerformIO $ newIORef nullPtr
+{-# NOINLINE ngxCachedTimePtrStore #-}
 

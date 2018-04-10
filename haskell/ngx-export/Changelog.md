@@ -1,8 +1,7 @@
 ### 1.4.0
 
-- Added functions *ngxCyclePtr* and *ngxUpstreamMainConfPtr* to return opaque
-  pointers to the Nginx cycle object and the Nginx upstream main configuration
-  respectively for using them in C plugins.
+- Added a number of opaque pointers to Nginx global objects for using them in
+  C plugins.
 
 ### 1.3.0
 

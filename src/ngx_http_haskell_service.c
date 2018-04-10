@@ -305,7 +305,9 @@ ngx_http_haskell_close_service_hook(ngx_cycle_t *cycle,
                                     ngx_http_haskell_service_hook_t *hook)
 {
     if (hook->service_code_var_index < 0
-        || hook->service_code_var->shm_index == NGX_ERROR) {
+        || (hook->update_hook
+            && hook->service_code_var->shm_index == NGX_ERROR))
+    {
         return;
     }
 
