@@ -1013,7 +1013,12 @@
 </tr>
 </tbody>
 </table>
-<p>Notice that unlike update callbacks, service hooks get triggered in all worker processes. Notice also that as soon as running C plugins can be useful not only in shared services, but in normal per-worker services too, service update hooks are allowed in both the cases.</p>
+<p>There are a number of differences between service update hooks and update callbacks.</p>
+<ol type="1">
+<li>As soon as running C plugins can be useful not only in shared services, but in normal per-worker services too, service update hooks are allowed in both the types.</li>
+<li>Unlike update callbacks, service hooks get triggered in all worker processes.</li>
+<li>Unlike update callbacks, service hooks get triggered even when the value of the service variable has not been actually changed.</li>
+</ol>
 <h1 id="efficiency-of-data-exchange-between-nginx-and-haskell-parts">Efficiency of data exchange between Nginx and Haskell parts</h1>
 <p>Haskell handlers may accept strings (<code>String</code> or <code>[String]</code>) and <em>strict</em> bytestrings (<code>ByteString</code>), and return strings, <em>lazy</em> bytestrings and booleans. Input C-strings are marshaled into a <em>String</em> with <em>peekCStringLen</em> which has linear complexity <span class="math inline"><em>O</em>(<em>n</em>)</span>, output <em>Strings</em> are marshaled into C-strings with <em>newCStringLen</em> which is also <span class="math inline"><em>O</em>(<em>n</em>)</span>. The new C-strings get freed upon the request termination in the Nginx part.</p>
 <p>The bytestring counterparts are much faster. Both input and output are <span class="math inline"><em>O</em>(1)</span>, using <em>unsafePackCStringLen</em> and a Haskell <em>stable pointer</em> to lazy bytestring buffers created inside Haskell handlers. If an output lazy bytestring has more than one chunk, a new single-chunked C-string will be created in variable and service handlers, but not in content handlers because the former use the chunks directly when constructing contents. Holding a stable pointer to a bytestring’s chunks on the Nginx part ensures that they won’t be garbage collected until the pointer gets freed. Stable pointers get freed upon the request termination for variable and content handlers, and before the next service iteration for service handlers.</p>

@@ -615,10 +615,10 @@ threads exit, and calls *hs_exit()*. This scenario has two important
 implications.
 
 1. The Haskell service handler may catch *ThreadKilled* on exit and make
-persistency actions such as writing files if they are needed.
+   persistency actions such as writing files if they are needed.
 2. *Unsafe* *blocking* FFI calls must be avoided in service handlers as they may
-hang the Nginx worker, and it won't exit. Using *interruptible* FFI fixes this
-problem.
+   hang the Nginx worker, and it won't exit. Using *interruptible* FFI fixes
+   this problem.
 
 # Shared services
 
@@ -1307,10 +1307,15 @@ Function                                    Returned value and its type
                                             (of type `volatile ngx_time_t **`)
 -------------------------------------------------------------------------------------------
 
-Notice that unlike update callbacks, service hooks get triggered in all worker
-processes. Notice also that as soon as running C plugins can be useful not only
-in shared services, but in normal per-worker services too, service update hooks
-are allowed in both the cases.
+There are a number of differences between service update hooks and update
+callbacks.
+
+1. As soon as running C plugins can be useful not only in shared services, but
+   in normal per-worker services too, service update hooks are allowed in both
+   the types.
+2. Unlike update callbacks, service hooks get triggered in all worker processes.
+3. Unlike update callbacks, service hooks get triggered even when the value of
+   the service variable has not been actually changed.
 
 # Efficiency of data exchange between Nginx and Haskell parts
 

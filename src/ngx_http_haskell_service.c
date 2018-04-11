@@ -434,7 +434,8 @@ ngx_http_haskell_service_event(ngx_event_t *ev)
     ngx_str_t                                  arg = ngx_null_string;
     ngx_msec_t                                 old_modified;
     time_t                                     modified;
-    ngx_uint_t                                 run_cb = 0;
+    ngx_uint_t                                 shm_var_updated = 0;
+    ngx_uint_t                                 skip_hooks = 0;
     ngx_uint_t                                 log_level;
     ngx_int_t                                  rc;
 
@@ -552,11 +553,12 @@ ngx_http_haskell_service_event(ngx_event_t *ev)
             ngx_free(async_data->yy_cleanup_data.bufs);
             mcf->hs_free_stable_ptr(
                                 async_data->yy_cleanup_data.locked_bytestring);
+            goto run_service;
         } else {
             *service_code_var->async_data = *async_data;
             service_code_var->async_data->ref_count = 1;
         }
-        goto run_service;
+        goto run_hooks;
     }
 
     modified = ngx_time();
@@ -574,7 +576,7 @@ ngx_http_haskell_service_event(ngx_event_t *ev)
 
     if (var->len == async_data->result.data.len) {
         if (var->data == NULL) {
-            goto unlock_and_run_service;
+            goto unlock_and_run_cb;
         }
         for (i = 0; i < mcf->service_code_vars.nelts; i++) {
             if (service_code_vars[i].data->index
@@ -584,9 +586,9 @@ ngx_http_haskell_service_event(ngx_event_t *ev)
                 if (ngx_memcmp(var->data, async_data->result.data.data,
                                var->len) == 0)
                 {
-                    goto unlock_and_run_service;
+                    goto unlock_and_run_cb;
                 } else {
-                    run_cb = 1;
+                    shm_var_updated = 1;
                     break;
                 }
             }
@@ -599,12 +601,10 @@ ngx_http_haskell_service_event(ngx_event_t *ev)
         shm_vars[shm_index].stats.modified = modified;
         ++shm_vars[shm_index].stats.changes;
         ngx_memcpy(var->data, async_data->result.data.data, var->len);
-        if (run_cb) {
-            goto cb_unlock_and_run_service;
-        } else {
-            goto unlock_and_run_service;
-        }
+        goto unlock_and_run_cb;
     }
+
+    shm_var_updated = 1;
 
     old_modified = shm_vars[shm_index].modified;
     shm_vars[shm_index].modified = ngx_current_msec;
@@ -618,7 +618,7 @@ ngx_http_haskell_service_event(ngx_event_t *ev)
             ngx_slab_free_locked(shpool, var->data);
         }
         ngx_str_null(var);
-        goto cb_unlock_and_run_service;
+        goto unlock_and_run_cb;
     }
 
     var_data = ngx_slab_alloc_locked(shpool, async_data->result.data.len);
@@ -632,7 +632,9 @@ ngx_http_haskell_service_event(ngx_event_t *ev)
         shm_vars[shm_index].stats.size = var->len;
         ++shm_vars[shm_index].stats.failures;
         --shm_vars[shm_index].stats.changes;
-        goto unlock_and_run_service;
+        shm_var_updated = 0;
+        skip_hooks = 1;
+        goto unlock_and_run_cb;
     }
 
     ngx_memcpy(var_data, async_data->result.data.data,
@@ -644,42 +646,44 @@ ngx_http_haskell_service_event(ngx_event_t *ev)
     var->len = async_data->result.data.len;
     var->data = var_data;
 
-cb_unlock_and_run_service:
-
-    for (i = 0; i < mcf->service_code_vars.nelts; i++) {
-        if (service_code_vars[i].data->index
-            == service_code_var->data->index
-            && service_code_vars[i].cb && !service_code_vars[i].running)
-        {
-            if (service_code_vars[i].noarg) {
-                args = service_code_vars[i].data->args.elts;
-                args[0].value.len = var->len;
-                args[0].value.data = NULL;
-                if (var->len > 0) {
-                    args[0].value.data = ngx_alloc(var->len, cycle->log);
-                    if (args[0].value.data == NULL) {
-                        ngx_log_error(NGX_LOG_CRIT, cycle->log, 0,
-                                      "failed to allocate memory for haskell "
-                                      "callback argument");
-                        args[0].value.len = 0;
-                        continue;
-                    }
-                    ngx_memcpy(args[0].value.data, var->data, var->len);
-                }
-            }
-            ngx_http_haskell_run_service(cycle, &service_code_vars[i],
-                                         hev->first_run);
-        }
-    }
-
-unlock_and_run_service:
+unlock_and_run_cb:
 
     NGX_HTTP_HASKELL_SHM_UNLOCK
 
-run_service:
+    if (shm_var_updated) {
+        var = &async_data->result.data;
+        for (i = 0; i < mcf->service_code_vars.nelts; i++) {
+            if (service_code_vars[i].data->index
+                == service_code_var->data->index
+                && service_code_vars[i].cb && !service_code_vars[i].running)
+            {
+                if (service_code_vars[i].noarg) {
+                    args = service_code_vars[i].data->args.elts;
+                    args[0].value.len = var->len;
+                    args[0].value.data = NULL;
+                    if (var->len > 0) {
+                        args[0].value.data = ngx_alloc(var->len, cycle->log);
+                        if (args[0].value.data == NULL) {
+                            ngx_log_error(NGX_LOG_CRIT, cycle->log, 0,
+                                          "failed to allocate memory for "
+                                          "haskell callback argument");
+                            args[0].value.len = 0;
+                            continue;
+                        }
+                        ngx_memcpy(args[0].value.data, var->data, var->len);
+                    }
+                }
+                ngx_http_haskell_run_service(cycle, &service_code_vars[i],
+                                             hev->first_run);
+            }
+        }
+    }
+
+run_hooks:
 
     service_hooks = mcf->service_hooks.elts;
-    if (service_code_var->has_update_hooks) {
+    if (service_code_var->has_update_hooks && !skip_hooks) {
+        var = &async_data->result.data;
         for (i = 0; i < mcf->service_hooks.nelts; i++) {
             if (!service_hooks[i].update_hook
                 || service_hooks[i].service_code_var_index
@@ -688,20 +692,18 @@ run_service:
                 continue;
             }
             if (shm_index == NGX_ERROR) {
-                if (async_data->result.data.len > 0) {
+                if (var->len > 0) {
                     /* var_data will be freed on the Haskell side */
-                    var_data = ngx_alloc(async_data->result.data.len,
-                                         cycle->log);
+                    var_data = ngx_alloc(var->len, cycle->log);
                     if (var_data == NULL) {
                         ngx_log_error(NGX_LOG_CRIT, cycle->log, 0,
                                     "failed to allocate memory for "
                                     "service update hook data");
                         break;
                     }
-                    ngx_memcpy(var_data, async_data->result.data.data,
-                               async_data->result.data.len);
+                    ngx_memcpy(var_data, var->data, var->len);
                     arg.data = var_data;
-                    arg.len = async_data->result.data.len;
+                    arg.len = var->len;
                 }
                 ngx_http_haskell_run_service_hook(cycle, mcf,
                                                   &service_hooks[i], &arg);
@@ -735,6 +737,8 @@ run_service:
                             async_data->yy_cleanup_data.locked_bytestring);
         }
     }
+
+run_service:
 
     ngx_http_haskell_run_service(cycle, service_code_var, 0);
 }
