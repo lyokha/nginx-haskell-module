@@ -1307,8 +1307,8 @@ Function                                    Returned value and its type
                                             (of type `volatile ngx_time_t **`)
 -------------------------------------------------------------------------------------------
 
-There are a number of differences between service update hooks and update
-callbacks.
+Notice that besides synchronous nature of service update hooks, there are other
+features that distinguish them from service update callbacks.
 
 1. As soon as running C plugins can be useful not only in shared services, but
    in normal per-worker services too, service update hooks are allowed in both
