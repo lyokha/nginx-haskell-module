@@ -876,7 +876,7 @@ ngxCyclePtr = readIORef ngxCyclePtrStore
 --
 -- (value of expression
 --
--- >     ngx_http_cycle_get_module_main_conf(cycle, ngx_http_upstream_module))
+-- >     ngx_http_cycle_get_module_main_conf(cycle, ngx_http_upstream_module)
 --
 -- in the worker's initialization function).
 ngxUpstreamMainConfPtr :: IO (Ptr ())
