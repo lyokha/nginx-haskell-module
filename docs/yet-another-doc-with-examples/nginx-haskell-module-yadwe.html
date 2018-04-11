@@ -983,30 +983,33 @@
 <p>The header <em>X-Powered-By</em> is in the response!</p>
 <h2 id="c-plugins-in-service-update-hooks">C plugins in service update hooks</h2>
 <p>Service update hooks can be used to replace service <em>update callbacks</em>. Indeed, being run <em>synchronously</em> from an event handler, a service hook could safely call a C function which would acquire related to Nginx context from Nginx global variables such as <em>ngx_cycle</em> for doing a variety of low level actions.</p>
-<p>Below is a table of functions exported from the Haskell module that return opaque pointers to Nginx global variables for using in C plugins.</p>
+<p>Below is a table of functions exported from the Haskell module that return opaque pointers to Nginx global variables for using them in C plugins.</p>
 <table>
 <colgroup>
-<col style="width: 46%" />
-<col style="width: 53%" />
+<col style="width: 48%" />
+<col style="width: 51%" />
 </colgroup>
 <thead>
 <tr class="header">
 <th style="text-align: left;">Function</th>
-<th style="text-align: left;">Returned Nginx global variable</th>
+<th style="text-align: left;">Returned value and its type</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
 <td style="text-align: left;"><code>ngxCyclePtr</code></td>
-<td style="text-align: left;"><code>volatile ngx_cycle_t  *ngx_cycle</code></td>
+<td style="text-align: left;">value of argument <code>cycle</code> in the worker’s initialization function<br />
+(of type <code>ngx_cycle_t *</code>)</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><code>ngxUpstreamMainConfPtr</code></td>
-<td style="text-align: left;">a pointer of type <code>ngx_http_upstream_main_conf_t *</code> returned in a call to <code>ngx_http_cycle_get_module_main_conf()</code> on initialization of a worker</td>
+<td style="text-align: left;">value of expression <code>ngx_http_cycle_get_module_main_conf(cycle, ngx_http_upstream_module)</code> in the worker’s initialization function<br />
+(of type <code>ngx_http_upstream_main_conf_t *</code>)</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><code>ngxCachedTimePtr</code></td>
-<td style="text-align: left;"><code>volatile ngx_time_t  *ngx_cached_time</code></td>
+<td style="text-align: left;"><em>address</em> of the Nginx global variable <code>ngx_cached_time</code><br />
+(of type <code>volatile ngx_time_t **</code>)</td>
 </tr>
 </tbody>
 </table>
@@ -1019,7 +1022,6 @@
 <h1 id="exceptions-in-haskell-handlers">Exceptions in Haskell handlers</h1>
 <p>There is no way to catch exceptions in <em>pure</em> handlers. However they can arise from using <em>partial</em> functions such as <em>head</em> and <em>tail</em>! Switching to their <em>total</em> counterparts from module <em>Safe</em> can mitigate this issue, but it is not possible to eliminate it completely.</p>
 <p>Fortunately, all exceptions, synchronous and asynchronous, are caught on top of the module’s Haskell code. If a handler does not catch an exception itself, the exception gets caught higher and logged by Nginx. However, using exception handlers in Haskell handlers, when it’s possible, should be preferred.</p>
-
 <h1 id="summary-table-of-all-nginx-directives-of-the-module">Summary table of all Nginx directives of the module</h1>
 <table>
 <colgroup>

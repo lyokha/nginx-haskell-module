@@ -1287,20 +1287,25 @@ call a C function which would acquire related to Nginx context from Nginx global
 variables such as *ngx_cycle* for doing a variety of low level actions.
 
 Below is a table of functions exported from the Haskell module that return
-opaque pointers to Nginx global variables for using in C plugins.
+opaque pointers to Nginx global variables for using them in C plugins.
 
------------------------------------------------------------------------------------------------
-Function                                    Returned Nginx global variable
-------------------------------------------  ---------------------------------------------------
-`ngxCyclePtr`                               `volatile ngx_cycle_t  *ngx_cycle`
+-------------------------------------------------------------------------------------------
+Function                                    Returned value and its type
+------------------------------------------  -----------------------------------------------
+`ngxCyclePtr`                               value of argument `cycle` in the worker's
+                                            initialization function\
+                                            (of type `ngx_cycle_t *`)
 
-`ngxUpstreamMainConfPtr`                    a pointer of type `ngx_http_upstream_main_conf_t *`
-                                            returned in a call to
-                                            `ngx_http_cycle_get_module_main_conf()` on
-                                            initialization of a worker
+`ngxUpstreamMainConfPtr`                    value of expression
+                                            `ngx_http_cycle_get_module_main_conf(cycle,
+                                                ngx_http_upstream_module)` in the worker's
+                                            initialization function\
+                                            (of type `ngx_http_upstream_main_conf_t *`)
 
-`ngxCachedTimePtr`                          `volatile ngx_time_t  *ngx_cached_time`
------------------------------------------------------------------------------------------------
+`ngxCachedTimePtr`                          *address* of the Nginx global variable
+                                            `ngx_cached_time`\
+                                            (of type `volatile ngx_time_t **`)
+-------------------------------------------------------------------------------------------
 
 Notice that unlike update callbacks, service hooks get triggered in all worker
 processes. Notice also that as soon as running C plugins can be useful not only
@@ -1359,8 +1364,6 @@ Fortunately, all exceptions, synchronous and asynchronous, are caught on top of
 the module's Haskell code. If a handler does not catch an exception itself, the
 exception gets caught higher and logged by Nginx. However, using exception
 handlers in Haskell handlers, when it's possible, should be preferred.
-
-\pagebreak
 
 # Summary table of all Nginx directives of the module
 
