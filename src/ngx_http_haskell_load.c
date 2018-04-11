@@ -184,8 +184,8 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         goto dlclose_and_exit;
     }
 
-    mcf->set_cached_time_ptr = (void (*)(volatile void *)) dlsym(mcf->dl_handle,
-                                            "ngxExportSetCachedTimePtr");
+    mcf->set_cached_time_ptr = (void (*)(volatile void **))
+                            dlsym(mcf->dl_handle, "ngxExportSetCachedTimePtr");
     dl_error = dlerror();
     if (dl_error != NULL) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,

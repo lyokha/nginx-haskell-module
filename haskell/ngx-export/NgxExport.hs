@@ -782,19 +782,30 @@ ngxExportVersion x (I n) = fromIntegral <$>
     foldM (\k (I v) -> pokeElemOff x k v >> return (k + 1)) 0
         (take n $ versionBranch version)
 
--- | Returns an opaque pointer to the Nginx cycle object
+-- | Returns an opaque pointer to the Nginx /cycle object/
 -- for using it in C plugins.
+--
+-- Actual type of the returned pointer is /ngx_cycle_t */ (value of argument
+-- /cycle/ in the worker's initialization function).
 ngxCyclePtr :: IO (Ptr ())
 ngxCyclePtr = readIORef ngxCyclePtrStore
 
--- | Returns an opaque pointer to the Nginx upstream main configuration
+-- | Returns an opaque pointer to the Nginx /upstream main configuration/
 -- for using it in C plugins.
+--
+-- Actual type of the returned pointer is /ngx_http_upstream_main_conf_t */
+-- (value of expression
+-- /ngx_http_cycle_get_module_main_conf(cycle, ngx_http_upstream_module))/
+-- in the worker's initialization function).
 ngxUpstreamMainConfPtr :: IO (Ptr ())
 ngxUpstreamMainConfPtr = readIORef ngxUpstreamMainConfPtrStore
 
--- | Returns an opaque pointer to the Nginx cached time object
+-- | Returns an opaque pointer to the Nginx /cached time object/
 -- for using it in C plugins.
-ngxCachedTimePtr :: IO (Ptr ())
+--
+-- Actual type of the returned pointer is /volatile ngx_time_t **/ (address of
+-- Nginx global variable /ngx_cached_time/).
+ngxCachedTimePtr :: IO (Ptr (Ptr ()))
 ngxCachedTimePtr = readIORef ngxCachedTimePtrStore
 
 foreign export ccall ngxExportSetCyclePtr :: Ptr () -> IO ()
@@ -805,8 +816,8 @@ foreign export ccall ngxExportSetUpstreamMainConfPtr :: Ptr () -> IO ()
 ngxExportSetUpstreamMainConfPtr :: Ptr () -> IO ()
 ngxExportSetUpstreamMainConfPtr = writeIORef ngxUpstreamMainConfPtrStore
 
-foreign export ccall ngxExportSetCachedTimePtr :: Ptr () -> IO ()
-ngxExportSetCachedTimePtr :: Ptr () -> IO ()
+foreign export ccall ngxExportSetCachedTimePtr :: Ptr (Ptr ()) -> IO ()
+ngxExportSetCachedTimePtr :: Ptr (Ptr ()) -> IO ()
 ngxExportSetCachedTimePtr = writeIORef ngxCachedTimePtrStore
 
 ngxCyclePtrStore :: IORef (Ptr ())
@@ -817,7 +828,7 @@ ngxUpstreamMainConfPtrStore :: IORef (Ptr ())
 ngxUpstreamMainConfPtrStore = unsafePerformIO $ newIORef nullPtr
 {-# NOINLINE ngxUpstreamMainConfPtrStore #-}
 
-ngxCachedTimePtrStore :: IORef (Ptr ())
+ngxCachedTimePtrStore :: IORef (Ptr (Ptr ()))
 ngxCachedTimePtrStore = unsafePerformIO $ newIORef nullPtr
 {-# NOINLINE ngxCachedTimePtrStore #-}
 

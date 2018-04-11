@@ -874,7 +874,7 @@ ngx_string(
 "ngxUpstreamMainConfPtr = AUX_NGX.readIORef aux_ngx_ngxUpstreamMainConfPtrStore"
 "\n\n"
 
-"ngxCachedTimePtr :: IO (AUX_NGX.Ptr ())\n"
+"ngxCachedTimePtr :: IO (AUX_NGX.Ptr (AUX_NGX.Ptr ()))\n"
 "ngxCachedTimePtr = AUX_NGX.readIORef aux_ngx_ngxCachedTimePtrStore\n\n"
 
 "foreign export ccall ngxExportSetCyclePtr :: AUX_NGX.Ptr () -> IO ()\n"
@@ -887,8 +887,9 @@ ngx_string(
 "ngxExportSetUpstreamMainConfPtr =\n"
 "    AUX_NGX.writeIORef aux_ngx_ngxUpstreamMainConfPtrStore\n\n"
 
-"foreign export ccall ngxExportSetCachedTimePtr :: AUX_NGX.Ptr () -> IO ()\n"
-"ngxExportSetCachedTimePtr :: AUX_NGX.Ptr () -> IO ()\n"
+"foreign export ccall ngxExportSetCachedTimePtr ::\n"
+"    AUX_NGX.Ptr (AUX_NGX.Ptr ()) -> IO ()\n"
+"ngxExportSetCachedTimePtr :: AUX_NGX.Ptr (AUX_NGX.Ptr ()) -> IO ()\n"
 "ngxExportSetCachedTimePtr = AUX_NGX.writeIORef aux_ngx_ngxCachedTimePtrStore"
 "\n\n"
 
@@ -902,7 +903,8 @@ ngx_string(
 "    AUX_NGX.unsafePerformIO $ AUX_NGX.newIORef AUX_NGX.nullPtr\n"
 "{-# NOINLINE aux_ngx_ngxUpstreamMainConfPtrStore #-}\n\n"
 
-"aux_ngx_ngxCachedTimePtrStore :: AUX_NGX.IORef (AUX_NGX.Ptr ())\n"
+"aux_ngx_ngxCachedTimePtrStore :: AUX_NGX.IORef (AUX_NGX.Ptr (AUX_NGX.Ptr ()))"
+"\n"
 "aux_ngx_ngxCachedTimePtrStore =\n"
 "    AUX_NGX.unsafePerformIO $ AUX_NGX.newIORef AUX_NGX.nullPtr\n"
 "{-# NOINLINE aux_ngx_ngxCachedTimePtrStore #-}\n\n"

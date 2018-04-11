@@ -138,7 +138,7 @@ typedef struct {
     void                                     (*set_upstream_main_conf_ptr)
                                                                 (HsPtr);
     void                                     (*set_cached_time_ptr)
-                                                            (volatile void *);
+                                                            (volatile void **);
     HsBool                                   (*rts_has_thread_support)(void);
     ngx_array_t                                service_code_vars;
     ngx_array_t                                var_nocacheable;
