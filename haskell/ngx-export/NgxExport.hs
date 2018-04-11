@@ -19,7 +19,7 @@
 module NgxExport (
     -- * Type declarations
                   ContentHandlerResult
-                 ,UnsafeContentHandlerResult 
+                 ,UnsafeContentHandlerResult
     -- * Exporters
                  ,ngxExportSS
                  ,ngxExportSSS
@@ -170,8 +170,12 @@ ngxExportC :: Name -> Name -> Q Type -> Name -> Q [Dec]
 ngxExportC = ngxExport' $ infixE (Just $ varE 'const) (varE '(.)) . Just . varE
 
 -- | Exports a function of type
--- /'String' -> 'String'/
--- for using in directive /haskell_run/.
+--
+-- @
+-- 'String' -> 'String'
+-- @
+--
+-- for using in directive __/haskell_run/__.
 ngxExportSS :: Name -> Q [Dec]
 ngxExportSS =
     ngxExport 'SS 'sS
@@ -179,8 +183,12 @@ ngxExportSS =
        Ptr CString -> Ptr CInt -> IO CUInt|]
 
 -- | Exports a function of type
--- /'String' -> 'String' -> 'String'/
--- for using in directive /haskell_run/.
+--
+-- @
+-- 'String' -> 'String' -> 'String'
+-- @
+--
+-- for using in directive __/haskell_run/__.
 ngxExportSSS :: Name -> Q [Dec]
 ngxExportSSS =
     ngxExport 'SSS 'sSS
@@ -188,8 +196,12 @@ ngxExportSSS =
        Ptr CString -> Ptr CInt -> IO CUInt|]
 
 -- | Exports a function of type
--- /['String'] -> 'String'/
--- for using in directive /haskell_run/.
+--
+-- @
+-- ['String'] -> 'String'
+-- @
+--
+-- for using in directive __/haskell_run/__.
 ngxExportSLS :: Name -> Q [Dec]
 ngxExportSLS =
     ngxExport 'SLS 'sLS
@@ -197,8 +209,12 @@ ngxExportSLS =
        Ptr CString -> Ptr CInt -> IO CUInt|]
 
 -- | Exports a function of type
--- /'String' -> 'Bool'/
--- for using in directive /haskell_run/.
+--
+-- @
+-- 'String' -> 'Bool'
+-- @
+--
+-- for using in directive __/haskell_run/__.
 ngxExportBS :: Name -> Q [Dec]
 ngxExportBS =
     ngxExport 'BS 'bS
@@ -206,8 +222,12 @@ ngxExportBS =
        Ptr CString -> Ptr CInt -> IO CUInt|]
 
 -- | Exports a function of type
--- /'String' -> 'String' -> 'Bool'/
--- for using in directive /haskell_run/.
+--
+-- @
+-- 'String' -> 'String' -> 'Bool'
+-- @
+--
+-- for using in directive __/haskell_run/__.
 ngxExportBSS :: Name -> Q [Dec]
 ngxExportBSS =
     ngxExport 'BSS 'bSS
@@ -215,8 +235,12 @@ ngxExportBSS =
        Ptr CString -> Ptr CInt -> IO CUInt|]
 
 -- | Exports a function of type
--- /['String'] -> 'Bool'/
--- for using in directive /haskell_run/.
+--
+-- @
+-- ['String'] -> 'Bool'
+-- @
+--
+-- for using in directive __/haskell_run/__.
 ngxExportBLS :: Name -> Q [Dec]
 ngxExportBLS =
     ngxExport 'BLS 'bLS
@@ -224,8 +248,12 @@ ngxExportBLS =
        Ptr CString -> Ptr CInt -> IO CUInt|]
 
 -- | Exports a function of type
--- /'B.ByteString' -> 'L.ByteString'/
--- for using in directive /haskell_run/.
+--
+-- @
+-- 'B.ByteString' -> 'L.ByteString'
+-- @
+--
+-- for using in directive __/haskell_run/__.
 ngxExportYY :: Name -> Q [Dec]
 ngxExportYY =
     ngxExport 'YY 'yY
@@ -234,8 +262,12 @@ ngxExportYY =
        Ptr (StablePtr L.ByteString) -> IO CUInt|]
 
 -- | Exports a function of type
--- /'B.ByteString' -> 'Bool'/
--- for using in directive /haskell_run/.
+--
+-- @
+-- 'B.ByteString' -> 'Bool'
+-- @
+--
+-- for using in directive __/haskell_run/__.
 ngxExportBY :: Name -> Q [Dec]
 ngxExportBY =
     ngxExport 'BY 'bY
@@ -243,8 +275,12 @@ ngxExportBY =
        Ptr CString -> Ptr CInt -> IO CUInt|]
 
 -- | Exports a function of type
--- /'B.ByteString' -> 'IO' 'L.ByteString'/
--- for using in directive /haskell_run/.
+--
+-- @
+-- 'B.ByteString' -> 'IO' 'L.ByteString'
+-- @
+--
+-- for using in directive __/haskell_run/__.
 ngxExportIOYY :: Name -> Q [Dec]
 ngxExportIOYY =
     ngxExportC 'IOYY 'ioyY
@@ -253,8 +289,12 @@ ngxExportIOYY =
        Ptr (StablePtr L.ByteString) -> IO CUInt|]
 
 -- | Exports a function of type
--- /'B.ByteString' -> 'IO' 'L.ByteString'/
--- for using in directive /haskell_run_async/.
+--
+-- @
+-- 'B.ByteString' -> 'IO' 'L.ByteString'
+-- @
+--
+-- for using in directive __/haskell_run_async/__.
 ngxExportAsyncIOYY :: Name -> Q [Dec]
 ngxExportAsyncIOYY =
     ngxExportC 'IOYY 'asyncIOYY
@@ -263,8 +303,12 @@ ngxExportAsyncIOYY =
        Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO (StablePtr (Async ()))|]
 
 -- | Exports a function of type
--- /'L.ByteString' -> 'B.ByteString' -> 'IO' 'L.ByteString'/
--- for using in directive /haskell_run_async_on_request_body/.
+--
+-- @
+-- 'L.ByteString' -> 'B.ByteString' -> 'IO' 'L.ByteString'
+-- @
+--
+-- for using in directive __/haskell_run_async_on_request_body/__.
 --
 -- The first argument of the exported function contains buffers of the client
 -- request body.
@@ -277,8 +321,12 @@ ngxExportAsyncOnReqBody =
        Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO (StablePtr (Async ()))|]
 
 -- | Exports a function of type
--- /'B.ByteString' -> 'Bool' -> 'IO' 'L.ByteString'/
--- for using in directive /haskell_run_service/.
+--
+-- @
+-- 'B.ByteString' -> 'Bool' -> 'IO' 'L.ByteString'
+-- @
+--
+-- for using in directive __/haskell_run_service/__.
 --
 -- The boolean argument of the exported function marks that the service is
 -- being run for the first time.
@@ -290,8 +338,13 @@ ngxExportServiceIOYY =
        Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO (StablePtr (Async ()))|]
 
 -- | Exports a function of type
--- /'B.ByteString' -> 'ContentHandlerResult'/
--- for using in directives /haskell_content/ and /haskell_static_content/.
+--
+-- @
+-- 'B.ByteString' -> 'ContentHandlerResult'
+-- @
+--
+-- for using in directives __/haskell_content/__ and
+-- __/haskell_static_content/__.
 ngxExportHandler :: Name -> Q [Dec]
 ngxExportHandler =
     ngxExport 'Handler 'handler
@@ -300,8 +353,13 @@ ngxExportHandler =
        Ptr (StablePtr L.ByteString) -> IO CUInt|]
 
 -- | Exports a function of type
--- /'B.ByteString' -> 'L.ByteString'/
--- for using in directives /haskell_content/ and /haskell_static_content/.
+--
+-- @
+-- 'B.ByteString' -> 'L.ByteString'
+-- @
+--
+-- for using in directives __/haskell_content/__ and
+-- __/haskell_static_content/__.
 ngxExportDefHandler :: Name -> Q [Dec]
 ngxExportDefHandler =
     ngxExport 'YY 'defHandler
@@ -310,8 +368,12 @@ ngxExportDefHandler =
        Ptr (StablePtr L.ByteString) -> IO CUInt|]
 
 -- | Exports a function of type
--- /'B.ByteString' -> 'UnsafeContentHandlerResult'/
--- for using in directive /haskell_unsafe_content/.
+--
+-- @
+-- 'B.ByteString' -> 'UnsafeContentHandlerResult'
+-- @
+--
+-- for using in directive __/haskell_unsafe_content/__.
 ngxExportUnsafeHandler :: Name -> Q [Dec]
 ngxExportUnsafeHandler =
     ngxExport 'UnsafeHandler 'unsafeHandler
@@ -319,8 +381,12 @@ ngxExportUnsafeHandler =
        Ptr CString -> Ptr CSize -> Ptr CInt -> IO CUInt|]
 
 -- | Exports a function of type
--- /'B.ByteString' -> 'IO' 'ContentHandlerResult'/
--- for using in directive /haskell_async_content/.
+--
+-- @
+-- 'B.ByteString' -> 'IO' 'ContentHandlerResult'
+-- @
+--
+-- for using in directive __/haskell_async_content/__.
 ngxExportAsyncHandler :: Name -> Q [Dec]
 ngxExportAsyncHandler =
     ngxExport 'AsyncHandler 'asyncHandler
@@ -330,8 +396,12 @@ ngxExportAsyncHandler =
        Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO (StablePtr (Async ()))|]
 
 -- | Exports a function of type
--- /'L.ByteString' -> 'B.ByteString' -> 'IO' 'ContentHandlerResult'/
--- for using in directive /haskell_async_content_on_request_body/.
+--
+-- @
+-- 'L.ByteString' -> 'B.ByteString' -> 'IO' 'ContentHandlerResult'
+-- @
+--
+-- for using in directive __/haskell_async_content_on_request_body/__.
 --
 -- The first argument of the exported function contains buffers of the client
 -- request body.
@@ -345,8 +415,12 @@ ngxExportAsyncHandlerOnReqBody =
        Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO (StablePtr (Async ()))|]
 
 -- | Exports a function of type
--- /'B.ByteString' -> 'IO' 'L.ByteString'/
--- for using in directive /haskell_service_hook/.
+--
+-- @
+-- 'B.ByteString' -> 'IO' 'L.ByteString'
+-- @
+--
+-- for using in directive __/haskell_service_hook/__.
 ngxExportServiceHook :: Name -> Q [Dec]
 ngxExportServiceHook =
     ngxExportC 'IOYY 'ioyYWithFree
@@ -785,17 +859,25 @@ ngxExportVersion x (I n) = fromIntegral <$>
 -- | Returns an opaque pointer to the Nginx /cycle object/
 -- for using it in C plugins.
 --
--- Actual type of the returned pointer is /ngx_cycle_t */ (value of argument
--- /cycle/ in the worker's initialization function).
+-- Actual type of the returned pointer is
+--
+-- > ngx_cycle_t *
+--
+-- (value of argument __/cycle/__ in the worker's initialization function).
 ngxCyclePtr :: IO (Ptr ())
 ngxCyclePtr = readIORef ngxCyclePtrStore
 
 -- | Returns an opaque pointer to the Nginx /upstream main configuration/
 -- for using it in C plugins.
 --
--- Actual type of the returned pointer is /ngx_http_upstream_main_conf_t */
+-- Actual type of the returned pointer is
+--
+-- > ngx_http_upstream_main_conf_t *
+--
 -- (value of expression
--- /ngx_http_cycle_get_module_main_conf(cycle, ngx_http_upstream_module))/
+--
+-- >     ngx_http_cycle_get_module_main_conf(cycle, ngx_http_upstream_module))
+--
 -- in the worker's initialization function).
 ngxUpstreamMainConfPtr :: IO (Ptr ())
 ngxUpstreamMainConfPtr = readIORef ngxUpstreamMainConfPtrStore
@@ -803,8 +885,11 @@ ngxUpstreamMainConfPtr = readIORef ngxUpstreamMainConfPtrStore
 -- | Returns an opaque pointer to the Nginx /cached time object/
 -- for using it in C plugins.
 --
--- Actual type of the returned pointer is /volatile ngx_time_t **/ (address of
--- Nginx global variable /ngx_cached_time/).
+-- Actual type of the returned pointer is
+--
+-- > volatile ngx_time_t **
+--
+-- (/address/ of the Nginx global variable __/ngx_cached_time/__).
 ngxCachedTimePtr :: IO (Ptr (Ptr ()))
 ngxCachedTimePtr = readIORef ngxCachedTimePtrStore
 

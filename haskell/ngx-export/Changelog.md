@@ -1,3 +1,7 @@
+### 1.4.1
+
+- Corrected type of *ngxCachedTimePtr*.
+
 ### 1.4.0
 
 - Added a number of opaque pointers to Nginx global objects for using them in

@@ -877,12 +877,13 @@ ngx_string(
 "ngxCachedTimePtr :: IO (AUX_NGX.Ptr (AUX_NGX.Ptr ()))\n"
 "ngxCachedTimePtr = AUX_NGX.readIORef aux_ngx_ngxCachedTimePtrStore\n\n"
 
-"foreign export ccall ngxExportSetCyclePtr :: AUX_NGX.Ptr () -> IO ()\n"
+"foreign export ccall ngxExportSetCyclePtr ::\n"
+"    AUX_NGX.Ptr () -> IO ()\n"
 "ngxExportSetCyclePtr :: AUX_NGX.Ptr () -> IO ()\n"
 "ngxExportSetCyclePtr = AUX_NGX.writeIORef aux_ngx_ngxCyclePtrStore\n\n"
 
-"foreign export ccall ngxExportSetUpstreamMainConfPtr :: AUX_NGX.Ptr () -> IO "
-"()\n"
+"foreign export ccall ngxExportSetUpstreamMainConfPtr ::\n"
+"    AUX_NGX.Ptr () -> IO ()\n"
 "ngxExportSetUpstreamMainConfPtr :: AUX_NGX.Ptr () -> IO ()\n"
 "ngxExportSetUpstreamMainConfPtr =\n"
 "    AUX_NGX.writeIORef aux_ngx_ngxUpstreamMainConfPtrStore\n\n"
