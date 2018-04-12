@@ -326,7 +326,8 @@ ngxExportAsyncOnReqBody =
 -- 'B.ByteString' -> 'Bool' -> 'IO' 'L.ByteString'
 -- @
 --
--- for using in directive __/haskell_run_service/__.
+-- for using in directives __/haskell_run_service/__ and
+-- __/haskell_service_var_update_callback/__.
 --
 -- The boolean argument of the exported function marks that the service is
 -- being run for the first time.
@@ -420,7 +421,8 @@ ngxExportAsyncHandlerOnReqBody =
 -- 'B.ByteString' -> 'IO' 'L.ByteString'
 -- @
 --
--- for using in directive __/haskell_service_hook/__.
+-- for using in directives __/haskell_service_hook/__ and
+-- __/haskell_service_update_hook/__.
 ngxExportServiceHook :: Name -> Q [Dec]
 ngxExportServiceHook =
     ngxExportC 'IOYY 'ioyYWithFree
