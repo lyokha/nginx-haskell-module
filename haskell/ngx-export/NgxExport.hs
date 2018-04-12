@@ -21,6 +21,7 @@ module NgxExport (
                   ContentHandlerResult
                  ,UnsafeContentHandlerResult
     -- * Exporters
+    -- *** Synchronous handlers
                  ,ngxExportSS
                  ,ngxExportSSS
                  ,ngxExportSLS
@@ -30,14 +31,17 @@ module NgxExport (
                  ,ngxExportYY
                  ,ngxExportBY
                  ,ngxExportIOYY
+    -- *** Asynchronous handlers and services
                  ,ngxExportAsyncIOYY
                  ,ngxExportAsyncOnReqBody
                  ,ngxExportServiceIOYY
+    -- *** Content handlers
                  ,ngxExportHandler
                  ,ngxExportDefHandler
                  ,ngxExportUnsafeHandler
                  ,ngxExportAsyncHandler
                  ,ngxExportAsyncHandlerOnReqBody
+    -- *** Service hooks
                  ,ngxExportServiceHook
     -- * Opaque pointers to Nginx global objects
                  ,ngxCyclePtr
@@ -105,15 +109,14 @@ pattern ToBool i <- (toBool -> i)
 {-# COMPLETE ToBool :: CUInt #-}
 #endif
 
--- | The first element of the /3-tuple/ is /content/, the second is
--- /content type/, and the third is /HTTP status/.
+-- | The /3-tuple/ contains /(content, content-type, HTTP-status)/.
 type ContentHandlerResult = (L.ByteString, B.ByteString, Int)
 
--- | The first element of the /3-tuple/ is /content/, the second is
--- /content type/, and the third is /HTTP status/. Both the content and the
--- content type are supposed to be referring to low-level string literals which
--- do not need to be freed upon request termination and must not be
--- garbage-collected in the Haskell RTS.
+-- | The /3-tuple/ contains /(content, content-type, HTTP-status)/.
+--
+-- Both the /content/ and the /content-type/ are supposed to be referring to
+-- low-level string literals that do not need to be freed upon an HTTP request
+-- termination and must not be garbage-collected in the Haskell RTS.
 type UnsafeContentHandlerResult = (B.ByteString, B.ByteString, Int)
 
 data NgxExport = SS              (String -> String)
