@@ -814,8 +814,8 @@ are declared like
 Here *cbHttpbin* is a Haskell handler exported by *ngxExportServiceIOYY* as
 always. Variable *hs_service_httpbin* must be declared in directive
 *haskell_service_var_in_shm*. Argument *optional_value* is a string, it can be
-omitted, in which case handler *cbHttpbin* gets an empty string as its first
-argument.
+omitted, in which case handler *cbHttpbin* gets the value of service variable
+*hs_service_httpbin* as its first argument.
 
 Update callbacks do not return results. They run from a worker that holds the
 active service on every change of the service variable, and shall be supposedly
@@ -824,7 +824,7 @@ via an HTTP client.
 
 ### An example
 
-Let's count changes in service variable *hs_service_httpbin* during Nginx
+Let's count all changes of service variable *hs_service_httpbin* during Nginx
 lifetime (originally I supposed that its content won't change after the first
 initialization because *httpbin.org* looks like a static page, but responses
 appeared to be able to vary from time to time). For this we will use counters
