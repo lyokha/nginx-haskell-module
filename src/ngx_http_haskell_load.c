@@ -54,6 +54,9 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     version_f_t                     version_f = NULL;
     HsInt32                         version[4], version_len;
     void                          (*install_signal_handler)(void);
+#if !(NGX_WIN32)
+    struct sigaction                sa;
+#endif
 
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
     if (mcf == NULL || !mcf->code_loaded) {
@@ -229,6 +232,14 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
                 ((char **) mcf->rts_options.elts)[i];
     }
 
+#if !(NGX_WIN32)
+    if (sigaction(SIGQUIT, NULL, &sa) == -1) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                      "failed to save sigaction value for QUIT signal");
+        goto dlclose_and_exit;
+    }
+#endif
+
     /* FIXME: hs_init() may exit(EXIT_FAILURE), and in this case Nginx master
      * may begin to continuously restart workers; not sure if it's fixable */
     mcf->hs_init(&argc, &argv);
@@ -236,6 +247,14 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
 
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ < 702
     mcf->hs_add_root(mcf->init_HsModule);
+#endif
+
+#if !(NGX_WIN32)
+    if (sigaction(SIGQUIT, &sa, NULL) == -1) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                      "failed to restore sigaction value for QUIT signal");
+        goto unload_and_exit;
+    }
 #endif
 
     install_signal_handler();
