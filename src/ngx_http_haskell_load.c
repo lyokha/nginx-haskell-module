@@ -238,6 +238,13 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
                       "failed to save sigaction value for QUIT signal");
         goto dlclose_and_exit;
     }
+    if (!ngx_daemonized) {
+        if (sigaction(SIGINT, NULL, &sa) == -1) {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                          "failed to save sigaction value for INT signal");
+            goto dlclose_and_exit;
+        }
+    }
 #endif
 
     /* FIXME: hs_init() may exit(EXIT_FAILURE), and in this case Nginx master
@@ -257,7 +264,17 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     }
 #endif
 
-    install_signal_handler();
+    if (ngx_daemonized) {
+        install_signal_handler();
+#if !(NGX_WIN32)
+    } else {
+        if (sigaction(SIGINT, &sa, NULL) == -1) {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                          "failed to restore sigaction value for INT signal");
+            goto unload_and_exit;
+        }
+#endif
+    }
 
     if (mcf->wrap_mode == ngx_http_haskell_module_wrap_mode_modular) {
         version_len = version_f(version, sizeof(version) / sizeof(version[0]));

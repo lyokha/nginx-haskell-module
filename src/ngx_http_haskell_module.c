@@ -700,6 +700,10 @@ ngx_http_haskell_exit_worker(ngx_cycle_t *cycle)
 static void
 ngx_http_haskell_exit_master(ngx_cycle_t *cycle)
 {
+    if (ngx_process != NGX_PROCESS_MASTER) {
+        return;
+    }
+
     ngx_http_haskell_cleanup_service_hook_fd(cycle);
 }
 
