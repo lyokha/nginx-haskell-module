@@ -701,6 +701,7 @@ static void
 ngx_http_haskell_exit_master(ngx_cycle_t *cycle)
 {
     if (ngx_process != NGX_PROCESS_MASTER) {
+        /* this can be NGX_PROCESS_SINGLE */
         return;
     }
 
