@@ -54,6 +54,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     version_f_t                     version_f = NULL;
     HsInt32                         version[4], version_len;
     void                          (*install_signal_handler)(void);
+    ngx_uint_t                      single_proc_fg;
 #if !(NGX_WIN32)
     struct sigaction                sa;
 #endif
@@ -232,13 +233,15 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
                 ((char **) mcf->rts_options.elts)[i];
     }
 
+    single_proc_fg = !ngx_daemonized && ngx_process == NGX_PROCESS_SINGLE;
+
 #if !(NGX_WIN32)
     if (sigaction(SIGQUIT, NULL, &sa) == -1) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
                       "failed to save sigaction value for QUIT signal");
         goto dlclose_and_exit;
     }
-    if (!ngx_daemonized) {
+    if (single_proc_fg) {
         if (sigaction(SIGINT, NULL, &sa) == -1) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
                           "failed to save sigaction value for INT signal");
@@ -264,7 +267,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     }
 #endif
 
-    if (ngx_daemonized) {
+    if (!single_proc_fg) {
         install_signal_handler();
 #if !(NGX_WIN32)
     } else {
