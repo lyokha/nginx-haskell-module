@@ -65,7 +65,7 @@ query = (getUrl .) . flip mkAddr
 getUpstreams (C8.unpack -> conf) firstRun = do
     let Conf (toSec -> upd) (url, addr) = readDef (Conf (Hr 24) ("", "")) conf
     unless firstRun $ threadDelaySec upd
-    new <- catchBadResponse $ (fromMaybe M.empty . decode) <$> query url addr
+    new <- catchBadResponse $ fromMaybe M.empty . decode <$> query url addr
     old <- readIORef collectedData
     if new == old
         then return C8L.empty

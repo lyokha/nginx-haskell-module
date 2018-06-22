@@ -229,7 +229,7 @@ queryEndpoints (C8.unpack -> conf) firstRun = do
     where query u = runKleisli $ arr id &&& Kleisli (getUrl . flip mkAddr u)
           mkAddr = (("http://" ++) .) . (++)
           catchBadResponse f d = handle $
-              \(_ :: SomeException) -> ((d, ) . f d) <$> readIORef allBackends
+              \(_ :: SomeException) -> (d, ) . f d <$> readIORef allBackends
           catchBadResponseOwn = catchBadResponse $
               \d -> fromMaybe (BackendData 0 M.empty) . M.lookup d .
                   fromMaybe M.empty . M.lookup Own
