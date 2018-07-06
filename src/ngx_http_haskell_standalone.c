@@ -215,7 +215,7 @@ ngx_string(
 "    AUX_NGX.Ptr (AUX_NGX.StablePtr AUX_NGX_BSL.ByteString) -> \\\n"
 "    IO AUX_NGX.CUInt;\n\n"
 
-"{-# LANGUAGE ViewPatterns #-}\n\n"
+"{-# LANGUAGE ViewPatterns, TupleSections #-}\n\n"
 
 "module NgxHaskellUserRuntime where\n\n"
 
@@ -395,7 +395,7 @@ ngx_string(
 "                n * AUX_NGX.sizeOf (undefined :: AUX_NGX_STR_TYPE)\n"
 "            if t == AUX_NGX.nullPtr\n"
 "                then return (AUX_NGX.nullPtr, -1)\n"
-"                else (,) t <$>\n"
+"                else (t ,) <$>\n"
 "                        AUX_NGX_BSL.foldlChunks\n"
 "                            (\\a c -> do\n"
 "                                off <- a\n"
@@ -520,7 +520,7 @@ ngx_string(
 "            x (fromIntegral -> n) p pl spd = do\n"
 "    (s, (r, _)) <- aux_ngx_safeYYHandler $ do\n"
 "        s <- f <$> AUX_NGX_BS.unsafePackCStringLen (x, n)\n"
-"        fmap (flip (,) (0, False)) $ return AUX_NGX.$!! s\n"
+"        fmap (, (0, False)) $ return AUX_NGX.$!! s\n"
 "    aux_ngx_pokeLazyByteString s p pl spd\n"
 "    return r\n\n"
 
@@ -536,7 +536,7 @@ ngx_string(
 "            x (fromIntegral -> n) p pl spd = do\n"
 "    (s, (r, _)) <- aux_ngx_safeYYHandler $ do\n"
 "        s <- aux_ngx_pack (x, n) >>= flip f False\n"
-"        fmap (flip (,) (0, False)) $ return AUX_NGX.$!! s\n"
+"        fmap (, (0, False)) $ return AUX_NGX.$!! s\n"
 "    aux_ngx_pokeLazyByteString s p pl spd\n"
 "    return r\n\n"
 
@@ -576,7 +576,7 @@ ngx_string(
 "    (do\n"
 "        (s, (r, exiting)) <- aux_ngx_safeYYHandler $ do\n"
 "            (s, exiting) <- a\n"
-"            fmap (flip (,) (0, exiting)) $ return AUX_NGX.$!! s\n"
+"            fmap (, (0, exiting)) $ return AUX_NGX.$!! s\n"
 "        aux_ngx_pokeLazyByteString s p pl spd\n"
 "        AUX_NGX.poke pr r\n"
 "        if exiting\n"
@@ -636,10 +636,9 @@ ngx_string(
 "                           )\n"
 "                           `AUX_NGX.catches`\n"
 "                           [AUX_NGX.Handler $\n"
-"                                return . flip (,) False . not . "
-"aux_ngx_isEINTR\n"
+"                                return . (, False) . not . aux_ngx_isEINTR\n"
 "                           ,AUX_NGX.Handler $\n"
-"                                return . (,) True . (== AUX_NGX.ThreadKilled)"
+"                                return . (True, ) . (== AUX_NGX.ThreadKilled)"
 "\n"
 "                           ]\n"
 "                       else return False\n"
@@ -648,7 +647,7 @@ ngx_string(
 "            else do\n"
 "                AUX_NGX.when fstRun $ AUX_NGX.poke active 1\n"
 "                x' <- AUX_NGX_BS.unsafePackCStringLen (x, n)\n"
-"                flip (,) False <$> f x' fstRun\n"
+"                (, False) <$> f x' fstRun\n"
 "    ) fd efd\n\n"
 
 "aux_ngx_hs_async_ioy_yy :: AUX_NGX_EXPORT ->\n"
@@ -666,7 +665,7 @@ ngx_string(
 "    (do\n"
 "        b' <- aux_ngx_peekRequestBodyChunks tmpf b m\n"
 "        x' <- AUX_NGX_BS.unsafePackCStringLen (x, n)\n"
-"        flip (,) False <$> f b' x'\n"
+"        (, False) <$> f b' x'\n"
 "    ) fd efd\n\n"
 
 "aux_ngx_hs_async_handler :: AUX_NGX_EXPORT ->\n"

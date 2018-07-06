@@ -1405,9 +1405,10 @@ haskell code in the nginx configuration file, of which the most important is
 inability to use haskell *file-header* pragmas like *LANGUAGE* and
 *OPTIONS_GHC*. However this particular limitation can be worked around with
 *-X...* options in directive *haskell ghc_extra_options*. Standalone module
-wrapping approach also brings ghc extensions *ForeignFunctionInterface*, *CPP*
-and *ViewPatterns* into scope of the user's haskell code. Building the module
-from scratch for later loading with directive *haskell load* is also difficult.
+wrapping approach also brings ghc extensions *ForeignFunctionInterface*,
+*InterruptibleFFI*, *CPP*, *ViewPatterns* and *TupleSections* into scope of the
+user's haskell code. Building the module from scratch for later loading with
+directive *haskell load* is also difficult.
 
 To address limitations of the standalone module approach, another *modular*
 approach was introduced. In it, the wrapping haskell code must be built in a

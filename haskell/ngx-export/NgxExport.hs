@@ -1,5 +1,5 @@
 {-# LANGUAGE TemplateHaskell, ForeignFunctionInterface, InterruptibleFFI #-}
-{-# LANGUAGE ViewPatterns, PatternSynonyms #-}
+{-# LANGUAGE ViewPatterns, PatternSynonyms, TupleSections #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -505,7 +505,7 @@ toBuffers s p = do
             t <- safeMallocBytes $ n * sizeOf (undefined :: NgxStrType)
             if t == nullPtr
                 then return (nullPtr, -1)
-                else (,) t <$>
+                else (t, ) <$>
                         L.foldlChunks
                             (\a c -> do
                                 off <- a
@@ -604,7 +604,7 @@ yY :: YY -> CString -> CInt ->
 yY f x (I n) p pl spd = do
     (s, (r, _)) <- safeYYHandler $ do
         s <- f <$> B.unsafePackCStringLen (x, n)
-        fmap (flip (,) (0, False)) $ return $!! s
+        fmap (, (0, False)) $ return $!! s
     pokeLazyByteString s p pl spd
     return r
 
@@ -615,7 +615,7 @@ ioyYCommon :: (CStringLen -> IO B.ByteString) ->
 ioyYCommon pack f x (I n) p pl spd = do
     (s, (r, _)) <- safeYYHandler $ do
         s <- pack (x, n) >>= flip f False
-        fmap (flip (,) (0, False)) $ return $!! s
+        fmap (, (0, False)) $ return $!! s
     pokeLazyByteString s p pl spd
     return r
 
@@ -643,7 +643,7 @@ asyncIOCommon a (I fd) efd p pl pr spd =
     (do
         (s, (r, exiting)) <- safeYYHandler $ do
             (s, exiting) <- a
-            fmap (flip (,) (0, exiting)) $ return $!! s
+            fmap (, (0, exiting)) $ return $!! s
         pokeLazyByteString s p pl spd
         poke pr r
         if exiting
@@ -688,8 +688,8 @@ asyncIOYY f x (I n) fd (I fdlk) active (ToBool efd) (ToBool fstRun) =
                                     return (True, False)
                            )
                            `catches`
-                           [E.Handler $ return . flip (,) False . not . isEINTR
-                           ,E.Handler $ return . (,) True . (== ThreadKilled)
+                           [E.Handler $ return . (, False) . not . isEINTR
+                           ,E.Handler $ return . (True, ) . (== ThreadKilled)
                            ]
                        else return False
         if exiting
@@ -697,7 +697,7 @@ asyncIOYY f x (I n) fd (I fdlk) active (ToBool efd) (ToBool fstRun) =
             else do
                 when fstRun $ poke active 1
                 x' <- B.unsafePackCStringLen (x, n)
-                flip (,) False <$> f x' fstRun
+                (, False) <$> f x' fstRun
     ) fd efd
 
 asyncIOYYY :: IOYYY -> Ptr NgxStrType -> Ptr NgxStrType -> CInt ->
@@ -708,7 +708,7 @@ asyncIOYYY f tmpf b (I m) x (I n) fd (ToBool efd) =
     (do
         b' <- peekRequestBodyChunks tmpf b m
         x' <- B.unsafePackCStringLen (x, n)
-        flip (,) False <$> f b' x'
+        (, False) <$> f b' x'
     ) fd efd
 
 asyncHandler :: AsyncHandler -> CString -> CInt ->
