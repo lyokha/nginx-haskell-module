@@ -1317,6 +1317,11 @@ features that distinguish them from service update callbacks.
 3. Unlike update callbacks, service hooks get triggered even when the value of
    the service variable has not been actually changed.
 
+### An example
+
+See implementation of
+[*nginx-healthcheck-plugin*](https://github.com/lyokha/nginx-healthcheck-plugin).
+
 # Efficiency of data exchange between Nginx and Haskell parts
 
 Haskell handlers may accept strings (`String` or `[String]`) and *strict*

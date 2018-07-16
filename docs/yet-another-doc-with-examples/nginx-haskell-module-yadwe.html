@@ -11,7 +11,7 @@
       span.underline{text-decoration: underline;}
       div.column{display: inline-block; vertical-align: top; width: 50%;}
   </style>
-  <link rel="stylesheet" href="./pandoc.css">
+  <link rel="stylesheet" href="./pandoc.css" />
   <!--[if lt IE 9]>
     <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
   <![endif]-->
@@ -153,8 +153,8 @@
 <p>There are three types of exporters for synchronous content handlers.</p>
 <table>
 <colgroup>
-<col style="width: 56%" />
-<col style="width: 43%" />
+<col style="width: 55%" />
+<col style="width: 44%" />
 </colgroup>
 <thead>
 <tr class="header">
@@ -224,8 +224,8 @@
 <p>There are two types of Haskell handlers for per-request asynchronous tasks: an asynchronous handler and an asynchronous request body handler.</p>
 <table>
 <colgroup>
-<col style="width: 57%" />
-<col style="width: 42%" />
+<col style="width: 56%" />
+<col style="width: 43%" />
 </colgroup>
 <thead>
 <tr class="header">
@@ -429,7 +429,7 @@
 <p>There is only one type of asynchronous services exporters.</p>
 <table>
 <colgroup>
-<col style="width: 49%" />
+<col style="width: 48%" />
 <col style="width: 51%" />
 </colgroup>
 <thead>
@@ -986,8 +986,8 @@
 <p>Below is a table of functions exported from the Haskell module that return opaque pointers to Nginx global variables for using them in C plugins.</p>
 <table>
 <colgroup>
-<col style="width: 48%" />
-<col style="width: 51%" />
+<col style="width: 47%" />
+<col style="width: 52%" />
 </colgroup>
 <thead>
 <tr class="header">
@@ -1019,6 +1019,8 @@
 <li>Unlike update callbacks, service hooks get triggered in all worker processes.</li>
 <li>Unlike update callbacks, service hooks get triggered even when the value of the service variable has not been actually changed.</li>
 </ol>
+<h3 id="an-example-9">An example</h3>
+<p>See implementation of <a href="https://github.com/lyokha/nginx-healthcheck-plugin"><em>nginx-healthcheck-plugin</em></a>.</p>
 <h1 id="efficiency-of-data-exchange-between-nginx-and-haskell-parts">Efficiency of data exchange between Nginx and Haskell parts</h1>
 <p>Haskell handlers may accept strings (<code>String</code> or <code>[String]</code>) and <em>strict</em> bytestrings (<code>ByteString</code>), and return strings, <em>lazy</em> bytestrings and booleans. Input C-strings are marshaled into a <em>String</em> with <em>peekCStringLen</em> which has linear complexity <span class="math inline"><em>O</em>(<em>n</em>)</span>, output <em>Strings</em> are marshaled into C-strings with <em>newCStringLen</em> which is also <span class="math inline"><em>O</em>(<em>n</em>)</span>. The new C-strings get freed upon the request termination in the Nginx part.</p>
 <p>The bytestring counterparts are much faster. Both input and output are <span class="math inline"><em>O</em>(1)</span>, using <em>unsafePackCStringLen</em> and a Haskell <em>stable pointer</em> to lazy bytestring buffers created inside Haskell handlers. If an output lazy bytestring has more than one chunk, a new single-chunked C-string will be created in variable and service handlers, but not in content handlers because the former use the chunks directly when constructing contents. Holding a stable pointer to a bytestring’s chunks on the Nginx part ensures that they won’t be garbage collected until the pointer gets freed. Stable pointers get freed upon the request termination for variable and content handlers, and before the next service iteration for service handlers.</p>
