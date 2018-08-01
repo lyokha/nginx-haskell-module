@@ -50,7 +50,8 @@ module NgxExport (
     -- * Re-exported data constructors from /"Foreign.C"/
     --   (for marshalling in foreign calls)
                  ,Foreign.C.CInt (..)
-                 ,Foreign.C.CUInt (..)) where
+                 ,Foreign.C.CUInt (..)
+                 ) where
 
 import           Language.Haskell.TH
 import           Foreign.C
