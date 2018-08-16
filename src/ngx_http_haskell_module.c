@@ -97,13 +97,13 @@ static ngx_command_t  ngx_http_haskell_module_commands[] = {
       0,
       NULL },
     { ngx_string("haskell_run_async"),
-      NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_ANY,
+      NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_ANY,
       ngx_http_haskell_run,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
     { ngx_string("haskell_run_async_on_request_body"),
-      NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_ANY,
+      NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_ANY,
       ngx_http_haskell_run,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
@@ -345,20 +345,31 @@ ngx_http_haskell_create_loc_conf(ngx_conf_t *cf)
 static char *
 ngx_http_haskell_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 {
-    ngx_http_haskell_loc_conf_t  *prev = parent;
-    ngx_http_haskell_loc_conf_t  *conf = child;
+    ngx_http_haskell_loc_conf_t       *prev = parent;
+    ngx_http_haskell_loc_conf_t       *conf = child;
 
-    ngx_uint_t                    i;
+    ngx_uint_t                         i;
+    ngx_uint_t                         nelts, prev_nelts;
+    ngx_http_haskell_code_var_data_t  *cv_elts, *prev_cv_elts;
 
-    for (i = 0; i < prev->code_vars.nelts; i++) {
-        ngx_http_haskell_code_var_data_t  *elem;
-
-        elem = ngx_array_push(&conf->code_vars);
-        if (elem == NULL) {
+    prev_nelts = prev->code_vars.nelts;
+    if (prev_nelts > 0) {
+        if (ngx_array_push_n(&conf->code_vars, prev_nelts) == NULL) {
             return NGX_CONF_ERROR;
         }
 
-        *elem = ((ngx_http_haskell_code_var_data_t *) prev->code_vars.elts)[i];
+        cv_elts = conf->code_vars.elts;
+        nelts = conf->code_vars.nelts;
+        if (nelts > prev_nelts) {
+            for (i = nelts - 1; i > prev_nelts - 1; i--) {
+                cv_elts[i] = cv_elts[i - prev_nelts];
+            }
+        }
+
+        prev_cv_elts = prev->code_vars.elts;
+        for (i = 0; i < prev_nelts; i++) {
+            cv_elts[i] = prev_cv_elts[i];
+        }
     }
 
     ngx_conf_merge_value(conf->request_body_read_temp_file,

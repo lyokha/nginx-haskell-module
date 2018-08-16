@@ -250,7 +250,9 @@ directives), and in a late rewrite phase (after rewrite directives, if in the
 final location there are more asynchronous tasks declared). It is possible to
 declare many asynchronous tasks in a single location: in this case they are
 spawned one by one in order of their declarations, which lets using results of
-early tasks in inputs of later task.
+early tasks in inputs of later tasks. This ordering rule extends naturally
+beyond hierarchical levels: tasks declared in *server* clause run before tasks
+from *location* clauses, while tasks from *location-if* clauses run latest.
 
 Asynchronous tasks are bound to the Nginx event loop by means of *eventfd* (or
 POSIX *pipes* if eventfd was not available on the platform when Nginx was being
@@ -1397,10 +1399,12 @@ Directive                                                                 Level 
                                                                           `location`,
                                                                           `location if`
 
-`haskell_run_async`                                                       `location`,           Run an asynchronous Haskell task.
+`haskell_run_async`                                                       `server`,             Run an asynchronous Haskell task.
+                                                                          `location`,
                                                                           `location if`
 
-`haskell_run_async_on_request_body`                                       `location`,           Run an asynchronous Haskell request body handler.
+`haskell_run_async_on_request_body`                                       `server`,             Run an asynchronous Haskell request body handler.
+                                                                          `location`,
                                                                           `location if`
 
 `haskell_run_service`                                                     `http`                Run a Haskell service.

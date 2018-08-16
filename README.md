@@ -875,9 +875,9 @@ bytestring, is the client request's body buffers, the second, *strict*
 bytestring, is the user parameter like in normal asynchronous handlers. The
 request body handler returns its result in a *lazy* bytestring like normal
 asynchronous handlers. It is possible to declare multiple request body handlers
-and mix them with other asynchronous handlers on the same level (e.g. in one
-nginx *location* or *location-if*). Here is an example from
-[test/tsung/nginx-async.conf](test/tsung/nginx-async.conf).
+and mix them with other asynchronous handlers within a whole hierarchy of levels
+(formed by *server*, *location* and *location-if* clauses). Below is an example
+from [test/tsung/nginx-async.conf](test/tsung/nginx-async.conf).
 
 ```haskell
 reqBody = const . return

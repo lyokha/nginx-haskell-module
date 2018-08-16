@@ -25,13 +25,14 @@ ngx_int_t
 ngx_http_haskell_run_handler(ngx_http_request_t *r,
                              ngx_http_variable_value_t *v, uintptr_t data)
 {
+    ngx_int_t                           *index = (ngx_int_t *) data;
+
     ngx_uint_t                           i;
     ngx_http_haskell_main_conf_t        *mcf;
     ngx_http_haskell_loc_conf_t         *lcf;
     ngx_http_core_main_conf_t           *cmcf;
     ngx_http_variable_t                 *cmvars;
     ngx_http_haskell_ctx_t              *ctx;
-    ngx_int_t                           *index = (ngx_int_t *) data;
     ngx_int_t                            found_idx = NGX_ERROR;
     ngx_http_haskell_var_handle_t       *vars_comp;
     ngx_http_haskell_var_cache_t        *var_nocacheable_cache;

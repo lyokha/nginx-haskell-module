@@ -245,7 +245,7 @@
 </tbody>
 </table>
 <p>Normal asynchronous handler accepts a strict bytestring and returns a lazy bytestring. Its type exactly corresponds to that of the handlers exported with <em>ngxExportIOYY</em>. Request body handler additionally accepts request body chunks in its first parameter.</p>
-<p>Unlike synchronous handlers, asynchronous per-request handlers are <em>eager</em>. This means that they will always run when declared in a location, no matter whether their results are going to be used in the response and rewrite directives, or not. The asynchronous handlers run in an early <em>rewrite phase</em> (before rewrite directives), and in a late rewrite phase (after rewrite directives, if in the final location there are more asynchronous tasks declared). It is possible to declare many asynchronous tasks in a single location: in this case they are spawned one by one in order of their declarations, which lets using results of early tasks in inputs of later task.</p>
+<p>Unlike synchronous handlers, asynchronous per-request handlers are <em>eager</em>. This means that they will always run when declared in a location, no matter whether their results are going to be used in the response and rewrite directives, or not. The asynchronous handlers run in an early <em>rewrite phase</em> (before rewrite directives), and in a late rewrite phase (after rewrite directives, if in the final location there are more asynchronous tasks declared). It is possible to declare many asynchronous tasks in a single location: in this case they are spawned one by one in order of their declarations, which lets using results of early tasks in inputs of later tasks. This ordering rule extends naturally beyond hierarchical levels: tasks declared in <em>server</em> clause run before tasks from <em>location</em> clauses, while tasks from <em>location-if</em> clauses run latest.</p>
 <p>Asynchronous tasks are bound to the Nginx event loop by means of <em>eventfd</em> (or POSIX <em>pipes</em> if eventfd was not available on the platform when Nginx was being compiled). When the rewrite phase handler of this module spawns an asynchronous task, it opens an eventfd, then registers it in the event loop, and passes it to the Haskell handler. As soon as the Haskell handler finishes the task and pokes the result into buffers, it writes into the eventfd, thus informing the Nginx part that the task has finished. Then Nginx gets back to the module’s rewrite phase handler, and it spawns the next asynchronous task, or returns (when there are no more tasks left), moving request processing to the next stage.</p>
 <h2 id="an-example-1">An example</h2>
 <p>Let’s add two asynchronous handlers into <em>test.hs</em>: one for extracting a field from POST data, and the other for delaying response for a given number of seconds.</p>
@@ -1076,12 +1076,12 @@
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><code>haskell_run_async</code></td>
-<td style="text-align: left;"><code>location</code>, <code>location if</code></td>
+<td style="text-align: left;"><code>server</code>, <code>location</code>, <code>location if</code></td>
 <td style="text-align: left;">Run an asynchronous Haskell task.</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><code>haskell_run_async_on_request_body</code></td>
-<td style="text-align: left;"><code>location</code>, <code>location if</code></td>
+<td style="text-align: left;"><code>server</code>, <code>location</code>, <code>location if</code></td>
 <td style="text-align: left;">Run an asynchronous Haskell request body handler.</td>
 </tr>
 <tr class="odd">

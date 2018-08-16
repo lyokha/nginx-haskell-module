@@ -983,10 +983,11 @@ ngx_http_haskell_run_service_handler(ngx_http_request_t *r,
                                      ngx_http_variable_value_t *v,
                                      uintptr_t data)
 {
+    ngx_int_t                                 *index = (ngx_int_t *) data;
+
     ngx_uint_t                                 i;
     ngx_http_haskell_main_conf_t              *mcf;
     ngx_http_haskell_service_code_var_data_t  *service_code_vars;
-    ngx_int_t                                 *index = (ngx_int_t *) data;
     ngx_int_t                                  found_idx = NGX_ERROR;
     ngx_slab_pool_t                           *shpool;
     ngx_http_haskell_shm_var_handle_t         *shm_vars;

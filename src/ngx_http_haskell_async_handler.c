@@ -633,12 +633,13 @@ ngx_http_haskell_run_async_handler(ngx_http_request_t *r,
                                    ngx_http_variable_value_t *v,
                                    uintptr_t data)
 {
+    ngx_int_t                         *index = (ngx_int_t *) data;
+
     ngx_uint_t                         i;
     ngx_http_core_main_conf_t         *cmcf;
     ngx_http_variable_t               *cmvars;
     ngx_http_haskell_ctx_t            *ctx;
     ngx_http_haskell_async_data_t     *async_data_elts;
-    ngx_int_t                         *index = (ngx_int_t *) data;
     ngx_int_t                          found_idx = NGX_ERROR;
     ngx_int_t                          rc;
 
