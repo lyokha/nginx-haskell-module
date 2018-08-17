@@ -665,8 +665,8 @@ into the Haskell part on every request? This would be extremely inefficient.
 Update variables is a trick to avoid this. They evaluate to the corresponding
 service variable's value only when it changes in the shared memory since the
 last check in the current worker, and to an empty string otherwise. Every
-service variable has its update variable counterpart which name is built from
-the service variable's name with prefix *\_upd\_\_*.
+service variable has its own update variable counterpart whose name is built
+from the service variable's name prefixed by *\_upd\_\_*.
 
 ### An example
 
@@ -1079,7 +1079,7 @@ This is a reimplementation of *update variables* for shared services by means of
 service hooks. Update hooks have a number of advantages over update variables.
 
 1. No need for obscure treatment of update variables in configuration files.
-2. No need for copying the original argument: its data is freed on the Haskell
+2. No need for copying the original argument: its data is freed in the Haskell
    part.
 3. Nginx don't need to access shared memory on every single request for checking
    if the service data has been altered.
@@ -1324,7 +1324,7 @@ features that distinguish them from service update callbacks.
 See implementation of
 [*nginx-healthcheck-plugin*](https://github.com/lyokha/nginx-healthcheck-plugin).
 
-# Efficiency of data exchange between Nginx and Haskell parts
+# Efficiency of data exchange between Nginx and Haskell handlers
 
 Haskell handlers may accept strings (`String` or `[String]`) and *strict*
 bytestrings (`ByteString`), and return strings, *lazy* bytestrings and booleans.
@@ -1339,7 +1339,7 @@ buffers created inside Haskell handlers. If an output lazy bytestring has more
 than one chunk, a new single-chunked C-string will be created in variable and
 service handlers, but not in content handlers because the former use the chunks
 directly when constructing contents. Holding a stable pointer to a bytestring's
-chunks on the Nginx part ensures that they won't be garbage collected until the
+chunks in the Nginx part ensures that they won't be garbage collected until the
 pointer gets freed. Stable pointers get freed upon the request termination for
 variable and content handlers, and before the next service iteration for service
 handlers.
@@ -1363,7 +1363,8 @@ by this time because the service could have altered its data since the beginning
 of the request. This catastrophic scenario could have been avoided by using a
 copy of the service value in every request like in shared services, but this
 would unnecessarily hit performance, therefore requests share *counted
-references*, and as soon as the count reaches *0*, the service value gets freed.
+references* to service values, and as soon as the count reaches *0*, the service
+value gets freed.
 
 # Exceptions in Haskell handlers
 
