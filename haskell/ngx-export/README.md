@@ -19,9 +19,15 @@ or globally, being a superuser
 
 The module is also available on
 [*hackage.haskell.org*](http://hackage.haskell.org/package/ngx-export), so you
-can simply install it from there.
+can simply install it from there with
 
 ```ShellSession
 $ cabal install ngx-export
+```
+
+or
+
+```ShellSession
+# cabal install ngx-export --global
 ```
 
