@@ -10,7 +10,7 @@
 --   lmr.hs -o /var/lib/nginx/lmr.so -fforce-recomp -eventlog
 --
 -- and put in nginx.conf lines (first in main clause, second in http clause)
--- woring_directory /tmp;
+-- working_directory /tmp;
 -- haskell rts_options -l;
 
 module NgxHaskellUserRuntime where
