@@ -313,10 +313,11 @@ content type is built from a string literal with a *magic hash* at the end to
 avoid unnecessary expenses (see details about using string literals in section
 [Optimized unsafe content handler](#optimized-unsafe-content-handler)).
 
-What about doing some tests? Let's first start nginx.
+What about doing some tests? Let's first start nginx (in this example, from the
+directory where file *nginx.conf* is located).
 
 ```ShellSession
-# nginx -p. -c./nginx.conf
+# nginx -c`pwd`/nginx.conf
 [1 of 1] Compiling NgxHaskellUserRuntime ( /tmp/ngx_haskell.hs, /tmp/ngx_haskell.o )
 Linking /tmp/ngx_haskell.so ...
 ```
