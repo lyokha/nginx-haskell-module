@@ -1,16 +1,17 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ViewPatterns, NumDecimals, ScopedTypeVariables #-}
 
-{- ghc -O2 -dynamic -shared -fPIC -lHSrts_thr-ghc$(ghc --numeric-version) \
- - upconf.hs -o /var/lib/nginx/upconf.so -fforce-recomp
- -
- - for making eventlog:
- - ghc -O2 -dynamic -shared -fPIC \
- - -lHSrts_thr_debug-ghc$(ghc --numeric-version) \
- - upconf.hs -o /var/lib/nginx/upconf.so -fforce-recomp -eventlog
- -
- - and put in nginx.conf
- - haskell rts_options -l; -}
+-- ghc -O2 -dynamic -shared -fPIC -lHSrts_thr-ghc$(ghc --numeric-version) \
+--   upconf.hs -o /var/lib/nginx/upconf.so -fforce-recomp
+--
+-- for making eventlog:
+-- ghc -O2 -dynamic -shared -fPIC \
+--   -lHSrts_thr_debug-ghc$(ghc --numeric-version) \
+--   upconf.hs -o /var/lib/nginx/upconf.so -fforce-recomp -eventlog
+--
+-- and put in nginx.conf lines (first in main clause, second in http clause)
+-- woring_directory /tmp;
+-- haskell rts_options -l;
 
 module NgxHaskellUserRuntime where
 

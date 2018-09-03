@@ -1744,11 +1744,11 @@ Before running nginx we must make sure that nginx workers are allowed to write
 the event log into *current working directory* as there is no option for setting
 a specific path to it. Normally nginx worker's owner is set to be *nobody*. In
 modern Linux distributions there is a good promiscuous directory which suits
-well for *nobody*: */tmp*. Running nginx from command-line in directory */tmp*
+well for *nobody*: */tmp*. Setting this working directory in the *main* clause
+of the nginx configuration
 
-```ShellSession
-# cd /tmp
-# nginx -c /absolute/path/to/nginx.conf
+```nginx
+working_directory /tmp;
 ```
 
 and making requests that involve haskell handlers will create event log file
