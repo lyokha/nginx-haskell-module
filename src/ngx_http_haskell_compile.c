@@ -153,9 +153,11 @@ ngx_http_haskell_compile(ngx_conf_t *cf, void *conf, ngx_str_t source_name)
     ngx_memcpy(compile_cmd + passed_len,
                rtslib.data, rtslib.len);
     passed_len += rtslib.len;
-    ngx_memcpy(compile_cmd + passed_len,
-               template_haskell_option.data, th_len);
-    passed_len += th_len;
+    if (th_len > 0) {
+        ngx_memcpy(compile_cmd + passed_len,
+                   template_haskell_option.data, th_len);
+        passed_len += th_len;
+    }
     if (extra_len > 0) {
         ngx_memcpy(compile_cmd + passed_len,
                    mcf->ghc_extra_options.data, mcf->ghc_extra_options.len);
