@@ -964,9 +964,8 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     mcf->wrap_mode = ngx_http_haskell_module_wrap_mode_modular;
-    idx = 2;
 
-    for ( ; idx < cf->args->nelts; idx++ ) {
+    for (idx = 2; idx < cf->args->nelts; idx++) {
         if (value[idx].len == 8
             && ngx_strncmp(value[idx].data, "threaded", 8) == 0)
         {
