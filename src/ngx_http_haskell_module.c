@@ -842,10 +842,12 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_int_t                       i;
     ngx_str_t                      *value, base_name;
     ngx_file_info_t                 lib_info;
-    ngx_int_t                       idx;
+    ngx_uint_t                      idx;
     ngx_uint_t                      load = 0, load_existing = 0;
     ngx_uint_t                      base_name_start = 0;
-    ngx_uint_t                      has_wrap_mode = 0, has_threaded = 0;
+    ngx_uint_t                      has_threaded = 0, has_debug = 0;
+    ngx_uint_t                      has_wrap_mode = 0;
+    ngx_uint_t                      shift_modes;
     char                          **options;
     ngx_http_variable_t            *v;
     ngx_int_t                       len;
@@ -857,7 +859,7 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     {
         if (cf->args->nelts < 4) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                    "directive haskell compile requires 2 parameters");
+                    "directive haskell compile requires at least 2 parameters");
             return NGX_CONF_ERROR;
         }
 
@@ -961,52 +963,76 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    if (cf->args->nelts > 6) {
+    mcf->wrap_mode = ngx_http_haskell_module_wrap_mode_modular;
+    idx = 2;
+
+    for ( ; idx < cf->args->nelts; idx++ ) {
+        if (value[idx].len == 8
+            && ngx_strncmp(value[idx].data, "threaded", 8) == 0)
+        {
+            if (has_threaded) {
+                return "has duplicate compile modes";
+            }
+            has_threaded = 1;
+            continue;
+        }
+        else if (value[idx].len == 5
+                 && ngx_strncmp(value[idx].data, "debug", 5) == 0)
+        {
+            if (has_debug) {
+                return "has duplicate compile modes";
+            }
+            has_debug = 1;
+            continue;
+        }
+        else if (value[idx].len == 10
+                 && ngx_strncmp(value[idx].data, "standalone", 10) == 0)
+        {
+            if (has_wrap_mode) {
+                return "has duplicate wrap modes";
+            }
+            has_wrap_mode = 1;
+            mcf->wrap_mode = ngx_http_haskell_module_wrap_mode_standalone;
+            continue;
+        }
+        else if (value[idx].len == 7
+                 && ngx_strncmp(value[idx].data, "modular", 7) == 0)
+        {
+            if (has_wrap_mode) {
+                return "has duplicate wrap modes";
+            }
+            has_wrap_mode = 1;
+            continue;
+        }
+
+        break;
+    }
+
+    if (idx < cf->args->nelts - 2) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                    "directives haskell compile / load do not accept "
-                    "more than 5 parameters");
+                           "directives haskell compile / load expect "
+                           "at most 2 parameters after compile and wrap modes");
         return NGX_CONF_ERROR;
     }
 
-    if (value[2].len == 8 && ngx_strncmp(value[2].data, "threaded", 8) == 0) {
-        has_threaded = 1;
+    shift_modes = has_threaded + has_debug + has_wrap_mode;
+
+    if (cf->args->nelts < 3 + shift_modes) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                    "directives haskell compile / load require "
+                    "at least 1 parameter after wrap and compile modes");
+        return NGX_CONF_ERROR;
     }
-
-    idx = 2 + has_threaded;
-
-    mcf->wrap_mode = ngx_http_haskell_module_wrap_mode_modular;
-
-    if (value[idx].len == 10
-        && ngx_strncmp(value[idx].data, "standalone", 10) == 0)
-    {
-        has_wrap_mode = 1;
-        mcf->wrap_mode = ngx_http_haskell_module_wrap_mode_standalone;
-    } else if (value[idx].len == 7
-               && ngx_strncmp(value[idx].data, "modular", 10) == 0)
-    {
-        has_wrap_mode = 1;
-    }
-
-    if (has_wrap_mode) {
-        if (cf->args->nelts < 4 + has_threaded) {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                        "directives haskell compile / load require "
-                        "at least 2 parameters when wrap mode is specified");
-            return NGX_CONF_ERROR;
-        }
-        if (!load && cf->args->nelts < 5 + has_threaded) {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                        "directive haskell compile requires 3 parameters "
-                        "when wrap mode is specified");
-            return NGX_CONF_ERROR;
-        }
+    if (!load && cf->args->nelts < 4 + shift_modes) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                    "directive haskell compile requires "
+                    "at least 2 parameters after wrap and compile modes");
+        return NGX_CONF_ERROR;
     }
 
     if (load) {
-        load_existing =
-                cf->args->nelts < 4 + has_threaded + has_wrap_mode ? 1 : 0;
+        load_existing = cf->args->nelts < 4 + shift_modes ? 1 : 0;
     }
-    idx += has_wrap_mode;
 
     if (value[idx].len < 3
         || !(ngx_strncmp(value[idx].data + value[idx].len - 3, ".hs", 3) == 0
@@ -1056,9 +1082,10 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 return NGX_CONF_ERROR;
             }
             load = 0;
-        } else if (has_wrap_mode || has_threaded || !load_existing) {
+        } else if (has_wrap_mode || has_threaded || has_debug || !load_existing)
+        {
             ngx_conf_log_error(NGX_LOG_NOTICE, cf, 0,
-                        "haskell library exists, wrap mode and threaded flags "
+                        "haskell library exists, wrap and compile modes "
                         "as well as haskell source code will be ignored");
         }
     }
@@ -1071,8 +1098,10 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 
         mcf->compile_mode = has_threaded ?
-                ngx_http_haskell_compile_mode_threaded :
-                ngx_http_haskell_compile_mode_no_threaded;
+                (has_debug ? ngx_http_haskell_compile_mode_threaded_debug
+                 : ngx_http_haskell_compile_mode_threaded) :
+                (has_debug ? ngx_http_haskell_compile_mode_no_threaded_debug
+                 : ngx_http_haskell_compile_mode_no_threaded);
         if (ngx_http_haskell_compile(cf, conf, value[idx]) != NGX_CONF_OK) {
             return NGX_CONF_ERROR;
         }
@@ -1202,7 +1231,9 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     async = async ? 1 : service;
     if (async
-        && mcf->compile_mode == ngx_http_haskell_compile_mode_no_threaded)
+        && (mcf->compile_mode == ngx_http_haskell_compile_mode_no_threaded
+            || mcf->compile_mode
+            == ngx_http_haskell_compile_mode_no_threaded_debug))
     {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "haskell module was compiled without thread "

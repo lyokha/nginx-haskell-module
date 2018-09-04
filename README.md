@@ -1721,25 +1721,25 @@ Debugging and tracing of haskell code
 For tracing run of the haskell code and further analyzing the event log in
 *threadscope* or a similar tool, the user haskell library must be compiled with
 flag *-eventlog* and linked against a *debug* variant of the haskell *RTS*
-library. This is not available with the on-the-fly compilation on nginx start.
-The only choice here is to load an existing library using the *modular*
-approach. Say we have haskell source code with asynchronous tasks written in
-file *ngx_haskell.hs* that must be compiled into library */tmp/ngx_haskell.so*.
-Using asynchronous tasks means that we must choose *threaded* RTS library
-(*libHSrts_thr_debug*) and *ghc* command-line will look as follows.
+library. To accomplish this in the *standalone* approach, we must add flags
+*debug* and *threaded* (if there are asynchronous tasks) in directive *haskell
+compile*, add flag *-eventlog* in directive *haskell ghc_extra_options*, and set
+haskell *RTS* option *-l* to signal the haskell *runtime* that it must collect
+events in the event log.
+
+```nginx
+    haskell rts_options -l;
+```
+
+In the *modular* approach, assuming that we have haskell source code in file
+*ngx_haskell.hs*, *ghc* command-line should look as follows.
 
 ```ShellSession
 $ ghc -O2 -dynamic -shared -fPIC -lHSrts_thr_debug-ghc$(ghc --numeric-version) ngx_haskell.hs -o /tmp/ngx_haskell.so -fforce-recomp -eventlog
 ```
 
-Then we must load the built library into the nginx configuration and set haskell
-*RTS* option *-l* to signal the haskell *runtime* that it must collect events in
-the event log.
-
-```nginx
-    haskell load /tmp/ngx_haskell.so;
-    haskell rts_options -l;
-```
+The *RTS* *-l* option must be set in the same way as in the *standalone*
+approach.
 
 Before running nginx we must make sure that nginx workers are allowed to write
 the event log into *current working directory* as there is no option for setting

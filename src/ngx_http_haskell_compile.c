@@ -25,14 +25,16 @@ static const ngx_str_t  haskell_compile_cmd =
 ngx_string("ghc -O2 -dynamic -shared -fPIC -o ");
 static const ngx_str_t  template_haskell_option =
 ngx_string(" -XTemplateHaskell");
+static const ngx_str_t  ghc_rtslib_path =
+ngx_string(" -L$(ghc --print-libdir)/rts");
 static const ngx_str_t  ghc_rtslib =
-ngx_string(
-" -L$(ghc --print-libdir)/rts -lHSrts-ghc$(ghc --numeric-version)"
-);
+ngx_string(" -lHSrts-ghc$(ghc --numeric-version)");
+static const ngx_str_t  ghc_rtslib_debug =
+ngx_string(" -lHSrts_debug-ghc$(ghc --numeric-version)");
 static const ngx_str_t  ghc_rtslib_thr =
-ngx_string(
-" -L$(ghc --print-libdir)/rts -lHSrts_thr-ghc$(ghc --numeric-version)"
-);
+ngx_string(" -lHSrts_thr-ghc$(ghc --numeric-version)");
+static const ngx_str_t  ghc_rtslib_thr_debug =
+ngx_string(" -lHSrts_thr_debug-ghc$(ghc --numeric-version)");
 
 
 char *
@@ -106,8 +108,26 @@ ngx_http_haskell_compile(ngx_conf_t *cf, void *conf, ngx_str_t source_name)
 
     compile_cmd_len = haskell_compile_cmd.len;
 
-    rtslib = mcf->compile_mode == ngx_http_haskell_compile_mode_threaded ?
-            ghc_rtslib_thr : ghc_rtslib;
+    switch (mcf->compile_mode) {
+    case ngx_http_haskell_compile_mode_no_threaded:
+        rtslib = ghc_rtslib;
+        break;
+    case ngx_http_haskell_compile_mode_threaded:
+        rtslib = ghc_rtslib_thr;
+        break;
+    case ngx_http_haskell_compile_mode_no_threaded_debug:
+        rtslib = ghc_rtslib_debug;
+        break;
+    case ngx_http_haskell_compile_mode_threaded_debug:
+        rtslib = ghc_rtslib_thr_debug;
+        break;
+    default:
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "unexpected haskell compile mode %d",
+                           mcf->compile_mode);
+        return NGX_CONF_ERROR;
+    }
+
     if (mcf->ghc_extra_options.len > 0) {
         extra_len = mcf->ghc_extra_options.len;
     }
@@ -115,7 +135,7 @@ ngx_http_haskell_compile(ngx_conf_t *cf, void *conf, ngx_str_t source_name)
         th_len = template_haskell_option.len;
     }
     full_len = compile_cmd_len + mcf->lib_path.len + source_name.len +
-            rtslib.len + extra_len + th_len + 2;
+            ghc_rtslib_path.len + rtslib.len + extra_len + th_len + 2;
 
     compile_cmd = ngx_pnalloc(cf->pool, full_len);
     if (compile_cmd == NULL) {
@@ -124,13 +144,18 @@ ngx_http_haskell_compile(ngx_conf_t *cf, void *conf, ngx_str_t source_name)
 
     ngx_memcpy(compile_cmd,
                haskell_compile_cmd.data, compile_cmd_len);
-    ngx_memcpy(compile_cmd + compile_cmd_len, mcf->lib_path.data,
-               mcf->lib_path.len);
-    ngx_memcpy(compile_cmd + compile_cmd_len + mcf->lib_path.len,
+    ngx_memcpy(compile_cmd + compile_cmd_len,
+               mcf->lib_path.data, mcf->lib_path.len);
+    passed_len = compile_cmd_len + mcf->lib_path.len;
+    ngx_memcpy(compile_cmd + passed_len,
+               ghc_rtslib_path.data, ghc_rtslib_path.len);
+    passed_len += ghc_rtslib_path.len;
+    ngx_memcpy(compile_cmd + passed_len,
                rtslib.data, rtslib.len);
-    ngx_memcpy(compile_cmd + compile_cmd_len + mcf->lib_path.len + rtslib.len,
+    passed_len += rtslib.len;
+    ngx_memcpy(compile_cmd + passed_len,
                template_haskell_option.data, th_len);
-    passed_len = compile_cmd_len + mcf->lib_path.len + rtslib.len + th_len;
+    passed_len += th_len;
     if (extra_len > 0) {
         ngx_memcpy(compile_cmd + passed_len,
                    mcf->ghc_extra_options.data, mcf->ghc_extra_options.len);
@@ -142,7 +167,8 @@ ngx_http_haskell_compile(ngx_conf_t *cf, void *conf, ngx_str_t source_name)
 
     if (system(compile_cmd) != 0) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "failed to compile haskell source code file");
+                           "failed to compile haskell source code file with "
+                           "command \"%s\"", compile_cmd);
         return NGX_CONF_ERROR;
     }
 
