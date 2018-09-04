@@ -1145,7 +1145,7 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_compile_complex_value_t           ccv;
     ngx_http_complex_value_t                  *args;
     ngx_http_variable_t                       *v;
-    ngx_http_haskell_code_var_data_t          *code_var_data;
+    ngx_http_haskell_code_var_data_t          *code_var_data, *code_vars;
     ngx_http_haskell_service_code_var_data_t  *service_code_var_data;
     ngx_int_t                                  v_idx;
     ngx_uint_t                                *v_idx_ptr;
@@ -1343,6 +1343,19 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                                "variable \"%V\" has been already defined with "
                                "another variable handler", &value[2]);
             return NGX_CONF_ERROR;
+        }
+    }
+
+    if (!service) {
+        code_vars = lcf->code_vars.elts;
+        for (i = 0; i < lcf->code_vars.nelts - 1; i++) {
+            if (code_vars[i].index == v_idx) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "multiple declarations of variable \"%V\" "
+                                   "in a single configuration level",
+                                   &value[2]);
+                return NGX_CONF_ERROR;
+            }
         }
     }
 
