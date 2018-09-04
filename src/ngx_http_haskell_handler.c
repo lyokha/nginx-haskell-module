@@ -33,7 +33,7 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
     ngx_http_core_main_conf_t           *cmcf;
     ngx_http_variable_t                 *cmvars;
     ngx_http_haskell_ctx_t              *ctx;
-    ngx_int_t                            found_idx = NGX_ERROR;
+    ngx_int_t                            j, found_idx = NGX_ERROR;
     ngx_http_haskell_var_handle_t       *vars_comp;
     ngx_http_haskell_var_cache_t        *var_nocacheable_cache;
     ngx_http_haskell_handler_t          *handlers;
@@ -74,9 +74,12 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
 
     code_vars = lcf->code_vars.elts;
 
-    for (i = 0; i < lcf->code_vars.nelts; i++) {
-        if (*index == code_vars[i].index) {
-            found_idx = i;
+    /* code vars must be traced in reverse order here because location
+     * configuration merge algorithm has placed them in such a way in favour
+     * of correct processing of async tasks hierarchies */
+    for (j = lcf->code_vars.nelts - 1; j >= 0; j--) {
+        if (*index == code_vars[j].index) {
+            found_idx = j;
             break;
         }
     }
