@@ -1753,8 +1753,8 @@ working_directory /tmp;
 ```
 
 and making requests that involve haskell handlers will create event log files
-*/tmp/NgxHaskellUserRuntime-<PID>.eventlog* for each nginx worker suitable for
-processing by *threadscope*.
+*/tmp/NgxHaskellUserRuntime-&lt;PID&gt;.eventlog* for each nginx worker suitable
+for processing by *threadscope*.
 
 Some facts about efficiency
 ---------------------------
