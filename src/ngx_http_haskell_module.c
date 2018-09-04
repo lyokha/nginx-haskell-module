@@ -1100,8 +1100,8 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         mcf->compile_mode = has_threaded ?
                 (has_debug ? ngx_http_haskell_compile_mode_threaded_debug
                  : ngx_http_haskell_compile_mode_threaded) :
-                (has_debug ? ngx_http_haskell_compile_mode_no_threaded_debug
-                 : ngx_http_haskell_compile_mode_no_threaded);
+                (has_debug ? ngx_http_haskell_compile_mode_debug
+                 : ngx_http_haskell_compile_mode_vanilla);
         if (ngx_http_haskell_compile(cf, conf, value[idx]) != NGX_CONF_OK) {
             return NGX_CONF_ERROR;
         }
@@ -1231,9 +1231,8 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     async = async ? 1 : service;
     if (async
-        && (mcf->compile_mode == ngx_http_haskell_compile_mode_no_threaded
-            || mcf->compile_mode
-            == ngx_http_haskell_compile_mode_no_threaded_debug))
+        && (mcf->compile_mode == ngx_http_haskell_compile_mode_vanilla
+            || mcf->compile_mode == ngx_http_haskell_compile_mode_debug))
     {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "haskell module was compiled without thread "

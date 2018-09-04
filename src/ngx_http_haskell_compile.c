@@ -27,12 +27,12 @@ static const ngx_str_t  template_haskell_option =
 ngx_string(" -XTemplateHaskell");
 static const ngx_str_t  ghc_rtslib_path =
 ngx_string(" -L$(ghc --print-libdir)/rts");
-static const ngx_str_t  ghc_rtslib =
+static const ngx_str_t  ghc_rtslib_vanilla =
 ngx_string(" -lHSrts-ghc$(ghc --numeric-version)");
-static const ngx_str_t  ghc_rtslib_debug =
-ngx_string(" -lHSrts_debug-ghc$(ghc --numeric-version)");
 static const ngx_str_t  ghc_rtslib_thr =
 ngx_string(" -lHSrts_thr-ghc$(ghc --numeric-version)");
+static const ngx_str_t  ghc_rtslib_debug =
+ngx_string(" -lHSrts_debug-ghc$(ghc --numeric-version)");
 static const ngx_str_t  ghc_rtslib_thr_debug =
 ngx_string(" -lHSrts_thr_debug-ghc$(ghc --numeric-version)");
 
@@ -109,13 +109,13 @@ ngx_http_haskell_compile(ngx_conf_t *cf, void *conf, ngx_str_t source_name)
     compile_cmd_len = haskell_compile_cmd.len;
 
     switch (mcf->compile_mode) {
-    case ngx_http_haskell_compile_mode_no_threaded:
-        rtslib = ghc_rtslib;
+    case ngx_http_haskell_compile_mode_vanilla:
+        rtslib = ghc_rtslib_vanilla;
         break;
     case ngx_http_haskell_compile_mode_threaded:
         rtslib = ghc_rtslib_thr;
         break;
-    case ngx_http_haskell_compile_mode_no_threaded_debug:
+    case ngx_http_haskell_compile_mode_debug:
         rtslib = ghc_rtslib_debug;
         break;
     case ngx_http_haskell_compile_mode_threaded_debug:

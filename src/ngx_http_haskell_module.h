@@ -75,9 +75,9 @@ typedef enum {
 
 typedef enum {
     ngx_http_haskell_compile_mode_uninitialized = 0,
-    ngx_http_haskell_compile_mode_no_threaded,
+    ngx_http_haskell_compile_mode_vanilla,
+    ngx_http_haskell_compile_mode_debug,
     ngx_http_haskell_compile_mode_threaded,
-    ngx_http_haskell_compile_mode_no_threaded_debug,
     ngx_http_haskell_compile_mode_threaded_debug,
     ngx_http_haskell_compile_mode_load_existing
 } ngx_http_haskell_compile_mode_e;
