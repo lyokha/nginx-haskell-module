@@ -1752,8 +1752,9 @@ of the nginx configuration
 working_directory /tmp;
 ```
 
-and making requests that involve haskell handlers will create event log file
-*/tmp/NgxHaskellUserRuntime.eventlog* which can be analyzed by *threadscope*.
+and making requests that involve haskell handlers will create event log files
+*/tmp/NgxHaskellUserRuntime-<PID>.eventlog* for each nginx worker suitable for
+processing by *threadscope*.
 
 Some facts about efficiency
 ---------------------------

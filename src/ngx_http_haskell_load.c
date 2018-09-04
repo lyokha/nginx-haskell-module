@@ -23,6 +23,8 @@
 #include "ngx_http_haskell_load.h"
 
 
+static const ngx_str_t  haskell_module_user_runtime_prefix =
+ngx_string("NgxHaskellUserRuntime-");
 static const ngx_str_t  haskell_module_type_checker_prefix =
 ngx_string("type_");
 
@@ -51,6 +53,8 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     char                           *dl_error;
     char                          **argv = NULL;
     int                             argc;
+    u_char                         *pid_value;
+    size_t                          pid_len;
     version_f_t                     version_f = NULL;
     HsInt32                         version[4], version_len;
     void                          (*install_signal_handler)(void);
@@ -210,12 +214,19 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
 
     argc = mcf->program_options.nelts + 3 + mcf->rts_options.nelts;
     argv = ngx_palloc(cycle->pool, argc * sizeof(char *));
-    if (argv == NULL) {
+    pid_value = ngx_pnalloc(cycle->pool, NGX_INT64_LEN);
+    if (argv == NULL || pid_value == NULL) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                       "failed to allocate artifacts for haskell init options");
         goto dlclose_and_exit;
     }
-    argv[0] = "NgxHaskellUserRuntime";
+    pid_len = ngx_sprintf(pid_value, "%P", ngx_pid) - pid_value;
+    argv[0] = ngx_pnalloc(cycle->pool,
+                          haskell_module_user_runtime_prefix.len + pid_len);
+    ngx_memcpy(argv[0], haskell_module_user_runtime_prefix.data,
+               haskell_module_user_runtime_prefix.len);
+    ngx_memcpy(argv[0] + haskell_module_user_runtime_prefix.len, pid_value,
+               pid_len);
     for (i = 0; i < mcf->program_options.nelts; i++) {
         argv[1 + i] = ((char **) mcf->program_options.elts)[i];
         if (ngx_strcmp(argv[1 + i], "+RTS") == 0) {
