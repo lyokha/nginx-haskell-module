@@ -216,6 +216,7 @@ typedef struct {
     ngx_int_t                                  index;
     ngx_int_t                                  handler;
     ngx_array_t                                args;
+    ngx_uint_t                                 async;
 } ngx_http_haskell_code_var_data_t;
 
 

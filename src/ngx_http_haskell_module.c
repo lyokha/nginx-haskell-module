@@ -348,9 +348,10 @@ ngx_http_haskell_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_haskell_loc_conf_t       *prev = parent;
     ngx_http_haskell_loc_conf_t       *conf = child;
 
-    ngx_uint_t                         i;
+    ngx_uint_t                         i, j;
     ngx_uint_t                         nelts, prev_nelts;
     ngx_http_haskell_code_var_data_t  *cv_elts, *prev_cv_elts;
+    ngx_int_t                          index;
 
     prev_nelts = prev->code_vars.nelts;
     if (prev_nelts > 0) {
@@ -369,6 +370,16 @@ ngx_http_haskell_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         prev_cv_elts = prev->code_vars.elts;
         for (i = 0; i < prev_nelts; i++) {
             cv_elts[i] = prev_cv_elts[i];
+            index = cv_elts[i].index;
+            if (cv_elts[i].async) {
+                for (j = prev_nelts; j < nelts; j++) {
+                    if (index == cv_elts[j].index && cv_elts[j].async) {
+                        cv_elts[i].handler = cv_elts[j].handler;
+                        cv_elts[i].args = cv_elts[j].args;
+                        break;
+                    }
+                }
+            }
         }
     }
 
@@ -1227,6 +1238,8 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                      "haskell_run_async_on_request_body", 33) == 0;
     async = rb ? 1 : ngx_strncmp(value[0].data, "haskell_run_async", 17) == 0;
     mcf->has_async_tasks = mcf->has_async_tasks ? 1 : async;
+
+    code_var_data->async = async;
 
     async = async ? 1 : service;
     if (async
