@@ -370,8 +370,8 @@ ngx_http_haskell_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         prev_cv_elts = prev->code_vars.elts;
         for (i = 0; i < prev_nelts; i++) {
             cv_elts[i] = prev_cv_elts[i];
-            index = cv_elts[i].index;
             if (cv_elts[i].async) {
+                index = cv_elts[i].index;
                 for (j = prev_nelts; j < nelts; j++) {
                     if (index == cv_elts[j].index && cv_elts[j].async) {
                         cv_elts[i].handler = cv_elts[j].handler;
