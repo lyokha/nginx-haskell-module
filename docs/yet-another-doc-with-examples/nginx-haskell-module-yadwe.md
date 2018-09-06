@@ -1383,7 +1383,7 @@ handlers in Haskell handlers, when it's possible, should be preferred.
 ---------------------------------------------------------------------------------------------------------------------------------------------------------
 Directive                                                                 Level                 Comment
 ------------------------------------------------------------------------  --------------------  ---------------------------------------------------------
-`haskell compile`                                                         `http`                Compile Haskell code from the last argument. Accepts
+`haskell compile`                                                         `http`                Compile Haskell code found in the last argument. Accepts
                                                                                                 arguments *threaded* (use *threaded* RTS library),
                                                                                                 *debug* (use *debug* RTS library), and *standalone* (use
                                                                                                 *standalone* approach).
