@@ -13,7 +13,7 @@
 -- working_directory /tmp;
 -- haskell rts_options -l;
 
-module NgxHaskellUserRuntime where
+module LabeledMediaRouter where
 
 import           NgxExport
 import           Data.List
