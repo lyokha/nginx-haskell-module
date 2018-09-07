@@ -1,18 +1,18 @@
-### Benchmarking various serialization approaches using Criterion
+#### Benchmarking various serialization approaches using Criterion
 
-#### Compile
-
-```ShellSession
-# ghc --make -O2 lmr-bench.hs ../lmr.hs
-```
-
-#### Run
+##### Compile
 
 ```ShellSession
-# ./lmr-bench -o lmr-bench.html
+$ ghc --make -O2 lmr-bench.hs ../lmr.hs
 ```
 
-### Generating sample objects of various types in GHCi
+##### Run
+
+```ShellSession
+$ ./lmr-bench -o lmr-bench.html
+```
+
+#### Generating sample objects of various types in GHCi
 
 ```ShellSession
 $ ghci -fobject-code lmr-objgen.hs ../lmr.hs
