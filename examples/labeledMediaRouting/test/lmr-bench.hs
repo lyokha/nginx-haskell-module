@@ -1,15 +1,13 @@
 {-# LANGUAGE DeriveGeneric, StandaloneDeriving, RecordWildCards #-}
 
-{- A tool for benchmarking encoding and decoding of data Msg,
- - it tests Read/Show and JSON Aeson encode/decode.
- -
- - Compile:
- - ghc --make -O2 lmr-bench.hs ../lmr.hs
- -
- - Run:
- - ./lmr-bench -o lmr-bench.html
- -
- -}
+-- A tool for benchmarking encoding and decoding of data Msg,
+-- it tests Read/Show and JSON Aeson encode/decode.
+--
+-- Compile:
+-- ghc --make -O2 lmr-bench.hs ../lmr.hs
+--
+-- Run:
+-- ./lmr-bench -o lmr-bench.html
 
 import           LabeledMediaRouter;
 

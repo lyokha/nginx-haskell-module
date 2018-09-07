@@ -1,6 +1,26 @@
 {-# LANGUAGE TemplateHaskell, StandaloneDeriving #-}
 {-# LANGUAGE FlexibleInstances, TypeSynonymInstances #-}
 
+-- A tool for generating sample objects of various types in GHCi
+--
+-- Run GHCi:
+-- ghci -fobject-code lmr-objgen.hs ../lmr.hs
+--
+-- Load modules and generate some data:
+-- Prelude LMRObjGen> import LabeledMediaRouter
+-- Prelude LabeledMediaRouter LMRObjGen> d <- genCollectedData 3
+-- Prelude LabeledMediaRouter LMRObjGen> pPrint d
+--  ...
+-- Prelude LabeledMediaRouter LMRObjGen> pPrintJSON d
+--  ...
+-- Prelude LabeledMediaRouter LMRObjGen> pPrint $ toRoutes d
+--  ...
+-- Prelude LabeledMediaRouter LMRObjGen> pPrintJSON $ toRoutes d
+--  ...
+-- Prelude LabeledMediaRouter LMRObjGen> ld <- genGeneric 3 :: IO LabelData
+-- Prelude LabeledMediaRouter LMRObjGen> pPrint ld
+--  ...
+
 module LMRObjGen where
 
 import           LabeledMediaRouter
