@@ -1,0 +1,81 @@
+#!/bin/bash
+
+PATCHELF=patchelf
+
+HSLIB=
+DIR=
+TARGET_DIR=
+DEF_DIR=.hslibs
+PATCH_ONLY=
+
+usage()
+{
+    echo "Usage: $(basename "$0") [-d dir | -p] [-t target_dir] hslib"
+    echo "  'dir' is a directory where dependent libraries will be"
+    echo "      collected (default is $DEF_DIR)"
+    echo "  'target_dir' is a directory where dependent libraries will be"
+    echo "      installed (no default, can be omitted)"
+    echo "  if -p (patch-only) is specified then dependent libraries will"
+    echo "      not be collected"
+}
+
+while [ "$1" ]
+do
+    case $1 in
+        -h|-help|--help)    usage ; exit 0 ;;
+        -d)                 shift ; DIR=$1 ;;
+        -t)                 shift ; TARGET_DIR=$1 ;;
+        -p)                 PATCH_ONLY=1 ;;
+        -*)                 usage ; exit 1 ;;
+        *)                  if [ -n "$HSLIB" ]
+                            then
+                                usage ; exit 1
+                            else
+                                HSLIB=$1
+                            fi ;;
+    esac
+    shift
+done
+
+[ -z "$HSLIB" ] && { usage ; exit 1 ; }
+
+if [ ! -f "$HSLIB" ]
+then
+    echo "File $HSLIB does not exist or not a regular file!"
+    exit 1
+fi
+
+if [ -z "$PATCH_ONLY" ]
+then
+    echo "---> Collecting libraries"
+    LIBS=$(ldd "$HSLIB" | grep -E '^\s*libHS')
+    TEST_LIBS=$(echo "$LIBS" | grep -E -v '\s+=>\s+/')
+    if [ -n "$TEST_LIBS" ]
+    then
+        echo "There were errors while collecting Haskell libraries:"
+        echo "$TEST_LIBS"
+        exit 2
+    fi
+    LIBS=$(echo "$LIBS" | sed -E 's/^(.*)\s+=>\s+(\S+).*/\2/')
+    [ -z "$DIR" ] && DIR=$DEF_DIR
+    mkdir -p "$DIR"
+    cp -uv $LIBS "$DIR"
+fi
+
+if [ -n "$TARGET_DIR" ]
+then
+    [ -z "$PATCH_ONLY" ] && echo
+    echo "---> Patching $HSLIB"
+    if ! $PATCHELF --version >/dev/null 2>&1
+    then
+        echo "Required utility $PATCHELF is not found!"
+        exit 3
+    fi
+    RPATH=$($PATCHELF --print-rpath "$HSLIB")
+    if ! echo "$RPATH" | grep -E "(^|:)$TARGET_DIR(:|$)" >/dev/null 2>&1
+    then
+        $PATCHELF --set-rpath "$TARGET_DIR:$RPATH" "$HSLIB"
+    fi
+    $PATCHELF --print-rpath "$HSLIB"
+fi
+
