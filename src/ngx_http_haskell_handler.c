@@ -91,6 +91,20 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
     handlers = mcf->handlers.elts;
     args = code_vars[found_idx].args.elts;
 
+    if (code_vars[found_idx].handler == NGX_ERROR) {
+        if (ngx_http_complex_value(r, &args[0], &arg1) != NGX_OK) {
+            return NGX_ERROR;
+        }
+
+        v->len = arg1.len;
+        v->data = arg1.data;
+        v->valid = 1;
+        v->no_cacheable = 0;
+        v->not_found = 0;
+
+        return NGX_OK;
+    }
+
     switch (handlers[code_vars[found_idx].handler].type) {
     case ngx_http_haskell_handler_type_s_ss:
     case ngx_http_haskell_handler_type_b_ss:

@@ -1194,15 +1194,6 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     value[2].len--;
     value[2].data++;
 
-    if (ngx_http_haskell_make_handler_name(cf->pool, &value[1], &handler_name)
-        != NGX_OK)
-    {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "failed to make handler name from \"%V\"",
-                           &value[1]);
-        return NGX_CONF_ERROR;
-    }
-
     if (service) {
         service_code_var_data = ngx_array_push(&mcf->service_code_vars);
         if (service_code_var_data == NULL) {
@@ -1250,6 +1241,24 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                            "haskell module was compiled without thread "
                            "support, using async tasks will inevitably cause "
                            "stalls of requests in runtime");
+        return NGX_CONF_ERROR;
+    }
+
+    if (!async && value[1].len == 1 && value[1].data[0] == '!') {
+        if (n_args != 1) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "bang handler accepts exactly one argument");
+            return NGX_CONF_ERROR;
+        }
+        goto add_variable;
+    }
+
+    if (ngx_http_haskell_make_handler_name(cf->pool, &value[1], &handler_name)
+        != NGX_OK)
+    {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "failed to make handler name from \"%V\"",
+                           &value[1]);
         return NGX_CONF_ERROR;
     }
 
@@ -1322,6 +1331,8 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     ++handlers[code_var_data->handler].n_args[n_args > 2 ? 2 : n_size - 1];
+
+add_variable:
 
     if (service_cb) {
         v_idx = ngx_http_get_variable_index(cf, &value[2]);
