@@ -760,7 +760,7 @@ in the content handler. However, here the chunks get collected by directive
 *haskell_run_async* into a single chunk, and then passed to the content handler
 *echo*. The other problem deals with *eagerness* of asynchronous tasks. Imagine
 that we put in the location a rewrite to another location: handler *getUrl* will
-run before redirection, but variable *hs_async_httpbin* will never be used
+run before redirection, but variable ``$hs_async_httpbin`` will never be used
 because we'll get out from the current location.
 
 Asynchronous content handlers may have two types:
@@ -954,7 +954,7 @@ definition in the haskell code because it does not run any haskell at all! It
 merely sets its single argument's value to its variable's value. This
 functionality is almost equal to what the common nginx directive *set* does,
 except the value gets cached after the first evaluation. This can be useful for
-caching internal *no-cacheable* variables such as *args* and *is_args*.
+caching internal *no-cacheable* variables such as ``$args`` and ``$is_args``.
 
 ```nginx
     server {
@@ -978,9 +978,9 @@ caching internal *no-cacheable* variables such as *args* and *is_args*.
 
 In this example, if *location /fallback* must trigger after *error_page*
 redirection then, in case when clause *if* on the *server* level would have
-tested variable *is_args* instead of *hs_is_args*, variable *add_is_args* would
-erroneously be equal to *?* because internal redirection resets variables *args*
-and *is_args*.
+tested variable ``$is_args`` instead of ``$hs_is_args``, variable
+``$add_is_args`` would erroneously be equal to *?* because internal redirection
+resets variables ``$args`` and ``$is_args``.
 
 More often, the bang handler can be used for short-circuit assignment of a
 variable normally evaluated by a haskell handler on some other level of nginx
@@ -1266,7 +1266,7 @@ C plugins with low level access to the Nginx request object
 -----------------------------------------------------------
 
 Serialized pointer to the Nginx *request object* is accessible via a special
-variable *\_r\_ptr*. Haskell handlers have no benefit from this because they do
+variable ``$_r_ptr``. Haskell handlers have no benefit from this because they do
 not know how the request object is built. However they may run C code that is
 compiled with this knowledge. The low level access to the Nginx request data
 allows for making things not available without this. As soon as a C plugin can
