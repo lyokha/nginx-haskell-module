@@ -952,9 +952,9 @@ Synchronous short circuit bang-handler
 There is a special synchronous handler with predefined name *!*, which has no
 definition in the haskell code because it does not run any haskell at all! It
 merely sets its single argument's value to its variable's value. This
-functionality is almost equal to what the common nginx directive *set* does,
-except the value gets cached after the first evaluation. This can be useful for
-caching internal *no-cacheable* variables such as ``$args`` and ``$is_args``.
+functionality is almost equal to what common nginx directive *set* does, except
+the value gets cached after the first evaluation. This can be useful for caching
+internal *no-cacheable* variables such as ``$args`` and ``$is_args``.
 
 ```nginx
     server {
@@ -977,8 +977,8 @@ caching internal *no-cacheable* variables such as ``$args`` and ``$is_args``.
 ```
 
 In this example, if *location /fallback* must trigger after *error_page*
-redirection then, in case when clause *if* on the *server* level would have
-tested variable ``$is_args`` instead of ``$hs_is_args``, variable
+redirection then, in case when clause *if* on the *server* level would have been
+testing variable ``$is_args`` instead of ``$hs_is_args``, variable
 ``$add_is_args`` would erroneously be equal to *?* because internal redirection
 resets variables ``$args`` and ``$is_args``.
 
