@@ -22,6 +22,7 @@ Table of contents
 - [Asynchronous content handlers](#asynchronous-content-handlers)
 - [Asynchronous services](#asynchronous-services)
 - [Client request body handlers](#client-request-body-handlers)
+- [Synchronous short circuit bang-handler](#synchronous-short-circuit-bang-handler)
 - [Miscellaneous nginx directives](#miscellaneous-nginx-directives)
 - [Service variables in shared memory and integration with other nginx modules](#service-variables-in-shared-memory-and-integration-with-other-nginx-modules)
 - [Shared services and global states](#shared-services-and-global-states)
@@ -944,6 +945,46 @@ NGX_EXPORT_ASYNC_ON_REQ_BODY (reqBodyTouch)
 
 This example shows as well that ``$request_body`` is available in the nginx
 rewrite module directives such as *if* and *rewrite*.
+
+Synchronous short circuit bang-handler
+--------------------------------------
+
+There is a special synchronous handler with predefined name *!*, which has no
+definition in the haskell code because it does not run any haskell at all! It
+merely sets its single argument's value to its variable's value. This
+functionality is almost equal to what the common nginx directive *set* does,
+except the value gets cached after the first evaluation. This can be useful for
+caching internal *no-cacheable* variables such as *args* and *is_args*.
+
+```nginx
+    server {
+
+        # ...
+
+        haskell_run ! $hs_is_args $args;
+        set $add_is_args '?';
+
+        if ($hs_is_args) {
+            set $add_is_args '&';
+        }
+
+        location /fallback {
+
+            # ...
+
+            proxy_pass http://$backend$request_uri${add_is_args}t=v;
+        }
+```
+
+In this example, if *location /fallback* must trigger after *error_page*
+redirection then, in case when clause *if* on the *server* level would have
+tested variable *is_args* instead of *hs_is_args*, variable *add_is_args* would
+erroneously be equal to *?* because internal redirection resets variables *args*
+and *is_args*.
+
+More often, the bang handler can be used for short-circuit assignment of a
+variable normally evaluated by a haskell handler on some other level of nginx
+configuration hierarchy.
 
 Miscellaneous nginx directives
 ------------------------------
