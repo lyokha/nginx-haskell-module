@@ -984,8 +984,8 @@ resets variables ``$args`` and ``$is_args``.
 
 To reliably cache a *no-cacheable* variable at the beginning of a request, the
 *if* check against its haskell counterpart on the *server* level is a
-must: this enforces strict evaluation of the variable. The *if* clause is
-allowed to be empty. Basically, it looks like in the following example.
+must: this enforces strict evaluation of the variable. Empty *if* clauses are
+permitted, so basically it should look like in the following example.
 
 ```nginx
     server {

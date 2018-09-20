@@ -1809,7 +1809,6 @@ ngx_http_haskell_var_configure(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_variable_t                     *v;
     ngx_http_haskell_shm_var_handle_data_t  *v_data;
     ngx_str_t                                v_name;
-    ngx_http_get_variable_pt                 get_handler;
     ngx_int_t                                idx = 0;
     ngx_uint_t                               create_shm_aux_vars = 0;
 
@@ -1886,7 +1885,7 @@ ngx_http_haskell_var_configure(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                    value[j].data,
                    value[j].len);
 
-        v = ngx_http_add_variable(cf, &v_name, NGX_HTTP_VAR_CHANGEABLE);
+        v = ngx_http_add_variable(cf, &v_name, 0);
         if (v == NULL) {
             return NGX_CONF_ERROR;
         }
@@ -1898,17 +1897,10 @@ ngx_http_haskell_var_configure(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 
         v_data->index = NGX_ERROR;
-        v->data = (uintptr_t) v_data;
         vars[i].data = v_data;
 
-        get_handler = v->get_handler;
+        v->data = (uintptr_t) v_data;
         v->get_handler = ngx_http_haskell_shm_update_var_handler;
-        if (get_handler != NULL && get_handler != v->get_handler) {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "variable \"%V\" has been already defined with "
-                               "another variable handler", &v_name);
-            return NGX_CONF_ERROR;
-        }
 
         v_name.len = value[j].len + haskell_module_shm_stats_var_prefix.len;
         v_name.data = ngx_pnalloc(cf->pool, v_name.len);
@@ -1923,21 +1915,13 @@ ngx_http_haskell_var_configure(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                    value[j].data,
                    value[j].len);
 
-        v = ngx_http_add_variable(cf, &v_name, NGX_HTTP_VAR_CHANGEABLE);
+        v = ngx_http_add_variable(cf, &v_name, 0);
         if (v == NULL) {
             return NGX_CONF_ERROR;
         }
 
         v->data = (uintptr_t) v_data;
-
-        get_handler = v->get_handler;
         v->get_handler = ngx_http_haskell_shm_stats_var_handler;
-        if (get_handler != NULL && get_handler != v->get_handler) {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "variable \"%V\" has been already defined with "
-                               "another variable handler", &v_name);
-            return NGX_CONF_ERROR;
-        }
     }
 
     return NGX_CONF_OK;
