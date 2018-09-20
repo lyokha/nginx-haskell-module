@@ -982,8 +982,24 @@ testing variable ``$is_args`` instead of ``$hs_is_args``, variable
 ``$add_is_args`` would erroneously be equal to *?* because internal redirection
 resets variables ``$args`` and ``$is_args``.
 
-More often, the bang handler can be used for short-circuit assignment of a
-variable normally evaluated by a haskell handler on some other level of nginx
+To reliably cache a *no-cacheable* variable at the beginning of a request, the
+*if* check against its haskell counterpart on the *server* level is a
+must: this enforces strict evaluation of the variable. The *if* clause is
+allowed to be empty. Basically, it looks like in the following example.
+
+```nginx
+    server {
+
+        # ...
+
+        # request_method can be reset in redirection by error_page,
+        # in variable $hs_request_method we want to store its original value
+        haskell_run ! $hs_request_method $request_method;
+        if ($hs_request_method) {}
+```
+
+The bang handler can also be used for short-circuit assignment of a variable
+normally evaluated by a haskell handler on some other level of nginx
 configuration hierarchy.
 
 Miscellaneous nginx directives
