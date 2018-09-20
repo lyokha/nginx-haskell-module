@@ -992,7 +992,7 @@ allowed to be empty. Basically, it looks like in the following example.
 
         # ...
 
-        # request_method can be reset in redirection by error_page,
+        # variable $request_method can be reset in redirection by error_page,
         # in variable $hs_request_method we want to store its original value
         haskell_run ! $hs_request_method $request_method;
         if ($hs_request_method) {}
