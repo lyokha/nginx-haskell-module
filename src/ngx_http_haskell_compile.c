@@ -5,7 +5,7 @@
  *
  *    Description:  Compile Haskell code
  *
- *        Version:  1.0
+ *        Version:  2.0
  *        Created:  05.02.2018 13:48:01
  *       Revision:  none
  *       Compiler:  gcc

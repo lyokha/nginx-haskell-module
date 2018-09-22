@@ -3,9 +3,9 @@
  *
  *       Filename:  ngx_http_haskell_standalone.c
  *
- *    Description:  standalone Haskell header and footer
+ *    Description:  Standalone Haskell header and footer
  *
- *        Version:  1.0
+ *        Version:  2.0
  *        Created:  05.02.2018 12:18:56
  *       Revision:  none
  *       Compiler:  gcc

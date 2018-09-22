@@ -5,7 +5,7 @@
  *
  *    Description:  Nginx module for binding Haskell code in conf files
  *
- *        Version:  1.0
+ *        Version:  2.0
  *        Created:  23.12.2015 12:53:00
  *
  *         Author:  Alexey Radkov (), 

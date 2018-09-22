@@ -3,9 +3,9 @@
  *
  *       Filename:  ngx_http_haskell_util.c
  *
- *    Description:  utility functions
+ *    Description:  Utility functions
  *
- *        Version:  1.0
+ *        Version:  2.0
  *        Created:  05.02.2018 15:10:56
  *       Revision:  none
  *       Compiler:  gcc

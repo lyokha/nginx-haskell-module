@@ -5,7 +5,7 @@
  *
  *    Description:  Load compiled Haskell library
  *
- *        Version:  1.0
+ *        Version:  2.0
  *        Created:  05.02.2018 14:21:03
  *       Revision:  none
  *       Compiler:  gcc
