@@ -1,3 +1,7 @@
+### 1.4.2
+
+- Minor internal improvements (using tuple sections).
+
 ### 1.4.1
 
 - Corrected type of *ngxCachedTimePtr*.
