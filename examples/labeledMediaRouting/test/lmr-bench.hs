@@ -9,7 +9,7 @@
 -- Run:
 -- ./lmr-bench -o lmr-bench.html
 
-import           LabeledMediaRouter;
+import           LabeledMediaRouter
 
 import           Data.Aeson
 import qualified Data.ByteString.Char8 as C8
