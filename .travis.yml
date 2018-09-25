@@ -27,9 +27,10 @@ matrix:
 
 before_install:
   - |
+    export PATH=/opt/ghc/$GHCVER/bin:$PATH
     if [ -z "$NGXVER" ]
     then
-        export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
+        export PATH=/opt/cabal/$CABALVER/bin:$PATH
         cd haskell/ngx-export
     fi
 
@@ -42,7 +43,7 @@ install:
         travis_retry cabal update
         cabal install --only-dependencies
     else
-        if [ "$NGVER" == head ]
+        if [ "$NGXVER" == head ]
         then
             git clone https://github.com/nginx/nginx.git nginx-head
         else
