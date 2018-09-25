@@ -60,10 +60,9 @@ before_install:
     export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
     if [ -n "$NGXVER" ]
     then
-        cpanm -v --notest --local-lib=~/perl5 local::lib Test::Nginx
+        cpanm -v --notest --local-lib=~/perl5 local::lib Test::Nginx &&
+            eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib)
         export PATH=~/.cabal/bin:$PATH
-    else
-        cd haskell/ngx-export
     fi
 
 install:
@@ -72,9 +71,11 @@ install:
     echo "$(ghc --version) "`
         `"[$(ghc --print-project-git-commit-id 2>/dev/null || echo '?')]"
     travis_retry cabal v1-update
+    cd haskell/ngx-export
     cabal v1-install --only-dependencies
     if [ -n "$NGXVER" ]
     then
+        cd -
         if [ "$NGXVER" == head ]
         then
             git clone https://github.com/nginx/nginx.git nginx-head
@@ -84,12 +85,19 @@ install:
         fi
         git clone https://github.com/openresty/echo-nginx-module.git
         cabal v1-install cpphs regex-pcre-builtin aeson bytestring safe
+        cd -
     fi
 
 script:
   - |
+    cabal v1-configure
+    cabal v1-build
+    cabal v1-sdist
+    SRC_TGZ=$(cabal info . | awk '{print $2; exit}').tar.gz &&
+        (cd dist && cabal v1-install --force-reinstalls "$SRC_TGZ")
     if [ -n "$NGXVER" ]
     then
+        cd -
         cd nginx-${NGXVER}/
         if [ "$NGXVER" == head ]
         then
@@ -100,15 +108,8 @@ script:
         $NGX_CONFIGURE --add-module=.. --add-module=../echo-nginx-module
         make -j2
         export PATH=$(pwd)/objs:$PATH
-        cd ..
-        eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib)
+        cd -
         cd test
         prove -r t-travis
-    else
-        cabal v1-configure
-        cabal v1-build
-        cabal v1-sdist
-        SRC_TGZ=$(cabal info . | awk '{print $2; exit}').tar.gz &&
-            (cd dist && cabal v1-install --force-reinstalls "$SRC_TGZ")
     fi
 
