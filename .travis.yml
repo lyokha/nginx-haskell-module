@@ -9,18 +9,20 @@ matrix:
       addons: {apt: {packages: [ghc-head], sources: [hvr-ghc]}}
     - env: NGXVER=1.14.0 GHCVER=head
       addons: {apt: {packages: [ghc-head], sources: [hvr-ghc]}}
+    - env: NGXVER=1.12.2 GHCVER=head
+      addons: {apt: {packages: [ghc-head], sources: [hvr-ghc]}}
     - env: CABALVER=head GHCVER=head
       addons: {apt: {packages: [cabal-install-head,ghc-head], sources: [hvr-ghc]}}
     - env: CABALVER=head GHCVER=8.6.1
       addons: {apt: {packages: [cabal-install-head,ghc-8.6.1], sources: [hvr-ghc]}}
-    #- env: CABALVER=head GHCVER=8.4.3
-      #addons: {apt: {packages: [cabal-install-head,ghc-8.4.3], sources: [hvr-ghc]}}
-    #- env: CABALVER=head GHCVER=8.2.2
-      #addons: {apt: {packages: [cabal-install-head,ghc-8.2.2], sources: [hvr-ghc]}}
-    #- env: CABALVER=head GHCVER=8.0.2
-      #addons: {apt: {packages: [cabal-install-head,ghc-8.0.2], sources: [hvr-ghc]}}
-    #- env: CABALVER=head GHCVER=7.10.3
-      #addons: {apt: {packages: [cabal-install-head,ghc-7.10.3], sources: [hvr-ghc]}}
+    - env: CABALVER=head GHCVER=8.4.3
+      addons: {apt: {packages: [cabal-install-head,ghc-8.4.3], sources: [hvr-ghc]}}
+    - env: CABALVER=head GHCVER=8.2.2
+      addons: {apt: {packages: [cabal-install-head,ghc-8.2.2], sources: [hvr-ghc]}}
+    - env: CABALVER=head GHCVER=8.0.2
+      addons: {apt: {packages: [cabal-install-head,ghc-8.0.2], sources: [hvr-ghc]}}
+    - env: CABALVER=head GHCVER=7.10.3
+      addons: {apt: {packages: [cabal-install-head,ghc-7.10.3], sources: [hvr-ghc]}}
   allow_failures:
    - env: NGXVER=head GHCVER=head
    - env: CABALVER=head GHCVER=head
@@ -40,8 +42,8 @@ install:
     then
         cabal --version
         echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
-        travis_retry cabal update
-        cabal install --only-dependencies
+        travis_retry cabal v1-update
+        cabal v1-install --only-dependencies
     else
         if [ "$NGXVER" == head ]
         then
@@ -57,11 +59,11 @@ script:
   - |
     if [ -z "$NGXVER" ]
     then
-        cabal configure
-        cabal build
-        cabal sdist
+        cabal v1-configure
+        cabal v1-build
+        cabal v1-sdist
         SRC_TGZ=$(cabal info . | awk '{print $2; exit}').tar.gz &&
-            (cd dist && cabal install --force-reinstalls "$SRC_TGZ")
+            (cd dist && cabal v1-install --force-reinstalls "$SRC_TGZ")
     else
         cd nginx-${NGXVER}/
         if [ "$NGXVER" == head ]
@@ -71,6 +73,6 @@ script:
             NGX_CONFIGURE=./configure
         fi
         $NGX_CONFIGURE --add-module=.. --add-module=../echo-nginx-module
-        make -j2 > build.log 2>&1 || (cat build.log && exit 1)
+        make -j2
     fi
 
