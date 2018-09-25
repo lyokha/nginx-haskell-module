@@ -54,7 +54,7 @@ before_install:
         export PATH=/opt/cabal/$CABALVER/bin:$PATH
         cd haskell/ngx-export
     else
-        cpanm -v --notest Test::Nginx
+        cpanm -v --notest --local-lib=$(pwd)/perl5 local::lib Test::Nginx
     fi
 
 install:
@@ -97,7 +97,9 @@ script:
         $NGX_CONFIGURE --add-module=.. --add-module=../echo-nginx-module
         make -j2
         export PATH=$(pwd)/objs:$PATH
-        cd ../test
+        cd ..
+        eval $(perl -I $(pwd)/perl5/lib/perl5/ -Mlocal::lib)
+        cd test
         prove -r t
     fi
 
