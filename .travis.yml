@@ -3,19 +3,19 @@ language: c
 
 matrix:
   include:
-    - env: NGXVER=head GHCVER=head
+    - env: NGXVER=head CABALVER=head GHCVER=head
       compiler: gcc
       addons:
           {apt:
               {packages: [cabal-install-head, ghc-head], sources: [hvr-ghc]}
           }
-    - env: NGXVER=1.14.0 GHCVER=8.4.3
+    - env: NGXVER=1.14.0 CABALVER=head GHCVER=8.4.3
       compiler: gcc
       addons:
           {apt:
               {packages: [cabal-install-head, ghc-8.4.3], sources: [hvr-ghc]}
           }
-    - env: NGXVER=1.12.2 GHCVER=8.4.3
+    - env: NGXVER=1.12.2 CABALVER=head GHCVER=8.4.3
       compiler: gcc
       addons:
           {apt:
@@ -52,7 +52,7 @@ matrix:
               {packages: [cabal-install-head, ghc-7.10.3], sources: [hvr-ghc]}
           }
   allow_failures:
-    - env: NGXVER=head GHCVER=head
+    - env: NGXVER=head CABALVER=head GHCVER=head
     - env: CABALVER=head GHCVER=head
 
 before_install:
