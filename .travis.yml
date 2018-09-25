@@ -5,9 +5,9 @@ compiler: gcc
 
 matrix:
   include:
-    - env: NGXVER=head
+    - env: NGXVER=head GHCVER=head
       addons: {apt: {packages: [ghc-head], sources: [hvr-ghc]}}
-    - env: NGXVER=1.14.0
+    - env: NGXVER=1.14.0 GHCVER=head
       addons: {apt: {packages: [ghc-head], sources: [hvr-ghc]}}
     - env: CABALVER=head GHCVER=head
       addons: {apt: {packages: [cabal-install-head,ghc-head], sources: [hvr-ghc]}}
