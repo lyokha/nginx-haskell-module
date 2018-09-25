@@ -74,6 +74,7 @@ install:
     travis_retry cabal v1-update
     cabal v1-install --only-dependencies
     if [ -n "$NGXVER" ]
+    then
         if [ "$NGXVER" == head ]
         then
             git clone https://github.com/nginx/nginx.git nginx-head
@@ -82,7 +83,8 @@ install:
                 tar xzvf nginx-${NGXVER}.tar.gz
         fi
         git clone https://github.com/openresty/echo-nginx-module.git
-        cabal v1-install cpphs regex-pcre-builtin aeson bytestring pandoc text safe
+        cabal v1-install \
+            cpphs regex-pcre-builtin aeson bytestring pandoc text safe
     fi
 
 script:
