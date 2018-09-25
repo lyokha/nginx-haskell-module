@@ -76,7 +76,6 @@ static ngx_int_t ngx_http_haskell_request_ptr_var_handler(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_haskell_make_handler_name(ngx_pool_t *pool,
     ngx_str_t *from, ngx_str_t *handler_name);
-static ngx_inline void ngx_http_haskell_main_conf_warn(ngx_conf_t *cf);
 static ngx_inline ngx_uint_t ngx_http_haskell_has_async_tasks(
     ngx_http_haskell_main_conf_t *mcf);
 
@@ -864,8 +863,6 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_variable_t            *v;
     ngx_int_t                       len;
 
-    ngx_http_haskell_main_conf_warn(cf);
-
     value = cf->args->elts;
 
     if (value[1].len == 7
@@ -1174,12 +1171,8 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             || (value[0].len == 19
                 && ngx_strncmp(value[0].data, "haskell_run_service", 19) == 0);
 
-    if (service) {
-        ngx_http_haskell_main_conf_warn(cf);
-        mcf = conf;
-    } else {
-        mcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_haskell_module);
-    }
+    mcf = service ? conf :
+            ngx_http_conf_get_module_main_conf(cf, ngx_http_haskell_module);
 
     if (!mcf->code_loaded) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "haskell code was not loaded");
@@ -1651,8 +1644,6 @@ ngx_http_haskell_service_update_hook(ngx_conf_t *cf, ngx_command_t *cmd,
     ngx_int_t                          handler_idx = NGX_ERROR;
     ngx_int_t                          v_idx;
 
-    ngx_http_haskell_main_conf_warn(cf);
-
     if (!mcf->code_loaded) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "haskell code was not loaded");
@@ -1765,8 +1756,6 @@ ngx_http_haskell_service_hooks_zone(ngx_conf_t *cf, ngx_command_t *cmd,
     ngx_str_t                         *value;
     ssize_t                            shm_size;
 
-    ngx_http_haskell_main_conf_warn(cf);
-
     if (mcf->service_hooks_shm_zone != NULL) {
         return "is duplicate";
     }
@@ -1820,8 +1809,6 @@ ngx_http_haskell_var_configure(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_str_t                                v_name;
     ngx_int_t                                idx = 0;
     ngx_uint_t                               create_shm_aux_vars = 0;
-
-    ngx_http_haskell_main_conf_warn(cf);
 
     value = cf->args->elts;
 
@@ -1948,8 +1935,6 @@ ngx_http_haskell_service_var_in_shm(ngx_conf_t *cf, ngx_command_t *cmd,
     ngx_str_t                         *value;
     ssize_t                            shm_size;
 
-    ngx_http_haskell_main_conf_warn(cf);
-
     if (mcf->shm_zone != NULL) {
         return "is duplicate";
     }
@@ -2001,8 +1986,6 @@ ngx_http_haskell_request_variable_name(ngx_conf_t *cf, ngx_command_t *cmd,
     ngx_http_haskell_main_conf_t      *mcf = conf;
 
     ngx_str_t                         *value;
-
-    ngx_http_haskell_main_conf_warn(cf);
 
     if (mcf->request_var_name_done) {
         return "is duplicate";
@@ -2080,26 +2063,6 @@ ngx_http_haskell_make_handler_name(ngx_pool_t *pool, ngx_str_t *from,
     handler_name->data[handler_name->len] = '\0';
 
     return NGX_OK;
-}
-
-
-static ngx_inline void
-ngx_http_haskell_main_conf_warn(ngx_conf_t *cf)
-{
-    ngx_http_core_main_conf_t      *cmcf;
-
-    cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
-
-    /* make scan-build happy */
-    if (cmcf == NULL) {
-        return;
-    }
-
-    if (cmcf->servers.nelts > 0) {
-        ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
-                           "any haskell directive in http clause should "
-                           "precede server declarations");
-    }
 }
 
 
