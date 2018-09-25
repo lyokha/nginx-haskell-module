@@ -57,10 +57,9 @@ matrix:
 
 before_install:
   - |
-    export PATH=/opt/ghc/$GHCVER/bin:$PATH
+    export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
     if [ -z "$NGXVER" ]
     then
-        export PATH=/opt/cabal/$CABALVER/bin:$PATH
         cd haskell/ngx-export
     else
         cpanm -v --notest --local-lib=~/perl5 local::lib Test::Nginx
