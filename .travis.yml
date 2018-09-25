@@ -22,7 +22,7 @@ matrix:
     #- env: CABALVER=head GHCVER=7.10.3
       #addons: {apt: {packages: [cabal-install-head,ghc-7.10.3], sources: [hvr-ghc]}}
   allow_failures:
-   - env: NGXVER=head
+   - env: NGXVER=head GHCVER=head
    - env: CABALVER=head GHCVER=head
 
 before_install:
@@ -48,7 +48,7 @@ install:
             git clone https://github.com/nginx/nginx.git nginx-head
         else
             wget http://nginx.org/download/nginx-${NGXVER}.tar.gz &&
-                tar xvf nginx-${NGXVER}.tar.gz
+                tar xzvf nginx-${NGXVER}.tar.gz
         fi
         git clone https://github.com/openresty/echo-nginx-module.git
     fi
@@ -64,8 +64,13 @@ script:
             (cd dist && cabal install --force-reinstalls "$SRC_TGZ")
     else
         cd nginx-${NGXVER}/
-        ./configure --add-module=.. --add-module=../echo-nginx-module \
-            --add-module=../examples/dynamicUpstreams/nginx-upconf-module
+        if [ "$NGXVER" == head ]
+        then
+            NGX_CONFIGURE=./auto/configure
+        else
+            NGX_CONFIGURE=./configure
+        fi
+        $NGX_CONFIGURE --add-module=.. --add-module=../echo-nginx-module
         make -j2 > build.log 2>&1 || (cat build.log && exit 1)
     fi
 
