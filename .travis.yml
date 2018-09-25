@@ -6,10 +6,10 @@ matrix:
     - env: NGXVER=head GHCVER=head
       compiler: gcc
       addons: {apt: {packages: [ghc-head], sources: [hvr-ghc]}}
-    - env: NGXVER=1.14.0 GHCVER=head
+    - env: NGXVER=1.14.0 GHCVER=8.4.3
       compiler: gcc
       addons: {apt: {packages: [ghc-head], sources: [hvr-ghc]}}
-    - env: NGXVER=1.12.2 GHCVER=head
+    - env: NGXVER=1.12.2 GHCVER=8.4.3
       compiler: gcc
       addons: {apt: {packages: [ghc-head], sources: [hvr-ghc]}}
     - env: CABALVER=head GHCVER=head
@@ -59,12 +59,12 @@ before_install:
 
 install:
   - |
+    cabal --version
+    echo "$(ghc --version) "`
+        `"[$(ghc --print-project-git-commit-id 2>/dev/null || echo '?')]"
+    travis_retry cabal v1-update
     if [ -z "$NGXVER" ]
     then
-        cabal --version
-        echo "$(ghc --version) "`
-            `"[$(ghc --print-project-git-commit-id 2>/dev/null || echo '?')]"
-        travis_retry cabal v1-update
         cabal v1-install --only-dependencies
     else
         if [ "$NGXVER" == head ]
@@ -75,6 +75,7 @@ install:
                 tar xzvf nginx-${NGXVER}.tar.gz
         fi
         git clone https://github.com/openresty/echo-nginx-module.git
+        cabal v1-install cpphs
     fi
 
 script:
