@@ -1,31 +1,50 @@
 sudo: false
-
 language: c
-compiler: gcc
 
 matrix:
   include:
     - env: NGXVER=head GHCVER=head
+      compiler: gcc
       addons: {apt: {packages: [ghc-head], sources: [hvr-ghc]}}
     - env: NGXVER=1.14.0 GHCVER=head
+      compiler: gcc
       addons: {apt: {packages: [ghc-head], sources: [hvr-ghc]}}
     - env: NGXVER=1.12.2 GHCVER=head
+      compiler: gcc
       addons: {apt: {packages: [ghc-head], sources: [hvr-ghc]}}
     - env: CABALVER=head GHCVER=head
-      addons: {apt: {packages: [cabal-install-head,ghc-head], sources: [hvr-ghc]}}
+      addons:
+          {apt:
+              {packages: [cabal-install-head, ghc-head], sources: [hvr-ghc]}
+          }
     - env: CABALVER=head GHCVER=8.6.1
-      addons: {apt: {packages: [cabal-install-head,ghc-8.6.1], sources: [hvr-ghc]}}
+      addons:
+          {apt:
+              {packages: [cabal-install-head, ghc-8.6.1], sources: [hvr-ghc]}
+          }
     - env: CABALVER=head GHCVER=8.4.3
-      addons: {apt: {packages: [cabal-install-head,ghc-8.4.3], sources: [hvr-ghc]}}
+      addons:
+          {apt:
+              {packages: [cabal-install-head, ghc-8.4.3], sources: [hvr-ghc]}
+          }
     - env: CABALVER=head GHCVER=8.2.2
-      addons: {apt: {packages: [cabal-install-head,ghc-8.2.2], sources: [hvr-ghc]}}
+      addons:
+          {apt:
+              {packages: [cabal-install-head, ghc-8.2.2], sources: [hvr-ghc]}
+          }
     - env: CABALVER=head GHCVER=8.0.2
-      addons: {apt: {packages: [cabal-install-head,ghc-8.0.2], sources: [hvr-ghc]}}
+      addons:
+          {apt:
+              {packages: [cabal-install-head, ghc-8.0.2], sources: [hvr-ghc]}
+          }
     - env: CABALVER=head GHCVER=7.10.3
-      addons: {apt: {packages: [cabal-install-head,ghc-7.10.3], sources: [hvr-ghc]}}
+      addons:
+          {apt:
+              {packages: [cabal-install-head, ghc-7.10.3], sources: [hvr-ghc]}
+          }
   allow_failures:
-   - env: NGXVER=head GHCVER=head
-   - env: CABALVER=head GHCVER=head
+    - env: NGXVER=head GHCVER=head
+    - env: CABALVER=head GHCVER=head
 
 before_install:
   - |
@@ -34,6 +53,8 @@ before_install:
     then
         export PATH=/opt/cabal/$CABALVER/bin:$PATH
         cd haskell/ngx-export
+    else
+        cpanm --local-lib=$(pwd)/perl5 local::lib
     fi
 
 install:
@@ -41,7 +62,8 @@ install:
     if [ -z "$NGXVER" ]
     then
         cabal --version
-        echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
+        echo "$(ghc --version) "`
+            `"[$(ghc --print-project-git-commit-id 2>/dev/null || echo '?')]"
         travis_retry cabal v1-update
         cabal v1-install --only-dependencies
     else
@@ -74,5 +96,10 @@ script:
         fi
         $NGX_CONFIGURE --add-module=.. --add-module=../echo-nginx-module
         make -j2
+        export PATH=$(pwd)/objs:$PATH
+        cd ..
+        eval $(perl -I $(pwd)/perl5/lib/perl5/ -Mlocal::lib)
+        cd test
+        prove -r t
     fi
 
