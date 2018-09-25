@@ -6,7 +6,9 @@ compiler: gcc
 matrix:
   include:
     - env: NGXVER=head
+      addons: {apt: {packages: [ghc-head], sources: [hvr-ghc]}}
     - env: NGXVER=1.14.0
+      addons: {apt: {packages: [ghc-head], sources: [hvr-ghc]}}
     - env: CABALVER=head GHCVER=head
       addons: {apt: {packages: [cabal-install-head,ghc-head], sources: [hvr-ghc]}}
     - env: CABALVER=head GHCVER=8.6.1
@@ -42,7 +44,7 @@ install:
     else
         if [ "$NGVER" == head ]
         then
-            git clone https://github.com/nginx/nginx.git -o nginx-head
+            git clone https://github.com/nginx/nginx.git nginx-head
         else
             wget http://nginx.org/download/nginx-${NGXVER}.tar.gz &&
                 tar xvf nginx-${NGXVER}.tar.gz
