@@ -83,8 +83,7 @@ install:
                 tar xzvf nginx-${NGXVER}.tar.gz
         fi
         git clone https://github.com/openresty/echo-nginx-module.git
-        cabal v1-install \
-            cpphs regex-pcre-builtin aeson bytestring pandoc text safe
+        cabal v1-install cpphs regex-pcre-builtin aeson bytestring safe
     fi
 
 script:
@@ -104,7 +103,7 @@ script:
         cd ..
         eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib)
         cd test
-        prove -r t
+        prove -r t-travis
     else
         cabal v1-configure
         cabal v1-build

@@ -3,7 +3,7 @@
 use Test::Nginx::Socket;
 
 repeat_each(2);
-plan tests => repeat_each() * ((2 * blocks()) + 2);
+plan tests => repeat_each() * (2 * blocks());
 
 no_shuffle();
 run_tests();
@@ -28,12 +28,8 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as C8
 import           Data.ByteString.Unsafe
 import           Data.ByteString.Internal (accursedUnutterablePerformIO)
-import           Text.Pandoc
-import           Text.Pandoc.Builder
-import qualified Data.Text.Encoding as T
 import           Data.Function (on)
 import           Control.Monad
-import           Control.Exception
 import           Safe
 
 toUpper = map C.toUpper
@@ -99,27 +95,6 @@ instance UrlDecodable L.ByteString where
 urlDecode = fromMaybe "" . doURLDecode
 NGX_EXPORT_S_S (urlDecode)
 
--- compatible with Pandoc 2.0 (will not compile for older versions)
-fromMd (T.decodeUtf8 -> x) = uncurry (, packLiteral 9 "text/html"#, ) $
-    case runPure $ readMarkdown def x >>= writeHtml of
-        Right p -> (fromText p, 200)
-        Left (displayException -> e) -> (case runPure $ writeError e of
-                                             Right p -> fromText p
-                                             Left  _ -> C8L.pack e, 500)
-    where packLiteral l s =
-              accursedUnutterablePerformIO $ unsafePackAddressLen l s
-          fromText = C8L.fromStrict . T.encodeUtf8
-          writeHtml = writeHtml5String defHtmlWriterOptions
-          writeError = writeHtml . doc . para . singleton . Str
-          defHtmlWriterOptions = def
-              { writerTemplate = Just "<html>\\n<body>\\n$body$</body></html>" }
-NGX_EXPORT_HANDLER (fromMd)
-
-toYesNo "0" = "No"
-toYesNo "1" = "Yes"
-toYesNo  _  = "Unknown"
-NGX_EXPORT_S_S (toYesNo)
-
     ';
 --- config
     location /toUpper {
@@ -156,27 +131,6 @@ NGX_EXPORT_S_S (toYesNo)
         haskell_run jSONListOfIntsTakeN $hs_a $arg_take|$arg_a;
         haskell_run urlDecode $hs_b $arg_a;
         echo "jSONListOfIntsTakeN ($hs_b, $arg_take) = $hs_a";
-    }
-
-    location /content {
-        haskell_run isJSONListOfInts $hs_a $arg_a;
-        haskell_run toYesNo $hs_b $hs_a;
-        haskell_run jSONListOfIntsTakeN $hs_c $arg_take|$arg_a;
-        haskell_run urlDecode $hs_d $arg_a;
-        haskell_content fromMd "
-## Do some JSON parsing
-
-### Given ``$hs_d``
-
-* Is this list of integer numbers?
-
-    + *$hs_b*
-
-* Take $arg_take elements
-
-    + *``$hs_c``*
-    ";
-
     }
 --- request
     GET /toUpper?a=hello_world
@@ -287,28 +241,5 @@ jSONListOfIntsTakeN ([10,20,30,40], 3) = [10,20,30]
     GET /jSONListOfIntsTakeN?a=%5B10%2C20%2C30%2C40%5D&take=undefined
 --- response_body
 jSONListOfIntsTakeN ([10,20,30,40], undefined) = []
---- error_code: 200
-
-=== TEST 17: content
---- request
-    GET /content?a=%5B10%2C20%2C30%2C40%5D&take=3
---- response_headers
-Content-Type: text/html
-Content-Length: 277
---- response_body chomp
-<html>
-<body>
-<h2>Do some JSON parsing</h2>
-<h3>Given <code>[10,20,30,40]</code></h3>
-<ul>
-<li><p>Is this list of integer numbers?</p>
-<ul>
-<li><em>Yes</em></li>
-</ul></li>
-<li><p>Take 3 elements</p>
-<ul>
-<li><em><code>[10,20,30]</code></em></li>
-</ul></li>
-</ul></body></html>
 --- error_code: 200
 
