@@ -57,6 +57,7 @@ matrix:
 
 before_install:
   - |
+    set -e
     export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
     if [ -n "$NGXVER" ]
     then
@@ -64,9 +65,11 @@ before_install:
             eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib)
         export PATH=~/.cabal/bin:$PATH
     fi
+    set +e
 
 install:
   - |
+    set -e
     cabal --version
     echo "$(ghc --version) "`
         `"[$(ghc --print-project-git-commit-id 2>/dev/null || echo '?')]"
@@ -87,9 +90,11 @@ install:
         cabal v1-install cpphs regex-pcre-builtin aeson bytestring safe
         cd -
     fi
+    set +e
 
 script:
   - |
+    set -e
     cabal v1-configure
     cabal v1-build
     cabal v1-sdist
@@ -110,6 +115,8 @@ script:
         export PATH=$(pwd)/objs:$PATH
         cd -
         cd test
+        set +e
         prove -r t-travis
     fi
+    set +e
 
