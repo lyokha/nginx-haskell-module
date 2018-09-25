@@ -5,13 +5,22 @@ matrix:
   include:
     - env: NGXVER=head GHCVER=head
       compiler: gcc
-      addons: {apt: {packages: [ghc-head], sources: [hvr-ghc]}}
+      addons:
+          {apt:
+              {packages: [cabal-install-head, ghc-head], sources: [hvr-ghc]}
+          }
     - env: NGXVER=1.14.0 GHCVER=8.4.3
       compiler: gcc
-      addons: {apt: {packages: [ghc-head], sources: [hvr-ghc]}}
+      addons:
+          {apt:
+              {packages: [cabal-install-head, ghc-8.4.3], sources: [hvr-ghc]}
+          }
     - env: NGXVER=1.12.2 GHCVER=8.4.3
       compiler: gcc
-      addons: {apt: {packages: [ghc-head], sources: [hvr-ghc]}}
+      addons:
+          {apt:
+              {packages: [cabal-install-head, ghc-8.4.3], sources: [hvr-ghc]}
+          }
     - env: CABALVER=head GHCVER=head
       addons:
           {apt:
