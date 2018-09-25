@@ -1,37 +1,68 @@
-language: c
 sudo: false
+
+language: c
+compiler: gcc
 
 matrix:
   include:
+    - env: NGXVER=head
+    - env: NGXVER=1.14.0
     - env: CABALVER=head GHCVER=head
       addons: {apt: {packages: [cabal-install-head,ghc-head], sources: [hvr-ghc]}}
     - env: CABALVER=head GHCVER=8.6.1
       addons: {apt: {packages: [cabal-install-head,ghc-8.6.1], sources: [hvr-ghc]}}
-    - env: CABALVER=head GHCVER=8.4.3
-      addons: {apt: {packages: [cabal-install-head,ghc-8.4.3], sources: [hvr-ghc]}}
-    - env: CABALVER=head GHCVER=8.2.2
-      addons: {apt: {packages: [cabal-install-head,ghc-8.2.2], sources: [hvr-ghc]}}
-    - env: CABALVER=head GHCVER=8.0.2
-      addons: {apt: {packages: [cabal-install-head,ghc-8.0.2], sources: [hvr-ghc]}}
-    - env: CABALVER=head GHCVER=7.10.3
-      addons: {apt: {packages: [cabal-install-head,ghc-7.10.3], sources: [hvr-ghc]}}
+    #- env: CABALVER=head GHCVER=8.4.3
+      #addons: {apt: {packages: [cabal-install-head,ghc-8.4.3], sources: [hvr-ghc]}}
+    #- env: CABALVER=head GHCVER=8.2.2
+      #addons: {apt: {packages: [cabal-install-head,ghc-8.2.2], sources: [hvr-ghc]}}
+    #- env: CABALVER=head GHCVER=8.0.2
+      #addons: {apt: {packages: [cabal-install-head,ghc-8.0.2], sources: [hvr-ghc]}}
+    #- env: CABALVER=head GHCVER=7.10.3
+      #addons: {apt: {packages: [cabal-install-head,ghc-7.10.3], sources: [hvr-ghc]}}
   allow_failures:
+   - env: NGXVER=head
    - env: CABALVER=head GHCVER=head
 
 before_install:
-  - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
-  - cd haskell/ngx-export
+  - |
+    if [ -z "$NGXVER" ]
+    then
+        export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
+        cd haskell/ngx-export
+    fi
 
 install:
-  - cabal --version
-  - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
-  - travis_retry cabal update
-  - cabal install --only-dependencies
+  - |
+    if [ -z "$NGXVER" ]
+    then
+        cabal --version
+        echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
+        travis_retry cabal update
+        cabal install --only-dependencies
+    else
+        if [ "$NGVER" == head ]
+        then
+            git clone https://github.com/nginx/nginx.git -o nginx-head
+        else
+            wget http://nginx.org/download/nginx-${NGXVER}.tar.gz &&
+                tar xvf nginx-${NGXVER}.tar.gz
+        fi
+        git clone https://github.com/openresty/echo-nginx-module.git
+    fi
 
 script:
-  - cabal configure
-  - cabal build
-  - cabal sdist
-  - SRC_TGZ=$(cabal info . | awk '{print $2; exit}').tar.gz &&
-    (cd dist && cabal install --force-reinstalls "$SRC_TGZ")
+  - |
+    if [ -z "$NGXVER" ]
+    then
+        cabal configure
+        cabal build
+        cabal sdist
+        SRC_TGZ=$(cabal info . | awk '{print $2; exit}').tar.gz &&
+            (cd dist && cabal install --force-reinstalls "$SRC_TGZ")
+    else
+        cd nginx-${NGXVER}/
+        ./configure --add-module=.. --add-module=../echo-nginx-module \
+            --add-module=../examples/dynamicUpstreams/nginx-upconf-module
+        make -j2 > build.log 2>&1 || (cat build.log && exit 1)
+    fi
 
