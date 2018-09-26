@@ -1,4 +1,5 @@
 sudo: false
+os: linux
 language: c
 
 matrix:
@@ -6,51 +7,51 @@ matrix:
     - env: NGXVER=head CABALVER=head GHCVER=head
       compiler: gcc
       addons:
-          {apt:
-              {packages: [cabal-install-head, ghc-head], sources: [hvr-ghc]}
-          }
+        apt:
+          packages: [cabal-install-head, ghc-head]
+          sources: [hvr-ghc]
     - env: NGXVER=1.14.0 CABALVER=head GHCVER=8.4.3
       compiler: gcc
       addons:
-          {apt:
-              {packages: [cabal-install-head, ghc-8.4.3], sources: [hvr-ghc]}
-          }
+        apt:
+          packages: [cabal-install-head, ghc-8.4.3]
+          sources: [hvr-ghc]
     - env: NGXVER=1.12.2 CABALVER=head GHCVER=8.4.3
       compiler: gcc
       addons:
-          {apt:
-              {packages: [cabal-install-head, ghc-8.4.3], sources: [hvr-ghc]}
-          }
+        apt:
+          packages: [cabal-install-head, ghc-8.4.3]
+          sources: [hvr-ghc]
     - env: CABALVER=head GHCVER=head
       addons:
-          {apt:
-              {packages: [cabal-install-head, ghc-head], sources: [hvr-ghc]}
-          }
+        apt:
+          packages: [cabal-install-head, ghc-head]
+          sources: [hvr-ghc]
     - env: CABALVER=head GHCVER=8.6.1
       addons:
-          {apt:
-              {packages: [cabal-install-head, ghc-8.6.1], sources: [hvr-ghc]}
-          }
+        apt:
+          packages: [cabal-install-head, ghc-8.6.1]
+          sources: [hvr-ghc]
     - env: CABALVER=head GHCVER=8.4.3
       addons:
-          {apt:
-              {packages: [cabal-install-head, ghc-8.4.3], sources: [hvr-ghc]}
-          }
+        apt:
+          packages: [cabal-install-head, ghc-8.4.3]
+          sources: [hvr-ghc]
     - env: CABALVER=head GHCVER=8.2.2
       addons:
-          {apt:
-              {packages: [cabal-install-head, ghc-8.2.2], sources: [hvr-ghc]}
-          }
+        apt:
+          packages: [cabal-install-head, ghc-8.2.2]
+          sources: [hvr-ghc]
     - env: CABALVER=head GHCVER=8.0.2
       addons:
-          {apt:
-              {packages: [cabal-install-head, ghc-8.0.2], sources: [hvr-ghc]}
-          }
+        apt:
+          packages: [cabal-install-head, ghc-8.0.2]
+          sources: [hvr-ghc]
     - env: CABALVER=head GHCVER=7.10.3
       addons:
-          {apt:
-              {packages: [cabal-install-head, ghc-7.10.3], sources: [hvr-ghc]}
-          }
+        apt:
+          packages: [cabal-install-head, ghc-7.10.3]
+          sources: [hvr-ghc]
   allow_failures:
     - env: NGXVER=head CABALVER=head GHCVER=head
     - env: CABALVER=head GHCVER=head
