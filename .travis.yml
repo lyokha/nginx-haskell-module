@@ -1,5 +1,4 @@
 sudo: false
-os: linux
 language: c
 
 matrix:
