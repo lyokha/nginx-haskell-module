@@ -89,7 +89,7 @@ install:
         git clone https://github.com/openresty/echo-nginx-module.git
         cabal v1-install cpphs regex-pcre-builtin aeson bytestring safe
         cd -
-    elif [ "$GHCVER" != "7.10.3"]
+    elif [ "$GHCVER" != "7.10.3" ]
     then
         cd -
         cd haskell/ngx-export-tools
@@ -124,7 +124,7 @@ script:
         cd test
         set +e
         prove -r t-travis
-    elif [ "$GHCVER" != "7.10.3"]
+    elif [ "$GHCVER" != "7.10.3" ]
     then
         cd -
         cd haskell/ngx-export-tools
