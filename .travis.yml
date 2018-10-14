@@ -94,6 +94,7 @@ install:
         cd haskell/ngx-export-tools
         cabal v1-install --only-dependencies
         cd -
+        cd haskell/ngx-export
     fi
     set +e
 
