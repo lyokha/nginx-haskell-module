@@ -89,6 +89,11 @@ install:
         git clone https://github.com/openresty/echo-nginx-module.git
         cabal v1-install cpphs regex-pcre-builtin aeson bytestring safe
         cd -
+    else
+        cd -
+        cd haskell/ngx-export-tools
+        cabal v1-install --only-dependencies
+        cd -
     fi
     set +e
 
@@ -117,6 +122,14 @@ script:
         cd test
         set +e
         prove -r t-travis
+    else
+        cd -
+        cd haskell/ngx-export-tools
+        cabal v1-configure
+        cabal v1-build
+        cabal v1-sdist
+        SRC_TGZ=$(cabal info . | awk '{print $2; exit}').tar.gz &&
+            (cd dist && cabal v1-install --force-reinstalls "$SRC_TGZ")
     fi
     set +e
 
