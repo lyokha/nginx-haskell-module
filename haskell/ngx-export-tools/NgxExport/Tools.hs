@@ -55,13 +55,13 @@ import           Safe
 
 foreign import ccall "exit" exit :: CInt -> IO ()
 
--- | Deliberately exits current Nginx worker process.
+-- | Terminates current Nginx worker process.
 --
 -- Nginx master process shall spawn a new worker process thereafter.
 exitWorkerProcess :: IO ()
 exitWorkerProcess = exit 1
 
--- | Deliberately terminates current Nginx worker process.
+-- | Terminates current Nginx worker process.
 --
 -- Nginx master process shall /not/ spawn a new worker process thereafter.
 terminateWorkerProcess :: IO ()
@@ -78,17 +78,20 @@ terminateWorkerProcess = exit 2
 ngxNow :: IO CTime
 ngxNow = ngxCachedTimePtr >>= peek >>= peek . castPtr
 
+-- | Delays current thread for the specified number of seconds.
 threadDelaySec :: Int -> IO ()
 threadDelaySec = threadDelay . (* 1e6)
 
-data TimeInterval = Hr Int
-                  | Min Int
-                  | Sec Int
-                  | HrMin Int Int
-                  | MinSec Int Int
+-- | Time intervals.
+data TimeInterval = Hr Int          -- ^ Hours
+                  | Min Int         -- ^ Minutes
+                  | Sec Int         -- ^ Seconds
+                  | HrMin Int Int   -- ^ Hours and minutes
+                  | MinSec Int Int  -- ^ Minutes and seconds
                   deriving (Generic, Lift, Read)
 instance FromJSON TimeInterval
 
+-- | Converts a time interval into seconds.
 toSec :: TimeInterval -> Int
 toSec (Hr h)       = 3600 * h
 toSec (Min m)      = 60 * m

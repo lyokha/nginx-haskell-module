@@ -6,6 +6,7 @@ description:                Extra tools for
 homepage:                   http://github.com/lyokha/nginx-haskell-module
 license:                    BSD3
 license-file:               LICENSE
+extra-source-files:         Changelog.md
 author:                     Alexey Radkov <alexey.radkov@gmail.com>
 maintainer:                 Alexey Radkov <alexey.radkov@gmail.com>
 stability:                  experimental
