@@ -1,6 +1,22 @@
 {-# LANGUAGE TemplateHaskell, ForeignFunctionInterface, TypeFamilies #-}
 {-# LANGUAGE DeriveGeneric, DeriveLift, NumDecimals #-}
 
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  NgxExport.Tools
+-- Copyright   :  (c) Alexey Radkov 2018
+-- License     :  BSD-style
+--
+-- Maintainer  :  alexey.radkov@gmail.com
+-- Stability   :  experimental
+-- Portability :  non-portable (requires Template Haskell)
+--
+-- Extra tools for using in custom Haskell code with
+-- <http://github.com/lyokha/nginx-haskell-module nginx-haskell-module>.
+--
+-----------------------------------------------------------------------------
+
+
 module NgxExport.Tools (
     -- * Various useful functions and data
                         exitWorkerProcess
@@ -10,6 +26,7 @@ module NgxExport.Tools (
                        ,TimeInterval (..)
                        ,toSec
     -- * Exporters of simple services
+                       ,ServiceMode (..)
                        ,ngxExportSimpleService
                        ,ngxExportSimpleServiceTyped
                        ,ngxExportSimpleServiceTypedAsJSON
@@ -38,14 +55,26 @@ import           Safe
 
 foreign import ccall "exit" exit :: CInt -> IO ()
 
+-- | Deliberately exits current Nginx worker process.
+--
+-- Nginx master process shall spawn a new worker process thereafter.
 exitWorkerProcess :: IO ()
-exitWorkerProcess = exit 1          -- this makes Nginx respawn a worker
+exitWorkerProcess = exit 1
 
+-- | Deliberately terminates current Nginx worker process.
+--
+-- Nginx master process shall /not/ spawn a new worker process thereafter.
 terminateWorkerProcess :: IO ()
-terminateWorkerProcess = exit 2     -- this makes Nginx not respawn a worker
+terminateWorkerProcess = exit 2
 
--- This is a small type casting hack: getting the first element of type time_t
--- from a C struct
+-- | Returns current time as the number of seconds elapsed since UNIX epoch.
+--
+-- The value is taken from Nginx core, so no additional system calls get
+-- involved. On the other hand, this means that it's only safe to use from
+-- an Nginx worker's main thread, i.e. in /synchronous/ Haskell handlers and
+-- /service hooks/. Be also aware that this is a small type casting hack:
+-- the value is taken from the first element of type @time_t@ wrapped in a
+-- bigger C struct.
 ngxNow :: IO CTime
 ngxNow = ngxCachedTimePtr >>= peek >>= peek . castPtr
 
@@ -86,13 +115,15 @@ instance FromByteString ByteString where
     type WrappedT ByteString = ByteString
     fromByteString = const Just
 
+data ServiceMode = PersistentService (Maybe TimeInterval)
+                 | SingleShotService
+
 simpleServiceWrap ::
     (a -> Bool -> IO L.ByteString) -> a -> Bool -> IO L.ByteString
 simpleServiceWrap f = f
 
-ngxExportSimpleService' ::
-    Name -> Maybe (Name, Bool) -> Maybe TimeInterval -> Q [Dec]
-ngxExportSimpleService' f c i = concat <$> sequence
+ngxExportSimpleService' :: Name -> Maybe (Name, Bool) -> ServiceMode -> Q [Dec]
+ngxExportSimpleService' f c m = concat <$> sequence
     [sequence $
         (if hasConf
              then [sigD nameC [t|IORef (Maybe $(conT nameConC))|]
@@ -114,8 +145,7 @@ ngxExportSimpleService' f c i = concat <$> sequence
                     [|do
                           conf_data_ <- $(initConf)
                           $(waitTime)
-                          simpleServiceWrap $(varE f)
-                              (fromJust conf_data_) fstRun_
+                          $(serviceWrap)
                     |]
                 )
                 []
@@ -165,24 +195,39 @@ ngxExportSimpleService' f c i = concat <$> sequence
                                  terminateWorkerProcess
                              return conf_data__
                        |]
-          waitTime =
-              if isJust i
-                  then let ival = fromJust i
-                       in [|unless fstRun_ $ threadDelaySec $ toSec ival|]
-                  else [|return ()|]
+          (waitTime, serviceWrap) =
+              case m of
+                  PersistentService i ->
+                      (if isJust i
+                           then let t = fromJust i
+                                in [|unless fstRun_ $
+                                         threadDelaySec $ toSec t
+                                   |]
+                           else [|return ()|]
+                      ,[|simpleServiceWrap
+                             $(varE f) (fromJust conf_data_) fstRun_
+                       |]
+                      )
+                  SingleShotService ->
+                      ([|unless fstRun_ $
+                             threadDelaySec $ toSec $ Hr 1
+                       |]
+                      ,[|if fstRun_
+                             then simpleServiceWrap
+                                      $(varE f) (fromJust conf_data_) fstRun_
+                             else return L.empty
+                       |]
+                      )
 
-ngxExportSimpleService ::
-    Name -> Maybe TimeInterval -> Q [Dec]
+ngxExportSimpleService :: Name -> ServiceMode -> Q [Dec]
 ngxExportSimpleService f =
     ngxExportSimpleService' f Nothing
 
-ngxExportSimpleServiceTyped ::
-    Name -> Name -> Maybe TimeInterval -> Q [Dec]
+ngxExportSimpleServiceTyped :: Name -> Name -> ServiceMode -> Q [Dec]
 ngxExportSimpleServiceTyped f c =
     ngxExportSimpleService' f $ Just (c, False)
 
-ngxExportSimpleServiceTypedAsJSON ::
-    Name -> Name -> Maybe TimeInterval -> Q [Dec]
+ngxExportSimpleServiceTypedAsJSON :: Name -> Name -> ServiceMode -> Q [Dec]
 ngxExportSimpleServiceTypedAsJSON f c =
     ngxExportSimpleService' f $ Just (c, True)
 
