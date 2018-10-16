@@ -247,8 +247,14 @@ instance FromByteString ByteString where
     fromByteString = const Just
 
 -- | Defines a sleeping strategy.
-data ServiceMode = PersistentService (Maybe TimeInterval)
-                 | SingleShotService
+--
+-- Single-shot services should be accompanied by Nginx directive
+-- __/haskell_service_var_ignore_empty/__.
+data ServiceMode
+    -- | Persistent service (with or without periodical sleeps)
+    = PersistentService (Maybe TimeInterval)
+    -- | Single-shot service
+    | SingleShotService
 
 simpleServiceWrap ::
     (a -> Bool -> IO L.ByteString) -> a -> Bool -> IO L.ByteString
