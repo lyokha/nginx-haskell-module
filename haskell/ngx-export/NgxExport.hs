@@ -845,7 +845,7 @@ foreign export ccall ngxExportTerminateTask ::
 ngxExportTerminateTask ::
     StablePtr (Async ()) -> IO ()
 ngxExportTerminateTask = deRefStablePtr >=>
-    cancel
+    flip cancelWith ThreadKilled
 
 foreign export ccall ngxExportServiceHookInterrupt ::
     StablePtr (Async ()) -> IO ()

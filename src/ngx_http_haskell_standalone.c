@@ -855,7 +855,8 @@ ngx_string(
 "ngxExportTerminateTask ::\n"
 "    AUX_NGX.StablePtr (AUX_NGX.Async ()) -> IO ()\n"
 "ngxExportTerminateTask =\n"
-"    AUX_NGX.deRefStablePtr AUX_NGX.>=> AUX_NGX.cancel\n\n"
+"    AUX_NGX.deRefStablePtr AUX_NGX.>=>\n"
+"        flip AUX_NGX.cancelWith AUX_NGX.ThreadKilled\n\n"
 
 "foreign export ccall ngxExportServiceHookInterrupt ::\n"
 "    AUX_NGX.StablePtr (AUX_NGX.Async ()) -> IO ()\n"

@@ -38,7 +38,7 @@ static char  *haskell_module_install_signal_handlers_option =
 "--install-signal-handlers=yes";
 
 static const HsInt32  haskell_module_ngx_export_api_version_major = 1;
-static const HsInt32  haskell_module_ngx_export_api_version_minor = 4;
+static const HsInt32  haskell_module_ngx_export_api_version_minor = 5;
 
 
 ngx_int_t

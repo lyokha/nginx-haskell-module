@@ -32,8 +32,10 @@ module NgxExport.Tools (
                        ,ngxExportSimpleService
                        ,ngxExportSimpleServiceTyped
                        ,ngxExportSimpleServiceTypedAsJSON
-    -- * Re-exported functions needed for building simple services
-                       ,unsafePerformIO
+    -- * Re-exported data constructors from /Foreign.C/
+    --   (for marshalling in foreign calls)
+                       ,Foreign.C.Types.CInt (..)
+                       ,Foreign.C.Types.CUInt (..)
                        ) where
 
 import           NgxExport
@@ -122,8 +124,7 @@ toSec (MinSec m s) = 60 * m + s
 --
 -- module TestTools where
 --
--- import NgxExport
--- import NgxExport.Tools
+-- import           NgxExport.Tools
 --
 -- import           Data.ByteString (ByteString)
 -- import qualified Data.ByteString.Lazy as L

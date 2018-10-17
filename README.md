@@ -1911,14 +1911,14 @@ Content handlers log exceptions with level *error*, and return HTTP status
 Termination of nginx worker and asynchronous exception ThreadKilled
 -------------------------------------------------------------------
 
-When an nginx worker terminates, it calls function *cancel* from package *async*
-for all asynchronous services. Function *cancel* sends asynchronous exception
-*ThreadKilled* to a corresponding haskell async thread and waits until it exits.
-This means that nginx worker may block if the service thread is blocked on
-*unsafe* blocking foreign function (see also [the next
-section](#some-facts-about-foreign-functions-that-may-block)), or it catches
-*ThreadKilled* with other exceptions and re-iterates some internal loop, or it
-is masked from asynchronous exceptions. Imagine the following sketch of a
+When an nginx worker terminates, it calls function *cancelWith* from package
+*async* with argument *ThreadKilled* for all asynchronous services. This
+function sends asynchronous exception *ThreadKilled* to a corresponding haskell
+async thread and waits until it exits. This means that nginx worker may block if
+the service thread is blocked on *unsafe* blocking foreign function (see also
+[the next section](#some-facts-about-foreign-functions-that-may-block)), or it
+catches *ThreadKilled* with other exceptions and re-iterates some internal loop,
+or it is masked from asynchronous exceptions. Imagine the following sketch of a
 service.
 
 ```haskell
@@ -1934,9 +1934,9 @@ ngxExportServiceIOYY 'serviceWithALoop
 
 This service will catch *ThreadKilled* along with other exceptions because all
 exceptions match *SomeException*, and re-iterate the loop by calling *go*. When
-nginx worker calls *cancel*, the *ThreadKilled* exception will be caught, the
-loop will re-iterate, and the worker will never end. We could treat
-*ThreadKilled* specially...
+the nginx worker calls *cancelWith* with *ThreadKilled*, the *ThreadKilled*
+exception will be caught, the loop will re-iterate, and the worker will never
+end. We could treat *ThreadKilled* specially...
 
 ```haskell
 serviceWithALoop _ = const go

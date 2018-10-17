@@ -17,3 +17,17 @@ or globally, being a superuser
 # cabal install --global
 ```
 
+The module is also available on
+[*hackage.haskell.org*](http://hackage.haskell.org/package/ngx-export-tools),
+so you can simply install it from there with
+
+```ShellSession
+$ cabal install ngx-export-tools
+```
+
+or
+
+```ShellSession
+# cabal install ngx-export-tools --global
+```
+

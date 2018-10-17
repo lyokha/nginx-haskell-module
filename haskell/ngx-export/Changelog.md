@@ -1,3 +1,8 @@
+### 1.5.0
+
+- Services are now terminated with *cancelWith ThreadKilled* because *cancel*
+  throws *AsyncCancelled* starting from *async-2.2*.
+
 ### 1.4.2
 
 - Minor internal improvements (using tuple sections).
