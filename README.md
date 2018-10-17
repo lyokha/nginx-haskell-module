@@ -1723,7 +1723,7 @@ The library was built. Check that *ngx_haskell.so* does not depend on shared
 haskell libraries.
 
 ```ShellSession
-$ ldd ngx_haskell.so 
+$ ldd ngx_haskell.so
 	linux-vdso.so.1 (0x00007ffca784d000)
 	librt.so.1 => /lib64/librt.so.1 (0x00007f51e0681000)
 	libutil.so.1 => /lib64/libutil.so.1 (0x00007f51e047d000)
@@ -2022,7 +2022,7 @@ Troubleshooting
   and can be fixed by adding line
 
     ```haskell
-  import Control.Applicative  
+  import Control.Applicative
     ```
 
   in the import list inside the haskell source code.
@@ -2037,6 +2037,27 @@ Troubleshooting
   be fixed by setting a higher severity value on the top-level: these messages
   are harmless and other messages on *http* configuration level or deeper are
   still configurable with any severity value.
+
+- _Nginx worker processes do not start and log messages like_
+
+    ```
+  2018/10/17 16:12:11 [emerg] 7311#0: failed to load compiled haskell library: libHS...-ghc8.6.1.so: cannot open shared object file: No such file or directory
+  2018/10/17 16:12:13 [alert] 7309#0: worker process 7310 exited with fatal code 2 and cannot be respawned
+    ```
+
+  Notice that normally nginx master process (which compiles custom haskell code
+  in the standalone approach) and nginx worker processes (that load compiled or
+  *pre*-compiled library) run with different system privileges: *root* and
+  *nginx* (or *nobody*) respectively. In the standalone approach haskell
+  dependent libraries must have been installed by *root*: if they were installed
+  locally (e.g. without *cabal* flag *&mdash;&mdash;global*) then they will
+  probably not be accessible by unprivileged users. With pre-compiled libraries
+  this does not differ a lot. To fix this, all dependent libraries must be
+  installed in a directory which is accessible by *nginx* or *nobody* users.
+  Flag *&mdash;&mdash;global* is now deprecated in *cabal*. A better way is to
+  create a dedicated directory (say */var/lib/nginx/x86_64-linux-ghc-8.6.1/*),
+  grant public access to it, and then collect there all dependent libraries and
+  patch the loaded custom library using utility [hslibdeps](utils/README.md).
 
 See also
 --------
