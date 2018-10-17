@@ -26,14 +26,12 @@ module NgxExport.Tools (
                        ,TimeInterval (..)
                        ,toSec
     -- * Exporters of simple services
-    --
     -- $simpleServices
                        ,ServiceMode (..)
                        ,ngxExportSimpleService
                        ,ngxExportSimpleServiceTyped
                        ,ngxExportSimpleServiceTypedAsJSON
     -- * Re-exported data constructors from /Foreign.C/
-    --
     -- | Re-exports are needed by exporters for marshalling in foreign calls.
                        ,Foreign.C.Types.CInt (..)
                        ,Foreign.C.Types.CUInt (..)
@@ -361,7 +359,7 @@ ngxExportSimpleService' f c m = concat <$> sequence
 
 -- | Exports a simple service with specified name and service mode.
 --
--- The service expects a plain 'ByteString' as its first argument.
+-- The service expects a plain 'ByteString' object as its first argument.
 ngxExportSimpleService :: Name         -- ^ Name of the service
                        -> ServiceMode  -- ^ Service mode
                        -> Q [Dec]
@@ -370,10 +368,10 @@ ngxExportSimpleService f =
 
 -- | Exports a simple service with specified name and service mode.
 --
--- The service expects a custom type deriving 'Read' as its first argument.
--- For the sake of efficiency, the object of this custom type gets deserialized
+-- The service expects an object of a custom type deriving 'Read' as its
+-- first argument. For the sake of efficiency, this object gets deserialized
 -- into a global 'IORef' data storage on the first service run to be further
--- accessed directly from the storage.
+-- accessed directly from this storage.
 ngxExportSimpleServiceTyped :: Name         -- ^ Name of the service
                             -> Name         -- ^ Name of the custom type
                             -> ServiceMode  -- ^ Service mode
@@ -383,10 +381,10 @@ ngxExportSimpleServiceTyped f c =
 
 -- | Exports a simple service with specified name and service mode.
 --
--- The service expects a custom type deriving 'FromJSON' as its first argument.
--- For the sake of efficiency, the object of this custom type gets deserialized
+-- The service expects an object of a custom type deriving 'FromJSON' as its
+-- first argument. For the sake of efficiency, this object gets deserialized
 -- into a global 'IORef' data storage on the first service run to be further
--- accessed directly from the storage.
+-- accessed directly from this storage.
 ngxExportSimpleServiceTypedAsJSON :: Name         -- ^ Name of the service
                                   -> Name         -- ^ Name of the custom type
                                   -> ServiceMode  -- ^ Service mode

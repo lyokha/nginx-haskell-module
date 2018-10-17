@@ -48,7 +48,6 @@ module NgxExport (
                  ,ngxUpstreamMainConfPtr
                  ,ngxCachedTimePtr
     -- * Re-exported data constructors from /Foreign.C/
-    --
     -- | Re-exports are needed by exporters for marshalling in foreign calls.
                  ,Foreign.C.CInt (..)
                  ,Foreign.C.CUInt (..)
@@ -864,7 +863,7 @@ ngxExportVersion x (I n) = fromIntegral <$>
         (take n $ versionBranch version)
 
 -- | Returns an opaque pointer to the Nginx /cycle object/
--- for using it in C plugins.
+--   for using it in C plugins.
 --
 -- Actual type of the returned pointer is
 --
@@ -875,7 +874,7 @@ ngxCyclePtr :: IO (Ptr ())
 ngxCyclePtr = readIORef ngxCyclePtrStore
 
 -- | Returns an opaque pointer to the Nginx /upstream main configuration/
--- for using it in C plugins.
+--   for using it in C plugins.
 --
 -- Actual type of the returned pointer is
 --
@@ -890,7 +889,7 @@ ngxUpstreamMainConfPtr :: IO (Ptr ())
 ngxUpstreamMainConfPtr = readIORef ngxUpstreamMainConfPtrStore
 
 -- | Returns an opaque pointer to the Nginx /cached time object/
--- for using it in C plugins.
+--   for using it in C plugins.
 --
 -- Actual type of the returned pointer is
 --
