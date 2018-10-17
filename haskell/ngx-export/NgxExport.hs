@@ -48,7 +48,8 @@ module NgxExport (
                  ,ngxUpstreamMainConfPtr
                  ,ngxCachedTimePtr
     -- * Re-exported data constructors from /Foreign.C/
-    --   (for marshalling in foreign calls)
+    --
+    -- | Re-exports are needed by exporters for marshalling in foreign calls.
                  ,Foreign.C.CInt (..)
                  ,Foreign.C.CUInt (..)
                  ) where

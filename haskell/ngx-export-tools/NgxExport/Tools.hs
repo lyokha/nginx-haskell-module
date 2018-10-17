@@ -33,7 +33,8 @@ module NgxExport.Tools (
                        ,ngxExportSimpleServiceTyped
                        ,ngxExportSimpleServiceTypedAsJSON
     -- * Re-exported data constructors from /Foreign.C/
-    --   (for marshalling in foreign calls)
+    --
+    -- | Re-exports are needed by exporters for marshalling in foreign calls.
                        ,Foreign.C.Types.CInt (..)
                        ,Foreign.C.Types.CUInt (..)
                        ) where
