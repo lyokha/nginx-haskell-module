@@ -21,6 +21,7 @@ module NgxExport.Tools (
     -- * Various useful functions and data
                         exitWorkerProcess
                        ,terminateWorkerProcess
+                       ,ngxRequestPtr
                        ,ngxNow
                        ,threadDelaySec
                        ,TimeInterval (..)
@@ -47,6 +48,7 @@ import           Foreign.C.Types
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as C8
 import qualified Data.ByteString.Lazy as L
+import           Data.Binary.Get
 import           Data.IORef
 import           Data.Maybe
 import           Data.Aeson
@@ -69,6 +71,17 @@ exitWorkerProcess = exit 1
 -- Nginx master process shall /not/ spawn a new worker process thereafter.
 terminateWorkerProcess :: IO ()
 terminateWorkerProcess = exit 2
+
+-- | Unmarshals value of Nginx variable __/$_r_ptr/__ into a pointer to the
+--   Nginx request object.
+--
+-- This is safe to use in request-based Haskell handlers such as synchronous
+-- and asynchronous tasks and content handlers, but not in services and their
+-- derivatives. The value can be passed into a /C plugin/, however, as opposed
+-- to usual functions in Nginx C code, it must be tested against the /NULL/
+-- value.
+ngxRequestPtr :: ByteString -> Ptr ()
+ngxRequestPtr = wordPtrToPtr . fromIntegral . runGet getWordhost . L.fromStrict
 
 -- | Returns current time as the number of seconds elapsed since UNIX epoch.
 --
