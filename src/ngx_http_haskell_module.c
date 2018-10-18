@@ -688,6 +688,8 @@ ngx_http_haskell_exit_worker(ngx_cycle_t *cycle)
             if (service_code_vars[i].has_locked_async_task) {
                 mcf->terminate_async_task(
                                     service_code_vars[i].locked_async_task);
+                mcf->hs_free_stable_ptr(
+                                    service_code_vars[i].locked_async_task);
             }
         }
     }
