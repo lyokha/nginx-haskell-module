@@ -277,14 +277,14 @@ ngxExportSimpleService' :: Name -> Maybe (Name, Bool) -> ServiceMode -> Q [Dec]
 ngxExportSimpleService' f c m = concat <$> sequence
     [sequence $
         (if hasConf
-             then [sigD nameC [t|IORef (Maybe $(conT nameConC))|]
-                  ,funD nameC [clause []
-                                  (normalB
-                                      [|unsafePerformIO $ newIORef Nothing|]
-                                  )
-                                  []
+             then [sigD sNameC [t|IORef (Maybe $(typeC))|]
+                  ,funD sNameC [clause []
+                                   (normalB
+                                       [|unsafePerformIO $ newIORef Nothing|]
+                                   )
+                                   []
                               ]
-                  ,pragInlD nameC NoInline FunLike AllPhases
+                  ,pragInlD sNameC NoInline FunLike AllPhases
                   ]
              else []
         )
@@ -304,40 +304,41 @@ ngxExportSimpleService' f c m = concat <$> sequence
         ]
     ,ngxExportServiceIOYY nameSf
     ]
-    where sfName   = "simpleService_" ++ nameBase f
-          nameSf   = mkName sfName
+    where nameSf   = mkName $ "simpleService_" ++ nameBase f
           hasConf  = isJust c
-          (cName, isJSON) = if hasConf
-                                then let c' = fromJust c
-                                     in ("storage_" ++ nameBase (fst c')
-                                        , snd c'
-                                        )
-                                else ("dummy__", False)
-          nameC    = mkName cName
-          nameConC = mkName $ if hasConf
-                                   then let c' = fromJust c
-                                        in nameBase (fst c')
-                                   else "Dummy__"
-          confType = if isJSON
-                         then [t|ReadableAsJSON|]
-                         else [t|Readable|]
+          (sNameC, typeC, isJSON) =
+              if hasConf
+                  then let c' = fromJust c
+                           tName = nameBase $ fst c'
+                       in (mkName $ "storage_" ++ tName
+                          ,conT $ mkName tName
+                          ,snd c'
+                          )
+                  else (mkName "storage_dummy__"
+                       ,conT $ mkName "Dummy__"
+                       ,False
+                       )
           initConf =
               if hasConf
-                  then [|readIORef $(varE nameC) >>=
-                             maybe (do
-                                        let conf_data__ =
-                                                fromByteString
-                                                    (Nothing :: Maybe
-                                                        ($(confType)
-                                                         $(conT nameConC)
-                                                        )
-                                                    ) confBs_
-                                        when (isNothing conf_data__)
-                                            terminateWorkerProcess
-                                        writeIORef $(varE nameC) conf_data__
-                                        return conf_data__
-                                   ) (return . Just)
-                       |]
+                  then let storage = varE sNameC
+                           wrapTypeC = if isJSON
+                                           then [t|ReadableAsJSON|]
+                                           else [t|Readable|]
+                       in [|readIORef $(storage) >>=
+                                maybe (do
+                                           let conf_data__ =
+                                                   fromByteString
+                                                       (Nothing :: Maybe
+                                                           ($(wrapTypeC)
+                                                            $(typeC)
+                                                           )
+                                                       ) confBs_
+                                           when (isNothing conf_data__)
+                                               terminateWorkerProcess
+                                           writeIORef $(storage) conf_data__
+                                           return conf_data__
+                                      ) (return . Just)
+                          |]
                   else [|do
                              let conf_data__ =
                                      fromByteString
