@@ -385,7 +385,9 @@ ngxExportSimpleService f =
 -- The service expects an object of a custom type deriving 'Read' as its
 -- first argument. For the sake of efficiency, this object gets deserialized
 -- into a global 'IORef' data storage on the first service run to be further
--- accessed directly from this storage.
+-- accessed directly from this storage. The storage can be accessed from
+-- elsewhere by name comprised of the name of the custom type prefixed with
+-- __/storage_/__.
 ngxExportSimpleServiceTyped :: Name         -- ^ Name of the service
                             -> Name         -- ^ Name of the custom type
                             -> ServiceMode  -- ^ Service mode
@@ -398,7 +400,9 @@ ngxExportSimpleServiceTyped f c =
 -- The service expects an object of a custom type deriving 'FromJSON' as its
 -- first argument. For the sake of efficiency, this object gets deserialized
 -- into a global 'IORef' data storage on the first service run to be further
--- accessed directly from this storage.
+-- accessed directly from this storage. The storage can be accessed from
+-- elsewhere by name comprised of the name of the custom type prefixed with
+-- __/storage_/__.
 ngxExportSimpleServiceTypedAsJSON :: Name         -- ^ Name of the service
                                   -> Name         -- ^ Name of the custom type
                                   -> ServiceMode  -- ^ Service mode
