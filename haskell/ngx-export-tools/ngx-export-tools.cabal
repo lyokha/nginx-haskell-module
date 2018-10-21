@@ -26,5 +26,5 @@ library
 
   exposed-modules:          NgxExport.Tools
 
-  ghc-options:             -Wall -Wno-unused-top-binds -Wno-unused-matches
+  ghc-options:             -Wall
 

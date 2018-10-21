@@ -1,5 +1,5 @@
 {-# LANGUAGE TemplateHaskell, ForeignFunctionInterface, TypeFamilies #-}
-{-# LANGUAGE DeriveGeneric, DeriveLift, NumDecimals #-}
+{-# LANGUAGE EmptyDataDecls, DeriveGeneric, DeriveLift, NumDecimals #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -23,9 +23,13 @@ module NgxExport.Tools (
                        ,terminateWorkerProcess
                        ,ngxRequestPtr
                        ,ngxNow
-                       ,threadDelaySec
+    -- *** Time intervals
                        ,TimeInterval (..)
                        ,toSec
+                       ,threadDelaySec
+    -- *** Reading custom types from /ByteStrings/
+                       ,readFromByteString
+                       ,readFromByteStringAsJSON
     -- * Exporters of simple services
     -- $simpleServices
                        ,ServiceMode (..)
@@ -94,10 +98,6 @@ ngxRequestPtr = wordPtrToPtr . fromIntegral . runGet getWordhost . L.fromStrict
 ngxNow :: IO CTime
 ngxNow = ngxCachedTimePtr >>= peek >>= peek . castPtr
 
--- | Delays current thread for the specified number of seconds.
-threadDelaySec :: Int -> IO ()
-threadDelaySec = threadDelay . (* 1e6)
-
 -- | Time intervals.
 data TimeInterval = Hr Int          -- ^ Hours
                   | Min Int         -- ^ Minutes
@@ -114,6 +114,41 @@ toSec (Min m)      = 60 * m
 toSec (Sec s)      = s
 toSec (HrMin h m)  = 3600 * h + 60 * m
 toSec (MinSec m s) = 60 * m + s
+
+-- | Delays current thread for the specified number of seconds.
+threadDelaySec :: Int -> IO ()
+threadDelaySec = threadDelay . (* 1e6)
+
+data Readable a
+data ReadableAsJSON a
+
+class FromByteString a where
+    type WrappedT a
+    fromByteString :: Maybe a -> ByteString -> Maybe (WrappedT a)
+
+instance Read a => FromByteString (Readable a) where
+    type WrappedT (Readable a) = a
+    fromByteString = const $ readMay . C8.unpack
+
+instance FromJSON a => FromByteString (ReadableAsJSON a) where
+    type WrappedT (ReadableAsJSON a) = a
+    fromByteString = const decodeStrict
+
+instance FromByteString ByteString where
+    type WrappedT ByteString = ByteString
+    fromByteString = const Just
+
+-- | Reads a custom type deriving 'Read' from a 'ByteString'.
+--
+-- Returns 'Nothing' if reading fails.
+readFromByteString :: Read a => ByteString -> Maybe a
+readFromByteString = fromByteString (Nothing :: Maybe (Readable a))
+
+-- | Reads a custom type deriving 'FromJSON' from a 'ByteString'.
+--
+-- Returns 'Nothing' if reading fails.
+readFromByteStringAsJSON :: FromJSON a => ByteString -> Maybe a
+readFromByteStringAsJSON = fromByteString (Nothing :: Maybe (ReadableAsJSON a))
 
 -- $simpleServices
 --
@@ -240,25 +275,6 @@ toSec (MinSec m s) = 60 * m + s
 -- >   hs_testRead: ConfRead 20
 -- >   hs_testReadJSON: ConfReadJSONCon1 56
 
-newtype Readable a = Readable a
-newtype ReadableAsJSON a = ReadableAsJSON a
-
-class FromByteString a where
-    type WrappedT a
-    fromByteString :: Maybe a -> ByteString -> Maybe (WrappedT a)
-
-instance Read a => FromByteString (Readable a) where
-    type WrappedT (Readable a) = a
-    fromByteString = const $ readMay . C8.unpack
-
-instance FromJSON a => FromByteString (ReadableAsJSON a) where
-    type WrappedT (ReadableAsJSON a) = a
-    fromByteString = const decodeStrict
-
-instance FromByteString ByteString where
-    type WrappedT ByteString = ByteString
-    fromByteString = const Just
-
 -- | Defines a sleeping strategy.
 --
 -- Single-shot services should be accompanied by Nginx directive
@@ -274,102 +290,103 @@ simpleServiceWrap ::
 simpleServiceWrap f = f
 
 ngxExportSimpleService' :: Name -> Maybe (Name, Bool) -> ServiceMode -> Q [Dec]
-ngxExportSimpleService' f c m = concat <$> sequence
-    [sequence $
-        (if hasConf
-             then [sigD sNameC [t|IORef (Maybe $(typeC))|]
-                  ,funD sNameC [clause []
-                                   (normalB
-                                       [|unsafePerformIO $ newIORef Nothing|]
-                                   )
-                                   []
-                              ]
-                  ,pragInlD sNameC NoInline FunLike AllPhases
-                  ]
-             else []
-        )
-        ++
-        [sigD nameSf [t|ByteString -> Bool -> IO L.ByteString|]
-        ,funD nameSf
-            [clause [[p|confBs_|], [p|fstRun_|]]
-                (normalB
-                    [|do
-                          conf_data_ <- $(initConf)
-                          $(waitTime)
-                          $(serviceWrap)
-                    |]
-                )
-                []
-            ]
-        ]
-    ,ngxExportServiceIOYY nameSf
-    ]
-    where nameSf   = mkName $ "simpleService_" ++ nameBase f
-          hasConf  = isJust c
-          (sNameC, typeC, isJSON) =
-              if hasConf
-                  then let c' = fromJust c
-                           tName = nameBase $ fst c'
-                       in (mkName $ "storage_" ++ tName
-                          ,conT $ mkName tName
-                          ,snd c'
-                          )
-                  else (mkName "storage_dummy__"
-                       ,conT $ mkName "Dummy__"
-                       ,False
+ngxExportSimpleService' f c m = do
+    confBs <- newName "confBs_"
+    fstRun <- newName "fstRun_"
+    let nameSsf = mkName $ "simpleService_" ++ nameBase f
+        hasConf = isJust c
+        (sNameC, typeC, isJSON) =
+            if hasConf
+                then let c' = fromJust c
+                         tName = nameBase $ fst c'
+                     in (mkName $ "storage_" ++ tName
+                        ,conT $ mkName tName
+                        ,snd c'
+                        )
+                else (mkName "storage_dummy__"
+                     ,conT $ mkName "Dummy__"
+                     ,False
+                     )
+        initConf =
+            let eConfBs = varE confBs
+            in if hasConf
+                   then let storage = varE sNameC
+                            readConf = if isJSON
+                                           then [|readFromByteStringAsJSON|]
+                                           else [|readFromByteString|]
+                        in [|readIORef $(storage) >>=
+                                 maybe (do
+                                            let conf_data__ =
+                                                    $(readConf) $(eConfBs)
+                                            when (isNothing conf_data__)
+                                                terminateWorkerProcess
+                                            writeIORef $(storage) conf_data__
+                                            return conf_data__
+                                       ) (return . Just)
+                           |]
+                   else [|return $
+                              fromByteString (Nothing :: Maybe ByteString)
+                                  $(eConfBs)
+                        |]
+        (waitTime, serviceWrap) =
+            let eF = varE f
+                eFstRun = varE fstRun
+            in case m of
+                   PersistentService i ->
+                       (if isJust i
+                            then let t = fromJust i
+                                 in [|unless $(eFstRun) $
+                                          threadDelaySec $ toSec t
+                                    |]
+                            else [|return ()|]
+                       ,[|\conf_data__ ->
+                              simpleServiceWrap
+                                  $(eF) (fromJust conf_data__) $(eFstRun)
+                        |]
                        )
-          initConf =
-              if hasConf
-                  then let storage = varE sNameC
-                           wrapTypeC = if isJSON
-                                           then [t|ReadableAsJSON|]
-                                           else [t|Readable|]
-                       in [|readIORef $(storage) >>=
-                                maybe (do
-                                           let conf_data__ =
-                                                   fromByteString
-                                                       (Nothing :: Maybe
-                                                           ($(wrapTypeC)
-                                                            $(typeC)
-                                                           )
-                                                       ) confBs_
-                                           when (isNothing conf_data__)
-                                               terminateWorkerProcess
-                                           writeIORef $(storage) conf_data__
-                                           return conf_data__
-                                      ) (return . Just)
-                          |]
-                  else [|do
-                             let conf_data__ =
-                                     fromByteString
-                                         (Nothing :: Maybe ByteString) confBs_
-                             when (isNothing conf_data__)
-                                 terminateWorkerProcess
-                             return conf_data__
-                       |]
-          (waitTime, serviceWrap) =
-              case m of
-                  PersistentService i ->
-                      (if isJust i
-                           then let t = fromJust i
-                                in [|unless fstRun_ $
-                                         threadDelaySec $ toSec t
-                                   |]
-                           else [|return ()|]
-                      ,[|simpleServiceWrap
-                             $(varE f) (fromJust conf_data_) fstRun_
-                       |]
-                      )
-                  SingleShotService ->
-                      ([|unless fstRun_ $
-                             threadDelaySec $ toSec $ Hr 1
-                       |]
-                      ,[|if fstRun_
-                             then simpleServiceWrap
-                                      $(varE f) (fromJust conf_data_) fstRun_
-                             else return L.empty
-                       |]
-                      )
+                   SingleShotService ->
+                       ([|unless $(eFstRun) $
+                              threadDelaySec $ toSec $ Hr 1|]
+                       ,[|\conf_data__ ->
+                              if $(eFstRun)
+                                  then simpleServiceWrap
+                                           $(eF) (fromJust conf_data__)
+                                               $(eFstRun)
+                                  else return L.empty
+                        |]
+                       )
+    concat <$> sequence
+        [sequence $
+            (if hasConf
+                 then [sigD sNameC [t|IORef (Maybe $(typeC))|]
+                      ,funD sNameC [clause []
+                                       (normalB
+                                           [|unsafePerformIO $
+                                                 newIORef Nothing
+                                           |]
+                                       )
+                                       []
+                                  ]
+                      ,pragInlD sNameC NoInline FunLike AllPhases
+                      ]
+                 else []
+            )
+            ++
+            [sigD nameSsf [t|ByteString -> Bool -> IO L.ByteString|]
+            ,funD nameSsf
+                [clause [varP confBs, varP fstRun]
+                    (normalB
+                        [|do
+                              conf_data_ <- $(initConf)
+                              $(waitTime)
+                              $(serviceWrap) conf_data_
+                        |]
+                    )
+                    []
+                ]
+            ]
+        ,ngxExportServiceIOYY nameSsf
+        ]
 
 -- | Exports a simple service with specified name and service mode.
 --
