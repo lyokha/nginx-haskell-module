@@ -184,28 +184,49 @@ readFromByteStringAsJSON = fromByteString (Nothing :: Maybe (ReadableAsJSON a))
 -- 'ngxExportSimpleService' \'test $
 --     'PersistentService' $ Just $ 'Sec' 10
 --
--- newtype ConfRead = ConfRead Int deriving (Read, Show)
+-- testRead :: (Read a, Show a) => a -> Bool -> IO L.ByteString
+-- testRead = const . return . C8L.pack . show
 --
--- testRead :: ConfRead -> Bool -> IO L.ByteString
--- __/testRead/__ c = const $ return $ C8L.pack $ show c
--- 'ngxExportSimpleServiceTyped' \'testRead \'\'ConfRead $
+-- testReadInt :: Int -> Bool -> IO L.ByteString
+-- __/testReadInt/__ = testRead
+-- 'ngxExportSimpleServiceTyped' \'testReadInt \'\'Int $
 --     'PersistentService' $ Just $ 'Sec' 10
 --
--- data ConfReadJSON = ConfReadJSONCon1 Int
---                   | ConfReadJSONCon2 deriving (Generic, Show)
--- instance FromJSON ConfReadJSON
+-- newtype Conf = Conf Int deriving (Read, Show)
 --
--- testReadJSON :: ConfReadJSON -> Bool -> IO L.ByteString
--- __/testReadJSON/__ c = const $ return $ C8L.pack $ show c
--- 'ngxExportSimpleServiceTypedAsJSON' \'testReadJSON \'\'ConfReadJSON
+-- testReadConf :: Conf -> Bool -> IO L.ByteString
+-- __/testReadConf/__ = testRead
+-- 'ngxExportSimpleServiceTyped' \'testReadConf \'\'Conf $
+--     'PersistentService' $ Just $ 'Sec' 10
+--
+-- testReadJSON :: (FromJSON a, Show a) => a -> Bool -> IO L.ByteString
+-- testReadJSON = const . return . C8L.pack . show
+--
+-- data ConfJSON = ConfJSONCon1 Int
+--               | ConfJSONCon2 deriving (Generic, Show)
+-- instance FromJSON ConfJSON
+--
+-- testReadConfJSON :: ConfJSON -> Bool -> IO L.ByteString
+-- __/testReadConfJSON/__ = testReadJSON
+-- 'ngxExportSimpleServiceTypedAsJSON' \'testReadConfJSON \'\'ConfJSON
 --     'SingleShotService'
 -- @
 --
--- Here three simple services of various types are defined: /test/, /testRead/,
--- and /testReadJSON/. As soon as they merely echo their arguments into their
--- service variables, they must sleep for a while between iterations. Sleeps
--- are managed by strategies defined in type 'ServiceMode'. There are basically
--- three sleeping strategies:
+-- Here four simple services of various types are defined: /test/,
+-- /testReadInt/, /testReadConf/, and /testReadConfJSON/. Service /testReadInt/
+-- is not a good example though. The problem is that simple services build
+-- 'IORef' /storages/ to save their configurations for faster access in future
+-- iterations. The name of a storage consists of the name of its type prefixed
+-- with __/storage_/__, which means that it's wiser to use custom types or
+-- wrappers of well-known types (such as /Conf/) in order to avoid exhaustion
+-- of top-level names. In general, this also means that it's not possible to
+-- declare in a single Nginx configuration script two or more /typed/ simple
+-- services with identical names of their configuration types.
+--
+-- As soon as all the services in the example merely echo their arguments into
+-- their service variables, they must sleep for a while between iterations.
+-- Sleeps are managed by strategies defined in type 'ServiceMode'. There are
+-- basically three sleeping strategies:
 --
 -- * Periodical sleeps (for example, @'PersistentService' $ Just $ 'Sec' 10@)
 -- * No sleeps between iterations (@'PersistentService' Nothing@)
@@ -218,8 +239,8 @@ readFromByteStringAsJSON = fromByteString (Nothing :: Maybe (ReadableAsJSON a))
 -- afterwards it merely returns empty values: as such, this strategy should be
 -- accompanied by Nginx directive __/haskell_service_var_ignore_empty/__.
 --
--- All three services ignore their second parameter (of type 'Prelude.Bool')
--- denoting the first run of the service.
+-- All the services in the example ignore their second parameter (of type
+-- 'Prelude.Bool') which denotes the first run of the service.
 --
 -- File __/nginx.conf/__.
 --
@@ -237,16 +258,23 @@ readFromByteStringAsJSON = fromByteString (Nothing :: Maybe (ReadableAsJSON a))
 --
 --     haskell load \/var\/lib\/nginx\/test_tools.so;
 --
---     haskell_run_service __/simpleService_test/__ $hs_test
+--     haskell_run_service __/simpleService_test/__
+--             $hs_test
 --             test;
 --
---     haskell_run_service __/simpleService_testRead/__ $hs_testRead
---             \'ConfRead 20\';
+--     haskell_run_service __/simpleService_testReadInt/__
+--             $hs_testReadInt
+--             5000000;
 --
---     haskell_run_service __/simpleService_testReadJSON/__ $hs_testReadJSON
---             \'{\"tag\":\"ConfReadJSONCon1\", \"contents\":56}\';
+--     haskell_run_service __/simpleService_testReadConf/__
+--             $hs_testReadConf
+--             \'Conf 20\';
 --
---     haskell_service_var_ignore_empty $hs_testReadJSON;
+--     haskell_run_service __/simpleService_testReadConfJSON/__
+--             $hs_testReadConfJSON
+--             \'{\"tag\":\"ConfJSONCon1\", \"contents\":56}\';
+--
+--     haskell_service_var_ignore_empty $hs_testReadConfJSON;
 --
 --     server {
 --         listen       8010;
@@ -255,10 +283,11 @@ readFromByteStringAsJSON = fromByteString (Nothing :: Maybe (ReadableAsJSON a))
 --         access_log   \/tmp\/nginx-test-haskell-access.log;
 --
 --         location \/ {
---             echo \"Service variables:\";
---             echo \"  hs_test: $hs_test\";
---             echo \"  hs_testRead: $hs_testRead\";
---             echo \"  hs_testReadJSON: $hs_testReadJSON\";
+--             echo \"Service variables:";
+--             echo \"  hs_test: $hs_test";
+--             echo \"  hs_testReadInt: $hs_testReadInt";
+--             echo \"  hs_testReadConf: $hs_testReadConf";
+--             echo \"  hs_testReadConfJSON: $hs_testReadConfJSON";
 --         }
 --     }
 -- }
@@ -272,8 +301,9 @@ readFromByteStringAsJSON = fromByteString (Nothing :: Maybe (ReadableAsJSON a))
 -- > $ curl 'http://localhost:8010/'
 -- > Service variables:
 -- >   hs_test: test
--- >   hs_testRead: ConfRead 20
--- >   hs_testReadJSON: ConfReadJSONCon1 56
+-- >   hs_testReadInt: 5000000
+-- >   hs_testReadConf: Conf 20
+-- >   hs_testReadConfJSON: ConfJSONCon1 56
 
 -- | Defines a sleeping strategy.
 --
@@ -404,7 +434,7 @@ ngxExportSimpleService f =
 -- into a global 'IORef' data storage on the first service run to be further
 -- accessed directly from this storage. The storage can be accessed from
 -- elsewhere by name comprised of the name of the custom type prefixed with
--- __/storage_/__.
+-- __/storage_/__. The stored data is wrapped in 'Maybe' container.
 ngxExportSimpleServiceTyped :: Name         -- ^ Name of the service
                             -> Name         -- ^ Name of the custom type
                             -> ServiceMode  -- ^ Service mode
@@ -419,7 +449,7 @@ ngxExportSimpleServiceTyped f c =
 -- into a global 'IORef' data storage on the first service run to be further
 -- accessed directly from this storage. The storage can be accessed from
 -- elsewhere by name comprised of the name of the custom type prefixed with
--- __/storage_/__.
+-- __/storage_/__. The stored data is wrapped in 'Maybe' container.
 ngxExportSimpleServiceTypedAsJSON :: Name         -- ^ Name of the service
                                   -> Name         -- ^ Name of the custom type
                                   -> ServiceMode  -- ^ Service mode

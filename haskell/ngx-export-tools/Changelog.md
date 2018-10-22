@@ -1,3 +1,8 @@
+### 0.2.0.0
+
+- Added functions *readFromByteString* and *readFromByteStringAsJSON*.
+- Many bug fixes in the builder of simple services.
+
 ### 0.1.2.0
 
 - Added function *ngxRequestPtr*.
