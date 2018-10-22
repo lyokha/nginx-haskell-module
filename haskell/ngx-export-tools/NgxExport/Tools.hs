@@ -214,14 +214,14 @@ readFromByteStringAsJSON = fromByteString (Nothing :: Maybe (ReadableAsJSON a))
 --
 -- Here four simple services of various types are defined: /test/,
 -- /testReadInt/, /testReadConf/, and /testReadConfJSON/. Service /testReadInt/
--- is not a good example though. The problem is that simple services build
--- 'IORef' /storages/ to save their configurations for faster access in future
--- iterations. The name of a storage consists of the name of its type prefixed
--- with __/storage_/__, which means that it's wiser to use custom types or
--- wrappers of well-known types (such as /Conf/) in order to avoid exhaustion
--- of top-level names. In general, this also means that it's not possible to
--- declare in a single Nginx configuration script two or more /typed/ simple
--- services with identical names of their configuration types.
+-- is not a good example though. The problem is that /typed/ simple services
+-- build 'IORef' /storages/ to save their configurations for faster access in
+-- future iterations. The name of a storage consists of the name of its type
+-- prefixed with __/storage_/__, which means that it's wiser to use custom
+-- types or wrappers of well-known types (such as /Conf/) in order to avoid
+-- exhaustion of top-level names. In general, this also means that it's not
+-- possible to declare in a single Nginx configuration script two or more typed
+-- simple services with identical names of their configuration types.
 --
 -- As soon as all the services in the example merely echo their arguments into
 -- their service variables, they must sleep for a while between iterations.
