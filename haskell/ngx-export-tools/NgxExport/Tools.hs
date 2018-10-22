@@ -1,6 +1,5 @@
 {-# LANGUAGE TemplateHaskell, ForeignFunctionInterface, TypeFamilies #-}
-{-# LANGUAGE EmptyDataDecls, DeriveGeneric, DeriveLift, BangPatterns #-}
-{-# LANGUAGE NumDecimals #-}
+{-# LANGUAGE EmptyDataDecls, DeriveGeneric, DeriveLift, NumDecimals #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -406,13 +405,7 @@ ngxExportSimpleService' f c m = do
             [sigD nameSsf [t|ByteString -> Bool -> IO L.ByteString|]
             ,funD nameSsf
                 [clause [varP confBs, varP fstRun]
-                    (normalB
-                        [|do
-                              !conf_data_ <- $(initConf)
-                              $(waitTime)
-                              $(serviceWrap) conf_data_
-                        |]
-                    )
+                    (normalB [|$(waitTime) >> $(initConf) >>= $(serviceWrap)|])
                     []
                 ]
             ]
