@@ -104,7 +104,7 @@ data TimeInterval = Hr Int          -- ^ Hours
                   | Sec Int         -- ^ Seconds
                   | HrMin Int Int   -- ^ Hours and minutes
                   | MinSec Int Int  -- ^ Minutes and seconds
-                  deriving (Generic, Lift, Read)
+                  deriving (Generic, Lift, Read, Show)
 instance FromJSON TimeInterval
 
 -- | Converts a time interval into seconds.
@@ -167,7 +167,7 @@ readFromByteStringAsJSON = fromByteString (Nothing :: Maybe (ReadableAsJSON a))
 -- File __/test_tools.hs/__.
 --
 -- @
--- {\-\# LANGUAGE TemplateHaskell, DeriveGeneric \#\-}
+-- {\-\# LANGUAGE TemplateHaskell, DeriveGeneric, RecordWildCards \#\-}
 --
 -- module TestTools where
 --
@@ -177,6 +177,7 @@ readFromByteStringAsJSON = fromByteString (Nothing :: Maybe (ReadableAsJSON a))
 -- import qualified Data.ByteString.Lazy as L
 -- import qualified Data.ByteString.Lazy.Char8 as C8L
 -- import           Data.Aeson
+-- import           Control.Monad
 -- import           GHC.Generics
 --
 -- test :: ByteString -> Bool -> IO L.ByteString
@@ -184,47 +185,59 @@ readFromByteStringAsJSON = fromByteString (Nothing :: Maybe (ReadableAsJSON a))
 -- 'ngxExportSimpleService' \'test $
 --     'PersistentService' $ Just $ 'Sec' 10
 --
--- testRead :: (Read a, Show a) => a -> Bool -> IO L.ByteString
--- testRead = const . return . C8L.pack . show
+-- testRead :: (Read a, Show a) => a -> IO L.ByteString
+-- testRead = return . C8L.pack . show
 --
 -- testReadInt :: Int -> Bool -> IO L.ByteString
--- __/testReadInt/__ = testRead
+-- __/testReadInt/__ = const testRead
 -- 'ngxExportSimpleServiceTyped' \'testReadInt \'\'Int $
 --     'PersistentService' $ Just $ 'Sec' 10
 --
 -- newtype Conf = Conf Int deriving (Read, Show)
 --
 -- testReadConf :: Conf -> Bool -> IO L.ByteString
--- __/testReadConf/__ = testRead
+-- __/testReadConf/__ = const testRead
 -- 'ngxExportSimpleServiceTyped' \'testReadConf \'\'Conf $
 --     'PersistentService' $ Just $ 'Sec' 10
 --
--- testReadJSON :: (FromJSON a, Show a) => a -> Bool -> IO L.ByteString
--- testReadJSON = const . return . C8L.pack . show
+-- data ConfWithDelay = ConfWithDelay { delay :: 'TimeInterval'
+--                                    , value :: Int
+--                                    } deriving (Read, Show)
+--
+-- testReadConfWithDelay :: ConfWithDelay -> Bool -> IO L.ByteString
+-- __/testReadConfWithDelay/__ c@ConfWithDelay {..} fstRun = do
+--     unless fstRun $ 'threadDelaySec' $ 'toSec' delay
+--     testRead c
+-- 'ngxExportSimpleServiceTyped' \'testReadConfWithDelay \'\'ConfWithDelay $
+--     'PersistentService' Nothing
+--
+-- testReadJSON :: (FromJSON a, Show a) => a -> IO L.ByteString
+-- testReadJSON = return . C8L.pack . show
 --
 -- data ConfJSON = ConfJSONCon1 Int
 --               | ConfJSONCon2 deriving (Generic, Show)
 -- instance FromJSON ConfJSON
 --
 -- testReadConfJSON :: ConfJSON -> Bool -> IO L.ByteString
--- __/testReadConfJSON/__ = testReadJSON
+-- __/testReadConfJSON/__ = const testReadJSON
 -- 'ngxExportSimpleServiceTypedAsJSON' \'testReadConfJSON \'\'ConfJSON
 --     'SingleShotService'
 -- @
 --
--- Here four simple services of various types are defined: /test/,
--- /testReadInt/, /testReadConf/, and /testReadConfJSON/. Service /testReadInt/
--- is not a good example though. The problem is that /typed/ simple services
--- build 'IORef' /storages/ to save their configurations for faster access in
--- future iterations. The name of a storage consists of the name of its type
--- prefixed with __/storage_/__, which means that it's wiser to use custom
--- types or wrappers of well-known types (such as /Conf/) in order to avoid
--- exhaustion of top-level names. In general, this also means that it's not
--- possible to declare in a single Nginx configuration script two or more typed
--- simple services with identical names of their configuration types.
+-- Here five simple services of various types are defined: /test/,
+-- /testReadInt/, /testReadConf/, /testReadConfWithDelay/, and
+-- /testReadConfJSON/. Service /testReadInt/ is not a good example though.
+-- The problem is that /typed/ simple services build 'IORef' /storages/ to save
+-- their configurations for faster access in future iterations. The name of a
+-- storage consists of the name of its type prefixed with __/storage_/__, which
+-- means that it's wiser to use custom types or wrappers of well-known types
+-- (such as /Conf/ and /ConfWithDelay/) in order to avoid exhaustion of
+-- top-level names. In general, this also means that it's not possible to
+-- declare in a single Nginx configuration script two or more typed simple
+-- services with identical names of their configuration types.
 --
--- As soon as all the services in the example merely echo their arguments into
--- their service variables, they must sleep for a while between iterations.
+-- As soon as all the services in the example merely echo their configurations
+-- into their service variables, they must sleep for a while between iterations.
 -- Sleeps are managed by strategies defined in type 'ServiceMode'. There are
 -- basically three sleeping strategies:
 --
@@ -239,8 +252,8 @@ readFromByteStringAsJSON = fromByteString (Nothing :: Maybe (ReadableAsJSON a))
 -- afterwards it merely returns empty values: as such, this strategy should be
 -- accompanied by Nginx directive __/haskell_service_var_ignore_empty/__.
 --
--- All the services in the example ignore their second parameter (of type
--- 'Prelude.Bool') which denotes the first run of the service.
+-- Notice that service /testReadConfWithDelay/ manages time delays on its own,
+-- therefore it uses /no-sleeps/ strategy @'PersistentService' Nothing@.
 --
 -- File __/nginx.conf/__.
 --
@@ -270,6 +283,10 @@ readFromByteStringAsJSON = fromByteString (Nothing :: Maybe (ReadableAsJSON a))
 --             $hs_testReadConf
 --             \'Conf 20\';
 --
+--     haskell_run_service __/simpleService_testReadConfWithDelay/__
+--             $hs_testReadConfWithDelay
+--             \'ConfWithDelay { delay = Sec 10, value = 12 }\';
+--
 --     haskell_run_service __/simpleService_testReadConfJSON/__
 --             $hs_testReadConfJSON
 --             \'{\"tag\":\"ConfJSONCon1\", \"contents\":56}\';
@@ -283,11 +300,12 @@ readFromByteStringAsJSON = fromByteString (Nothing :: Maybe (ReadableAsJSON a))
 --         access_log   \/tmp\/nginx-test-haskell-access.log;
 --
 --         location \/ {
---             echo \"Service variables:";
---             echo \"  hs_test: $hs_test";
---             echo \"  hs_testReadInt: $hs_testReadInt";
---             echo \"  hs_testReadConf: $hs_testReadConf";
---             echo \"  hs_testReadConfJSON: $hs_testReadConfJSON";
+--             echo \"Service variables:\";
+--             echo \"  hs_test: $hs_test\";
+--             echo \"  hs_testReadInt: $hs_testReadInt\";
+--             echo \"  hs_testReadConf: $hs_testReadConf\";
+--             echo \"  hs_testReadConfWithDelay: $hs_testReadConfWithDelay\";
+--             echo \"  hs_testReadConfJSON: $hs_testReadConfJSON\";
 --         }
 --     }
 -- }
@@ -303,6 +321,7 @@ readFromByteStringAsJSON = fromByteString (Nothing :: Maybe (ReadableAsJSON a))
 -- >   hs_test: test
 -- >   hs_testReadInt: 5000000
 -- >   hs_testReadConf: Conf 20
+-- >   hs_testReadConfWithDelay: ConfWithDelay {delay = Sec 10, value = 12}
 -- >   hs_testReadConfJSON: ConfJSONCon1 56
 
 -- | Defines a sleeping strategy.

@@ -1,3 +1,8 @@
+### 0.2.1.0
+
+- Derive *TimeInterval* from *Show*.
+- Extended docs and examples.
+
 ### 0.2.0.0
 
 - Added functions *readFromByteString* and *readFromByteStringAsJSON*.
