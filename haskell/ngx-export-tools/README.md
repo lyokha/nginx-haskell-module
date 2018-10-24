@@ -1,4 +1,6 @@
-Module *NgxExport.Tools*. Configure and build with commands
+#### Module *NgxExport.Tools*
+
+Configure and build with commands
 
 ```ShellSession
 $ cabal configure
