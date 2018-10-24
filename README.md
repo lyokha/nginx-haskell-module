@@ -1819,9 +1819,9 @@ Some facts about efficiency
 
 - Advantages
 
-    + The haskell code gets compiled (in standalone mode) in a library at the
-      very start of nginx and later loaded with *dlopen()* in every nginx worker
-      process.
+    + The haskell code gets compiled (in the standalone mode) in a library at
+      the very start of nginx and later loaded with *dlopen()* in every nginx
+      worker process.
     + Nginx strings are passed to haskell exported functions as strings with
       lengths, no extra allocations are needed.
     + *Template Haskell* extension makes it possible to read files into the
@@ -2048,8 +2048,8 @@ Troubleshooting
   Notice that normally nginx master process (which compiles custom haskell code
   in the standalone approach) and nginx worker processes (that load compiled or
   *pre*-compiled target library) run with different system privileges: *root*
-  and *nginx* (or *nobody*) respectively. In the standalone approach haskell
-  dependent libraries must have been installed by *root*: if they were installed
+  and *nginx* (or *nobody*) respectively. In the standalone approach, dependent
+  haskell libraries must have been installed by *root*: if they were installed
   locally (e.g. without *cabal* flag *``--global``*) then they will probably not
   be accessible by unprivileged users. With pre-compiled libraries this does not
   differ a lot: the libraries can have been built by a regular user, but users
@@ -2059,7 +2059,16 @@ Troubleshooting
   *``--global``* is now deprecated in *cabal*. A better way is to create a
   dedicated directory (say */var/lib/nginx/x86_64-linux-ghc-8.6.1/*), grant
   public access to it, and then collect there all dependent libraries and patch
-  the target library using utility [hslibdeps](utils/README.md).
+  the target library using utility [hslibdeps](utils/README.md). In the
+  standalone approach, the target library gets compiled when nginx master
+  process starts, and to give it access to the dependent haskell libraries, you
+  can use directive *haskell ghc_extra_options*.
+
+    ```nginx
+  haskell ghc_extra_options
+          '-optl-Wl,-rpath,/var/lib/nginx/x86_64-linux-ghc-8.6.1';
+
+    ```
 
 See also
 --------
