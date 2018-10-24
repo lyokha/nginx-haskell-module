@@ -1,13 +1,13 @@
 #### Module *NgxExport*
 
-Configure and build with commands
+##### Configure and build
 
 ```ShellSession
 $ cabal configure
 $ cabal build
 ```
 
-Install with command
+##### Install
 
 ```ShellSession
 $ cabal install
