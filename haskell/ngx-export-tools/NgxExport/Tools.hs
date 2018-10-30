@@ -167,7 +167,7 @@ readFromByteStringAsJSON = fromByteString (Nothing :: Maybe (ReadableAsJSON a))
 -- File __/test_tools.hs/__.
 --
 -- @
--- {\-\# LANGUAGE TemplateHaskell, DeriveGeneric, RecordWildCards \#\-}
+-- {-\# LANGUAGE TemplateHaskell, DeriveGeneric, RecordWildCards \#-}
 --
 -- module TestTools where
 --
