@@ -2067,7 +2067,6 @@ Troubleshooting
     ```nginx
   haskell ghc_extra_options
           '-optl-Wl,-rpath,/var/lib/nginx/x86_64-linux-ghc-8.6.1';
-
     ```
 
 See also
