@@ -471,6 +471,7 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
     ngx_uint_t                                 i, j;
     ngx_http_haskell_main_conf_t              *mcf;
     ngx_http_core_main_conf_t                 *cmcf;
+    ngx_http_upstream_main_conf_t             *umcf;
     ngx_http_variable_t                       *cmvars;
     ngx_http_haskell_var_handle_t             *vars;
     ngx_http_haskell_service_code_var_data_t  *service_code_vars;
@@ -629,9 +630,15 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
     }
 
     mcf->set_cycle_ptr(cycle);
-    mcf->set_upstream_main_conf_ptr(
-                ngx_http_cycle_get_module_main_conf(cycle,
-                                                    ngx_http_upstream_module));
+
+    umcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_upstream_module);
+    if (umcf == NULL) {
+        ngx_log_error(NGX_LOG_CRIT, cycle->log, 0,
+                      "main configuration of the upstream module is null, "
+                      "passing it anyway to haskell handlers");
+    }
+
+    mcf->set_upstream_main_conf_ptr(umcf);
     mcf->set_cached_time_ptr((volatile void **) &ngx_cached_time);
 
     service_hooks = mcf->service_hooks.elts;
