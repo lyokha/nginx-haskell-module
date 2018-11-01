@@ -1,3 +1,7 @@
+### 0.2.1.1
+
+- Fixed examples of simple services handlers.
+
 ### 0.2.1.0
 
 - Derive *TimeInterval* from *Show*.

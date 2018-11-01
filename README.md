@@ -1119,7 +1119,7 @@ Here is an example.
 
     haskell_run_service getDataFromOuterWorld $hs_shared_data;
 
-    haskell_service_var_in_shm outer_worls 64k /tmp $hs_shared_data;
+    haskell_service_var_in_shm outer_world 64k /tmp $hs_shared_data;
 
     # ...
 

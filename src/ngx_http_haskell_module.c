@@ -811,8 +811,8 @@ ngx_http_haskell_shm_lock_init(ngx_cycle_t *cycle, ngx_file_t *out,
     out->name.data = ngx_pnalloc(cycle->pool, out->name.len + 1);
     if (out->name.data == NULL) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                      "failed to allocate memory for file lock for access "
-                      "to variables in shared memory");
+                      "failed to allocate memory for a file lock to access "
+                      "variables in shared memory");
         return NGX_ERROR;
     }
 
@@ -846,8 +846,8 @@ ngx_http_haskell_shm_lock_init(ngx_cycle_t *cycle, ngx_file_t *out,
     }
     if (out->fd == NGX_INVALID_FILE) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
-                      "failed to open file lock \"%V\" for access "
-                      "to variables in shared memory", &out->name);
+                      "failed to open file lock \"%V\" to access "
+                      "variables in shared memory", &out->name);
         return NGX_ERROR;
     }
 

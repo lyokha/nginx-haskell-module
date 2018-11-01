@@ -189,14 +189,14 @@ readFromByteStringAsJSON = fromByteString (Nothing :: Maybe (ReadableAsJSON a))
 -- testRead = return . C8L.pack . show
 --
 -- testReadInt :: Int -> Bool -> IO L.ByteString
--- __/testReadInt/__ = const testRead
+-- __/testReadInt/__ = const . testRead
 -- 'ngxExportSimpleServiceTyped' \'testReadInt \'\'Int $
 --     'PersistentService' $ Just $ 'Sec' 10
 --
 -- newtype Conf = Conf Int deriving (Read, Show)
 --
 -- testReadConf :: Conf -> Bool -> IO L.ByteString
--- __/testReadConf/__ = const testRead
+-- __/testReadConf/__ = const . testRead
 -- 'ngxExportSimpleServiceTyped' \'testReadConf \'\'Conf $
 --     'PersistentService' $ Just $ 'Sec' 10
 --
@@ -219,7 +219,7 @@ readFromByteStringAsJSON = fromByteString (Nothing :: Maybe (ReadableAsJSON a))
 -- instance FromJSON ConfJSON
 --
 -- testReadConfJSON :: ConfJSON -> Bool -> IO L.ByteString
--- __/testReadConfJSON/__ = const testReadJSON
+-- __/testReadConfJSON/__ = const . testReadJSON
 -- 'ngxExportSimpleServiceTypedAsJSON' \'testReadConfJSON \'\'ConfJSON
 --     'SingleShotService'
 -- @

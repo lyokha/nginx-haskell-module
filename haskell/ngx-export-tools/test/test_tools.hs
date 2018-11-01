@@ -21,14 +21,14 @@ testRead :: (Read a, Show a) => a -> IO L.ByteString
 testRead = return . C8L.pack . show
 
 testReadInt :: Int -> Bool -> IO L.ByteString
-testReadInt = const testRead
+testReadInt = const . testRead
 ngxExportSimpleServiceTyped 'testReadInt ''Int $
     PersistentService $ Just $ Sec 10
 
 newtype Conf = Conf Int deriving (Read, Show)
 
 testReadConf :: Conf -> Bool -> IO L.ByteString
-testReadConf = const testRead
+testReadConf = const . testRead
 ngxExportSimpleServiceTyped 'testReadConf ''Conf $
     PersistentService $ Just $ Sec 10
 
@@ -51,7 +51,7 @@ data ConfJSON = ConfJSONCon1 Int
 instance FromJSON ConfJSON
 
 testReadConfJSON :: ConfJSON -> Bool -> IO L.ByteString
-testReadConfJSON = const testReadJSON
+testReadConfJSON = const . testReadJSON
 ngxExportSimpleServiceTypedAsJSON 'testReadConfJSON ''ConfJSON
     SingleShotService
 
