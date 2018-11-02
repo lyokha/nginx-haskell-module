@@ -2069,6 +2069,14 @@ Troubleshooting
           '-optl-Wl,-rpath,/var/lib/nginx/x86_64-linux-ghc-8.6.1';
     ```
 
+- When running multiple instances of nginx with identical sets of file lock
+  attributes for a shared service (i.e. the path to lock files and the service
+  variable name), the shared service will only work at one of the instance! In
+  other words, shared services are shared even between unrelated instances of
+  nginx. This is because file locks is a system-wide mechanism. Compare this
+  with running two instances of nginx on the same network endpoint: one of them
+  (the slower) will claim that *Address already in use*.
+
 See also
 --------
 
