@@ -1983,6 +1983,12 @@ ngx_http_haskell_service_var_in_shm(ngx_conf_t *cf, ngx_command_t *cmd,
 
     mcf->shm_zone->noreuse = 1;
 
+    if (value[3].len > 0 && !ngx_path_separator(value[3].data[0])) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "path to file locks must be absolute");
+        return NGX_CONF_ERROR;
+    }
+
     mcf->shm_lock_files_path = value[3];
 
     return ngx_http_haskell_var_configure(cf, cmd, conf);
