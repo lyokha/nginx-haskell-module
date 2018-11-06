@@ -334,10 +334,6 @@ data ServiceMode
     -- | Single-shot service
     | SingleShotService
 
-simpleServiceWrap ::
-    (a -> Bool -> IO L.ByteString) -> a -> Bool -> IO L.ByteString
-simpleServiceWrap f = f
-
 ngxExportSimpleService' :: Name -> Maybe (Name, Bool) -> ServiceMode -> Q [Dec]
 ngxExportSimpleService' f c m = do
     confBs <- newName "confBs_"
@@ -389,8 +385,7 @@ ngxExportSimpleService' f c m = do
                                     |]
                             else [|return ()|]
                        ,[|\conf_data__ ->
-                              simpleServiceWrap
-                                  $(eF) (fromJust conf_data__) $(eFstRun)
+                              $(eF) (fromJust conf_data__) $(eFstRun)
                         |]
                        )
                    SingleShotService ->
@@ -398,9 +393,7 @@ ngxExportSimpleService' f c m = do
                               threadDelaySec $ toSec $ Hr 1|]
                        ,[|\conf_data__ ->
                               if $(eFstRun)
-                                  then simpleServiceWrap
-                                           $(eF) (fromJust conf_data__)
-                                               $(eFstRun)
+                                  then $(eF) (fromJust conf_data__) $(eFstRun)
                                   else return L.empty
                         |]
                        )
