@@ -1,3 +1,8 @@
+### 0.3.0.0
+
+- Added readers of custom types consuming the Nginx request pointer at first.
+- Extended docs and examples.
+
 ### 0.2.1.1
 
 - Fixed examples of simple services handlers.

@@ -5,6 +5,7 @@ module TestTools where
 import           NgxExport
 import           NgxExport.Tools
 
+import           Foreign.Ptr
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Lazy.Char8 as C8L
@@ -69,4 +70,14 @@ testReadConfJSONHandler :: ByteString -> L.ByteString
 testReadConfJSONHandler = C8L.pack . show .
     (readFromByteStringAsJSON :: ByteString -> Maybe ConfJSON)
 ngxExportYY 'testReadConfJSONHandler
+
+testReadConfWithRPtrHandler :: ByteString -> L.ByteString
+testReadConfWithRPtrHandler = C8L.pack . show .
+    (readFromByteStringWithRPtr :: ByteString -> (Ptr (), Maybe Conf))
+ngxExportYY 'testReadConfWithRPtrHandler
+
+testReadConfWithRPtrJSONHandler :: ByteString -> L.ByteString
+testReadConfWithRPtrJSONHandler = C8L.pack . show .
+    (readFromByteStringWithRPtrAsJSON :: ByteString -> (Ptr (), Maybe ConfJSON))
+ngxExportYY 'testReadConfWithRPtrJSONHandler
 

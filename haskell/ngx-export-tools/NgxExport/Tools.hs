@@ -28,8 +28,11 @@ module NgxExport.Tools (
                        ,toSec
                        ,threadDelaySec
     -- *** Reading custom types from /ByteStrings/
+    -- $readingCustomTypes
                        ,readFromByteString
                        ,readFromByteStringAsJSON
+                       ,readFromByteStringWithRPtr
+                       ,readFromByteStringWithRPtrAsJSON
     -- * Exporters of simple services
     -- $simpleServices
                        ,ServiceMode (..)
@@ -49,6 +52,7 @@ import           Language.Haskell.TH.Syntax
 import           Foreign.Ptr
 import           Foreign.Storable
 import           Foreign.C.Types
+import qualified Data.ByteString as B
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as C8
 import qualified Data.ByteString.Lazy as L
@@ -57,6 +61,7 @@ import           Data.IORef
 import           Data.Maybe
 import           Data.Aeson
 import           Control.Monad
+import           Control.Arrow
 import           Control.Concurrent
 import           GHC.Generics
 import           System.IO.Unsafe (unsafePerformIO)
@@ -76,14 +81,15 @@ exitWorkerProcess = exit 1
 terminateWorkerProcess :: IO ()
 terminateWorkerProcess = exit 2
 
--- | Unmarshals value of Nginx variable __/$_r_ptr/__ into a pointer to the
---   Nginx request object.
+-- | Unmarshals the value of Nginx variable __/$_r_ptr/__ into a pointer to
+--   the Nginx request object.
 --
 -- This is safe to use in request-based Haskell handlers such as synchronous
 -- and asynchronous tasks and content handlers, but not in services and their
--- derivatives. The value can be passed into a /C plugin/, however, as opposed
--- to usual functions in Nginx C code, it must be tested against the /NULL/
--- value.
+-- derivatives. In /asynchronous/ tasks and content handlers the value must be
+-- used as read-only. The value can be passed into a /C plugin/, however, as
+-- opposed to usual functions in Nginx C code, it must be tested against the
+-- /NULL/ value.
 ngxRequestPtr :: ByteString -> Ptr ()
 ngxRequestPtr = wordPtrToPtr . fromIntegral . runGet getWordhost . L.fromStrict
 
@@ -138,17 +144,188 @@ instance FromByteString ByteString where
     type WrappedT ByteString = ByteString
     fromByteString = const Just
 
--- | Reads a custom type deriving 'Read' from a 'ByteString'.
+-- $readingCustomTypes
+--
+-- There are a number of functions to support /typed/ exchange between Nginx
+-- and Haskell handlers. Functions 'readFromByteString' and
+-- 'readFromByteStringAsJSON' expect values of custom types deriving from
+-- 'Read' and 'FromJSON' respectively. Functions 'readFromByteStringWithRPtr'
+-- and 'readFromByteStringWithRPtrAsJSON' additionally expect a binary value
+-- of a C pointer size marshalled at the beginning of their arguments before
+-- the value of the custom type. This pointer should correspond to the value
+-- of Nginx variable __/$_r_ptr/__.
+--
+-- Below is a toy example.
+--
+-- File __/test_tools.hs/__.
+--
+-- @
+-- {-\# LANGUAGE TemplateHaskell, DeriveGeneric \#-}
+--
+-- module TestTools where
+--
+-- import           NgxExport
+-- import           NgxExport.Tools
+--
+-- import           Foreign.Ptr
+-- import           Data.ByteString (ByteString)
+-- import qualified Data.ByteString.Lazy as L
+-- import qualified Data.ByteString.Lazy.Char8 as C8L
+-- import           Data.Aeson
+-- import           GHC.Generics
+--
+-- newtype Conf = Conf Int deriving (Read, Show)
+--
+-- data ConfJSON = ConfJSONCon1 Int
+--               | ConfJSONCon2 deriving (Generic, Show)
+-- instance FromJSON ConfJSON
+--
+-- testReadIntHandler :: ByteString -> L.ByteString
+-- __/testReadIntHandler/__ = C8L.pack . show .
+--     (readFromByteString :: ByteString -> Maybe Int)
+-- 'ngxExportYY' \'testReadIntHandler
+--
+-- testReadConfHandler :: ByteString -> L.ByteString
+-- __/testReadConfHandler/__ = C8L.pack . show .
+--     (readFromByteString :: ByteString -> Maybe Conf)
+-- 'ngxExportYY' \'testReadConfHandler
+--
+-- testReadConfJSONHandler :: ByteString -> L.ByteString
+-- __/testReadConfJSONHandler/__ = C8L.pack . show .
+--     (readFromByteStringAsJSON :: ByteString -> Maybe ConfJSON)
+-- 'ngxExportYY' \'testReadConfJSONHandler
+--
+-- testReadConfWithRPtrHandler :: ByteString -> L.ByteString
+-- __/testReadConfWithRPtrHandler/__ = C8L.pack . show .
+--     (readFromByteStringWithRPtr :: ByteString -> (Ptr (), Maybe Conf))
+-- 'ngxExportYY' \'testReadConfWithRPtrHandler
+--
+-- testReadConfWithRPtrJSONHandler :: ByteString -> L.ByteString
+-- __/testReadConfWithRPtrJSONHandler/__ = C8L.pack . show .
+--     (readFromByteStringWithRPtrAsJSON ::
+--         ByteString -> (Ptr (), Maybe ConfJSON))
+-- 'ngxExportYY' \'testReadConfWithRPtrJSONHandler
+-- @
+--
+-- Here five /synchronous/ Haskell handlers are defined: /testReadIntHandler/,
+-- /testReadConfHandler/, /testReadConfJSONHandler/,
+-- /testReadConfWithRPtrHandler/, and /testReadConfWithRPtrJSONHandler/.
+--
+-- File __/nginx.conf/__.
+--
+-- @
+-- user                    nobody;
+-- worker_processes        2;
+--
+-- events {
+--     worker_connections  1024;
+-- }
+--
+-- http {
+--     default_type        application\/octet-stream;
+--     sendfile            on;
+--
+--     haskell load \/var\/lib\/nginx\/test_tools.so;
+--
+--     server {
+--         listen       8010;
+--         server_name  main;
+--         error_log    \/tmp\/nginx-test-haskell-error.log;
+--         access_log   \/tmp\/nginx-test-haskell-access.log;
+--
+--         location \/ {
+--             haskell_run __/testReadIntHandler/__
+--                     $hs_testReadIntHandler
+--                     -456;
+--             haskell_run __/testReadConfHandler/__
+--                     $hs_testReadConfHandler
+--                     \'Conf 21\';
+--             haskell_run __/testReadConfJSONHandler/__
+--                     $hs_testReadConfJSONHandler
+--                     \'{\"tag\":\"ConfJSONCon2\"}\';
+--             haskell_run __/testReadConfJSONHandler/__
+--                     $hs_testReadConfJSONHandlerBadInput
+--                     \'{\"tag\":\"Unknown\"}\';
+--             haskell_run __/testReadConfWithRPtrHandler/__
+--                     $hs_testReadConfWithRPtrHandler
+--                     \'${_r_ptr}Conf 21\';
+--             haskell_run __/testReadConfWithRPtrJSONHandler/__
+--                     $hs_testReadConfWithRPtrJSONHandler
+--                     \'$_r_ptr
+--                      {\"tag\":\"ConfJSONCon1\", \"contents\":4}
+--                     \';
+--
+--             echo \"Handler variables:\";
+--             echo \"  hs_testReadIntHandler:\";
+--             echo \"    $hs_testReadIntHandler\";
+--             echo \"  hs_testReadConfHandler:\";
+--             echo \"    $hs_testReadConfHandler\";
+--             echo \"  hs_testReadConfJSONHandler:\";
+--             echo \"    $hs_testReadConfJSONHandler\";
+--             echo \"  hs_testReadConfJSONHandlerBadInput:\";
+--             echo \"    $hs_testReadConfJSONHandlerBadInput\";
+--             echo \"  hs_testReadConfWithRPtrHandler:\";
+--             echo \"    $hs_testReadConfWithRPtrHandler\";
+--             echo \"  hs_testReadConfWithRPtrJSONHandler:\";
+--             echo \"    $hs_testReadConfWithRPtrJSONHandler\";
+--         }
+--     }
+-- }
+-- @
+--
+-- Let's run a simple test.
+--
+-- > $ curl 'http://localhost:8010/'
+-- > Handler variables:
+-- >   hs_testReadIntHandler:
+-- >     Just (-456)
+-- >   hs_testReadConfHandler:
+-- >     Just (Conf 21)
+-- >   hs_testReadConfJSONHandler:
+-- >     Just ConfJSONCon2
+-- >   hs_testReadConfJSONHandlerBadInput:
+-- >     Nothing
+-- >   hs_testReadConfWithRPtrHandler:
+-- >     (0x00000000016fc790,Just (Conf 21))
+-- >   hs_testReadConfWithRPtrJSONHandler:
+-- >     (0x00000000016fc790,Just (ConfJSONCon1 4))
+
+-- | Reads an object of a custom type deriving 'Read' from a 'ByteString'.
 --
 -- Returns 'Nothing' if reading fails.
 readFromByteString :: Read a => ByteString -> Maybe a
 readFromByteString = fromByteString (Nothing :: Maybe (Readable a))
 
--- | Reads a custom type deriving 'FromJSON' from a 'ByteString'.
+-- | Reads an object of a custom type deriving 'FromJSON' from a 'ByteString'.
 --
 -- Returns 'Nothing' if reading fails.
 readFromByteStringAsJSON :: FromJSON a => ByteString -> Maybe a
 readFromByteStringAsJSON = fromByteString (Nothing :: Maybe (ReadableAsJSON a))
+
+-- | Reads a pointer to the Nginx request object followed by an object of
+--   a custom type deriving 'Read' from a 'ByteString'.
+--
+-- Throws an exception if unmarshalling of the request pointer fails. In the
+-- second element of the tuple returns 'Nothing' if reading of the custom
+-- object fails. Notice that the value of the returned request pointer is not
+-- checked against /NULL/.
+readFromByteStringWithRPtr :: Read a => ByteString -> (Ptr (), Maybe a)
+readFromByteStringWithRPtr = ngxRequestPtr &&& readFromByteString . skipRPtr
+
+-- | Reads a pointer to the Nginx request object followed by an object of
+--   a custom type deriving 'FromJSON' from a 'ByteString'.
+--
+-- Throws an exception if unmarshalling of the request pointer fails. In the
+-- second element of the tuple returns 'Nothing' if decoding of the custom
+-- object fails. Notice that the value of the returned request pointer is not
+-- checked against /NULL/.
+readFromByteStringWithRPtrAsJSON :: FromJSON a =>
+    ByteString -> (Ptr (), Maybe a)
+readFromByteStringWithRPtrAsJSON =
+    ngxRequestPtr &&& readFromByteStringAsJSON . skipRPtr
+
+skipRPtr :: ByteString -> ByteString
+skipRPtr = B.drop $ sizeOf (undefined :: Word)
 
 -- $simpleServices
 --
@@ -373,7 +550,7 @@ ngxExportSimpleService' f c m = do
                               fromByteString (Nothing :: Maybe ByteString)
                                   $(eConfBs)
                         |]
-        (waitTime, serviceWrap) =
+        (waitTime, runService) =
             let eF = varE f
                 eFstRun = varE fstRun
             in case m of
@@ -417,7 +594,7 @@ ngxExportSimpleService' f c m = do
             [sigD nameSsf [t|ByteString -> Bool -> IO L.ByteString|]
             ,funD nameSsf
                 [clause [varP confBs, varP fstRun]
-                    (normalB [|$(waitTime) >> $(initConf) >>= $(serviceWrap)|])
+                    (normalB [|$(waitTime) >> $(initConf) >>= $(runService)|])
                     []
                 ]
             ]
