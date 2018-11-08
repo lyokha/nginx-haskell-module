@@ -27,6 +27,8 @@ static const ngx_str_t  haskell_module_user_runtime_prefix =
 ngx_string("NgxHaskellUserRuntime-");
 static const ngx_str_t  haskell_module_type_checker_prefix =
 ngx_string("type_");
+static const ngx_str_t  haskell_module_ambiguity_checker_prefix =
+ngx_string("ambiguity_");
 
 /* FIXME: installing signal handlers ("yes", which is default) makes a worker
  * defunct when sending SIGINT to it, disabling signal handlers by setting "no"
@@ -38,7 +40,7 @@ static char  *haskell_module_install_signal_handlers_option =
 "--install-signal-handlers=yes";
 
 static const HsInt32  haskell_module_ngx_export_api_version_major = 1;
-static const HsInt32  haskell_module_ngx_export_api_version_minor = 5;
+static const HsInt32  haskell_module_ngx_export_api_version_minor = 6;
 
 
 ngx_int_t
@@ -46,6 +48,15 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
 {
     typedef HsInt32               (*version_f_t)(HsInt32 *, HsInt32);
     typedef HsInt32               (*type_checker_t)(void);
+    typedef HsInt32               (*ambiguity_checker_t)(void);
+
+    typedef enum {
+        ngx_http_haskell_handler_ambiguity_unambiguous = 0,
+        ngx_http_haskell_handler_ambiguity_y_y_sync,
+        ngx_http_haskell_handler_ambiguity_y_y_def_handler,
+        ngx_http_haskell_handler_ambiguity_ioy_y_sync,
+        ngx_http_haskell_handler_ambiguity_ioy_y_async
+    } ngx_http_haskell_handler_ambiguity_e;
 
     ngx_uint_t                      i;
     ngx_http_haskell_main_conf_t   *mcf;
@@ -312,10 +323,12 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     handlers = mcf->handlers.elts;
 
     for (i = 0; i < mcf->handlers.nelts; i++) {
-        ngx_str_t        handler_name;
-        type_checker_t   type_checker;
-        char            *type_checker_name = NULL;
-        ngx_uint_t       wrong_n_args = 0;
+        ngx_str_t                              handler_name;
+        type_checker_t                         type_checker;
+        ambiguity_checker_t                    ambiguity_checker;
+        char                                  *checker_name;
+        ngx_http_haskell_handler_ambiguity_e   ambiguity;
+        ngx_uint_t                             wrong_n_args = 0;
 
         if (handlers[i].name.len <= ngx_http_haskell_module_handler_prefix.len
             || ngx_strncmp(handlers[i].name.data,
@@ -340,28 +353,31 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
             goto unload_and_exit;
         }
 
-        type_checker_name = ngx_palloc(cycle->pool,
-            haskell_module_type_checker_prefix.len + handlers[i].name.len + 1);
-        if (type_checker_name == NULL) {
+        checker_name = ngx_pnalloc(cycle->pool,
+            ngx_max(haskell_module_type_checker_prefix.len,
+                    haskell_module_ambiguity_checker_prefix.len) +
+            handlers[i].name.len + 1);
+        if (checker_name == NULL) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                           "failed to allocate artifacts for type checker");
             goto unload_and_exit;
         }
 
-        ngx_memcpy(type_checker_name,
+        ngx_memcpy(checker_name,
                    haskell_module_type_checker_prefix.data,
                    haskell_module_type_checker_prefix.len);
-        ngx_memcpy(type_checker_name + haskell_module_type_checker_prefix.len,
-                   handlers[i].name.data, handlers[i].name.len + 1);
+        ngx_memcpy(checker_name + haskell_module_type_checker_prefix.len,
+                   handlers[i].name.data, handlers[i].name.len);
+        checker_name[haskell_module_type_checker_prefix.len +
+                handlers[i].name.len] = '\0';
 
-        type_checker = (type_checker_t) dlsym(mcf->dl_handle,
-                                              type_checker_name);
+        type_checker = (type_checker_t) dlsym(mcf->dl_handle, checker_name);
         dl_error = dlerror();
-        ngx_pfree(cycle->pool, type_checker_name);
         if (dl_error != NULL) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                          "failed to load haskell handler type checker \"%V\": "
-                          "%s", &handler_name, dl_error);
+                          "failed to load haskell handler type checker "
+                          "\"%V\": %s", &handler_name, dl_error);
+            ngx_pfree(cycle->pool, checker_name);
             goto unload_and_exit;
         }
 
@@ -401,6 +417,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                           "haskell handler \"%V\" role and type mismatch",
                           &handler_name);
+            ngx_pfree(cycle->pool, checker_name);
             goto unload_and_exit;
         }
 
@@ -413,6 +430,52 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                           "haskell handler \"%V\" safety attribute mismatch",
                           &handler_name);
+            ngx_pfree(cycle->pool, checker_name);
+            goto unload_and_exit;
+        }
+
+        ngx_memcpy(checker_name,
+                   haskell_module_ambiguity_checker_prefix.data,
+                   haskell_module_ambiguity_checker_prefix.len);
+        ngx_memcpy(checker_name + haskell_module_ambiguity_checker_prefix.len,
+                   handlers[i].name.data, handlers[i].name.len);
+        checker_name[haskell_module_ambiguity_checker_prefix.len +
+                handlers[i].name.len] = '\0';
+
+        ambiguity_checker = (ambiguity_checker_t) dlsym(mcf->dl_handle,
+                                                        checker_name);
+        dl_error = dlerror();
+        ngx_pfree(cycle->pool, checker_name);
+        if (dl_error != NULL) {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                          "failed to load haskell handler ambiguity checker "
+                          " \"%V\": %s", &handler_name, dl_error);
+            goto unload_and_exit;
+        }
+
+        ambiguity = ambiguity_checker();
+
+        if (ambiguity != ngx_http_haskell_handler_ambiguity_unambiguous
+            && ((ambiguity == ngx_http_haskell_handler_ambiguity_y_y_sync
+                 && handlers[i].role != ngx_http_haskell_handler_role_variable)
+                || (ambiguity ==
+                    ngx_http_haskell_handler_ambiguity_y_y_def_handler
+                    && handlers[i].role !=
+                        ngx_http_haskell_handler_role_content_handler)
+                || (ambiguity == ngx_http_haskell_handler_ambiguity_ioy_y_sync
+                    && (handlers[i].role !=
+                        ngx_http_haskell_handler_role_variable
+                        && handlers[i].role !=
+                        ngx_http_haskell_handler_role_service_hook))
+                || (ambiguity == ngx_http_haskell_handler_ambiguity_ioy_y_async
+                    && (handlers[i].role !=
+                        ngx_http_haskell_handler_role_async_variable
+                        && handlers[i].role !=
+                        ngx_http_haskell_handler_role_service_variable))))
+        {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                          "haskell handler \"%V\" role and implementation "
+                          "mismatch", &handler_name);
             goto unload_and_exit;
         }
 

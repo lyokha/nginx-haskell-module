@@ -190,10 +190,10 @@ instance FromByteString ByteString where
 --     (readFromByteString :: ByteString -> Maybe Conf)
 -- 'ngxExportYY' \'testReadConfHandler
 --
--- testReadConfJSONHandler :: ByteString -> L.ByteString
--- __/testReadConfJSONHandler/__ = C8L.pack . show .
+-- testReadConfJSONHandler :: ByteString -> IO L.ByteString
+-- __/testReadConfJSONHandler/__ = return . C8L.pack . show .
 --     (readFromByteStringAsJSON :: ByteString -> Maybe ConfJSON)
--- 'ngxExportYY' \'testReadConfJSONHandler
+-- 'ngxExportAsyncIOYY' \'testReadConfJSONHandler
 --
 -- testReadConfWithRPtrHandler :: ByteString -> L.ByteString
 -- __/testReadConfWithRPtrHandler/__ = C8L.pack . show .
@@ -207,9 +207,10 @@ instance FromByteString ByteString where
 -- 'ngxExportYY' \'testReadConfWithRPtrJSONHandler
 -- @
 --
--- Here five /synchronous/ Haskell handlers are defined: /testReadIntHandler/,
+-- Here five Haskell handlers are defined: /testReadIntHandler/,
 -- /testReadConfHandler/, /testReadConfJSONHandler/,
--- /testReadConfWithRPtrHandler/, and /testReadConfWithRPtrJSONHandler/.
+-- /testReadConfWithRPtrHandler/, and /testReadConfWithRPtrJSONHandler/. Four
+-- of them are /synchronous/ and one is /asynchronous/ for the sake of variety.
 --
 -- File __/nginx.conf/__.
 --
@@ -240,10 +241,10 @@ instance FromByteString ByteString where
 --             haskell_run __/testReadConfHandler/__
 --                     $hs_testReadConfHandler
 --                     \'Conf 21\';
---             haskell_run __/testReadConfJSONHandler/__
+--             haskell_run_async __/testReadConfJSONHandler/__
 --                     $hs_testReadConfJSONHandler
 --                     \'{\"tag\":\"ConfJSONCon2\"}\';
---             haskell_run __/testReadConfJSONHandler/__
+--             haskell_run_async __/testReadConfJSONHandler/__
 --                     $hs_testReadConfJSONHandlerBadInput
 --                     \'{\"tag\":\"Unknown\"}\';
 --             haskell_run __/testReadConfWithRPtrHandler/__

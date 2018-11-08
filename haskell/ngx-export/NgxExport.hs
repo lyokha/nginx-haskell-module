@@ -137,40 +137,66 @@ data NgxExport = SS              (String -> String)
                | AsyncHandlerRB  (L.ByteString -> B.ByteString ->
                                      IO ContentHandlerResult)
 
-let name = mkName "exportType" in do
-    TyConI (DataD _ _ _ EXTRA_WILDCARD_BEFORE_CON cs _) <- reify ''NgxExport
-    let cons = map (\(NormalC con [(_, typ)]) -> (con, typ)) cs
-    sequence $
-        [sigD name [t|NgxExport -> IO CInt|],
-         funD name $
-             map (\(fst -> c, i) ->
-                    clause [conP c [wildP]] (normalB [|return i|]) [])
-                 (zip cons [1 ..] :: [((Name, Type), Int)])
-        ] ++ map (\(c, t) -> tySynD (mkName $ nameBase c) [] $ return t) cons
+data NgxExportDisambiguation = Unambiguous
+                             | YYSync
+                             | YYDefHandler
+                             | IOYYSync
+                             | IOYYAsync
 
-ngxExport' :: (Name -> Q Exp) -> Name -> Name -> Q Type -> Name -> Q [Dec]
-ngxExport' m e h t f = sequence
-    [sigD nameFt typeFt,
-     funD nameFt $ body [|exportType $cefVar|],
-     ForeignD . ExportF CCall ftName nameFt <$> typeFt,
-     sigD nameF t,
-     funD nameF $ body [|$hVar $efVar|],
-     ForeignD . ExportF CCall fName nameF <$> t
+$(do
+      TyConI (DataD _ _ _ EXTRA_WILDCARD_BEFORE_CON tCs _) <-
+          reify ''NgxExport
+      TyConI (DataD _ _ _ EXTRA_WILDCARD_BEFORE_CON aCs _) <-
+          reify ''NgxExportDisambiguation
+      let tName = mkName "exportType"
+          aName = mkName "exportTypeAmbiguity"
+          tCons = map (\(NormalC con [(_, typ)]) -> (con, typ)) tCs
+          aCons = map (\(NormalC con []) -> con) aCs
+      sequence $
+          [sigD tName [t|NgxExport -> IO CInt|]
+          ,funD tName $
+               map (\(fst -> c, i) ->
+                      clause [conP c [wildP]] (normalB [|return i|]) []
+                   ) (zip tCons [1 ..] :: [((Name, Type), Int)])
+          ,sigD aName [t|NgxExportDisambiguation -> IO CInt|]
+          ,funD aName $
+               map (\(c, i) ->
+                      clause [conP c []] (normalB [|return i|]) []
+                   ) (zip aCons [0 ..] :: [(Name, Int)])
+          ]
+          ++
+          map (\(c, t) -> tySynD (mkName $ nameBase c) [] $ return t) tCons
+ )
+
+ngxExport' :: (Name -> Q Exp) ->
+    Name -> Name -> Name -> Q Type -> Name -> Q [Dec]
+ngxExport' m e a h t f = sequence
+    [sigD nameFt typeFt
+    ,funD nameFt $ body [|exportType $cefVar|]
+    ,ForeignD . ExportF CCall ftName nameFt <$> typeFt
+    ,sigD nameFta typeFta
+    ,funD nameFta $ body [|exportTypeAmbiguity $(conE a)|]
+    ,ForeignD . ExportF CCall ftaName nameFta <$> typeFta
+    ,sigD nameF t
+    ,funD nameF $ body [|$(varE h) $efVar|]
+    ,ForeignD . ExportF CCall fName nameF <$> t
     ]
-    where hVar   = varE h
-          efVar  = m f
-          cefVar = conE e `appE` efVar
-          fName  = "ngx_hs_" ++ nameBase f
-          nameF  = mkName fName
-          ftName = "type_" ++ fName
-          nameFt = mkName ftName
-          typeFt = [t|IO CInt|]
-          body b = [clause [] (normalB b) []]
+    where efVar   = m f
+          cefVar  = conE e `appE` efVar
+          fName   = "ngx_hs_" ++ nameBase f
+          nameF   = mkName fName
+          ftName  = "type_" ++ fName
+          nameFt  = mkName ftName
+          typeFt  = [t|IO CInt|]
+          ftaName = "ambiguity_" ++ fName
+          nameFta = mkName ftaName
+          typeFta = [t|IO CInt|]
+          body b  = [clause [] (normalB b) []]
 
-ngxExport :: Name -> Name -> Q Type -> Name -> Q [Dec]
+ngxExport :: Name -> Name -> Name -> Q Type -> Name -> Q [Dec]
 ngxExport = ngxExport' varE
 
-ngxExportC :: Name -> Name -> Q Type -> Name -> Q [Dec]
+ngxExportC :: Name -> Name -> Name -> Q Type -> Name -> Q [Dec]
 ngxExportC = ngxExport' $ infixE (Just $ varE 'const) (varE '(.)) . Just . varE
 
 -- | Exports a function of type
@@ -182,7 +208,7 @@ ngxExportC = ngxExport' $ infixE (Just $ varE 'const) (varE '(.)) . Just . varE
 -- for using in directive __/haskell_run/__.
 ngxExportSS :: Name -> Q [Dec]
 ngxExportSS =
-    ngxExport 'SS 'sS
+    ngxExport 'SS 'Unambiguous 'sS
     [t|CString -> CInt ->
        Ptr CString -> Ptr CInt -> IO CUInt|]
 
@@ -195,7 +221,7 @@ ngxExportSS =
 -- for using in directive __/haskell_run/__.
 ngxExportSSS :: Name -> Q [Dec]
 ngxExportSSS =
-    ngxExport 'SSS 'sSS
+    ngxExport 'SSS 'Unambiguous 'sSS
     [t|CString -> CInt -> CString -> CInt ->
        Ptr CString -> Ptr CInt -> IO CUInt|]
 
@@ -208,7 +234,7 @@ ngxExportSSS =
 -- for using in directive __/haskell_run/__.
 ngxExportSLS :: Name -> Q [Dec]
 ngxExportSLS =
-    ngxExport 'SLS 'sLS
+    ngxExport 'SLS 'Unambiguous 'sLS
     [t|Ptr NgxStrType -> CInt ->
        Ptr CString -> Ptr CInt -> IO CUInt|]
 
@@ -221,7 +247,7 @@ ngxExportSLS =
 -- for using in directive __/haskell_run/__.
 ngxExportBS :: Name -> Q [Dec]
 ngxExportBS =
-    ngxExport 'BS 'bS
+    ngxExport 'BS 'Unambiguous 'bS
     [t|CString -> CInt ->
        Ptr CString -> Ptr CInt -> IO CUInt|]
 
@@ -234,7 +260,7 @@ ngxExportBS =
 -- for using in directive __/haskell_run/__.
 ngxExportBSS :: Name -> Q [Dec]
 ngxExportBSS =
-    ngxExport 'BSS 'bSS
+    ngxExport 'BSS 'Unambiguous 'bSS
     [t|CString -> CInt -> CString -> CInt ->
        Ptr CString -> Ptr CInt -> IO CUInt|]
 
@@ -247,7 +273,7 @@ ngxExportBSS =
 -- for using in directive __/haskell_run/__.
 ngxExportBLS :: Name -> Q [Dec]
 ngxExportBLS =
-    ngxExport 'BLS 'bLS
+    ngxExport 'BLS 'Unambiguous 'bLS
     [t|Ptr NgxStrType -> CInt ->
        Ptr CString -> Ptr CInt -> IO CUInt|]
 
@@ -260,7 +286,7 @@ ngxExportBLS =
 -- for using in directive __/haskell_run/__.
 ngxExportYY :: Name -> Q [Dec]
 ngxExportYY =
-    ngxExport 'YY 'yY
+    ngxExport 'YY 'YYSync 'yY
     [t|CString -> CInt ->
        Ptr (Ptr NgxStrType) -> Ptr CInt ->
        Ptr (StablePtr L.ByteString) -> IO CUInt|]
@@ -274,7 +300,7 @@ ngxExportYY =
 -- for using in directive __/haskell_run/__.
 ngxExportBY :: Name -> Q [Dec]
 ngxExportBY =
-    ngxExport 'BY 'bY
+    ngxExport 'BY 'Unambiguous 'bY
     [t|CString -> CInt ->
        Ptr CString -> Ptr CInt -> IO CUInt|]
 
@@ -287,7 +313,7 @@ ngxExportBY =
 -- for using in directive __/haskell_run/__.
 ngxExportIOYY :: Name -> Q [Dec]
 ngxExportIOYY =
-    ngxExportC 'IOYY 'ioyY
+    ngxExportC 'IOYY 'IOYYSync 'ioyY
     [t|CString -> CInt ->
        Ptr (Ptr NgxStrType) -> Ptr CInt ->
        Ptr (StablePtr L.ByteString) -> IO CUInt|]
@@ -301,7 +327,7 @@ ngxExportIOYY =
 -- for using in directive __/haskell_run_async/__.
 ngxExportAsyncIOYY :: Name -> Q [Dec]
 ngxExportAsyncIOYY =
-    ngxExportC 'IOYY 'asyncIOYY
+    ngxExportC 'IOYY 'IOYYAsync 'asyncIOYY
     [t|CString -> CInt -> CInt -> CInt -> Ptr CUInt -> CUInt -> CUInt ->
        Ptr (Ptr NgxStrType) -> Ptr CInt ->
        Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO (StablePtr (Async ()))|]
@@ -318,7 +344,7 @@ ngxExportAsyncIOYY =
 -- request body.
 ngxExportAsyncOnReqBody :: Name -> Q [Dec]
 ngxExportAsyncOnReqBody =
-    ngxExport 'IOYYY 'asyncIOYYY
+    ngxExport 'IOYYY 'Unambiguous 'asyncIOYYY
     [t|Ptr NgxStrType -> Ptr NgxStrType -> CInt ->
        CString -> CInt -> CInt -> CUInt ->
        Ptr (Ptr NgxStrType) -> Ptr CInt ->
@@ -337,7 +363,7 @@ ngxExportAsyncOnReqBody =
 -- being run for the first time.
 ngxExportServiceIOYY :: Name -> Q [Dec]
 ngxExportServiceIOYY =
-    ngxExport 'IOYY 'asyncIOYY
+    ngxExport 'IOYY 'IOYYAsync 'asyncIOYY
     [t|CString -> CInt -> CInt -> CInt -> Ptr CUInt -> CUInt -> CUInt ->
        Ptr (Ptr NgxStrType) -> Ptr CInt ->
        Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO (StablePtr (Async ()))|]
@@ -352,7 +378,7 @@ ngxExportServiceIOYY =
 -- __/haskell_static_content/__.
 ngxExportHandler :: Name -> Q [Dec]
 ngxExportHandler =
-    ngxExport 'Handler 'handler
+    ngxExport 'Handler 'Unambiguous 'handler
     [t|CString -> CInt -> Ptr (Ptr NgxStrType) -> Ptr CInt ->
        Ptr CString -> Ptr CSize -> Ptr (StablePtr B.ByteString) -> Ptr CInt ->
        Ptr (StablePtr L.ByteString) -> IO CUInt|]
@@ -367,7 +393,7 @@ ngxExportHandler =
 -- __/haskell_static_content/__.
 ngxExportDefHandler :: Name -> Q [Dec]
 ngxExportDefHandler =
-    ngxExport 'YY 'defHandler
+    ngxExport 'YY 'YYDefHandler 'defHandler
     [t|CString -> CInt ->
        Ptr (Ptr NgxStrType) -> Ptr CInt -> Ptr CString ->
        Ptr (StablePtr L.ByteString) -> IO CUInt|]
@@ -381,7 +407,7 @@ ngxExportDefHandler =
 -- for using in directive __/haskell_unsafe_content/__.
 ngxExportUnsafeHandler :: Name -> Q [Dec]
 ngxExportUnsafeHandler =
-    ngxExport 'UnsafeHandler 'unsafeHandler
+    ngxExport 'UnsafeHandler 'Unambiguous 'unsafeHandler
     [t|CString -> CInt -> Ptr CString -> Ptr CSize ->
        Ptr CString -> Ptr CSize -> Ptr CInt -> IO CUInt|]
 
@@ -394,7 +420,7 @@ ngxExportUnsafeHandler =
 -- for using in directive __/haskell_async_content/__.
 ngxExportAsyncHandler :: Name -> Q [Dec]
 ngxExportAsyncHandler =
-    ngxExport 'AsyncHandler 'asyncHandler
+    ngxExport 'AsyncHandler 'Unambiguous 'asyncHandler
     [t|CString -> CInt -> CInt -> CUInt ->
        Ptr CString -> Ptr CSize -> Ptr (StablePtr B.ByteString) -> Ptr CInt ->
        Ptr (Ptr NgxStrType) -> Ptr CInt ->
@@ -412,7 +438,7 @@ ngxExportAsyncHandler =
 -- request body.
 ngxExportAsyncHandlerOnReqBody :: Name -> Q [Dec]
 ngxExportAsyncHandlerOnReqBody =
-    ngxExport 'AsyncHandlerRB 'asyncHandlerRB
+    ngxExport 'AsyncHandlerRB 'Unambiguous 'asyncHandlerRB
     [t|Ptr NgxStrType -> Ptr NgxStrType -> CInt ->
        CString -> CInt -> CInt -> CUInt ->
        Ptr CString -> Ptr CSize -> Ptr (StablePtr B.ByteString) -> Ptr CInt ->
@@ -429,7 +455,7 @@ ngxExportAsyncHandlerOnReqBody =
 -- __/haskell_service_update_hook/__.
 ngxExportServiceHook :: Name -> Q [Dec]
 ngxExportServiceHook =
-    ngxExportC 'IOYY 'ioyYWithFree
+    ngxExportC 'IOYY 'IOYYSync 'ioyYWithFree
     [t|CString -> CInt ->
        Ptr (Ptr NgxStrType) -> Ptr CInt ->
        Ptr (StablePtr L.ByteString) -> IO CUInt|]

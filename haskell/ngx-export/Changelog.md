@@ -1,3 +1,9 @@
+### 1.6.0
+
+- Implemented type and role disambiguation helper to prevent segfaults in
+  Nginx when a handler of an appropriate type (say, IOYY with a role of a
+  synchronous handler) gets used in a wrong role (say, as an async handler).
+
 ### 1.5.0
 
 - Services are now terminated with *cancelWith ThreadKilled* because *cancel*

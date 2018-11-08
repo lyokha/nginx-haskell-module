@@ -2066,7 +2066,7 @@ Troubleshooting
 
     ```nginx
   haskell ghc_extra_options
-          '-optl-Wl,-rpath,/var/lib/nginx/x86_64-linux-ghc-8.6.1';
+          -optl-Wl,-rpath,/var/lib/nginx/x86_64-linux-ghc-8.6.1;
     ```
 
 - When running multiple instances of nginx with identical sets of file lock

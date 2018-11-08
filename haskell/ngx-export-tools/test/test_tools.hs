@@ -66,10 +66,10 @@ testReadConfHandler = C8L.pack . show .
     (readFromByteString :: ByteString -> Maybe Conf)
 ngxExportYY 'testReadConfHandler
 
-testReadConfJSONHandler :: ByteString -> L.ByteString
-testReadConfJSONHandler = C8L.pack . show .
+testReadConfJSONHandler :: ByteString -> IO L.ByteString
+testReadConfJSONHandler = return . C8L.pack . show .
     (readFromByteStringAsJSON :: ByteString -> Maybe ConfJSON)
-ngxExportYY 'testReadConfJSONHandler
+ngxExportAsyncIOYY 'testReadConfJSONHandler
 
 testReadConfWithRPtrHandler :: ByteString -> L.ByteString
 testReadConfWithRPtrHandler = C8L.pack . show .

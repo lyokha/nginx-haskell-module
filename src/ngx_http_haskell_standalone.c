@@ -28,8 +28,13 @@ ngx_string(
 "type_ngx_hs_ ## F = aux_ngx_exportType $ T S; \\\n"
 "foreign export ccall type_ngx_hs_ ## F :: IO AUX_NGX.CInt;\n\n"
 
+"#define AUX_NGX_AMBIGUITYCHECK(F, A) \\\n"
+"ambiguity_ngx_hs_ ## F = aux_ngx_exportTypeAmbiguity A; \\\n"
+"foreign export ccall ambiguity_ngx_hs_ ## F :: IO AUX_NGX.CInt;\n\n"
+
 "#define NGX_EXPORT_S_S(F) \\\n"
 "AUX_NGX_TYPECHECK(AUX_NGX_S_S, F, F) \\\n"
+"AUX_NGX_AMBIGUITYCHECK(F, AUX_NGX_UNAMBIGUOUS) \\\n"
 "ngx_hs_ ## F = aux_ngx_hs_s_s $ AUX_NGX_S_S F; \\\n"
 "foreign export ccall ngx_hs_ ## F :: \\\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt -> \\\n"
@@ -38,6 +43,7 @@ ngx_string(
 
 "#define NGX_EXPORT_S_SS(F) \\\n"
 "AUX_NGX_TYPECHECK(AUX_NGX_S_SS, F, F) \\\n"
+"AUX_NGX_AMBIGUITYCHECK(F, AUX_NGX_UNAMBIGUOUS) \\\n"
 "ngx_hs_ ## F = aux_ngx_hs_s_ss $ AUX_NGX_S_SS F; \\\n"
 "foreign export ccall ngx_hs_ ## F :: \\\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt -> \\\n"
@@ -47,6 +53,7 @@ ngx_string(
 
 "#define NGX_EXPORT_S_LS(F) \\\n"
 "AUX_NGX_TYPECHECK(AUX_NGX_S_LS, F, F) \\\n"
+"AUX_NGX_AMBIGUITYCHECK(F, AUX_NGX_UNAMBIGUOUS) \\\n"
 "ngx_hs_ ## F = aux_ngx_hs_s_ls $ AUX_NGX_S_LS F; \\\n"
 "foreign export ccall ngx_hs_ ## F :: \\\n"
 "    AUX_NGX.Ptr AUX_NGX_STR_TYPE -> AUX_NGX.CInt -> \\\n"
@@ -55,6 +62,7 @@ ngx_string(
 
 "#define NGX_EXPORT_B_S(F) \\\n"
 "AUX_NGX_TYPECHECK(AUX_NGX_B_S, F, F) \\\n"
+"AUX_NGX_AMBIGUITYCHECK(F, AUX_NGX_UNAMBIGUOUS) \\\n"
 "ngx_hs_ ## F = aux_ngx_hs_b_s $ AUX_NGX_B_S F; \\\n"
 "foreign export ccall ngx_hs_ ## F :: \\\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt -> \\\n"
@@ -63,6 +71,7 @@ ngx_string(
 
 "#define NGX_EXPORT_B_SS(F) \\\n"
 "AUX_NGX_TYPECHECK(AUX_NGX_B_SS, F, F) \\\n"
+"AUX_NGX_AMBIGUITYCHECK(F, AUX_NGX_UNAMBIGUOUS) \\\n"
 "ngx_hs_ ## F = aux_ngx_hs_b_ss $ AUX_NGX_B_SS F; \\\n"
 "foreign export ccall ngx_hs_ ## F :: \\\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt -> \\\n"
@@ -72,6 +81,7 @@ ngx_string(
 
 "#define NGX_EXPORT_B_LS(F) \\\n"
 "AUX_NGX_TYPECHECK(AUX_NGX_B_LS, F, F) \\\n"
+"AUX_NGX_AMBIGUITYCHECK(F, AUX_NGX_UNAMBIGUOUS) \\\n"
 "ngx_hs_ ## F = aux_ngx_hs_b_ls $ AUX_NGX_B_LS F; \\\n"
 "foreign export ccall ngx_hs_ ## F :: \\\n"
 "    AUX_NGX.Ptr AUX_NGX_STR_TYPE -> AUX_NGX.CInt -> \\\n"
@@ -80,6 +90,7 @@ ngx_string(
 
 "#define NGX_EXPORT_Y_Y(F) \\\n"
 "AUX_NGX_TYPECHECK(AUX_NGX_Y_Y, F, F) \\\n"
+"AUX_NGX_AMBIGUITYCHECK(F, AUX_NGX_Y_Y_SYNC) \\\n"
 "ngx_hs_ ## F = aux_ngx_hs_y_y $ AUX_NGX_Y_Y F; \\\n"
 "foreign export ccall ngx_hs_ ## F :: \\\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt -> \\\n"
@@ -90,6 +101,7 @@ ngx_string(
 
 "#define NGX_EXPORT_B_Y(F) \\\n"
 "AUX_NGX_TYPECHECK(AUX_NGX_B_Y, F, F) \\\n"
+"AUX_NGX_AMBIGUITYCHECK(F, AUX_NGX_UNAMBIGUOUS) \\\n"
 "ngx_hs_ ## F = aux_ngx_hs_b_y $ AUX_NGX_B_Y F; \\\n"
 "foreign export ccall ngx_hs_ ## F :: \\\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt -> \\\n"
@@ -98,6 +110,7 @@ ngx_string(
 
 "#define NGX_EXPORT_IOY_Y(F) \\\n"
 "AUX_NGX_TYPECHECK(AUX_NGX_IOY_Y, F, (const . F)) \\\n"
+"AUX_NGX_AMBIGUITYCHECK(F, AUX_NGX_IOY_Y_SYNC) \\\n"
 "ngx_hs_ ## F = aux_ngx_hs_ioy_y $ AUX_NGX_IOY_Y (const . F); \\\n"
 "foreign export ccall ngx_hs_ ## F :: \\\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt -> \\\n"
@@ -108,6 +121,7 @@ ngx_string(
 
 "#define NGX_EXPORT_ASYNC_IOY_Y(F) \\\n"
 "AUX_NGX_TYPECHECK(AUX_NGX_IOY_Y, F, (const . F)) \\\n"
+"AUX_NGX_AMBIGUITYCHECK(F, AUX_NGX_IOY_Y_ASYNC) \\\n"
 "ngx_hs_ ## F = aux_ngx_hs_async_ioy_y $ AUX_NGX_IOY_Y (const . F); \\\n"
 "foreign export ccall ngx_hs_ ## F :: \\\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt -> AUX_NGX.CInt -> AUX_NGX.CInt -> \\\n"
@@ -120,6 +134,7 @@ ngx_string(
 
 "#define NGX_EXPORT_ASYNC_ON_REQ_BODY(F) \\\n"
 "AUX_NGX_TYPECHECK(AUX_NGX_IOY_YY, F, F) \\\n"
+"AUX_NGX_AMBIGUITYCHECK(F, AUX_NGX_UNAMBIGUOUS) \\\n"
 "ngx_hs_ ## F = aux_ngx_hs_async_ioy_yy $ AUX_NGX_IOY_YY F; \\\n"
 "foreign export ccall ngx_hs_ ## F :: \\\n"
 "    AUX_NGX.Ptr AUX_NGX_STR_TYPE -> \\\n"
@@ -133,6 +148,7 @@ ngx_string(
 
 "#define NGX_EXPORT_SERVICE_IOY_Y(F) \\\n"
 "AUX_NGX_TYPECHECK(AUX_NGX_IOY_Y, F, F) \\\n"
+"AUX_NGX_AMBIGUITYCHECK(F, AUX_NGX_IOY_Y_ASYNC) \\\n"
 "ngx_hs_ ## F = aux_ngx_hs_async_ioy_y $ AUX_NGX_IOY_Y F; \\\n"
 "foreign export ccall ngx_hs_ ## F :: \\\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt -> AUX_NGX.CInt -> AUX_NGX.CInt -> \\\n"
@@ -145,6 +161,7 @@ ngx_string(
 
 "#define NGX_EXPORT_HANDLER(F) \\\n"
 "AUX_NGX_TYPECHECK(AUX_NGX_HANDLER, F, F) \\\n"
+"AUX_NGX_AMBIGUITYCHECK(F, AUX_NGX_UNAMBIGUOUS) \\\n"
 "ngx_hs_ ## F = aux_ngx_hs_handler $ AUX_NGX_HANDLER F; \\\n"
 "foreign export ccall ngx_hs_ ## F :: \\\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt -> \\\n"
@@ -158,6 +175,7 @@ ngx_string(
 
 "#define NGX_EXPORT_DEF_HANDLER(F) \\\n"
 "AUX_NGX_TYPECHECK(AUX_NGX_Y_Y, F, F) \\\n"
+"AUX_NGX_AMBIGUITYCHECK(F, AUX_NGX_Y_Y_DEF_HANDLER) \\\n"
 "ngx_hs_ ## F = aux_ngx_hs_def_handler $ AUX_NGX_Y_Y F; \\\n"
 "foreign export ccall ngx_hs_ ## F :: \\\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt -> \\\n"
@@ -168,6 +186,7 @@ ngx_string(
 
 "#define NGX_EXPORT_UNSAFE_HANDLER(F) \\\n"
 "AUX_NGX_TYPECHECK(AUX_NGX_UNSAFE_HANDLER, F, F) \\\n"
+"AUX_NGX_AMBIGUITYCHECK(F, AUX_NGX_UNAMBIGUOUS) \\\n"
 "ngx_hs_ ## F = aux_ngx_hs_unsafe_handler $ AUX_NGX_UNSAFE_HANDLER F; \\\n"
 "foreign export ccall ngx_hs_ ## F :: \\\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt -> \\\n"
@@ -177,6 +196,7 @@ ngx_string(
 
 "#define NGX_EXPORT_ASYNC_HANDLER(F) \\\n"
 "AUX_NGX_TYPECHECK(AUX_NGX_ASYNC_HANDLER, F, F) \\\n"
+"AUX_NGX_AMBIGUITYCHECK(F, AUX_NGX_UNAMBIGUOUS) \\\n"
 "ngx_hs_ ## F = aux_ngx_hs_async_handler $ AUX_NGX_ASYNC_HANDLER F; \\\n"
 "foreign export ccall ngx_hs_ ## F :: \\\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt -> AUX_NGX.CInt -> AUX_NGX.CUInt -> \\\n"
@@ -191,6 +211,7 @@ ngx_string(
 
 "#define NGX_EXPORT_ASYNC_HANDLER_ON_REQ_BODY(F) \\\n"
 "AUX_NGX_TYPECHECK(AUX_NGX_ASYNC_HANDLER_RB, F, F) \\\n"
+"AUX_NGX_AMBIGUITYCHECK(F, AUX_NGX_UNAMBIGUOUS) \\\n"
 "ngx_hs_ ## F = aux_ngx_hs_async_handler_rb $ AUX_NGX_ASYNC_HANDLER_RB F; \\\n"
 "foreign export ccall ngx_hs_ ## F :: \\\n"
 "    AUX_NGX.Ptr AUX_NGX_STR_TYPE -> \\\n"
@@ -207,6 +228,7 @@ ngx_string(
 
 "#define NGX_EXPORT_SERVICE_HOOK(F) \\\n"
 "AUX_NGX_TYPECHECK(AUX_NGX_IOY_Y, F, (const . F)) \\\n"
+"AUX_NGX_AMBIGUITYCHECK(F, AUX_NGX_IOY_Y_SYNC) \\\n"
 "ngx_hs_ ## F = aux_ngx_hs_ioy_y_with_free $ AUX_NGX_IOY_Y (const . F); \\\n"
 "foreign export ccall ngx_hs_ ## F :: \\\n"
 "    AUX_NGX.CString -> AUX_NGX.CInt -> \\\n"
@@ -303,6 +325,24 @@ ngx_string(
 
 "aux_ngx_exportType :: AUX_NGX_EXPORT -> IO AUX_NGX.CInt\n"
 "aux_ngx_exportType = return . fromIntegral . fromEnum\n\n"
+
+"data AUX_NGX_EXPORT_DISAMBIGUATION = AUX_NGX_UNAMBIGUOUS\n"
+"                                   | AUX_NGX_Y_Y_SYNC\n"
+"                                   | AUX_NGX_Y_Y_DEF_HANDLER\n"
+"                                   | AUX_NGX_IOY_Y_SYNC\n"
+"                                   | AUX_NGX_IOY_Y_ASYNC\n\n"
+
+"instance Enum AUX_NGX_EXPORT_DISAMBIGUATION where\n"
+"    toEnum _ = AUX_NGX_UNAMBIGUOUS    -- not used\n"
+"    fromEnum AUX_NGX_UNAMBIGUOUS     = 0\n"
+"    fromEnum AUX_NGX_Y_Y_SYNC        = 1\n"
+"    fromEnum AUX_NGX_Y_Y_DEF_HANDLER = 2\n"
+"    fromEnum AUX_NGX_IOY_Y_SYNC      = 3\n"
+"    fromEnum AUX_NGX_IOY_Y_ASYNC     = 4\n\n"
+
+"aux_ngx_exportTypeAmbiguity :: AUX_NGX_EXPORT_DISAMBIGUATION -> "
+"IO AUX_NGX.CInt\n"
+"aux_ngx_exportTypeAmbiguity = return . fromIntegral . fromEnum\n\n"
 
 "data AUX_NGX_STR_TYPE = AUX_NGX_STR_TYPE AUX_NGX.CSize AUX_NGX.CString\n\n"
 
