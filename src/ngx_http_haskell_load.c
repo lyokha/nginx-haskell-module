@@ -375,7 +375,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         dl_error = dlerror();
         if (dl_error != NULL) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                          "failed to load haskell handler type checker "
+                          "failed to load type checker for haskell handler "
                           "\"%V\": %s", &handler_name, dl_error);
             ngx_pfree(cycle->pool, checker_name);
             goto unload_and_exit;
@@ -448,8 +448,9 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         ngx_pfree(cycle->pool, checker_name);
         if (dl_error != NULL) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                          "failed to load haskell handler ambiguity checker "
-                          " \"%V\": %s", &handler_name, dl_error);
+                          "failed to load ambiguity checker for "
+                          "haskell handler \"%V\": %s",
+                          &handler_name, dl_error);
             goto unload_and_exit;
         }
 
