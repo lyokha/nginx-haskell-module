@@ -73,6 +73,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
 #if !(NGX_WIN32)
     struct sigaction                sa;
 #endif
+    ngx_str_t                       checker_name = ngx_null_string;
 
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
     if (mcf == NULL || !mcf->code_loaded) {
@@ -261,12 +262,14 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     if (sigaction(SIGQUIT, NULL, &sa) == -1) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
                       "failed to save sigaction value for QUIT signal");
+        ngx_pfree(cycle->pool, argv);
         goto dlclose_and_exit;
     }
     if (single_proc_fg) {
         if (sigaction(SIGINT, NULL, &sa) == -1) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
                           "failed to save sigaction value for INT signal");
+            ngx_pfree(cycle->pool, argv);
             goto dlclose_and_exit;
         }
     }
@@ -323,10 +326,37 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     handlers = mcf->handlers.elts;
 
     for (i = 0; i < mcf->handlers.nelts; i++) {
+        if (handlers[i].name.len <= ngx_http_haskell_module_handler_prefix.len
+            || ngx_strncmp(handlers[i].name.data,
+                           ngx_http_haskell_module_handler_prefix.data,
+                           ngx_http_haskell_module_handler_prefix.len) != 0)
+        {
+            continue;
+        }
+        checker_name.len = ngx_max(checker_name.len,
+                        ngx_max(haskell_module_type_checker_prefix.len,
+                                haskell_module_ambiguity_checker_prefix.len) +
+                        handlers[i].name.len + 1);
+    }
+    if (checker_name.len > 0) {
+        checker_name.data = ngx_pnalloc(cycle->pool, checker_name.len);
+        if (checker_name.data == NULL) {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                          "failed to allocate artifacts for type and "
+                          "ambiguity checkers");
+            goto unload_and_exit;
+        }
+    }
+
+    /* make scan-build happy */
+    if (checker_name.data == NULL) {
+        goto no_handlers;
+    }
+
+    for (i = 0; i < mcf->handlers.nelts; i++) {
         ngx_str_t                              handler_name;
         type_checker_t                         type_checker;
         ambiguity_checker_t                    ambiguity_checker;
-        char                                  *checker_name;
         ngx_http_haskell_handler_ambiguity_e   ambiguity;
         ngx_uint_t                             wrong_n_args = 0;
 
@@ -353,31 +383,19 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
             goto unload_and_exit;
         }
 
-        checker_name = ngx_pnalloc(cycle->pool,
-            ngx_max(haskell_module_type_checker_prefix.len,
-                    haskell_module_ambiguity_checker_prefix.len) +
-            handlers[i].name.len + 1);
-        if (checker_name == NULL) {
-            ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                          "failed to allocate artifacts for type checker");
-            goto unload_and_exit;
-        }
-
-        ngx_memcpy(checker_name,
+        ngx_memcpy(checker_name.data,
                    haskell_module_type_checker_prefix.data,
                    haskell_module_type_checker_prefix.len);
-        ngx_memcpy(checker_name + haskell_module_type_checker_prefix.len,
-                   handlers[i].name.data, handlers[i].name.len);
-        checker_name[haskell_module_type_checker_prefix.len +
-                handlers[i].name.len] = '\0';
+        ngx_memcpy(checker_name.data + haskell_module_type_checker_prefix.len,
+                   handlers[i].name.data, handlers[i].name.len + 1);
 
-        type_checker = (type_checker_t) dlsym(mcf->dl_handle, checker_name);
+        type_checker = (type_checker_t) dlsym(mcf->dl_handle,
+                                              (char *) checker_name.data);
         dl_error = dlerror();
         if (dl_error != NULL) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                           "failed to load type checker for haskell handler "
                           "\"%V\": %s", &handler_name, dl_error);
-            ngx_pfree(cycle->pool, checker_name);
             goto unload_and_exit;
         }
 
@@ -417,7 +435,6 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                           "haskell handler \"%V\" role and type mismatch",
                           &handler_name);
-            ngx_pfree(cycle->pool, checker_name);
             goto unload_and_exit;
         }
 
@@ -430,22 +447,19 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                           "haskell handler \"%V\" safety attribute mismatch",
                           &handler_name);
-            ngx_pfree(cycle->pool, checker_name);
             goto unload_and_exit;
         }
 
-        ngx_memcpy(checker_name,
+        ngx_memcpy(checker_name.data,
                    haskell_module_ambiguity_checker_prefix.data,
                    haskell_module_ambiguity_checker_prefix.len);
-        ngx_memcpy(checker_name + haskell_module_ambiguity_checker_prefix.len,
-                   handlers[i].name.data, handlers[i].name.len);
-        checker_name[haskell_module_ambiguity_checker_prefix.len +
-                handlers[i].name.len] = '\0';
+        ngx_memcpy(checker_name.data +
+                        haskell_module_ambiguity_checker_prefix.len,
+                   handlers[i].name.data, handlers[i].name.len + 1);
 
         ambiguity_checker = (ambiguity_checker_t) dlsym(mcf->dl_handle,
-                                                        checker_name);
+                                                (char*) checker_name.data);
         dl_error = dlerror();
-        ngx_pfree(cycle->pool, checker_name);
         if (dl_error != NULL) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                           "failed to load ambiguity checker for "
@@ -516,6 +530,12 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         }
     }
 
+    if (checker_name.data != NULL) {
+        ngx_pfree(cycle->pool, checker_name.data);
+    }
+
+no_handlers:
+
     return NGX_OK;
 
 dlclose_and_exit:
@@ -525,6 +545,10 @@ dlclose_and_exit:
     return NGX_ERROR;
 
 unload_and_exit:
+
+    if (checker_name.data != NULL) {
+        ngx_pfree(cycle->pool, checker_name.data);
+    }
 
     ngx_http_haskell_unload(cycle, 0);
 
@@ -545,7 +569,8 @@ ngx_http_haskell_unload(ngx_cycle_t *cycle, ngx_uint_t exiting)
     if (mcf->dl_handle != NULL) {
         mcf->hs_exit();
         /* dlclose() may cause sigsegv when a haskell service wakes up
-         * during or after munmap() but before the worker exits */
+         * during or after munmap() but before the worker exits
+         * FIXME: check if this statement is true */
         if (!exiting) {
             dlclose(mcf->dl_handle);
         }
