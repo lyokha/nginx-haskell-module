@@ -2,8 +2,8 @@ Nginx Haskell module
 ====================
 
 [![Build Status](https://travis-ci.org/lyokha/nginx-haskell-module.svg?branch=master)](https://travis-ci.org/lyokha/nginx-haskell-module)
-[![Hackage](https://img.shields.io/hackage/v/ngx-export.svg)](https://hackage.haskell.org/package/ngx-export)
-[![Hackage](https://img.shields.io/hackage/v/ngx-export-tools.svg)](https://hackage.haskell.org/package/ngx-export-tools)
+[![Hackage](https://img.shields.io/hackage/v/ngx-export.svg?label=hackage%20%7C%20ngx-export)](https://hackage.haskell.org/package/ngx-export)
+[![Hackage](https://img.shields.io/hackage/v/ngx-export-tools.svg?label=hackage%20%7C%20ngx-export-tools)](https://hackage.haskell.org/package/ngx-export-tools)
 [![Doc](https://img.shields.io/badge/doc-yet_another_doc_with_examples-orange.svg)](https://nbviewer.jupyter.org/github/lyokha/nginx-haskell-module/blob/master/docs/yet-another-doc-with-examples/nginx-haskell-module-yadwe.pdf)
 
 This Nginx module allows compiling and running Haskell source code found in a
