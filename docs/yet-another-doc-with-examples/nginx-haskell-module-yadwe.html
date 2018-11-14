@@ -17,7 +17,7 @@
   <![endif]-->
 </head>
 <body>
-<header>
+<header id="title-block-header">
 <h1 class="title">Nginx Haskell module<br />
 (yet another doc with examples)</h1>
 </header>
@@ -690,7 +690,7 @@
 <span style="color: #000000;">        }</span>
 </pre>
 
-<p>location <em>/httpbin/url</em> derives the content handler which signals all workers via an event channel upon receiving a request. Then the event handlers in all workers run the hook (<em>getUrlServiceHook</em> in our case) <em>synchronously</em>, and finally send an asynchronous exception <em>ServiceHookInterrupt</em> to the service to which the service variable from the service hook declaration (<em>hs_service_httpbin</em>) corresponds. Being run synchronously, service hooks are expected to be fast, only writing data passed to them (value of <em>arg_v</em> in our case) into a global state. In contrast to <em>update variables</em>, this data has a longer lifetime being freed in the Haskell part when the original bytestring gets garbage collected.</p>
+<p>location <em>/httpbin/url</em> derives the content handler which signals all workers via an event channel upon receiving a request. Then the event handlers in all workers run the hook (<em>getUrlServiceHook</em> in our case) <em>synchronously</em>, and finally send an asynchronous exception <em>ServiceHookInterrupt</em> to the service to which the service variable from the service hook declaration (<em>hs_service_httpbin</em>) corresponds. Being run synchronously, service hooks are expected to be fast, only writing data passed to them (the value of <em>arg_v</em> in our case) into a global state. In contrast to <em>update variables</em>, this data has a longer lifetime being freed in the Haskell part when the original bytestring gets garbage collected.</p>
 <h2 id="an-example-6">An example</h2>
 <p>Let’s make it able to change the URL for the <em>httpbin</em> service in runtime. For this we must enable <em>getUrlService</em> to read from a global state where the URL value will reside.</p>
 <p><strong>File test.hs</strong> (<em>additions, getUrlService reimplemented</em>)</p>
@@ -867,7 +867,7 @@
 
 <p>For testing this, watch the Nginx error log and change the URL of the service with requests to location <em>/httpbin/url</em> like in the previous example.</p>
 <h1 id="c-plugins-with-low-level-access-to-nginx-objects">C plugins with low level access to Nginx objects</h1>
-<p>Serialized pointer to the Nginx <em>request object</em> is accessible via a special variable <em>_r_ptr</em>. Haskell handlers have no benefit from this because they do not know how the request object is built. However they may run C code that is compiled with this knowledge. The low level access to the Nginx request data allows for making things not available without this. As soon as a C plugin can do whatever a usual Nginx module can, using it from a Haskell handler must be very cautious. All synchronous and asynchronous Haskell handlers can access the Nginx request object and pass it to a C plugin. Using a C plugin in asynchronous context has not been investigated and is probably dangerous in many aspects. After all, an Nginx worker is a single-threaded process, and available Nginx tools were not designed for using in multi-threaded environments. As such, using C plugins in asynchronous Haskell handlers must be regarded as strictly experimental!</p>
+<p>Serialized pointer to the Nginx <em>request object</em> is accessible via a special variable <em>_r_ptr</em>. Haskell handlers have no benefit from this because they do not know how the request object is built. However they may run C code having been compiled with this knowledge. The low level access to the Nginx request object makes it possible to do things that are not feasible to do without this. As soon as a C plugin can do whatever a usual Nginx module can, using it from a Haskell handler must be very cautious. All synchronous and asynchronous Haskell handlers can access the Nginx request object and pass it to a C plugin. Using it in a C plugin which runs in asynchronous context has not been investigated and is probably dangerous in many aspects, with exception (probably) of read-only access. After all, an Nginx worker is a single-threaded process, and the standard Nginx tools and APIs were not designed for using in multi-threaded environments. As such, using C plugins in asynchronous Haskell handlers must be regarded strictly as experimental!</p>
 <h2 id="an-example-8">An example</h2>
 <p>Let’s write a plugin that will add an HTTP header to the response.</p>
 <p><strong>File test_c_plugin.h</strong></p>
@@ -914,7 +914,7 @@
 <span style="color: #870087;">}</span>
 </pre>
 
-<p>Notice that the request object <em>r</em> gets checked in function <em>ngx_http_haskell_test_c_plugin()</em> against <em>NULL</em> value. Normally in an Nginx C code this check is redundant, however in our plugin this is important because serialization of the request object may fail, and in this case the Nginx module will serialize a null pointer.</p>
+<p>Notice that the request object <em>r</em> gets checked in function <em>ngx_http_haskell_test_c_plugin()</em> against the <em>NULL</em> value. Normally in an Nginx C code this check is redundant, however in our plugin this is important because serialization of the request object may fail, and in this case the Nginx module will serialize a null pointer.</p>
 <p>Let’s compile the C code. For this we need a directory where Nginx sources were sometime compiled. Let’s refer to it in an environment variable <em>NGX_HOME</em>.</p>
 <pre style="overflow-x: auto; border-style: none none none solid; border-color: #6DF; border-width: 10px; padding: 5px 10px">
 <span style="color: #005FAF;">NGX_HOME=/path/to/nginx_sources</span>
@@ -957,7 +957,6 @@
 <span style="color: #005FAF;">cp test.so /var/lib/nginx/</span>
 </pre>
 
-
 <p><strong>File test.conf</strong> (<em>additions</em>)</p>
 <pre style="overflow-x: auto; background: #FFE">
         <span style="color: #005FAF;">location</span><span style="color: #000000;"> /cplugin {</span>
@@ -981,6 +980,7 @@
 </pre>
 
 <p>The header <em>X-Powered-By</em> is in the response!</p>
+<p>Notice that the value of <em>_r_ptr</em> has a binary representation, and therefore must not be used in textual contexts such as Haskell <em>data</em> declarations and JSON objects.</p>
 <h2 id="c-plugins-in-service-update-hooks">C plugins in service update hooks</h2>
 <p>Service update hooks can be used to replace service <em>update callbacks</em>. Indeed, being run <em>synchronously</em> from an event handler, a service hook could safely call a C function which would acquire related to Nginx context from Nginx global variables such as <em>ngx_cycle</em> for doing a variety of low level actions.</p>
 <p>Below is a table of functions exported from the Haskell module that return opaque pointers to Nginx global variables for using them in C plugins.</p>

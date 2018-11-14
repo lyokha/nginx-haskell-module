@@ -906,9 +906,9 @@ workers run the hook (*getUrlServiceHook* in our case) *synchronously*, and
 finally send an asynchronous exception *ServiceHookInterrupt* to the service
 to which the service variable from the service hook declaration
 (*hs_service_httpbin*) corresponds. Being run synchronously, service hooks are
-expected to be fast, only writing data passed to them (value of *arg_v* in our
-case) into a global state. In contrast to *update variables*, this data has a
-longer lifetime being freed in the Haskell part when the original bytestring
+expected to be fast, only writing data passed to them (the value of *arg_v* in
+our case) into a global state. In contrast to *update variables*, this data has
+a longer lifetime being freed in the Haskell part when the original bytestring
 gets garbage collected.
 
 ## An example
@@ -1133,17 +1133,18 @@ with requests to location */httpbin/url* like in the previous example.
 
 Serialized pointer to the Nginx *request object* is accessible via a special
 variable *\_r\_ptr*. Haskell handlers have no benefit from this because they do
-not know how the request object is built. However they may run C code that is
-compiled with this knowledge. The low level access to the Nginx request data
-allows for making things not available without this. As soon as a C plugin can
-do whatever a usual Nginx module can, using it from a Haskell handler must be
-very cautious. All synchronous and asynchronous Haskell handlers can access the
-Nginx request object and pass it to a C plugin. Using a C plugin in asynchronous
-context has not been investigated and is probably dangerous in many aspects.
-After all, an Nginx worker is a single-threaded process, and available Nginx
-tools were not designed for using in multi-threaded environments. As such, using
-C plugins in asynchronous Haskell handlers must be regarded as strictly
-experimental!
+not know how the request object is built. However they may run C code having
+been compiled with this knowledge. The low level access to the Nginx request
+object makes it possible to do things that are not feasible to do without this.
+As soon as a C plugin can do whatever a usual Nginx module can, using it from a
+Haskell handler must be very cautious. All synchronous and asynchronous Haskell
+handlers can access the Nginx request object and pass it to a C plugin. Using it
+in a C plugin which runs in asynchronous context has not been investigated and
+is probably dangerous in many aspects, with exception (probably) of read-only
+access. After all, an Nginx worker is a single-threaded process, and the
+standard Nginx tools and APIs were not designed for using in multi-threaded
+environments. As such, using C plugins in asynchronous Haskell handlers must be
+regarded strictly as experimental!
 
 ## An example
 
@@ -1196,10 +1197,10 @@ ngx_http_haskell_test_c_plugin(ngx_http_request_t *r)
 ```
 
 Notice that the request object *r* gets checked in function
-*ngx_http_haskell_test_c_plugin()* against *NULL* value. Normally in an Nginx C
-code this check is redundant, however in our plugin this is important because
-serialization of the request object may fail, and in this case the Nginx module
-will serialize a null pointer.
+*ngx_http_haskell_test_c_plugin()* against the *NULL* value. Normally in an
+Nginx C code this check is redundant, however in our plugin this is important
+because serialization of the request object may fail, and in this case the Nginx
+module will serialize a null pointer.
 
 Let's compile the C code. For this we need a directory where Nginx sources were
 sometime compiled. Let's refer to it in an environment variable *NGX_HOME*.
@@ -1253,8 +1254,6 @@ Linking test.so ...
 ||| cp test.so /var/lib/nginx/
 ```
 
-\pagebreak
-
 **File test.conf** (*additions*)
 
 ``` {.nginx hl="vim"}
@@ -1280,6 +1279,10 @@ Test C plugin returned Success!
 ```
 
 The header *X-Powered-By* is in the response!
+
+Notice that the value of *\_r\_ptr* has a binary representation, and therefore
+must not be used in textual contexts such as Haskell *data* declarations and
+JSON objects.
 
 ## C plugins in service update hooks
 

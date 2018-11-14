@@ -1284,17 +1284,18 @@ C plugins with low level access to the Nginx request object
 
 Serialized pointer to the Nginx *request object* is accessible via a special
 variable ``$_r_ptr``. Haskell handlers have no benefit from this because they do
-not know how the request object is built. However they may run C code that is
-compiled with this knowledge. The low level access to the Nginx request data
-allows for making things not available without this. As soon as a C plugin can
-do whatever a usual Nginx module can, using it from a Haskell handler must be
-very cautious. All synchronous and asynchronous Haskell handlers can access the
-Nginx request object and pass it to a C plugin. Using a C plugin in asynchronous
-context has not been investigated and is probably dangerous in many aspects.
-After all, an Nginx worker is a single-threaded process, and available Nginx
-tools were not designed for using in multi-threaded environments. As such, using
-C plugins in asynchronous Haskell handlers must be regarded as strictly
-experimental!
+not know how the request object is built. However they may run C code having
+been compiled with this knowledge. The low level access to the Nginx request
+object makes it possible to do things that are not feasible to do without this.
+As soon as a C plugin can do whatever a usual Nginx module can, using it from a
+Haskell handler must be very cautious. All synchronous and asynchronous Haskell
+handlers can access the Nginx request object and pass it to a C plugin. Using it
+in a C plugin which runs in asynchronous context has not been investigated and
+is probably dangerous in many aspects, with exception (probably) of read-only
+access. After all, an Nginx worker is a single-threaded process, and the
+standard Nginx tools and APIs were not designed for using in multi-threaded
+environments. As such, using C plugins in asynchronous Haskell handlers must be
+regarded strictly as experimental!
 
 Let's write a plugin that will insert into the request HTTP headers a header
 *X-Powered-By*.
@@ -1424,6 +1425,10 @@ X-Powered-By: Nginx Haskell module
 
 Test C plugin returned Success!
 ```
+
+Notice that the value of ``$_r_ptr`` has a binary representation, and therefore
+must not be used in textual contexts such as Haskell *data* declarations and
+JSON objects.
 
 Reloading of haskell code and static content
 --------------------------------------------
