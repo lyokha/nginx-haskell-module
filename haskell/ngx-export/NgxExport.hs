@@ -143,30 +143,29 @@ data NgxExportDisambiguation = Unambiguous
                              | IOYYSync
                              | IOYYAsync
 
-$(do
-      TyConI (DataD _ _ _ EXTRA_WILDCARD_BEFORE_CON tCs _) <-
-          reify ''NgxExport
-      TyConI (DataD _ _ _ EXTRA_WILDCARD_BEFORE_CON aCs _) <-
-          reify ''NgxExportDisambiguation
-      let tName = mkName "exportType"
-          aName = mkName "exportTypeAmbiguity"
-          tCons = map (\(NormalC con [(_, typ)]) -> (con, typ)) tCs
-          aCons = map (\(NormalC con []) -> con) aCs
-      sequence $
-          [sigD tName [t|NgxExport -> IO CInt|]
-          ,funD tName $
-               map (\(fst -> c, i) ->
-                      clause [conP c [wildP]] (normalB [|return i|]) []
-                   ) (zip tCons [1 ..] :: [((Name, Type), Int)])
-          ,sigD aName [t|NgxExportDisambiguation -> IO CInt|]
-          ,funD aName $
-               map (\(c, i) ->
-                      clause [conP c []] (normalB [|return i|]) []
-                   ) (zip aCons [0 ..] :: [(Name, Int)])
-          ]
-          ++
-          map (\(c, t) -> tySynD (mkName $ nameBase c) [] $ return t) tCons
- )
+do
+    TyConI (DataD _ _ _ EXTRA_WILDCARD_BEFORE_CON tCs _) <-
+        reify ''NgxExport
+    TyConI (DataD _ _ _ EXTRA_WILDCARD_BEFORE_CON aCs _) <-
+        reify ''NgxExportDisambiguation
+    let tName = mkName "exportType"
+        aName = mkName "exportTypeAmbiguity"
+        tCons = map (\(NormalC con [(_, typ)]) -> (con, typ)) tCs
+        aCons = map (\(NormalC con []) -> con) aCs
+    sequence $
+        [sigD tName [t|NgxExport -> IO CInt|]
+        ,funD tName $
+             map (\(fst -> c, i) ->
+                    clause [conP c [wildP]] (normalB [|return i|]) []
+                 ) (zip tCons [1 ..] :: [((Name, Type), Int)])
+        ,sigD aName [t|NgxExportDisambiguation -> IO CInt|]
+        ,funD aName $
+             map (\(c, i) ->
+                    clause [conP c []] (normalB [|return i|]) []
+                 ) (zip aCons [0 ..] :: [(Name, Int)])
+        ]
+        ++
+        map (\(c, t) -> tySynD (mkName $ nameBase c) [] $ return t) tCons
 
 ngxExport' :: (Name -> Q Exp) ->
     Name -> Name -> Name -> Q Type -> Name -> Q [Dec]
