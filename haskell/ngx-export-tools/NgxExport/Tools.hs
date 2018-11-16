@@ -202,8 +202,7 @@ instance FromByteString ByteString where
 --
 -- testReadConfWithRPtrJSONHandler :: ByteString -> L.ByteString
 -- __/testReadConfWithRPtrJSONHandler/__ = C8L.pack . show .
---     (readFromByteStringWithRPtrAsJSON ::
---         ByteString -> (Ptr (), Maybe ConfJSON))
+--     (readFromByteStringWithRPtrAsJSON :: ByteString -> (Ptr (), Maybe ConfJSON))
 -- 'ngxExportYY' \'testReadConfWithRPtrJSONHandler
 -- @
 --
@@ -257,18 +256,12 @@ instance FromByteString ByteString where
 --                     \';
 --
 --             echo \"Handler variables:\";
---             echo \"  hs_testReadIntHandler:\";
---             echo \"    $hs_testReadIntHandler\";
---             echo \"  hs_testReadConfHandler:\";
---             echo \"    $hs_testReadConfHandler\";
---             echo \"  hs_testReadConfJSONHandler:\";
---             echo \"    $hs_testReadConfJSONHandler\";
---             echo \"  hs_testReadConfJSONHandlerBadInput:\";
---             echo \"    $hs_testReadConfJSONHandlerBadInput\";
---             echo \"  hs_testReadConfWithRPtrHandler:\";
---             echo \"    $hs_testReadConfWithRPtrHandler\";
---             echo \"  hs_testReadConfWithRPtrJSONHandler:\";
---             echo \"    $hs_testReadConfWithRPtrJSONHandler\";
+--             echo \"  hs_testReadIntHandler: $hs_testReadIntHandler\";
+--             echo \"  hs_testReadConfHandler: $hs_testReadConfHandler\";
+--             echo \"  hs_testReadConfJSONHandler: $hs_testReadConfJSONHandler\";
+--             echo \"  hs_testReadConfJSONHandlerBadInput: $hs_testReadConfJSONHandlerBadInput\";
+--             echo \"  hs_testReadConfWithRPtrHandler: $hs_testReadConfWithRPtrHandler\";
+--             echo \"  hs_testReadConfWithRPtrJSONHandler: $hs_testReadConfWithRPtrJSONHandler\";
 --         }
 --     }
 -- }
@@ -278,18 +271,12 @@ instance FromByteString ByteString where
 --
 -- > $ curl 'http://localhost:8010/'
 -- > Handler variables:
--- >   hs_testReadIntHandler:
--- >     Just (-456)
--- >   hs_testReadConfHandler:
--- >     Just (Conf 21)
--- >   hs_testReadConfJSONHandler:
--- >     Just ConfJSONCon2
--- >   hs_testReadConfJSONHandlerBadInput:
--- >     Nothing
--- >   hs_testReadConfWithRPtrHandler:
--- >     (0x00000000016fc790,Just (Conf 21))
--- >   hs_testReadConfWithRPtrJSONHandler:
--- >     (0x00000000016fc790,Just (ConfJSONCon1 4))
+-- >   hs_testReadIntHandler: Just (-456)
+-- >   hs_testReadConfHandler: Just (Conf 21)
+-- >   hs_testReadConfJSONHandler: Just ConfJSONCon2
+-- >   hs_testReadConfJSONHandlerBadInput: Nothing
+-- >   hs_testReadConfWithRPtrHandler: (0x00000000016fc790,Just (Conf 21))
+-- >   hs_testReadConfWithRPtrJSONHandler: (0x00000000016fc790,Just (ConfJSONCon1 4))
 
 -- | Reads an object of a custom type deriving 'Read' from a 'ByteString'.
 --
