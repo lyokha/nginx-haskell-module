@@ -2,7 +2,7 @@ name:                       ngx-export
 version:                    1.6.0
 synopsis:                   Helper module for Nginx haskell module
 description:                Helper module for
-        <http://github.com/lyokha/nginx-haskell-module Nginx haskell module>
+        <http://github.com/lyokha/nginx-haskell-module Nginx haskell module>.
 homepage:                   http://github.com/lyokha/nginx-haskell-module
 license:                    BSD3
 license-file:               LICENSE
@@ -13,9 +13,10 @@ stability:                  stable
 copyright:                  2016-2018 Alexey Radkov
 category:                   Network
 build-type:                 Simple
-cabal-version:              >= 1.8
+cabal-version:              1.20
 
 library
+  default-language:         Haskell2010
   build-depends:            base >= 4.8 && < 5
                           , template-haskell
                           , bytestring >= 0.10.0.0
@@ -27,7 +28,7 @@ library
 
   exposed-modules:          NgxExport
   other-modules:            Paths_ngx_export
-  extensions:               CPP
+  default-extensions:       CPP
 
   ghc-options:             -Wall
   if impl(ghc < 8.0)
