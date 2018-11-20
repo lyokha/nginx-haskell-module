@@ -1973,12 +1973,12 @@ serviceWithALoop _ = const go
                )
                `catch` (waitAndThrow :: SomeException -> IO L.ByteString)
           waitAndGo = threadDelaySec 1 >> go
-          waitAndThrow e = threadDelaySec 1 >> throw e
+          waitAndThrow e = threadDelaySec 1 >> throwIO e
 ngxExportServiceIOYY 'serviceWithALoop
 ```
 
-Now when *any* exception gets caught, the service waits 1 second and re-throw it
-without re-iteration of *go*. The exception will be caught inside the service
+Now when *any* exception gets caught, the service waits *1* second and re-throws
+it without re-iteration of *go*. The exception will be caught inside the service
 wrapper code and even kindly reported in nginx log! But we can still do better!
 *ThreadKilled* can be used to perform service cleanup and persistency actions
 such as saving data on a disk etc.
@@ -1999,7 +1999,7 @@ serviceWithALoop _ = const go
                ,Handler (waitAndThrow :: SomeException -> IO L.ByteString)
                ]
           waitAndGo = threadDelaySec 1 >> go
-          waitAndThrow e = threadDelaySec 1 >> throw e
+          waitAndThrow e = threadDelaySec 1 >> throwIO e
 ngxExportServiceIOYY 'serviceWithALoop
 ```
 
