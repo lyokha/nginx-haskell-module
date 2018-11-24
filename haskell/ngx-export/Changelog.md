@@ -1,3 +1,7 @@
+### 1.6.1
+
+- Upgraded Cabal version constraint.
+
 ### 1.6.0
 
 - Implemented type and role disambiguation helper to prevent segfaults in
