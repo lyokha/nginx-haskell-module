@@ -174,6 +174,9 @@ instance FromByteString ByteString where
 -- import           Data.Aeson
 -- import           GHC.Generics
 --
+-- showAsLazyByteString :: Show a => a -> L.ByteString
+-- showAsLazyByteString = C8L.pack . show
+--
 -- newtype Conf = Conf Int deriving (Read, Show)
 --
 -- data ConfJSON = ConfJSONCon1 Int
@@ -181,27 +184,27 @@ instance FromByteString ByteString where
 -- instance FromJSON ConfJSON
 --
 -- testReadIntHandler :: ByteString -> L.ByteString
--- __/testReadIntHandler/__ = C8L.pack . show .
+-- __/testReadIntHandler/__ = showAsLazyByteString .
 --     (readFromByteString :: ByteString -> Maybe Int)
 -- 'ngxExportYY' \'testReadIntHandler
 --
 -- testReadConfHandler :: ByteString -> L.ByteString
--- __/testReadConfHandler/__ = C8L.pack . show .
+-- __/testReadConfHandler/__ = showAsLazyByteString .
 --     (readFromByteString :: ByteString -> Maybe Conf)
 -- 'ngxExportYY' \'testReadConfHandler
 --
 -- testReadConfJSONHandler :: ByteString -> IO L.ByteString
--- __/testReadConfJSONHandler/__ = return . C8L.pack . show .
+-- __/testReadConfJSONHandler/__ = return . showAsLazyByteString .
 --     (readFromByteStringAsJSON :: ByteString -> Maybe ConfJSON)
 -- 'ngxExportAsyncIOYY' \'testReadConfJSONHandler
 --
 -- testReadConfWithRPtrHandler :: ByteString -> L.ByteString
--- __/testReadConfWithRPtrHandler/__ = C8L.pack . show .
+-- __/testReadConfWithRPtrHandler/__ = showAsLazyByteString .
 --     (readFromByteStringWithRPtr :: ByteString -> (Ptr (), Maybe Conf))
 -- 'ngxExportYY' \'testReadConfWithRPtrHandler
 --
 -- testReadConfWithRPtrJSONHandler :: ByteString -> L.ByteString
--- __/testReadConfWithRPtrJSONHandler/__ = C8L.pack . show .
+-- __/testReadConfWithRPtrJSONHandler/__ = showAsLazyByteString .
 --     (readFromByteStringWithRPtrAsJSON :: ByteString -> (Ptr (), Maybe ConfJSON))
 -- 'ngxExportYY' \'testReadConfWithRPtrJSONHandler
 -- @
@@ -336,12 +339,14 @@ skipRPtr = B.drop $ sizeOf (undefined :: Word)
 --
 -- module TestTools where
 --
+-- import           NgxExport
 -- import           NgxExport.Tools
 --
 -- import           Data.ByteString (ByteString)
 -- import qualified Data.ByteString.Lazy as L
 -- import qualified Data.ByteString.Lazy.Char8 as C8L
 -- import           Data.Aeson
+-- import           Data.IORef
 -- import           Control.Monad
 -- import           GHC.Generics
 --
@@ -350,8 +355,11 @@ skipRPtr = B.drop $ sizeOf (undefined :: Word)
 -- 'ngxExportSimpleService' \'test $
 --     'PersistentService' $ Just $ 'Sec' 10
 --
+-- showAsLazyByteString :: Show a => a -> L.ByteString
+-- showAsLazyByteString = C8L.pack . show
+--
 -- testRead :: (Read a, Show a) => a -> IO L.ByteString
--- testRead = return . C8L.pack . show
+-- testRead = return . showAsLazyByteString
 --
 -- testReadInt :: Int -> Bool -> IO L.ByteString
 -- __/testReadInt/__ = const . testRead
@@ -365,6 +373,11 @@ skipRPtr = B.drop $ sizeOf (undefined :: Word)
 -- 'ngxExportSimpleServiceTyped' \'testReadConf \'\'Conf $
 --     'PersistentService' $ Just $ 'Sec' 10
 --
+-- testConfStorage :: ByteString -> IO L.ByteString
+-- __/testConfStorage/__ = const $
+--     showAsLazyByteString \<$\> readIORef __/storage_Conf_/__testReadConf
+-- 'ngxExportIOYY' \'testConfStorage
+--
 -- data ConfWithDelay = ConfWithDelay { delay :: 'TimeInterval'
 --                                    , value :: Int
 --                                    } deriving (Read, Show)
@@ -377,7 +390,7 @@ skipRPtr = B.drop $ sizeOf (undefined :: Word)
 --     'PersistentService' Nothing
 --
 -- testReadJSON :: (FromJSON a, Show a) => a -> IO L.ByteString
--- testReadJSON = return . C8L.pack . show
+-- testReadJSON = return . showAsLazyByteString
 --
 -- data ConfJSON = ConfJSONCon1 Int
 --               | ConfJSONCon2 deriving (Generic, Show)
@@ -391,15 +404,10 @@ skipRPtr = B.drop $ sizeOf (undefined :: Word)
 --
 -- Here five simple services of various types are defined: /test/,
 -- /testReadInt/, /testReadConf/, /testReadConfWithDelay/, and
--- /testReadConfJSON/. Service /testReadInt/ is not a good example though.
--- The problem is that /typed/ simple services build 'IORef' /storages/ to save
--- their configurations for faster access in future iterations. The name of a
--- storage consists of the name of its type prefixed with __/storage_/__, which
--- means that it's wiser to use custom types or wrappers of well-known types
--- (such as /Conf/ and /ConfWithDelay/) in order to avoid exhaustion of
--- top-level names. In general, this also means that it's not possible to
--- declare in a single Nginx configuration script two or more typed simple
--- services with identical names of their configuration types.
+-- /testReadConfJSON/. /Typed/ services hold 'IORef' /storages/ to save their
+-- configurations for faster access in future iterations. The name of a storage
+-- consists of the name of its type and the name of the service connected by an
+-- underscore and prefixed as a whole word with __/storage_/__.
 --
 -- As soon as all the services in the example merely echo their configurations
 -- into their service variables, they must sleep for a while between iterations.
@@ -465,12 +473,16 @@ skipRPtr = B.drop $ sizeOf (undefined :: Word)
 --         access_log   \/tmp\/nginx-test-haskell-access.log;
 --
 --         location \/ {
+--             haskell_run __/testConfStorage/__ $hs_testConfStorage \'\';
+--
 --             echo \"Service variables:\";
 --             echo \"  hs_test: $hs_test\";
 --             echo \"  hs_testReadInt: $hs_testReadInt\";
 --             echo \"  hs_testReadConf: $hs_testReadConf\";
 --             echo \"  hs_testReadConfWithDelay: $hs_testReadConfWithDelay\";
 --             echo \"  hs_testReadConfJSON: $hs_testReadConfJSON\";
+--             echo \"Storages of service variables:\";
+--             echo \"  hs_testConfStorage: $hs_testConfStorage\";
 --         }
 --     }
 -- }
@@ -488,6 +500,8 @@ skipRPtr = B.drop $ sizeOf (undefined :: Word)
 -- >   hs_testReadConf: Conf 20
 -- >   hs_testReadConfWithDelay: ConfWithDelay {delay = Sec 10, value = 12}
 -- >   hs_testReadConfJSON: ConfJSONCon1 56
+-- > Storages of service variables:
+-- >   hs_testConfStorage: Just (Conf 20)
 
 -- | Defines a sleeping strategy.
 --
@@ -503,20 +517,18 @@ ngxExportSimpleService' :: Name -> Maybe (Name, Bool) -> ServiceMode -> Q [Dec]
 ngxExportSimpleService' f c m = do
     confBs <- newName "confBs_"
     fstRun <- newName "fstRun_"
-    let nameSsf = mkName $ "simpleService_" ++ nameBase f
+    let nameF = nameBase f
+        nameSsf = mkName $ "simpleService_" ++ nameF
         hasConf = isJust c
         (sNameC, typeC, isJSON) =
             if hasConf
                 then let c' = fromJust c
-                         tName = nameBase $ fst c'
-                     in (mkName $ "storage_" ++ tName
+                         tName = nameBase (fst c')
+                     in (mkName $ "storage_" ++ tName ++ '_' : nameF
                         ,conT $ mkName tName
                         ,snd c'
                         )
-                else (mkName "storage_dummy__"
-                     ,conT $ mkName "Dummy__"
-                     ,False
-                     )
+                else undefined
         initConf =
             let eConfBs = varE confBs
             in if hasConf
@@ -604,7 +616,8 @@ ngxExportSimpleService f =
 -- first argument. For the sake of efficiency, this object gets deserialized
 -- into a global 'IORef' data storage on the first service run to be further
 -- accessed directly from this storage. The storage can be accessed from
--- elsewhere by name comprised of the name of the custom type prefixed with
+-- elsewhere by a name comprised of the name of the custom type and the name of
+-- the service connected by an underscore and prefixed as a whole word with
 -- __/storage_/__. The stored data is wrapped in 'Maybe' container.
 ngxExportSimpleServiceTyped :: Name         -- ^ Name of the service
                             -> Name         -- ^ Name of the custom type
@@ -619,7 +632,8 @@ ngxExportSimpleServiceTyped f c =
 -- first argument. For the sake of efficiency, this object gets deserialized
 -- into a global 'IORef' data storage on the first service run to be further
 -- accessed directly from this storage. The storage can be accessed from
--- elsewhere by name comprised of the name of the custom type prefixed with
+-- elsewhere by a name comprised of the name of the custom type and the name of
+-- the service connected by an underscore and prefixed as a whole word with
 -- __/storage_/__. The stored data is wrapped in 'Maybe' container.
 ngxExportSimpleServiceTypedAsJSON :: Name         -- ^ Name of the service
                                   -> Name         -- ^ Name of the custom type

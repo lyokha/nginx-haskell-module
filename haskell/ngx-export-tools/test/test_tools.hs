@@ -10,6 +10,7 @@ import           Data.ByteString (ByteString)
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Lazy.Char8 as C8L
 import           Data.Aeson
+import           Data.IORef
 import           Control.Monad
 import           GHC.Generics
 
@@ -18,8 +19,11 @@ test = const . return . L.fromStrict
 ngxExportSimpleService 'test $
     PersistentService $ Just $ Sec 10
 
+showAsLazyByteString :: Show a => a -> L.ByteString
+showAsLazyByteString = C8L.pack . show
+
 testRead :: (Read a, Show a) => a -> IO L.ByteString
-testRead = return . C8L.pack . show
+testRead = return . showAsLazyByteString
 
 testReadInt :: Int -> Bool -> IO L.ByteString
 testReadInt = const . testRead
@@ -33,6 +37,11 @@ testReadConf = const . testRead
 ngxExportSimpleServiceTyped 'testReadConf ''Conf $
     PersistentService $ Just $ Sec 10
 
+testConfStorage :: ByteString -> IO L.ByteString
+testConfStorage = const $
+    showAsLazyByteString <$> readIORef storage_Conf_testReadConf
+ngxExportIOYY 'testConfStorage
+
 data ConfWithDelay = ConfWithDelay { delay :: TimeInterval
                                    , value :: Int
                                    } deriving (Read, Show)
@@ -45,7 +54,7 @@ ngxExportSimpleServiceTyped 'testReadConfWithDelay ''ConfWithDelay $
     PersistentService Nothing
 
 testReadJSON :: (FromJSON a, Show a) => a -> IO L.ByteString
-testReadJSON = return . C8L.pack . show
+testReadJSON = return . showAsLazyByteString
 
 data ConfJSON = ConfJSONCon1 Int
               | ConfJSONCon2 deriving (Generic, Show)
@@ -57,27 +66,27 @@ ngxExportSimpleServiceTypedAsJSON 'testReadConfJSON ''ConfJSON
     SingleShotService
 
 testReadIntHandler :: ByteString -> L.ByteString
-testReadIntHandler = C8L.pack . show .
+testReadIntHandler = showAsLazyByteString .
     (readFromByteString :: ByteString -> Maybe Int)
 ngxExportYY 'testReadIntHandler
 
 testReadConfHandler :: ByteString -> L.ByteString
-testReadConfHandler = C8L.pack . show .
+testReadConfHandler = showAsLazyByteString .
     (readFromByteString :: ByteString -> Maybe Conf)
 ngxExportYY 'testReadConfHandler
 
 testReadConfJSONHandler :: ByteString -> IO L.ByteString
-testReadConfJSONHandler = return . C8L.pack . show .
+testReadConfJSONHandler = return . showAsLazyByteString .
     (readFromByteStringAsJSON :: ByteString -> Maybe ConfJSON)
 ngxExportAsyncIOYY 'testReadConfJSONHandler
 
 testReadConfWithRPtrHandler :: ByteString -> L.ByteString
-testReadConfWithRPtrHandler = C8L.pack . show .
+testReadConfWithRPtrHandler = showAsLazyByteString .
     (readFromByteStringWithRPtr :: ByteString -> (Ptr (), Maybe Conf))
 ngxExportYY 'testReadConfWithRPtrHandler
 
 testReadConfWithRPtrJSONHandler :: ByteString -> L.ByteString
-testReadConfWithRPtrJSONHandler = C8L.pack . show .
+testReadConfWithRPtrJSONHandler = showAsLazyByteString .
     (readFromByteStringWithRPtrAsJSON :: ByteString -> (Ptr (), Maybe ConfJSON))
 ngxExportYY 'testReadConfWithRPtrJSONHandler
 

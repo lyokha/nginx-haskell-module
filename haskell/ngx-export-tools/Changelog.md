@@ -1,3 +1,9 @@
+### 0.3.1.0
+
+- Names of the storages for custom types now contain the name of the service
+  which makes it possible to use the same configuration type in multiple
+  services.
+
 ### 0.3.0.0
 
 - Added readers of custom types consuming the Nginx request pointer at first.
