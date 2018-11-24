@@ -523,7 +523,7 @@ ngxExportSimpleService' f c m = do
         (sNameC, typeC, isJSON) =
             if hasConf
                 then let c' = fromJust c
-                         tName = nameBase (fst c')
+                         tName = nameBase $ fst c'
                      in (mkName $ "storage_" ++ tName ++ '_' : nameF
                         ,conT $ mkName tName
                         ,snd c'
