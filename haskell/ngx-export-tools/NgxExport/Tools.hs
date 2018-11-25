@@ -585,7 +585,7 @@ ngxExportSimpleService' f c m = do
                                            |]
                                        )
                                        []
-                                  ]
+                                   ]
                       ,pragInlD sNameC NoInline FunLike AllPhases
                       ]
                  else []
