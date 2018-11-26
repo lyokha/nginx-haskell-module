@@ -22,7 +22,7 @@ ngxExportSimpleService 'test $
 showAsLazyByteString :: Show a => a -> L.ByteString
 showAsLazyByteString = C8L.pack . show
 
-testRead :: (Read a, Show a) => a -> IO L.ByteString
+testRead :: Show a => a -> IO L.ByteString
 testRead = return . showAsLazyByteString
 
 testReadInt :: Int -> Bool -> IO L.ByteString
@@ -53,15 +53,12 @@ testReadConfWithDelay c@ConfWithDelay {..} fstRun = do
 ngxExportSimpleServiceTyped 'testReadConfWithDelay ''ConfWithDelay $
     PersistentService Nothing
 
-testReadJSON :: (FromJSON a, Show a) => a -> IO L.ByteString
-testReadJSON = return . showAsLazyByteString
-
 data ConfJSON = ConfJSONCon1 Int
               | ConfJSONCon2 deriving (Generic, Show)
 instance FromJSON ConfJSON
 
 testReadConfJSON :: ConfJSON -> Bool -> IO L.ByteString
-testReadConfJSON = const . testReadJSON
+testReadConfJSON = const . testRead
 ngxExportSimpleServiceTypedAsJSON 'testReadConfJSON ''ConfJSON
     SingleShotService
 

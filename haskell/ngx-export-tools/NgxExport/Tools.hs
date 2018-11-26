@@ -358,7 +358,7 @@ skipRPtr = B.drop $ sizeOf (undefined :: Word)
 -- showAsLazyByteString :: Show a => a -> L.ByteString
 -- showAsLazyByteString = C8L.pack . show
 --
--- testRead :: (Read a, Show a) => a -> IO L.ByteString
+-- testRead :: Show a => a -> IO L.ByteString
 -- testRead = return . showAsLazyByteString
 --
 -- testReadInt :: Int -> Bool -> IO L.ByteString
@@ -389,15 +389,12 @@ skipRPtr = B.drop $ sizeOf (undefined :: Word)
 -- 'ngxExportSimpleServiceTyped' \'testReadConfWithDelay \'\'ConfWithDelay $
 --     'PersistentService' Nothing
 --
--- testReadJSON :: (FromJSON a, Show a) => a -> IO L.ByteString
--- testReadJSON = return . showAsLazyByteString
---
 -- data ConfJSON = ConfJSONCon1 Int
 --               | ConfJSONCon2 deriving (Generic, Show)
 -- instance FromJSON ConfJSON
 --
 -- testReadConfJSON :: ConfJSON -> Bool -> IO L.ByteString
--- __/testReadConfJSON/__ = const . testReadJSON
+-- __/testReadConfJSON/__ = const . testRead
 -- 'ngxExportSimpleServiceTypedAsJSON' \'testReadConfJSON \'\'ConfJSON
 --     'SingleShotService'
 -- @
