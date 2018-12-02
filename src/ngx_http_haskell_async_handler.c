@@ -694,7 +694,7 @@ ngx_http_haskell_run_async_handler(ngx_http_request_t *r,
                       "value of variable \"%V\" asynchronously: \"%V\"",
                       &cmvars[*index].name,
                       &async_data_elts[found_idx].result);
-        /* BEWARE: return value of the exception */
+        /* BEWARE: return the value of the exception */
     }
 
     v->len = async_data_elts[found_idx].result.data.len;
