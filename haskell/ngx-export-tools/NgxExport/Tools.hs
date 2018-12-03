@@ -393,8 +393,8 @@ skipRPtr = B.drop $ sizeOf (undefined :: Word)
 --               | ConfJSONCon2 deriving (Generic, Show)
 -- instance FromJSON ConfJSON
 --
--- testReadConfJSON :: ConfJSON -> Bool -> IO L.ByteString
--- __/testReadConfJSON/__ = const . testRead
+-- testReadConfJSON :: ConfJSON -> IO L.ByteString
+-- __/testReadConfJSON/__ = testRead
 -- 'ngxExportSimpleServiceTypedAsJSON' \'testReadConfJSON \'\'ConfJSON
 --     'SingleShotService'
 -- @
@@ -567,7 +567,7 @@ ngxExportSimpleService' f c m = do
                               threadDelaySec $ toSec $ Hr 1|]
                        ,[|\conf_data__ ->
                               if $(eFstRun)
-                                  then $(eF) (fromJust conf_data__) $(eFstRun)
+                                  then $(eF) $ fromJust conf_data__
                                   else return L.empty
                         |]
                        )
@@ -598,16 +598,38 @@ ngxExportSimpleService' f c m = do
         ,ngxExportServiceIOYY nameSsf
         ]
 
--- | Exports a simple service with specified name and service mode.
+-- | Exports a simple service of type
 --
--- The service expects a plain 'ByteString' object as its first argument.
+-- @
+-- 'ByteString' -> 'Prelude.Bool' -> 'IO' 'L.ByteString'
+-- @
+--
+-- or (when service mode is 'SingleShotService')
+--
+-- @
+-- 'ByteString' -> 'IO' 'L.ByteString'
+-- @
+--
+-- with specified name and service mode.
 ngxExportSimpleService :: Name         -- ^ Name of the service
                        -> ServiceMode  -- ^ Service mode
                        -> Q [Dec]
 ngxExportSimpleService f =
     ngxExportSimpleService' f Nothing
 
--- | Exports a simple service with specified name and service mode.
+-- | Exports a simple service of type
+--
+-- @
+-- 'Read' a => a -> 'Prelude.Bool' -> 'IO' 'L.ByteString'
+-- @
+--
+-- or (when service mode is 'SingleShotService')
+--
+-- @
+-- 'Read' a => a -> 'IO' 'L.ByteString'
+-- @
+--
+-- with specified name and service mode.
 --
 -- The service expects an object of a custom type deriving 'Read' as its
 -- first argument. For the sake of efficiency, this object gets deserialized
@@ -623,7 +645,19 @@ ngxExportSimpleServiceTyped :: Name         -- ^ Name of the service
 ngxExportSimpleServiceTyped f c =
     ngxExportSimpleService' f $ Just (c, False)
 
--- | Exports a simple service with specified name and service mode.
+-- | Exports a simple service of type
+--
+-- @
+-- 'FromJSON' a => a -> 'Prelude.Bool' -> 'IO' 'L.ByteString'
+-- @
+--
+-- or (when service mode is 'SingleShotService')
+--
+-- @
+-- 'FromJSON' a => a -> 'IO' 'L.ByteString'
+-- @
+--
+-- with specified name and service mode.
 --
 -- The service expects an object of a custom type deriving 'FromJSON' as its
 -- first argument. For the sake of efficiency, this object gets deserialized

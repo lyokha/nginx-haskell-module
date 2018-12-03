@@ -1,3 +1,8 @@
+### 0.3.2.0
+
+- Do not pass the *first-run* flag to simple services with the
+  *SingleShotService* sleeping strategy.
+
 ### 0.3.1.0
 
 - Names of the storages for custom types now contain the name of the service
