@@ -638,6 +638,9 @@ ngxExportSimpleService f =
 -- elsewhere by a name comprised of the name of the custom type and the name of
 -- the service connected by an underscore and prefixed as a whole word with
 -- __/storage_/__. The stored data is wrapped in 'Maybe' container.
+--
+-- When reading of the custom object fails on the first service run, the
+-- service terminates the worker process using 'terminateWorkerProcess'.
 ngxExportSimpleServiceTyped :: Name         -- ^ Name of the service
                             -> Name         -- ^ Name of the custom type
                             -> ServiceMode  -- ^ Service mode
@@ -666,6 +669,9 @@ ngxExportSimpleServiceTyped f c =
 -- elsewhere by a name comprised of the name of the custom type and the name of
 -- the service connected by an underscore and prefixed as a whole word with
 -- __/storage_/__. The stored data is wrapped in 'Maybe' container.
+--
+-- When reading of the custom object fails on the first service run, the
+-- service terminates the worker process using 'terminateWorkerProcess'.
 ngxExportSimpleServiceTypedAsJSON :: Name         -- ^ Name of the service
                                   -> Name         -- ^ Name of the custom type
                                   -> ServiceMode  -- ^ Service mode
