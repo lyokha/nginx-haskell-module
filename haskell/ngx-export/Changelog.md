@@ -1,3 +1,7 @@
+### 1.6.2
+
+- Added exception *TerminateWorkerProcess*.
+
 ### 1.6.1
 
 - Upgraded Cabal version constraint.

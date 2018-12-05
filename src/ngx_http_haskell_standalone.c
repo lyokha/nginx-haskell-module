@@ -367,6 +367,12 @@ ngx_string(
 "instance Show AUX_NGX_ServiceHookInterrupt where\n"
 "    show = const \"Service was interrupted by a service hook\"\n\n"
 
+"newtype TerminateWorkerProcess = TerminateWorkerProcess String\n\n"
+
+"instance AUX_NGX.Exception TerminateWorkerProcess\n"
+"instance Show TerminateWorkerProcess where\n"
+"    show (TerminateWorkerProcess s) = s\n\n"
+
 "aux_ngx_safeMallocBytes :: Int -> IO (AUX_NGX.Ptr a)\n"
 "aux_ngx_safeMallocBytes =\n"
 "    flip AUX_NGX.catchIOError (const $ return AUX_NGX.nullPtr) .\n"
@@ -499,7 +505,9 @@ ngx_string(
 "    return (AUX_NGX_BSLC8.pack $ show e,\n"
 "            (case AUX_NGX.fromException e of\n"
 "                Just AUX_NGX_ServiceHookInterrupt -> 2\n"
-"                _ -> 1\n"
+"                _ -> case AUX_NGX.fromException e of\n"
+"                    Just (TerminateWorkerProcess _) -> 3\n"
+"                    _ -> 1\n"
 "            ,case AUX_NGX.asyncExceptionFromException e of\n"
 "                Just AUX_NGX.ThreadKilled -> True\n"
 "                _ -> False\n"

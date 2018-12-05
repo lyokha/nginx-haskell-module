@@ -47,6 +47,8 @@ module NgxExport (
                  ,ngxCyclePtr
                  ,ngxUpstreamMainConfPtr
                  ,ngxCachedTimePtr
+    -- * Exception /TerminateWorkerProcess/
+                 ,TerminateWorkerProcess (..)
     -- * Re-exported data constructors from /Foreign.C/
     -- | Re-exports are needed by exporters for marshalling in foreign calls.
                  ,Foreign.C.CInt (..)
@@ -480,6 +482,21 @@ instance Exception ServiceHookInterrupt
 instance Show ServiceHookInterrupt where
     show = const "Service was interrupted by a service hook"
 
+-- | Terminates the worker process.
+--
+-- Being thrown from a service when it runs for the first time, this exception
+-- makes Nginx log its message and terminate the worker process without
+-- respawning. This can be useful when the service is unable to read its
+-- configuration from the Nginx configuration script or to perform an important
+-- initialization action.
+--
+-- @since 1.6.2
+newtype TerminateWorkerProcess = TerminateWorkerProcess String
+
+instance Exception TerminateWorkerProcess
+instance Show TerminateWorkerProcess where
+    show (TerminateWorkerProcess s) = s
+
 safeMallocBytes :: Int -> IO (Ptr a)
 safeMallocBytes =
     flip catchIOError (const $ return nullPtr) . mallocBytes
@@ -584,7 +601,9 @@ safeYYHandler = handle $ \e ->
     return (C8L.pack $ show e,
             (case fromException e of
                 Just ServiceHookInterrupt -> 2
-                _ -> 1
+                _ -> case fromException e of
+                    Just (TerminateWorkerProcess _) -> 3
+                    _ -> 1
             ,case asyncExceptionFromException e of
                 Just ThreadKilled -> True
                 _ -> False
