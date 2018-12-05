@@ -62,6 +62,7 @@ import           Data.Maybe
 import           Data.Aeson
 import           Control.Monad
 import           Control.Arrow
+import           Control.Exception
 import           Control.Concurrent
 import           GHC.Generics
 import           System.IO.Unsafe (unsafePerformIO)
@@ -517,28 +518,30 @@ ngxExportSimpleService' f c m = do
     let nameF = nameBase f
         nameSsf = mkName $ "simpleService_" ++ nameF
         hasConf = isJust c
-        (sNameC, typeC, isJSON) =
+        (sNameC, typeC, readConf, unreadableConfMsg) =
             if hasConf
                 then let c' = fromJust c
                          tName = nameBase $ fst c'
                      in (mkName $ "storage_" ++ tName ++ '_' : nameF
                         ,conT $ mkName tName
-                        ,snd c'
+                        ,if snd c'
+                             then [|readFromByteStringAsJSON|]
+                             else [|readFromByteString|]
+                        ,[|"Configuration " ++ tName ++ " is not readable"|]
                         )
                 else undefined
         initConf =
             let eConfBs = varE confBs
             in if hasConf
                    then let storage = varE sNameC
-                            readConf = if isJSON
-                                           then [|readFromByteStringAsJSON|]
-                                           else [|readFromByteString|]
                         in [|readIORef $(storage) >>=
                                  maybe (do
                                             let conf_data__ =
                                                     $(readConf) $(eConfBs)
-                                            when (isNothing conf_data__)
-                                                terminateWorkerProcess
+                                            when (isNothing conf_data__) $
+                                                throwIO $
+                                                    TerminateWorkerProcess
+                                                        $(unreadableConfMsg)
                                             writeIORef $(storage) conf_data__
                                             return conf_data__
                                        ) (return . Just)
@@ -640,7 +643,8 @@ ngxExportSimpleService f =
 -- __/storage_/__. The stored data is wrapped in 'Maybe' container.
 --
 -- When reading of the custom object fails on the first service run, the
--- service terminates the worker process using 'terminateWorkerProcess'.
+-- service terminates the worker process by throwing an exception
+-- 'TerminateWorkerProcess' with a corresponding message.
 ngxExportSimpleServiceTyped :: Name         -- ^ Name of the service
                             -> Name         -- ^ Name of the custom type
                             -> ServiceMode  -- ^ Service mode
@@ -671,7 +675,8 @@ ngxExportSimpleServiceTyped f c =
 -- __/storage_/__. The stored data is wrapped in 'Maybe' container.
 --
 -- When reading of the custom object fails on the first service run, the
--- service terminates the worker process using 'terminateWorkerProcess'.
+-- service terminates the worker process by throwing an exception
+-- 'TerminateWorkerProcess' with a corresponding message.
 ngxExportSimpleServiceTypedAsJSON :: Name         -- ^ Name of the service
                                   -> Name         -- ^ Name of the custom type
                                   -> ServiceMode  -- ^ Service mode

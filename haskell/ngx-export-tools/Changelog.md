@@ -1,3 +1,10 @@
+### 0.3.3.0
+
+- In case of unreadable configuration, terminate the worker process by throwing
+  exception *TerminateWorkerProcess* which makes Nginx log the supplied message
+  and exit. To use this exception, the constraint on the version of the package
+  *ngx-export* was increased.
+
 ### 0.3.2.0
 
 - Do not pass the *first-run* flag to simple services with the
