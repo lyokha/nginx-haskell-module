@@ -484,14 +484,15 @@ instance Show ServiceHookInterrupt where
 
 -- | Terminates the worker process.
 --
--- Being thrown from a service when it runs for the first time, this exception
--- makes Nginx log its message and terminate the worker process without
--- respawning. This can be useful when the service is unable to read its
--- configuration from the Nginx configuration script or to perform an important
--- initialization action.
+-- Being thrown from a service when that runs for the first time, this
+-- exception makes Nginx log the supplied message and terminate the worker
+-- process without respawning. This can be useful when the service is unable
+-- to read its configuration from the Nginx configuration script or to perform
+-- an important initialization action.
 --
 -- @since 1.6.2
-newtype TerminateWorkerProcess = TerminateWorkerProcess String
+newtype TerminateWorkerProcess =
+    TerminateWorkerProcess String  -- ^ Contains the message to log
 
 instance Exception TerminateWorkerProcess
 instance Show TerminateWorkerProcess where

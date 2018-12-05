@@ -1,6 +1,7 @@
 ### 1.6.2
 
-- Added exception *TerminateWorkerProcess*.
+- Added exception *TerminateWorkerProcess* that can be used for a little bit
+  more graceful termination of the worker process than bare exit(2).
 
 ### 1.6.1
 
