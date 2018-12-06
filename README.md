@@ -1922,9 +1922,9 @@ function sends asynchronous exception *ThreadKilled* to a corresponding haskell
 async thread and waits until it exits. This means that an nginx worker may block
 if the service thread is blocked on *unsafe* blocking foreign function (see also
 [the next section](#some-facts-about-foreign-functions-that-may-block)), or it
-catches *ThreadKilled* with other exceptions and re-iterates some internal loop,
-or it is masked from asynchronous exceptions. Imagine the following sketch of a
-service.
+catches *ThreadKilled* with other exceptions and re-iterates some internal
+loop<sup>[1](#fntk1)</sup>, or it is masked from asynchronous exceptions.
+Imagine the following sketch of a service.
 
 ```haskell
 serviceWithALoop _ = const go
@@ -1981,7 +1981,7 @@ Now when *any* exception gets caught, the service waits *1* second and re-throws
 it without re-iteration of *go*. The exception will be caught inside the service
 wrapper code and even kindly reported in nginx log! But we can still do better!
 *ThreadKilled* can be used to perform service cleanup and persistency actions
-such as saving data on a disk etc.
+such as saving data on a disk<sup>[2](#fntk2)</sup>.
 
 ```haskell
 serviceWithALoop _ = const go
@@ -2002,6 +2002,14 @@ serviceWithALoop _ = const go
           waitAndThrow e = threadDelaySec 1 >> throwIO e
 ngxExportServiceIOYY 'serviceWithALoop
 ```
+
+<br><hr><a name="fntk1"><sup>**1**</sup></a>&nbsp; Services with internal loops
+of unpredictable depth is a bad solution *per se* because they may leak space
+while tracking exceptions on the top level.
+
+<br><hr><a name="fntk2"><sup>**2**</sup></a>&nbsp; For allocation / deallocation
+flow, the *single-shot services* from the
+[ngx-export-tools](haskell/ngx-export-tools/) is a much better solution.
 
 Some facts about foreign functions that may block
 -------------------------------------------------
