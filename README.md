@@ -2007,9 +2007,9 @@ ngxExportServiceIOYY 'serviceWithALoop
 of unpredictable depth is a bad solution *per se* because they may leak space
 while tracking exceptions on the top level.
 
-<a name="fntk2"><sup>**2**</sup></a>&nbsp; For allocation / deallocation flow,
-the *single-shot services* from the
-[ngx-export-tools](haskell/ngx-export-tools/) is a much better solution.
+<a name="fntk2"><sup>**2**</sup></a>&nbsp; For initialization / cleanup flow,
+*single-shot services* from [ngx-export-tools](haskell/ngx-export-tools/) is a
+better solution.
 
 Some facts about foreign functions that may block
 -------------------------------------------------

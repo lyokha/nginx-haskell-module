@@ -1,8 +1,8 @@
 ### 0.3.4.0
 
 - Now services with *SingleShotService* strategy run exactly two times during
-  the lifetime of a worker process: this lets using them in allocation /
-  deallocation flow. Accordingly, the *first-run* flag is passed to them again.
+  the lifetime of a worker process: this lets using them in initialization /
+  cleanup flow. Accordingly, the *first-run* flag is passed to them again.
   See details in updated docs.
 
 ### 0.3.3.0
