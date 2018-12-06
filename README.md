@@ -1770,7 +1770,7 @@ Now we can extract the list of all dependencies in a variable, say *DEPS*.
 $ DEPS=$(ldd libtmp.so | sed -r '/^\s*libHS/!d; s/^\s*libHS//; /^(rts|base|ngx-export|template-haskell)-/d; s/^(\S+)-([0-9]+\.){2,}.*/\1/')
 ```
 
-<br><a name="fn2"><sup>**2**</sup></a>&nbsp; When using the newer *ghc 8.0.1*,
+<a name="fn2"><sup>**2**</sup></a>&nbsp; When using the newer *ghc 8.0.1*,
 *cabal configure* may require an additional option *``--ipid=$(ghc-pkg field
 base id | head -1 | cut -d' ' -f2)``*. This also refers to building other
 dependent libraries and *ngx-export*. Values of *ipid* must be extracted from
@@ -2007,8 +2007,8 @@ ngxExportServiceIOYY 'serviceWithALoop
 of unpredictable depth is a bad solution *per se* because they may leak space
 while tracking exceptions on the top level.
 
-<br><a name="fntk2"><sup>**2**</sup></a>&nbsp; For allocation / deallocation
-flow, the *single-shot services* from the
+<a name="fntk2"><sup>**2**</sup></a>&nbsp; For allocation / deallocation flow,
+the *single-shot services* from the
 [ngx-export-tools](haskell/ngx-export-tools/) is a much better solution.
 
 Some facts about foreign functions that may block
