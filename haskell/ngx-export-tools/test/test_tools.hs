@@ -57,8 +57,9 @@ data ConfJSON = ConfJSONCon1 Int
               | ConfJSONCon2 deriving (Generic, Show)
 instance FromJSON ConfJSON
 
-testReadConfJSON :: ConfJSON -> IO L.ByteString
-testReadConfJSON = testRead
+testReadConfJSON :: ConfJSON -> Bool -> IO L.ByteString
+testReadConfJSON c True = testRead c   -- allocate resources, configure
+testReadConfJSON _ _ = return L.empty  -- cleanup resources, do nothing
 ngxExportSimpleServiceTypedAsJSON 'testReadConfJSON ''ConfJSON
     SingleShotService
 

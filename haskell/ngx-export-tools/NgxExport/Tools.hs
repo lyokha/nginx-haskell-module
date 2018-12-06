@@ -1,5 +1,6 @@
 {-# LANGUAGE TemplateHaskell, ForeignFunctionInterface, TypeFamilies #-}
-{-# LANGUAGE EmptyDataDecls, DeriveGeneric, DeriveLift, NumDecimals #-}
+{-# LANGUAGE EmptyDataDecls, DeriveGeneric, DeriveLift #-}
+{-# LANGUAGE LambdaCase, NumDecimals #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -394,8 +395,9 @@ skipRPtr = B.drop $ sizeOf (undefined :: Word)
 --               | ConfJSONCon2 deriving (Generic, Show)
 -- instance FromJSON ConfJSON
 --
--- testReadConfJSON :: ConfJSON -> IO L.ByteString
--- __/testReadConfJSON/__ = testRead
+-- testReadConfJSON :: ConfJSON -> Bool -> IO L.ByteString
+-- __/testReadConfJSON/__ c True = testRead c   -- allocate resources, configure
+-- testReadConfJSON _ _ = return L.empty  -- cleanup resources, do nothing
 -- 'ngxExportSimpleServiceTypedAsJSON' \'testReadConfJSON \'\'ConfJSON
 --     'SingleShotService'
 -- @
@@ -416,12 +418,16 @@ skipRPtr = B.drop $ sizeOf (undefined :: Word)
 -- * No sleeps between iterations (@'PersistentService' Nothing@)
 -- * /Single-shot/ services (@'SingleShotService'@)
 --
--- In this toy example the most efficient sleeping strategy is a single-shot
--- service because data is not altered during runtime. Under the hood, the
--- single-shot strategy is implemented as periodical sleeps (with period of
--- @'Hr' 1@), except it runs the handler only on the first iteration, while
--- afterwards it merely returns empty values: as such, this strategy should be
--- accompanied by Nginx directive __/haskell_service_var_ignore_empty/__.
+-- In this toy example, the most efficient sleeping strategy is a single-shot
+-- service because data is not altered during runtime. A single-shot service
+-- runs exactly two times during the lifetime of a worker process: the first
+-- run (when the second argument of the service is /True/) is immediately
+-- followed by the second run (when the second argument of the service is
+-- /False/). On the second run the service handler is used as an exception
+-- handler when the service is shutting down after the 'ThreadKilled' exception
+-- thrown. Accordingly, a single-shot handler can be used for allocation of
+-- some global resources (when the /first-run/ flag is /True/), and cleaning
+-- them up (when the /first-run/ flag is /False/).
 --
 -- Notice that service /testReadConfWithDelay/ manages time delays on its own,
 -- therefore it uses /no-sleeps/ strategy @'PersistentService' Nothing@.
@@ -462,8 +468,6 @@ skipRPtr = B.drop $ sizeOf (undefined :: Word)
 --             $hs_testReadConfJSON
 --             \'{\"tag\":\"ConfJSONCon1\", \"contents\":56}\';
 --
---     haskell_service_var_ignore_empty $hs_testReadConfJSON;
---
 --     server {
 --         listen       8010;
 --         server_name  main;
@@ -502,9 +506,6 @@ skipRPtr = B.drop $ sizeOf (undefined :: Word)
 -- >   hs_testConfStorage: Just (Conf 20)
 
 -- | Defines a sleeping strategy.
---
--- Single-shot services should be accompanied by Nginx directive
--- __/haskell_service_var_ignore_empty/__.
 data ServiceMode
     -- | Persistent service (with or without periodical sleeps)
     = PersistentService (Maybe TimeInterval)
@@ -566,11 +567,17 @@ ngxExportSimpleService' f c m = do
                         |]
                        )
                    SingleShotService ->
-                       ([|unless $(eFstRun) $
-                              threadDelaySec $ toSec $ Hr 1|]
+                       ([|unless $(eFstRun) $ handle
+                              (\case 
+                                   ThreadKilled -> do
+                                       conf_data__ <- $(initConf)
+                                       void $ $(eF) (fromJust conf_data__) False
+                                   _ -> return ()
+                              ) $ forever $ threadDelaySec $ toSec $ Hr 24
+                        |]
                        ,[|\conf_data__ ->
                               if $(eFstRun)
-                                  then $(eF) $ fromJust conf_data__
+                                  then $(eF) (fromJust conf_data__) True
                                   else return L.empty
                         |]
                        )
@@ -607,12 +614,6 @@ ngxExportSimpleService' f c m = do
 -- 'ByteString' -> 'Prelude.Bool' -> 'IO' 'L.ByteString'
 -- @
 --
--- or (when service mode is 'SingleShotService')
---
--- @
--- 'ByteString' -> 'IO' 'L.ByteString'
--- @
---
 -- with specified name and service mode.
 ngxExportSimpleService :: Name         -- ^ Name of the service
                        -> ServiceMode  -- ^ Service mode
@@ -624,12 +625,6 @@ ngxExportSimpleService f =
 --
 -- @
 -- 'Read' a => a -> 'Prelude.Bool' -> 'IO' 'L.ByteString'
--- @
---
--- or (when service mode is 'SingleShotService')
---
--- @
--- 'Read' a => a -> 'IO' 'L.ByteString'
 -- @
 --
 -- with specified name and service mode.
@@ -656,12 +651,6 @@ ngxExportSimpleServiceTyped f c =
 --
 -- @
 -- 'FromJSON' a => a -> 'Prelude.Bool' -> 'IO' 'L.ByteString'
--- @
---
--- or (when service mode is 'SingleShotService')
---
--- @
--- 'FromJSON' a => a -> 'IO' 'L.ByteString'
 -- @
 --
 -- with specified name and service mode.

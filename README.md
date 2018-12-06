@@ -1919,8 +1919,8 @@ Termination of nginx worker and asynchronous exception ThreadKilled
 When an nginx worker terminates, it calls function *cancelWith* from package
 *async* with argument *ThreadKilled* for all asynchronous services. This
 function sends asynchronous exception *ThreadKilled* to a corresponding haskell
-async thread and waits until it exits. This means that nginx worker may block if
-the service thread is blocked on *unsafe* blocking foreign function (see also
+async thread and waits until it exits. This means that an nginx worker may block
+if the service thread is blocked on *unsafe* blocking foreign function (see also
 [the next section](#some-facts-about-foreign-functions-that-may-block)), or it
 catches *ThreadKilled* with other exceptions and re-iterates some internal loop,
 or it is masked from asynchronous exceptions. Imagine the following sketch of a
