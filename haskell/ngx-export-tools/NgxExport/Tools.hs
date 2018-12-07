@@ -40,6 +40,11 @@ module NgxExport.Tools (
                        ,ngxExportSimpleService
                        ,ngxExportSimpleServiceTyped
                        ,ngxExportSimpleServiceTypedAsJSON
+    -- * Split services
+    -- $splitServices
+                       ,splitService
+                       ,ignitionService
+                       ,deferredService
     -- * Re-exported data constructors from /Foreign.C/
     -- | Re-exports are needed by exporters for marshalling in foreign calls.
                        ,Foreign.C.Types.CInt (..)
@@ -396,8 +401,7 @@ skipRPtr = B.drop $ sizeOf (undefined :: Word)
 -- instance FromJSON ConfJSON
 --
 -- testReadConfJSON :: ConfJSON -> Bool -> IO L.ByteString
--- __/testReadConfJSON/__ c True = testRead c   -- allocate resources, configure
--- testReadConfJSON _ _ = return L.empty  -- cleanup resources, do nothing
+-- __/testReadConfJSON/__ = 'ignitionService' testRead
 -- 'ngxExportSimpleServiceTypedAsJSON' \'testReadConfJSON \'\'ConfJSON
 --     'SingleShotService'
 -- @
@@ -418,16 +422,16 @@ skipRPtr = B.drop $ sizeOf (undefined :: Word)
 -- * No sleeps between iterations (@'PersistentService' Nothing@)
 -- * /Single-shot/ services (@'SingleShotService'@)
 --
--- In this toy example, the most efficient sleeping strategy is a single-shot
+-- In this toy example the most efficient sleeping strategy is a single-shot
 -- service because data is not altered during runtime. A single-shot service
 -- runs exactly two times during the lifetime of a worker process: the first
--- run (when the second argument of the service is /True/) is immediately
--- followed by the second run (when the second argument of the service is
--- /False/). On the second run the service handler is used as an exception
--- handler when the service is shutting down after the 'ThreadKilled' exception
--- thrown. Accordingly, a single-shot handler can be used for allocation of
--- some global resources (when the /first-run/ flag is /True/), and cleaning
--- them up (when the /first-run/ flag is /False/).
+-- run (when the second argument of the service, i.e. the /first-run/ flag, is
+-- /True/) is immediately followed by the second run (when the the /first-run/
+-- flag is /False/). On the second run the service handler is used as an
+-- exception handler when the service is shutting down after the 'ThreadKilled'
+-- exception thrown. Accordingly, a single-shot handler can be used for
+-- allocation of some global resources (when the first-run flag is /True/), and
+-- cleaning them up (when the first-run flag is /False/).
 --
 -- Notice that service /testReadConfWithDelay/ manages time delays on its own,
 -- therefore it uses /no-sleeps/ strategy @'PersistentService' Nothing@.
@@ -672,4 +676,49 @@ ngxExportSimpleServiceTypedAsJSON :: Name         -- ^ Name of the service
                                   -> Q [Dec]
 ngxExportSimpleServiceTypedAsJSON f c =
     ngxExportSimpleService' f $ Just (c, True)
+
+-- $splitServices
+--
+-- Here are a number of combinators to facilitate creation of specialized
+-- services. They allow distinguishing between /ignition/ and /deferred/
+-- services: the former run when the /first-run/ flag is /True/ whereas the
+-- latter run when the flag is /False/. The most promising use case for these
+-- helper functions is tuning of /single-shot/ services: in this case the
+-- ignition service corresponds to a normal single-shot action on startup of a
+-- worker process, while the deferred service corresponds to a cleanup handler
+-- and runs when a worker process exits.
+--
+-- In all helpers, configuration and the first-run flag parameters belong to
+-- the common service signature, and therefore should not be bound by any
+-- arguments.
+
+-- | Sets two different actions as ignition and deferred services.
+--
+-- When used as a single-shot service, the second action only runs on exit of a
+-- worker process, and therefore can be used as a cleanup handler.
+splitService :: (a -> IO L.ByteString)  -- ^ Ignition service
+             -> (a -> IO L.ByteString)  -- ^ Deferred service
+             -> a                       -- ^ Configuration
+             -> Bool                    -- ^ First-run flag
+             -> IO L.ByteString
+splitService is ds c fstRun
+    | fstRun = is c
+    | otherwise = ds c
+
+-- | Sets an action as an ignition service.
+ignitionService :: (a -> IO L.ByteString)  -- ^ Ignition service
+                -> a                       -- ^ Configuration
+                -> Bool                    -- ^ First-run flag
+                -> IO L.ByteString
+ignitionService is = splitService is $ const $ return L.empty
+
+-- | Sets an action as a deferred service.
+--
+-- When used as a single-shot service, the action only runs on exit of a worker
+-- process, and therefore can be used as a cleanup handler.
+deferredService :: (a -> IO L.ByteString)  -- ^ Deferred service
+                -> a                       -- ^ Configuration
+                -> Bool                    -- ^ First-run flag
+                -> IO L.ByteString
+deferredService = splitService $ const $ return L.empty
 

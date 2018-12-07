@@ -1,9 +1,10 @@
-### 0.3.4.0
+### 0.4.0.0
 
 - Now services with *SingleShotService* strategy run exactly two times during
   the lifetime of a worker process: this lets using them in initialization /
   cleanup flow. Accordingly, the *first-run* flag is passed to them again.
-  See details in updated docs.
+- Added a number of combinators to facilitate creation of specialized services.
+  They allow distinguishing between *ignition* and *deferred* services.
 
 ### 0.3.3.0
 
