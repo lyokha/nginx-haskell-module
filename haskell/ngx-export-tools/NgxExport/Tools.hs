@@ -572,7 +572,7 @@ ngxExportSimpleService' f c m = do
                        )
                    SingleShotService ->
                        ([|unless $(eFstRun) $ handle
-                              (\case 
+                              (\case
                                    ThreadKilled -> do
                                        conf_data__ <- $(initConf)
                                        void $ $(eF) (fromJust conf_data__) False
