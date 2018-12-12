@@ -164,8 +164,7 @@ instance FromByteString ByteString where
 --
 -- Below is a toy example.
 --
--- File __/test_tools.hs/__.
---
+-- ==== File /test_tools.hs/
 -- @
 -- {-\# LANGUAGE TemplateHaskell, DeriveGeneric \#-}
 --
@@ -221,8 +220,7 @@ instance FromByteString ByteString where
 -- /testReadConfWithRPtrHandler/, and /testReadConfWithRPtrJSONHandler/. Four
 -- of them are /synchronous/ and one is /asynchronous/ for the sake of variety.
 --
--- File __/nginx.conf/__.
---
+-- ==== File /nginx.conf/
 -- @
 -- user                    nobody;
 -- worker_processes        2;
@@ -277,8 +275,7 @@ instance FromByteString ByteString where
 -- }
 -- @
 --
--- Let's run a simple test.
---
+-- ==== A simple test
 -- > $ curl 'http://localhost:8010/'
 -- > Handler variables:
 -- >   hs_testReadIntHandler: Just (-456)
@@ -339,8 +336,7 @@ skipRPtr = B.drop $ sizeOf (undefined :: Word)
 --
 -- Below is a toy example.
 --
--- File __/test_tools.hs/__.
---
+-- ==== File /test_tools.hs/
 -- @
 -- {-\# LANGUAGE TemplateHaskell, DeriveGeneric, RecordWildCards \#-}
 --
@@ -436,8 +432,7 @@ skipRPtr = B.drop $ sizeOf (undefined :: Word)
 -- Notice that service /testReadConfWithDelay/ manages time delays on its own,
 -- therefore it uses /no-sleeps/ strategy @'PersistentService' Nothing@.
 --
--- File __/nginx.conf/__.
---
+-- ==== File /nginx.conf/
 -- @
 -- user                    nobody;
 -- worker_processes        2;
@@ -497,8 +492,7 @@ skipRPtr = B.drop $ sizeOf (undefined :: Word)
 -- Notice that Haskel handlers defined in /test_tools.hs/ are referred from
 -- the Nginx configuration file with prefix __/simpleService_/__.
 --
--- Let's run a simple test.
---
+-- ==== A simple test
 -- > $ curl 'http://localhost:8010/'
 -- > Service variables:
 -- >   hs_test: test
