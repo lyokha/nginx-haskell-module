@@ -556,19 +556,19 @@ ngxExportSimpleService' f c m = do
                    PersistentService i ->
                        (if isJust i
                             then let t = fromJust i
-                                 in [|unless $(eFstRun) $
+                                 in [|const $ unless $(eFstRun) $
                                           threadDelaySec $ toSec t
                                     |]
-                            else [|return ()|]
+                            else [|const $ return ()|]
                        ,[|\conf_data__ ->
                               $(eF) (fromJust conf_data__) $(eFstRun)
                         |]
                        )
                    SingleShotService ->
-                       ([|unless $(eFstRun) $ handle
+                       ([|\fInitConf__ -> unless $(eFstRun) $ handle
                               (\case
                                    ThreadKilled -> do
-                                       conf_data__ <- $(initConf)
+                                       conf_data__ <- fInitConf__
                                        void $ $(eF) (fromJust conf_data__) False
                                    _ -> return ()
                               ) $ forever $ threadDelaySec $ toSec $ Hr 24
@@ -599,7 +599,11 @@ ngxExportSimpleService' f c m = do
             [sigD nameSsf [t|ByteString -> Bool -> IO L.ByteString|]
             ,funD nameSsf
                 [clause [varP confBs, varP fstRun]
-                    (normalB [|$(waitTime) >> $(initConf) >>= $(runService)|])
+                    (normalB [|do
+                                   let fInitConf_ = $(initConf)
+                                   $(waitTime) fInitConf_
+                                   fInitConf_ >>= $(runService)
+                             |])
                     []
                 ]
             ]
