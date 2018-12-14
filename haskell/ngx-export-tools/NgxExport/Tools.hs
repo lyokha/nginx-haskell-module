@@ -534,16 +534,17 @@ ngxExportSimpleService' f c m = do
             in if hasConf
                    then let storage = varE sNameC
                         in [|readIORef $(storage) >>=
-                                 maybe (do
-                                            let conf_data__ =
-                                                    $(readConf) $(eConfBs)
-                                            when (isNothing conf_data__) $
-                                                throwIO $
-                                                    TerminateWorkerProcess
-                                                        $(unreadableConfMsg)
-                                            writeIORef $(storage) conf_data__
-                                            return conf_data__
-                                       ) (return . Just)
+                                 maybe
+                                     (do
+                                          let conf_data__ =
+                                                  $(readConf) $(eConfBs)
+                                          when (isNothing conf_data__) $
+                                              throwIO $
+                                                  TerminateWorkerProcess
+                                                      $(unreadableConfMsg)
+                                          writeIORef $(storage) conf_data__
+                                          return conf_data__
+                                     ) (return . Just)
                            |]
                    else [|return $
                               fromByteString (Nothing :: Maybe ByteString)
@@ -556,26 +557,25 @@ ngxExportSimpleService' f c m = do
                    PersistentService i ->
                        (if isJust i
                             then let t = fromJust i
-                                 in [|const $ unless $(eFstRun) $
-                                          threadDelaySec $ toSec t
+                                 in [|const $
+                                          unless $(eFstRun) $
+                                              threadDelaySec $ toSec t
                                     |]
                             else [|const $ return ()|]
-                       ,[|\conf_data__ ->
-                              $(eF) (fromJust conf_data__) $(eFstRun)
-                        |]
+                       ,[|\conf_data__ -> $(eF) conf_data__ $(eFstRun)|]
                        )
                    SingleShotService ->
-                       ([|\fInitConf__ -> unless $(eFstRun) $ handle
-                              (\case
-                                   ThreadKilled -> do
-                                       conf_data__ <- fInitConf__
-                                       void $ $(eF) (fromJust conf_data__) False
-                                   _ -> return ()
-                              ) $ forever $ threadDelaySec $ toSec $ Hr 24
+                       ([|\conf_data__ -> unless $(eFstRun) $
+                              handle
+                                  (\case
+                                       ThreadKilled -> void $
+                                           $(eF) conf_data__ False
+                                       _ -> return ()
+                                  ) $ forever $ threadDelaySec $ toSec $ Hr 24
                         |]
                        ,[|\conf_data__ ->
                               if $(eFstRun)
-                                  then $(eF) (fromJust conf_data__) True
+                                  then $(eF) conf_data__ True
                                   else return L.empty
                         |]
                        )
@@ -600,9 +600,9 @@ ngxExportSimpleService' f c m = do
             ,funD nameSsf
                 [clause [varP confBs, varP fstRun]
                     (normalB [|do
-                                   let fInitConf_ = $(initConf)
-                                   $(waitTime) fInitConf_
-                                   fInitConf_ >>= $(runService)
+                                   conf_data_ <- fromJust <$> $(initConf)
+                                   $(waitTime) conf_data_
+                                   $(runService) conf_data_
                              |])
                     []
                 ]

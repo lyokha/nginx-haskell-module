@@ -1,3 +1,7 @@
+### 0.4.1.0
+
+- Improvements in code generation of simple services.
+
 ### 0.4.0.0
 
 - Now services with *SingleShotService* strategy run exactly two times during
