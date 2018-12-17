@@ -155,25 +155,27 @@ instance FromByteString ByteString where
 --
 -- There are a number of functions to support /typed/ exchange between Nginx
 -- and Haskell handlers. Functions 'readFromByteString' and
--- 'readFromByteStringAsJSON' expect values of custom types deriving from
--- 'Read' and 'FromJSON' respectively. Functions 'readFromByteStringWithRPtr'
--- and 'readFromByteStringWithRPtrAsJSON' additionally expect a binary value
--- of a C pointer size marshalled at the beginning of their arguments before
--- the value of the custom type. This pointer should correspond to the value
+-- 'readFromByteStringAsJSON' expect serialized values of custom types deriving
+-- from 'Read' and 'FromJSON' respectively. Functions
+-- 'readFromByteStringWithRPtr' and 'readFromByteStringWithRPtrAsJSON'
+-- additionally expect a binary value of a C pointer size marshalled in front
+-- of the value of the custom type. This pointer should correspond to the value
 -- of Nginx variable __/$_r_ptr/__.
 --
 -- Below is a toy example.
 --
 -- ==== File /test_tools.hs/
 -- @
+-- {-\# OPTIONS_GHC -Wno-partial-type-signatures \#-}
+--
 -- {-\# LANGUAGE TemplateHaskell, DeriveGeneric \#-}
+-- {-\# LANGUAGE PartialTypeSignatures, NamedWildCards \#-}
 --
 -- module TestTools where
 --
 -- import           NgxExport
 -- import           NgxExport.Tools
 --
--- import           Foreign.Ptr
 -- import           Data.ByteString (ByteString)
 -- import qualified Data.ByteString.Lazy as L
 -- import qualified Data.ByteString.Lazy.Char8 as C8L
@@ -191,27 +193,27 @@ instance FromByteString ByteString where
 --
 -- testReadIntHandler :: ByteString -> L.ByteString
 -- __/testReadIntHandler/__ = showAsLazyByteString .
---     (readFromByteString :: ByteString -> Maybe Int)
+--     ('readFromByteString' :: _s -> Maybe Int)
 -- 'ngxExportYY' \'testReadIntHandler
 --
 -- testReadConfHandler :: ByteString -> L.ByteString
 -- __/testReadConfHandler/__ = showAsLazyByteString .
---     (readFromByteString :: ByteString -> Maybe Conf)
+--     ('readFromByteString' :: _s -> Maybe Conf)
 -- 'ngxExportYY' \'testReadConfHandler
 --
 -- testReadConfJSONHandler :: ByteString -> IO L.ByteString
 -- __/testReadConfJSONHandler/__ = return . showAsLazyByteString .
---     (readFromByteStringAsJSON :: ByteString -> Maybe ConfJSON)
+--     ('readFromByteStringAsJSON' :: _s -> Maybe ConfJSON)
 -- 'ngxExportAsyncIOYY' \'testReadConfJSONHandler
 --
 -- testReadConfWithRPtrHandler :: ByteString -> L.ByteString
 -- __/testReadConfWithRPtrHandler/__ = showAsLazyByteString .
---     (readFromByteStringWithRPtr :: ByteString -> (Ptr (), Maybe Conf))
+--     ('readFromByteStringWithRPtr' :: _s -> (_p, Maybe Conf))
 -- 'ngxExportYY' \'testReadConfWithRPtrHandler
 --
 -- testReadConfWithRPtrJSONHandler :: ByteString -> L.ByteString
 -- __/testReadConfWithRPtrJSONHandler/__ = showAsLazyByteString .
---     (readFromByteStringWithRPtrAsJSON :: ByteString -> (Ptr (), Maybe ConfJSON))
+--     ('readFromByteStringWithRPtrAsJSON' :: _s -> (_p, Maybe ConfJSON))
 -- 'ngxExportYY' \'testReadConfWithRPtrJSONHandler
 -- @
 --

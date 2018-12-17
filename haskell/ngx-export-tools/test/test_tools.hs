@@ -1,11 +1,13 @@
+{-# OPTIONS_GHC -Wno-partial-type-signatures #-}
+
 {-# LANGUAGE TemplateHaskell, DeriveGeneric, RecordWildCards #-}
+{-# LANGUAGE PartialTypeSignatures, NamedWildCards #-}
 
 module TestTools where
 
 import           NgxExport
 import           NgxExport.Tools
 
-import           Foreign.Ptr
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Lazy.Char8 as C8L
@@ -64,26 +66,26 @@ ngxExportSimpleServiceTypedAsJSON 'testReadConfJSON ''ConfJSON
 
 testReadIntHandler :: ByteString -> L.ByteString
 testReadIntHandler = showAsLazyByteString .
-    (readFromByteString :: ByteString -> Maybe Int)
+    (readFromByteString :: _s -> Maybe Int)
 ngxExportYY 'testReadIntHandler
 
 testReadConfHandler :: ByteString -> L.ByteString
 testReadConfHandler = showAsLazyByteString .
-    (readFromByteString :: ByteString -> Maybe Conf)
+    (readFromByteString :: _s -> Maybe Conf)
 ngxExportYY 'testReadConfHandler
 
 testReadConfJSONHandler :: ByteString -> IO L.ByteString
 testReadConfJSONHandler = return . showAsLazyByteString .
-    (readFromByteStringAsJSON :: ByteString -> Maybe ConfJSON)
+    (readFromByteStringAsJSON :: _s -> Maybe ConfJSON)
 ngxExportAsyncIOYY 'testReadConfJSONHandler
 
 testReadConfWithRPtrHandler :: ByteString -> L.ByteString
 testReadConfWithRPtrHandler = showAsLazyByteString .
-    (readFromByteStringWithRPtr :: ByteString -> (Ptr (), Maybe Conf))
+    (readFromByteStringWithRPtr :: _s -> (_p, Maybe Conf))
 ngxExportYY 'testReadConfWithRPtrHandler
 
 testReadConfWithRPtrJSONHandler :: ByteString -> L.ByteString
 testReadConfWithRPtrJSONHandler = showAsLazyByteString .
-    (readFromByteStringWithRPtrAsJSON :: ByteString -> (Ptr (), Maybe ConfJSON))
+    (readFromByteStringWithRPtrAsJSON :: _s -> (_p, Maybe ConfJSON))
 ngxExportYY 'testReadConfWithRPtrJSONHandler
 
