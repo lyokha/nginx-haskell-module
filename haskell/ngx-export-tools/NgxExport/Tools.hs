@@ -526,7 +526,7 @@ ngxExportSimpleService' f c m = do
                         ,if snd c'
                              then [|readFromByteStringAsJSON|]
                              else [|readFromByteString|]
-                        ,[|"Configuration " ++ tName ++ " is not readable"|]
+                        ,"Configuration " ++ tName ++ " is not readable"
                         )
                 else undefined
         initConf =
@@ -541,7 +541,7 @@ ngxExportSimpleService' f c m = do
                                           when (isNothing conf_data__) $
                                               throwIO $
                                                   TerminateWorkerProcess
-                                                      $(unreadableConfMsg)
+                                                      unreadableConfMsg
                                           writeIORef $(storage) conf_data__
                                           return conf_data__
                                      ) (return . Just)
@@ -553,16 +553,15 @@ ngxExportSimpleService' f c m = do
         (waitTime, runService) =
             let eF = varE f
                 eFstRun = varE fstRun
+                runPersistentService = [|flip $(eF) $(eFstRun)|]
             in case m of
-                   PersistentService i ->
-                       (if isJust i
-                            then let t = fromJust i
-                                 in [|const $
-                                          unless $(eFstRun) $
-                                              threadDelaySec $ toSec t
-                                    |]
-                            else [|const $ return ()|]
-                       ,[|\conf_data__ -> $(eF) conf_data__ $(eFstRun)|]
+                   PersistentService (Just t) ->
+                       ([|const $ unless $(eFstRun) $ threadDelaySec $ toSec t|]
+                       ,runPersistentService
+                       )
+                   PersistentService Nothing ->
+                       ([|const $ return ()|]
+                       ,runPersistentService
                        )
                    SingleShotService ->
                        ([|\conf_data__ -> unless $(eFstRun) $
