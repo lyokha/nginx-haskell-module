@@ -522,11 +522,10 @@ ngxExportSimpleService' f c m = do
         hasConf = isJust c
         (sNameC, typeC, readConf, unreadableConfMsg) =
             if hasConf
-                then let c' = fromJust c
-                         tName = nameBase $ fst c'
+                then let (tName, isJSON) = first nameBase $ fromJust c
                      in (mkName $ "storage_" ++ tName ++ '_' : nameF
                         ,conT $ mkName tName
-                        ,if snd c'
+                        ,if isJSON
                              then [|readFromByteStringAsJSON|]
                              else [|readFromByteString|]
                         ,"Configuration " ++ tName ++ " is not readable"
