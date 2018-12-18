@@ -1,3 +1,8 @@
+### 0.4.2.0
+
+- More improvements in code generation of simple services.
+- Using *PartialTypeSignatures* in examples.
+
 ### 0.4.1.0
 
 - Improvements in code generation of simple services.
