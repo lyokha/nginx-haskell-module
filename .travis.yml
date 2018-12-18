@@ -9,6 +9,12 @@ matrix:
         apt:
           packages: [cabal-install-head, ghc-head]
           sources: [hvr-ghc]
+    - env: NGXVER=head CABALVER=head GHCVER=8.6.3
+      compiler: gcc
+      addons:
+        apt:
+          packages: [cabal-install-head, ghc-8.6.3]
+          sources: [hvr-ghc]
     - env: NGXVER=1.14.2 CABALVER=head GHCVER=8.6.3
       compiler: gcc
       addons:
@@ -53,6 +59,7 @@ matrix:
           sources: [hvr-ghc]
   allow_failures:
     - env: NGXVER=head CABALVER=head GHCVER=head
+    - env: NGXVER=head CABALVER=head GHCVER=8.6.3
     - env: CABALVER=head GHCVER=head
 
 before_install:
