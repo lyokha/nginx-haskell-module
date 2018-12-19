@@ -156,7 +156,7 @@ instance FromByteString ByteString where
 -- There are a number of functions to support /typed/ exchange between Nginx
 -- and Haskell handlers. Functions 'readFromByteString' and
 -- 'readFromByteStringAsJSON' expect serialized values of custom types deriving
--- or implementing 'Read' and 'FromJSON' respectively. Functions
+-- or implementing instances of 'Read' and 'FromJSON' respectively. Functions
 -- 'readFromByteStringWithRPtr' and 'readFromByteStringWithRPtrAsJSON'
 -- additionally expect a binary value of a C pointer size marshalled in front
 -- of the value of the custom type. This pointer should correspond to the value
@@ -287,21 +287,22 @@ instance FromByteString ByteString where
 -- >   hs_testReadConfWithRPtrHandler: (0x00000000016fc790,Just (Conf 21))
 -- >   hs_testReadConfWithRPtrJSONHandler: (0x00000000016fc790,Just (ConfJSONCon1 4))
 
--- | Reads an object of a custom type implementing 'Read' from a 'ByteString'.
+-- | Reads an object of a custom type implementing an instance of 'Read'
+--   from a 'ByteString'.
 --
 -- Returns 'Nothing' if reading fails.
 readFromByteString :: Read a => ByteString -> Maybe a
 readFromByteString = fromByteString (Nothing :: Maybe (Readable a))
 
--- | Reads an object of a custom type implementing 'FromJSON' from
---   a 'ByteString'.
+-- | Reads an object of a custom type implementing an instance of 'FromJSON'
+--   from a 'ByteString'.
 --
 -- Returns 'Nothing' if reading fails.
 readFromByteStringAsJSON :: FromJSON a => ByteString -> Maybe a
 readFromByteStringAsJSON = fromByteString (Nothing :: Maybe (ReadableAsJSON a))
 
 -- | Reads a pointer to the Nginx request object followed by an object of
---   a custom type implementing 'Read' from a 'ByteString'.
+--   a custom type implementing an instance of 'Read' from a 'ByteString'.
 --
 -- Throws an exception if unmarshalling of the request pointer fails. In the
 -- second element of the tuple returns 'Nothing' if reading of the custom
@@ -311,7 +312,7 @@ readFromByteStringWithRPtr :: Read a => ByteString -> (Ptr (), Maybe a)
 readFromByteStringWithRPtr = ngxRequestPtr &&& readFromByteString . skipRPtr
 
 -- | Reads a pointer to the Nginx request object followed by an object of
---   a custom type implementing 'FromJSON' from a 'ByteString'.
+--   a custom type implementing an instance of 'FromJSON' from a 'ByteString'.
 --
 -- Throws an exception if unmarshalling of the request pointer fails. In the
 -- second element of the tuple returns 'Nothing' if decoding of the custom
@@ -584,14 +585,11 @@ ngxExportSimpleService' f c m = do
         [sequence $
             (if hasConf
                  then [sigD sNameC [t|IORef (Maybe $(typeC))|]
-                      ,funD sNameC [clause []
-                                       (normalB
-                                           [|unsafePerformIO $
-                                                 newIORef Nothing
-                                           |]
-                                       )
-                                       []
-                                   ]
+                      ,funD sNameC
+                          [clause []
+                              (normalB [|unsafePerformIO $ newIORef Nothing|])
+                              []
+                          ]
                       ,pragInlD sNameC NoInline FunLike AllPhases
                       ]
                  else []
@@ -604,7 +602,8 @@ ngxExportSimpleService' f c m = do
                                    conf_data_ <- fromJust <$> $(initConf)
                                    $(waitTime) conf_data_
                                    $(runService) conf_data_
-                             |])
+                             |]
+                    )
                     []
                 ]
             ]
@@ -632,13 +631,13 @@ ngxExportSimpleService f =
 --
 -- with specified name and service mode.
 --
--- The service expects an object of a custom type implementing 'Read' at its
--- first argument. For the sake of efficiency, this object gets deserialized
--- into a global 'IORef' data storage on the first service run to be further
--- accessed directly from this storage. The storage can be accessed from
--- elsewhere by a name comprised of the name of the custom type and the name of
--- the service connected by an underscore and prefixed as a whole word with
--- __/storage_/__. The stored data is wrapped in 'Maybe' container.
+-- The service expects an object of a custom type implementing an instance of
+-- 'Read' at its first argument. For the sake of efficiency, this object gets
+-- deserialized into a global 'IORef' data storage on the first service run to
+-- be further accessed directly from this storage. The storage can be accessed
+-- from elsewhere by a name comprised of the name of the custom type and the
+-- name of the service connected by an underscore and prefixed as a whole word
+-- with __/storage_/__. The stored data is wrapped in 'Maybe' container.
 --
 -- When reading of the custom object fails on the first service run, the
 -- service terminates the worker process by throwing an exception
@@ -658,13 +657,14 @@ ngxExportSimpleServiceTyped f c =
 --
 -- with specified name and service mode.
 --
--- The service expects an object of a custom type implementing 'FromJSON' at its
--- first argument. For the sake of efficiency, this object gets deserialized
--- into a global 'IORef' data storage on the first service run to be further
--- accessed directly from this storage. The storage can be accessed from
--- elsewhere by a name comprised of the name of the custom type and the name of
--- the service connected by an underscore and prefixed as a whole word with
--- __/storage_/__. The stored data is wrapped in 'Maybe' container.
+-- The service expects an object of a custom type implementing an instance of
+-- 'FromJSON' at its first argument. For the sake of efficiency, this object
+-- gets deserialized into a global 'IORef' data storage on the first service
+-- run to be further accessed directly from this storage. The storage can be
+-- accessed from elsewhere by a name comprised of the name of the custom type
+-- and the name of the service connected by an underscore and prefixed as a
+-- whole word with __/storage_/__. The stored data is wrapped in 'Maybe'
+-- container.
 --
 -- When reading of the custom object fails on the first service run, the
 -- service terminates the worker process by throwing an exception
