@@ -1473,8 +1473,8 @@ are only basically lined up below.
   possible to terminate the worker process from within a Haskell handler.
   Function *ngxRequestPtr* unmarshals the value of Nginx variable *\_r\_ptr*.
   Function *ngxNow* returns current time cached inside the Nginx core.
-- Data *TimeInterval* and utility functions *toSec* and *threadDelaySec* to
-  specify time delays for services.
+- Data *TimeInterval* and utility functions *toSec* and *threadDelaySec* can be
+  used to specify time delays for services.
 - A number of converters from custom types deriving or implementing instances of
   *Read* and *FromJSON* (*readFromBytestring* and friends).
 - Special service exporters (*simple services*) combine various *sleeping*
@@ -1482,8 +1482,9 @@ are only basically lined up below.
   boilerplate code needed in the vanilla service exporters from module
   *NgxExport*.
 - Special service adapters (*split services*) allow for distinguishing between
-  *ignition* services (those that run when flag *fstRun* is *True*) and
-  *deferred* services (those that run when flag *fstRun* is *False*).
+  *ignition* services (those that run when the service runs for the first time)
+  and *deferred* services (those that run when the service runs for the second
+  time and later).
 
 \newpage
 
