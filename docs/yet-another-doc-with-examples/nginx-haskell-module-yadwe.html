@@ -1166,6 +1166,15 @@
 </tr>
 </tbody>
 </table>
+<h1 id="module-ngxexport.tools">Module NgxExport.Tools</h1>
+<p>Package <a href="http://hackage.haskell.org/package/ngx-export-tools"><em>ngx-export-tools</em></a> provides module <a href="http://hackage.haskell.org/package/ngx-export-tools/docs/NgxExport-Tools.html"><em>NgxExport.Tools</em></a> that exports various utility functions and data as well as specialized service exporters and adapters. As soon as the module is well documented, its features are only basically lined up below.</p>
+<ul>
+<li>Utility functions <em>exitWorkerProcess</em> and <em>terminateWorkerProcess</em> make it possible to terminate the worker process from within a Haskell handler. Function <em>ngxRequestPtr</em> unmarshals the value of Nginx variable <em>_r_ptr</em>. Function <em>ngxNow</em> returns current time cached inside the Nginx core.</li>
+<li>Data <em>TimeInterval</em> and utility functions <em>toSec</em> and <em>threadDelaySec</em> to specify time delays for services.</li>
+<li>A number of converters from custom types deriving or implementing instances of <em>Read</em> and <em>FromJSON</em> (<em>readFromBytestring</em> and friends).</li>
+<li>Special service exporters (<em>simple services</em>) combine various <em>sleeping</em> strategies and typing policies of services and can be used to avoid usual boilerplate code needed in the vanilla service exporters from module <em>NgxExport</em>.</li>
+<li>Special service adapters (<em>split services</em>) allow for distinguishing between <em>ignition</em> services (those that run when flag <em>fstRun</em> is <em>True</em>) and <em>deferred</em> services (those that run when flag <em>fstRun</em> is <em>False</em>).</li>
+</ul>
 
 <h1 id="appendix">Appendix</h1>
 

@@ -1459,6 +1459,32 @@ Directive                                                                 Level 
                                                                                                 value *\_r\_ptr* is already used.
 ---------------------------------------------------------------------------------------------------------------------------------------------------------
 
+# Module NgxExport.Tools
+
+Package
+[*ngx-export-tools*](http://hackage.haskell.org/package/ngx-export-tools)
+provides module
+[*NgxExport.Tools*](http://hackage.haskell.org/package/ngx-export-tools/docs/NgxExport-Tools.html)
+that exports various utility functions and data as well as specialized service
+exporters and adapters. As soon as the module is well documented, its features
+are only basically lined up below.
+
+- Utility functions *exitWorkerProcess* and *terminateWorkerProcess* make it
+  possible to terminate the worker process from within a Haskell handler.
+  Function *ngxRequestPtr* unmarshals the value of Nginx variable *\_r\_ptr*.
+  Function *ngxNow* returns current time cached inside the Nginx core.
+- Data *TimeInterval* and utility functions *toSec* and *threadDelaySec* to
+  specify time delays for services.
+- A number of converters from custom types deriving or implementing instances of
+  *Read* and *FromJSON* (*readFromBytestring* and friends).
+- Special service exporters (*simple services*) combine various *sleeping*
+  strategies and typing policies of services and can be used to avoid usual
+  boilerplate code needed in the vanilla service exporters from module
+  *NgxExport*.
+- Special service adapters (*split services*) allow for distinguishing between
+  *ignition* services (those that run when flag *fstRun* is *True*) and
+  *deferred* services (those that run when flag *fstRun* is *False*).
+
 \newpage
 
 # Appendix
