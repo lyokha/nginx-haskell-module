@@ -74,7 +74,7 @@ import           GHC.Generics
 import           System.IO.Unsafe (unsafePerformIO)
 import           Safe
 
-foreign import ccall "exit" exit :: CInt -> IO ()
+foreign import ccall unsafe "exit" exit :: CInt -> IO ()
 
 -- | Terminates current Nginx worker process.
 --
