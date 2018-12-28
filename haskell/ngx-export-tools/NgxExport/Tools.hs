@@ -166,10 +166,7 @@ instance FromByteString ByteString where
 --
 -- ==== File /test_tools.hs/
 -- @
--- {-\# OPTIONS_GHC -Wno-partial-type-signatures \#-}
---
--- {-\# LANGUAGE TemplateHaskell, DeriveGeneric \#-}
--- {-\# LANGUAGE PartialTypeSignatures, NamedWildCards \#-}
+-- {-\# LANGUAGE TemplateHaskell, DeriveGeneric, TypeApplications \#-}
 --
 -- module TestTools where
 --
@@ -193,27 +190,27 @@ instance FromByteString ByteString where
 --
 -- testReadIntHandler :: ByteString -> L.ByteString
 -- __/testReadIntHandler/__ = showAsLazyByteString .
---     ('readFromByteString' :: _s -> Maybe Int)
+--     'readFromByteString' \@(Maybe Int)
 -- 'ngxExportYY' \'testReadIntHandler
 --
 -- testReadConfHandler :: ByteString -> L.ByteString
 -- __/testReadConfHandler/__ = showAsLazyByteString .
---     ('readFromByteString' :: _s -> Maybe Conf)
+--     'readFromByteString' \@(Maybe Conf)
 -- 'ngxExportYY' \'testReadConfHandler
 --
 -- testReadConfJSONHandler :: ByteString -> IO L.ByteString
 -- __/testReadConfJSONHandler/__ = return . showAsLazyByteString .
---     ('readFromByteStringAsJSON' :: _s -> Maybe ConfJSON)
+--     'readFromByteStringAsJSON' \@(Maybe ConfJSON)
 -- 'ngxExportAsyncIOYY' \'testReadConfJSONHandler
 --
 -- testReadConfWithRPtrHandler :: ByteString -> L.ByteString
 -- __/testReadConfWithRPtrHandler/__ = showAsLazyByteString .
---     ('readFromByteStringWithRPtr' :: _s -> (_p, Maybe Conf))
+--     'readFromByteStringWithRPtr' \@(Maybe Conf)
 -- 'ngxExportYY' \'testReadConfWithRPtrHandler
 --
 -- testReadConfWithRPtrJSONHandler :: ByteString -> L.ByteString
 -- __/testReadConfWithRPtrJSONHandler/__ = showAsLazyByteString .
---     ('readFromByteStringWithRPtrAsJSON' :: _s -> (_p, Maybe ConfJSON))
+--     'readFromByteStringWithRPtrAsJSON' \@(Maybe ConfJSON)
 -- 'ngxExportYY' \'testReadConfWithRPtrJSONHandler
 -- @
 --
@@ -390,7 +387,7 @@ skipRPtr = B.drop $ sizeOf (undefined :: Word)
 --                                    } deriving (Read, Show)
 --
 -- testReadConfWithDelay :: ConfWithDelay -> Bool -> IO L.ByteString
--- __/testReadConfWithDelay/__ c@ConfWithDelay {..} fstRun = do
+-- __/testReadConfWithDelay/__ c\@ConfWithDelay {..} fstRun = do
 --     unless fstRun $ 'threadDelaySec' $ 'toSec' delay
 --     testRead c
 -- 'ngxExportSimpleServiceTyped' \'testReadConfWithDelay \'\'ConfWithDelay $

@@ -1,3 +1,7 @@
+### 0.4.2.3
+
+- Using *TypeApplications* instead of *PartialTypeSignatures* in examples.
+
 ### 0.4.2.0
 
 - More improvements in code generation of simple services.
