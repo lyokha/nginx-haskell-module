@@ -190,27 +190,27 @@ instance FromByteString ByteString where
 --
 -- testReadIntHandler :: ByteString -> L.ByteString
 -- __/testReadIntHandler/__ = showAsLazyByteString .
---     'readFromByteString' \@(Maybe Int)
+--     'readFromByteString' \@Int
 -- 'ngxExportYY' \'testReadIntHandler
 --
 -- testReadConfHandler :: ByteString -> L.ByteString
 -- __/testReadConfHandler/__ = showAsLazyByteString .
---     'readFromByteString' \@(Maybe Conf)
+--     'readFromByteString' \@Conf
 -- 'ngxExportYY' \'testReadConfHandler
 --
 -- testReadConfJSONHandler :: ByteString -> IO L.ByteString
 -- __/testReadConfJSONHandler/__ = return . showAsLazyByteString .
---     'readFromByteStringAsJSON' \@(Maybe ConfJSON)
+--     'readFromByteStringAsJSON' \@ConfJSON
 -- 'ngxExportAsyncIOYY' \'testReadConfJSONHandler
 --
 -- testReadConfWithRPtrHandler :: ByteString -> L.ByteString
 -- __/testReadConfWithRPtrHandler/__ = showAsLazyByteString .
---     'readFromByteStringWithRPtr' \@(Maybe Conf)
+--     'readFromByteStringWithRPtr' \@Conf
 -- 'ngxExportYY' \'testReadConfWithRPtrHandler
 --
 -- testReadConfWithRPtrJSONHandler :: ByteString -> L.ByteString
 -- __/testReadConfWithRPtrJSONHandler/__ = showAsLazyByteString .
---     'readFromByteStringWithRPtrAsJSON' \@(Maybe ConfJSON)
+--     'readFromByteStringWithRPtrAsJSON' \@ConfJSON
 -- 'ngxExportYY' \'testReadConfWithRPtrJSONHandler
 -- @
 --
