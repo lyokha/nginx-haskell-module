@@ -1,3 +1,11 @@
+### 0.4.3.0
+
+- Function *exitWorkerProcess* was renamed to *restartWorkerProcess*.
+- A new function *finalizeHTTPRequest* was added.
+- Functions *terminateWorkerProcess* and *restartWorkerProcess* were
+  reimplemented using API exceptions from package *ngx-export 1.6.3*, and
+  therefore now they can be effectively used only in Haskell services.
+
 ### 0.4.2.3
 
 - Using *TypeApplications* instead of *PartialTypeSignatures* in examples.

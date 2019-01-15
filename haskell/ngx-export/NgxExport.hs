@@ -4,7 +4,7 @@
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  NgxExport
--- Copyright   :  (c) Alexey Radkov 2016-2018
+-- Copyright   :  (c) Alexey Radkov 2016-2019
 -- License     :  BSD-style
 --
 -- Maintainer  :  alexey.radkov@gmail.com
@@ -47,8 +47,10 @@ module NgxExport (
                  ,ngxCyclePtr
                  ,ngxUpstreamMainConfPtr
                  ,ngxCachedTimePtr
-    -- * Exception /TerminateWorkerProcess/
+    -- * Various exceptions to access Nginx core functionality
                  ,TerminateWorkerProcess (..)
+                 ,RestartWorkerProcess (..)
+                 ,FinalizeHTTPRequest (..)
     -- * Re-exported data constructors from /Foreign.C/
     -- | Re-exports are needed by exporters for marshalling in foreign calls.
                  ,Foreign.C.CInt (..)
@@ -82,6 +84,7 @@ import qualified Data.ByteString.Unsafe as B
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Lazy.Char8 as C8L
 import           Data.Binary.Put
+import           Data.Bits
 import           Paths_ngx_export (version)
 import           Data.Version
 
@@ -484,11 +487,10 @@ instance Show ServiceHookInterrupt where
 
 -- | Terminates the worker process.
 --
--- Being thrown from a service when that runs for the first time, this
--- exception makes Nginx log the supplied message and terminate the worker
--- process without respawning. This can be useful when the service is unable
--- to read its configuration from the Nginx configuration script or to perform
--- an important initialization action.
+-- Being thrown from a service, this exception makes Nginx log the supplied
+-- message and terminate the worker process without respawning. This can be
+-- useful when the service is unable to read its configuration from the Nginx
+-- configuration script or to perform an important initialization action.
 --
 -- @since 1.6.2
 newtype TerminateWorkerProcess =
@@ -497,6 +499,35 @@ newtype TerminateWorkerProcess =
 instance Exception TerminateWorkerProcess
 instance Show TerminateWorkerProcess where
     show (TerminateWorkerProcess s) = s
+
+-- | Restarts the worker process.
+--
+-- The same as 'TerminateWorkerProcess', except that a new worker process shall
+-- be spawned by the Nginx master process in place of the current one.
+--
+-- @since 1.6.3
+newtype RestartWorkerProcess =
+    RestartWorkerProcess String  -- ^ Contains the message to log
+
+instance Exception RestartWorkerProcess
+instance Show RestartWorkerProcess where
+    show (RestartWorkerProcess s) = s
+
+-- | Finalizes the HTTP request.
+--
+-- Being thrown from an asynchronous variable handler, this exception makes
+-- Nginx finalize the current HTTP request with the supplied HTTP status and
+-- an optional body. If the body is /Nothing/ then the response will be styled
+-- by the Nginx core.
+--
+-- @since 1.6.3
+data FinalizeHTTPRequest =
+    FinalizeHTTPRequest Int (Maybe String)
+
+instance Exception FinalizeHTTPRequest
+instance Show FinalizeHTTPRequest where
+    show (FinalizeHTTPRequest _ (Just s)) = s
+    show (FinalizeHTTPRequest _ Nothing) = ""
 
 safeMallocBytes :: Int -> IO (Ptr a)
 safeMallocBytes =
@@ -604,7 +635,14 @@ safeYYHandler = handle $ \e ->
                 Just ServiceHookInterrupt -> 2
                 _ -> case fromException e of
                     Just (TerminateWorkerProcess _) -> 3
-                    _ -> 1
+                    _ -> case fromException e of
+                        Just (RestartWorkerProcess _) -> 4
+                        _ -> case fromException e of
+                            Just (FinalizeHTTPRequest st (Just _)) ->
+                                0x80000000 .|. fromIntegral st
+                            Just (FinalizeHTTPRequest st Nothing) ->
+                                0xC0000000 .|. fromIntegral st
+                            _ -> 1
             ,case asyncExceptionFromException e of
                 Just ThreadKilled -> True
                 _ -> False

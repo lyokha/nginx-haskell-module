@@ -496,14 +496,17 @@ ngx_http_haskell_service_event(ngx_event_t *ev)
     }
 
     if (async_data->error) {
-        if (hev->first_run && async_data->error == 3) {
+        ngx_uint_t  terminating = async_data->error == 3;
+
+        if (terminating || async_data->error == 4) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                           "a deadly exception was caught while getting "
-                          "value of service variable \"%V\": \"%V\", "
-                          "terminating the worker process",
+                          "value of service variable \"%V\": \"%V\", %s",
                           &cmvars[service_code_var->data->index].name,
-                          &async_data->result.data);
-            exit(2);
+                          &async_data->result.data,
+                          terminating ? "terminating the worker process" :
+                              "the worker process shall be respawned");
+            exit(terminating ? 2 : 1);
         }
         log_level = async_data->error == 2 ? NGX_LOG_ALERT : NGX_LOG_ERR;
         ngx_log_error(log_level, cycle->log, 0,

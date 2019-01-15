@@ -268,7 +268,8 @@ ngx_string(
 "import qualified Data.ByteString.Unsafe as AUX_NGX_BS\n"
 "import qualified Data.ByteString.Lazy as AUX_NGX_BSL\n"
 "import qualified Data.ByteString.Lazy.Char8 as AUX_NGX_BSLC8\n"
-"import qualified Data.Binary.Put as AUX_NGX\n\n"
+"import qualified Data.Binary.Put as AUX_NGX\n"
+"import qualified Data.Bits as AUX_NGX\n\n"
 
 "-- START OF USER HASKELL CODE\n"
 );
@@ -372,6 +373,20 @@ ngx_string(
 "instance AUX_NGX.Exception TerminateWorkerProcess\n"
 "instance Show TerminateWorkerProcess where\n"
 "    show (TerminateWorkerProcess s) = s\n\n"
+
+"newtype RestartWorkerProcess = RestartWorkerProcess String\n\n"
+
+"instance AUX_NGX.Exception RestartWorkerProcess\n"
+"instance Show RestartWorkerProcess where\n"
+"    show (RestartWorkerProcess s) = s\n\n"
+
+"data FinalizeHTTPRequest =\n"
+"    FinalizeHTTPRequest Int (Maybe String)\n\n"
+
+"instance AUX_NGX.Exception FinalizeHTTPRequest\n"
+"instance Show FinalizeHTTPRequest where\n"
+"    show (FinalizeHTTPRequest _ (Just s)) = s\n"
+"    show (FinalizeHTTPRequest _ Nothing) = \"\"\n\n"
 
 "aux_ngx_safeMallocBytes :: Int -> IO (AUX_NGX.Ptr a)\n"
 "aux_ngx_safeMallocBytes =\n"
@@ -507,7 +522,14 @@ ngx_string(
 "                Just AUX_NGX_ServiceHookInterrupt -> 2\n"
 "                _ -> case AUX_NGX.fromException e of\n"
 "                    Just (TerminateWorkerProcess _) -> 3\n"
-"                    _ -> 1\n"
+"                    _ -> case AUX_NGX.fromException e of\n"
+"                        Just (RestartWorkerProcess _) -> 4\n"
+"                        _ -> case AUX_NGX.fromException e of\n"
+"                            Just (FinalizeHTTPRequest st (Just _)) ->\n"
+"                                0x80000000 AUX_NGX..|. fromIntegral st\n"
+"                            Just (FinalizeHTTPRequest st Nothing) ->\n"
+"                                0xC0000000 AUX_NGX..|. fromIntegral st\n"
+"                            _ -> 1\n"
 "            ,case AUX_NGX.asyncExceptionFromException e of\n"
 "                Just AUX_NGX.ThreadKilled -> True\n"
 "                _ -> False\n"

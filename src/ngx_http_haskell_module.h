@@ -302,6 +302,8 @@ typedef struct {
     ngx_http_haskell_async_event_stub_t               s;
     ngx_http_request_t                               *r;
     ngx_uint_t                                       *complete;
+    HsWord32                                         *error;
+    ngx_int_t                                         index;
 } ngx_http_haskell_async_event_t;
 
 

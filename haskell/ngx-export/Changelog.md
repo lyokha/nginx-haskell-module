@@ -1,3 +1,7 @@
+### 1.6.3
+
+- Added API exceptions *RestartWorkerProcess* and *FinalizeHTTPRequest*.
+
 ### 1.6.2
 
 - Added exception *TerminateWorkerProcess* that can be used for a little bit

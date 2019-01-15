@@ -23,12 +23,15 @@
 
 
 static ngx_int_t ngx_http_haskell_create_async_task(ngx_http_request_t *r,
-    ngx_fd_t fd[2], ngx_event_handler_pt handler, ngx_uint_t *complete);
+    ngx_fd_t fd[2], ngx_event_handler_pt handler, ngx_uint_t *complete,
+    HsWord32 *error, ngx_int_t index);
 static void ngx_http_haskell_delete_async_task(void *data);
 static void ngx_http_haskell_post_handler(ngx_http_request_t *r);
 static ngx_int_t ngx_http_haskell_read_request_body(ngx_http_request_t *r,
     ngx_http_haskell_loc_conf_t *lcf, ngx_http_haskell_ctx_t *ctx);
 static void ngx_http_haskell_async_event(ngx_event_t *ev);
+static ngx_int_t ngx_http_haskell_async_finalize_request(ngx_http_request_t *r,
+    ngx_uint_t index, HsWord32 status, ngx_uint_t styled);
 static void ngx_http_haskell_async_content_handler_event(ngx_event_t *ev);
 static void ngx_http_haskell_async_content_handler_cleanup(void *data);
 
@@ -175,7 +178,9 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
 
         if (ngx_http_haskell_create_async_task(r, fd,
                                                ngx_http_haskell_async_event,
-                                               &async_data->complete)
+                                               &async_data->complete,
+                                               &async_data->error,
+                                               async_data->index)
             != NGX_OK)
         {
             async_data->complete = 1;
@@ -330,7 +335,7 @@ ngx_http_haskell_run_async_content_handler(ngx_http_request_t *r)
 
     if (ngx_http_haskell_create_async_task(r, fd,
                                 ngx_http_haskell_async_content_handler_event,
-                                &clnd->complete)
+                                &clnd->complete, NULL, NGX_ERROR)
         != NGX_OK)
     {
         clnd->complete = 1;
@@ -393,7 +398,8 @@ ngx_http_haskell_run_async_content_handler(ngx_http_request_t *r)
 static ngx_int_t
 ngx_http_haskell_create_async_task(ngx_http_request_t *r, ngx_fd_t fd[2],
                                    ngx_event_handler_pt handler,
-                                   ngx_uint_t *complete)
+                                   ngx_uint_t *complete, HsWord32 *error,
+                                   ngx_int_t index)
 {
     ngx_http_haskell_async_event_t    *hev;
     ngx_event_t                       *event;
@@ -423,6 +429,8 @@ ngx_http_haskell_create_async_task(ngx_http_request_t *r, ngx_fd_t fd[2],
     hev->s.fd = fd[0];
     hev->r = r;
     hev->complete = complete;
+    hev->error = error;
+    hev->index = index;
 
     hev->s.read = event;
     hev->s.write = &dummy_write_event;
@@ -596,7 +604,87 @@ ngx_http_haskell_async_event(ngx_event_t *ev)
     ngx_http_haskell_delete_async_task(hev);
     *hev->complete = 3;
 
+    if ((*hev->error & 0x80000000) != 0) {
+        ngx_http_finalize_request(hev->r,
+                ngx_http_haskell_async_finalize_request(hev->r, hev->index,
+                *hev->error & ~0xC0000000, (*hev->error & 0x40000000) != 0));
+        return;
+    }
+
     ngx_http_core_run_phases(hev->r);
+}
+
+
+ngx_int_t
+ngx_http_haskell_async_finalize_request(ngx_http_request_t *r, ngx_uint_t index,
+                                        HsWord32 status, ngx_uint_t styled)
+{
+    ngx_http_variable_value_t         *value;
+    ngx_str_t                          ct = ngx_string("text/plain");
+    HsInt32                            len = 0;
+    ngx_chain_t                       *out;
+    ngx_buf_t                         *b;
+    ngx_int_t                          rc;
+
+    if (ngx_http_discard_request_body(r) != NGX_OK) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
+    value = ngx_http_get_indexed_variable(r, index);
+    if (value == NULL || !value->valid) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
+    if (status < 100 || status > 999) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "invalid HTTP status %uD", status);
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
+    if (styled) {
+        return ngx_http_special_response_handler(r, status);
+    }
+
+    r->headers_out.status = status;
+    r->headers_out.content_length_n = 0;
+
+    len = value->len;
+    out = NULL;
+
+    if (len > 0) {
+        out = ngx_pcalloc(r->pool, sizeof(ngx_chain_t));
+        if (out == NULL) {
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
+        b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
+        if (b == NULL) {
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
+
+        b->pos = b->start = value->data;
+        b->last = b->end = b->pos + len;
+        b->memory = 1;
+        b->last_buf = (r == r->main) ? 1 : 0;
+        b->last_in_chain = 1;
+        r->headers_out.content_length_n = len;
+
+        out->buf = b;
+        out->next = NULL;
+
+        r->headers_out.content_type = ct;
+        r->headers_out.content_type_len = ct.len;
+        r->headers_out.content_type_lowcase = NULL;
+    }
+
+    r->header_only = r->headers_out.content_length_n == 0 ? 1 : 0;
+
+    rc = ngx_http_send_header(r);
+
+    if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
+        return rc;
+    }
+
+    return ngx_http_output_filter(r, out);
 }
 
 
@@ -689,12 +777,38 @@ ngx_http_haskell_run_async_handler(ngx_http_request_t *r,
     }
 
     if (async_data_elts[found_idx].error) {
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "an exception was caught while getting "
-                      "value of variable \"%V\" asynchronously: \"%V\"",
+        ngx_uint_t  finalizing =
+                        (async_data_elts[found_idx].error & 0x80000000) != 0;
+        HsWord32    status = async_data_elts[found_idx].error & ~0xC0000000;
+        ngx_uint_t  log_level = finalizing ?
+                        (status >= NGX_HTTP_SPECIAL_RESPONSE ? NGX_LOG_ALERT
+                            : NGX_LOG_INFO) : NGX_LOG_ERR;
+        ngx_str_t   st_value = ngx_string("an exception was caught");
+
+        if (finalizing) {
+            st_value.data = ngx_pnalloc(r->pool,
+                            sizeof("HTTP request finalization was requested "
+                                   "(status )") + NGX_INT32_LEN);
+            if (st_value.data == NULL) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "failed to allocate memory for logging HTTP"
+                              "finalization request");
+                return NGX_ERROR;
+            }
+            st_value.len =
+                    ngx_sprintf(st_value.data,
+                                "HTTP request finalization was requested "
+                                "(status %uD)", status) - st_value.data;
+        }
+
+        ngx_log_error(log_level, r->connection->log, 0,
+                      "%V while getting value of variable \"%V\" "
+                      "asynchronously: \"%V\"", &st_value,
                       &cmvars[*index].name,
                       &async_data_elts[found_idx].result);
-        /* BEWARE: return the value of the exception */
+        /* BEWARE: return the value of the exception (to avoid returning the
+         * exception's message, wrap the haskell handler in an exception
+         * handler) */
     }
 
     v->len = async_data_elts[found_idx].result.data.len;

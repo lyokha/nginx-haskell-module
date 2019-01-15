@@ -1052,7 +1052,7 @@
 <tr class="even">
 <td style="text-align: left;"><code>haskell load</code></td>
 <td style="text-align: left;"><code>http</code></td>
-<td style="text-align: left;">Load specified Haskell library.</td>
+<td style="text-align: left;">Load the specified Haskell library.</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><code>haskell ghc_extra_options</code></td>
@@ -1169,7 +1169,7 @@
 <h1 id="module-ngxexport.tools">Module NgxExport.Tools</h1>
 <p>Package <a href="http://hackage.haskell.org/package/ngx-export-tools"><em>ngx-export-tools</em></a> provides module <a href="http://hackage.haskell.org/package/ngx-export-tools/docs/NgxExport-Tools.html"><em>NgxExport.Tools</em></a> that exports various utility functions and data as well as specialized service exporters and adapters. As soon as the module is well documented, its features are only basically lined up below.</p>
 <ul>
-<li>Utility functions <em>exitWorkerProcess</em> and <em>terminateWorkerProcess</em> make it possible to terminate the worker process from within a Haskell handler. Function <em>ngxRequestPtr</em> unmarshals the value of Nginx variable <em>_r_ptr</em>. Function <em>ngxNow</em> returns current time cached inside the Nginx core.</li>
+<li>Utility functions <em>terminateWorkerProcess</em> and <em>restartWorkerProcess</em> make it possible to terminate the worker process from within a Haskell service. Function <em>finalizeHTTPRequest</em> finalizes the current HTTP request from an asynchronous Haskell handler with the specified HTTP status and body. Function <em>ngxRequestPtr</em> unmarshals the value of Nginx variable <em>_r_ptr</em>. Function <em>ngxNow</em> returns the current time cached inside the Nginx core.</li>
 <li>Data <em>TimeInterval</em> and utility functions <em>toSec</em> and <em>threadDelaySec</em> can be used to specify time delays for services.</li>
 <li>A number of converters from custom types deriving or implementing instances of <em>Read</em> and <em>FromJSON</em> (<em>readFromBytestring</em> and friends).</li>
 <li>Special service exporters (<em>simple services</em>) combine various <em>sleeping</em> strategies and typing policies of services and can be used to avoid usual boilerplate code needed in the vanilla service exporters from module <em>NgxExport</em>.</li>

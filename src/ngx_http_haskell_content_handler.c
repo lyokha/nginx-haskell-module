@@ -261,9 +261,6 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
 
 send_response:
 
-    r->headers_out.content_type_len = ct.len;
-    r->headers_out.content_type = ct;
-    r->headers_out.content_type_lowcase = NULL;
     r->headers_out.status = st;
     r->headers_out.content_length_n = 0;
 
@@ -314,6 +311,9 @@ send_response:
                 out->next = out_cur;
             }
         }
+        r->headers_out.content_type = ct;
+        r->headers_out.content_type_len = ct.len;
+        r->headers_out.content_type_lowcase = NULL;
     }
 
     r->header_only = r->headers_out.content_length_n == 0 ? 1 : 0;

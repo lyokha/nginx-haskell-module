@@ -1,11 +1,10 @@
-{-# LANGUAGE TemplateHaskell, ForeignFunctionInterface, TypeFamilies #-}
-{-# LANGUAGE EmptyDataDecls, DeriveGeneric, DeriveLift #-}
-{-# LANGUAGE LambdaCase, NumDecimals #-}
+{-# LANGUAGE TemplateHaskell, TypeFamilies, EmptyDataDecls #-}
+{-# LANGUAGE DeriveGeneric, DeriveLift, LambdaCase, NumDecimals #-}
 
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  NgxExport.Tools
--- Copyright   :  (c) Alexey Radkov 2018
+-- Copyright   :  (c) Alexey Radkov 2018-2019
 -- License     :  BSD-style
 --
 -- Maintainer  :  alexey.radkov@gmail.com
@@ -20,8 +19,9 @@
 
 module NgxExport.Tools (
     -- * Various useful functions and data
-                        exitWorkerProcess
-                       ,terminateWorkerProcess
+                        terminateWorkerProcess
+                       ,restartWorkerProcess
+                       ,finalizeHTTPRequest
                        ,ngxRequestPtr
                        ,ngxNow
     -- *** Time intervals
@@ -74,19 +74,31 @@ import           GHC.Generics
 import           System.IO.Unsafe (unsafePerformIO)
 import           Safe
 
-foreign import ccall unsafe "exit" exit :: CInt -> IO ()
-
--- | Terminates current Nginx worker process.
+-- | Terminates the Nginx worker process from a Haskell service.
 --
--- Nginx master process shall spawn a new worker process thereafter.
-exitWorkerProcess :: IO ()
-exitWorkerProcess = exit 1
+-- Nginx master process shall /not/ spawn a new worker process thereafter. This
+-- function throws exception 'TerminateWorkerProcess', and therefore terminates
+-- the worker process effectively only from a Haskell service.
+terminateWorkerProcess :: String -> IO ()
+terminateWorkerProcess = throwIO . TerminateWorkerProcess
 
--- | Terminates current Nginx worker process.
+-- | Restarts the Nginx worker process from a Haskell service.
 --
--- Nginx master process shall /not/ spawn a new worker process thereafter.
-terminateWorkerProcess :: IO ()
-terminateWorkerProcess = exit 2
+-- Nginx master process shall spawn a new worker process after termination of
+-- the current one. This function throws exception 'RestartWorkerProcess', and
+-- therefore terminates the worker process effectively only from a Haskell
+-- service.
+restartWorkerProcess :: String -> IO ()
+restartWorkerProcess = throwIO . RestartWorkerProcess
+
+-- | Finalizes the current HTTP request from a Haskell asynchronous variable
+--   handler.
+--
+-- This function throws exception 'FinalizeHTTPRequest', and therefore
+-- terminates the HTTP request effectively only from a Haskell asynchronous
+-- variable handler.
+finalizeHTTPRequest :: Int -> Maybe String -> IO ()
+finalizeHTTPRequest = (throwIO .) . FinalizeHTTPRequest
 
 -- | Unmarshals the value of Nginx variable __/$_r_ptr/__ into a pointer to
 --   the Nginx request object.
@@ -100,7 +112,8 @@ terminateWorkerProcess = exit 2
 ngxRequestPtr :: ByteString -> Ptr ()
 ngxRequestPtr = wordPtrToPtr . fromIntegral . runGet getWordhost . L.fromStrict
 
--- | Returns current time as the number of seconds elapsed since UNIX epoch.
+-- | Returns the current time as the number of seconds elapsed since the UNIX
+--   epoch.
 --
 -- The value is taken from Nginx core, so no additional system calls get
 -- involved. On the other hand, it means that this is only safe to use from
@@ -128,7 +141,7 @@ toSec (Sec s)      = s
 toSec (HrMin h m)  = 3600 * h + 60 * m
 toSec (MinSec m s) = 60 * m + s
 
--- | Delays current thread for the specified number of seconds.
+-- | Delays the current thread for the specified number of seconds.
 threadDelaySec :: Int -> IO ()
 threadDelaySec = threadDelay . (* 1e6)
 
@@ -539,9 +552,8 @@ ngxExportSimpleService' f c m = do
                                           let conf_data__ =
                                                   $(readConf) $(eConfBs)
                                           when (isNothing conf_data__) $
-                                              throwIO $
-                                                  TerminateWorkerProcess
-                                                      unreadableConfMsg
+                                              terminateWorkerProcess
+                                                  unreadableConfMsg
                                           writeIORef $(storage) conf_data__
                                           return conf_data__
                                      ) (return . Just)
@@ -637,8 +649,8 @@ ngxExportSimpleService f =
 -- with __/storage_/__. The stored data is wrapped in 'Maybe' container.
 --
 -- When reading of the custom object fails on the first service run, the
--- service terminates the worker process by throwing an exception
--- 'TerminateWorkerProcess' with a corresponding message.
+-- service terminates the worker process by calling 'terminateWorkerProcess'
+-- with a corresponding message.
 ngxExportSimpleServiceTyped :: Name         -- ^ Name of the service
                             -> Name         -- ^ Name of the custom type
                             -> ServiceMode  -- ^ Service mode
@@ -664,8 +676,8 @@ ngxExportSimpleServiceTyped f c =
 -- container.
 --
 -- When reading of the custom object fails on the first service run, the
--- service terminates the worker process by throwing an exception
--- 'TerminateWorkerProcess' with a corresponding message.
+-- service terminates the worker process by calling 'terminateWorkerProcess'
+-- with a corresponding message.
 ngxExportSimpleServiceTypedAsJSON :: Name         -- ^ Name of the service
                                   -> Name         -- ^ Name of the custom type
                                   -> ServiceMode  -- ^ Service mode

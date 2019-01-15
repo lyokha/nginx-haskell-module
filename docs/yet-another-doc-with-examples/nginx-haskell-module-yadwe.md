@@ -1391,7 +1391,7 @@ Directive                                                                 Level 
                                                                                                 *debug* (use *debug* RTS library), and *standalone* (use
                                                                                                 *standalone* approach).
 
-`haskell load`                                                            `http`                Load specified Haskell library.
+`haskell load`                                                            `http`                Load the specified Haskell library.
 
 `haskell ghc_extra_options`                                               `http`                Specify extra options for GHC when the library compiles.
 
@@ -1469,10 +1469,12 @@ that exports various utility functions and data as well as specialized service
 exporters and adapters. As soon as the module is well documented, its features
 are only basically lined up below.
 
-- Utility functions *exitWorkerProcess* and *terminateWorkerProcess* make it
-  possible to terminate the worker process from within a Haskell handler.
-  Function *ngxRequestPtr* unmarshals the value of Nginx variable *\_r\_ptr*.
-  Function *ngxNow* returns current time cached inside the Nginx core.
+- Utility functions *terminateWorkerProcess* and *restartWorkerProcess* make it
+  possible to terminate the worker process from within a Haskell service.
+  Function *finalizeHTTPRequest* finalizes the current HTTP request from an
+  asynchronous Haskell handler with the specified HTTP status and body. Function
+  *ngxRequestPtr* unmarshals the value of Nginx variable *\_r\_ptr*. Function
+  *ngxNow* returns the current time cached inside the Nginx core.
 - Data *TimeInterval* and utility functions *toSec* and *threadDelaySec* can be
   used to specify time delays for services.
 - A number of converters from custom types deriving or implementing instances of

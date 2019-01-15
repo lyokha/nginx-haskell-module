@@ -256,7 +256,7 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
                           &cmvars[*index].name, &reslen);
             /* BEWARE: return the value of the exception in case of the
              * effectful IO handler ngx_http_haskell_handler_type_ioy_y (to
-             * avoid throwing the exception's message in this case, wrap the
+             * avoid returning the exception's message in this case, wrap the
              * haskell handler in an exception handler) */
             if (handlers[code_vars[found_idx].handler].type
                 != ngx_http_haskell_handler_type_ioy_y)
