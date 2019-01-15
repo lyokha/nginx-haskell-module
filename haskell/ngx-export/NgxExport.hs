@@ -47,7 +47,7 @@ module NgxExport (
                  ,ngxCyclePtr
                  ,ngxUpstreamMainConfPtr
                  ,ngxCachedTimePtr
-    -- * Various exceptions to access Nginx core functionality
+    -- * Accessing Nginx core functionality from Haskell handlers
                  ,TerminateWorkerProcess (..)
                  ,RestartWorkerProcess (..)
                  ,FinalizeHTTPRequest (..)
@@ -522,7 +522,7 @@ instance Show RestartWorkerProcess where
 --
 -- @since 1.6.3
 data FinalizeHTTPRequest =
-    FinalizeHTTPRequest Int (Maybe String)
+    FinalizeHTTPRequest Int (Maybe String)  -- ^ Contains HTTP status and body
 
 instance Exception FinalizeHTTPRequest
 instance Show FinalizeHTTPRequest where
