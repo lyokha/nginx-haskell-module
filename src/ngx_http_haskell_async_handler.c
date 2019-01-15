@@ -604,7 +604,7 @@ ngx_http_haskell_async_event(ngx_event_t *ev)
     ngx_http_haskell_delete_async_task(hev);
     *hev->complete = 3;
 
-    if ((*hev->error & 0x80000000) != 0) {
+    if (*hev->error & 0x80000000) {
         ngx_http_finalize_request(hev->r,
                 ngx_http_haskell_async_finalize_request(hev->r, hev->index,
                 *hev->error & ~0xC0000000, (*hev->error & 0x40000000) != 0));
