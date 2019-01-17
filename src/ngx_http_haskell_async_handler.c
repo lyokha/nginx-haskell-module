@@ -792,7 +792,7 @@ ngx_http_haskell_run_async_handler(ngx_http_request_t *r,
             if (event_msg.data == NULL) {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                               "failed to allocate memory for logging HTTP "
-                              "finalization request");
+                              "request finalization");
                 return NGX_ERROR;
             }
             event_msg.len = ngx_sprintf(event_msg.data,
