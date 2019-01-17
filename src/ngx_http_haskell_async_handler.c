@@ -783,27 +783,26 @@ ngx_http_haskell_run_async_handler(ngx_http_request_t *r,
         ngx_uint_t  log_level = finalizing ?
                         (status >= NGX_HTTP_SPECIAL_RESPONSE ? NGX_LOG_ALERT
                             : NGX_LOG_INFO) : NGX_LOG_ERR;
-        ngx_str_t   st_value = ngx_string("an exception was caught");
+        ngx_str_t   event_msg = ngx_string("an exception was caught");
 
         if (finalizing) {
-            st_value.data = ngx_pnalloc(r->pool,
-                            sizeof("HTTP request finalization was requested "
-                                   "(status )") + NGX_INT32_LEN);
-            if (st_value.data == NULL) {
+            event_msg.data = ngx_pnalloc(r->pool,
+                    sizeof("HTTP request finalization was requested (status )")
+                    + NGX_INT32_LEN);
+            if (event_msg.data == NULL) {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                              "failed to allocate memory for logging HTTP"
+                              "failed to allocate memory for logging HTTP "
                               "finalization request");
                 return NGX_ERROR;
             }
-            st_value.len =
-                    ngx_sprintf(st_value.data,
-                                "HTTP request finalization was requested "
-                                "(status %uD)", status) - st_value.data;
+            event_msg.len = ngx_sprintf(event_msg.data,
+                    "HTTP request finalization was requested (status %uD)",
+                    status) - event_msg.data;
         }
 
         ngx_log_error(log_level, r->connection->log, 0,
                       "%V while getting value of variable \"%V\" "
-                      "asynchronously: \"%V\"", &st_value,
+                      "asynchronously: \"%V\"", &event_msg,
                       &cmvars[*index].name,
                       &async_data_elts[found_idx].result);
         /* BEWARE: return the value of the exception (to avoid returning the
