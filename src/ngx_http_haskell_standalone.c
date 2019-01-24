@@ -374,17 +374,17 @@ ngx_string(
 "instance Show TerminateWorkerProcess where\n"
 "    show (TerminateWorkerProcess s) = s\n\n"
 
-"data WorkerProcessIsExiting = WorkerProcessIsExiting deriving (Show, Eq)\n\n"
-
-"instance AUX_NGX.Exception WorkerProcessIsExiting where\n"
-"  fromException = AUX_NGX.asyncExceptionFromException\n"
-"  toException = AUX_NGX.asyncExceptionToException\n\n"
-
 "newtype RestartWorkerProcess = RestartWorkerProcess String\n\n"
 
 "instance AUX_NGX.Exception RestartWorkerProcess\n"
 "instance Show RestartWorkerProcess where\n"
 "    show (RestartWorkerProcess s) = s\n\n"
+
+"data WorkerProcessIsExiting = WorkerProcessIsExiting deriving (Show, Eq)\n\n"
+
+"instance AUX_NGX.Exception WorkerProcessIsExiting where\n"
+"  fromException = AUX_NGX.asyncExceptionFromException\n"
+"  toException = AUX_NGX.asyncExceptionToException\n\n"
 
 "data FinalizeHTTPRequest =\n"
 "    FinalizeHTTPRequest Int (Maybe String)\n\n"
