@@ -611,13 +611,13 @@ by themselves!
 
 ## Termination of a service
 
-Services are killed on a worker's exit with Haskell asynchronous exception
-*ThreadKilled*. Then the worker waits *synchronously* until all of its services'
-threads exit, and calls *hs_exit()*. This scenario has two important
+Services are killed on a worker's exit with asynchronous exception
+*WorkerProcessIsExiting*. Then the worker waits *synchronously* until all of its
+services' threads exit, and calls *hs_exit()*. This scenario has two important
 implications.
 
-1. The Haskell service handler may catch *ThreadKilled* on exit and make
-   persistency actions such as writing files if they are needed.
+1. The Haskell service handler may catch *WorkerProcessIsExiting* on exit and
+   make persistency actions such as writing files if they are needed.
 2. *Unsafe* *blocking* FFI calls must be avoided in service handlers as they may
    hang the Nginx worker, and it won't exit. Using *interruptible* FFI fixes
    this problem.

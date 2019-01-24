@@ -436,12 +436,12 @@ skipRPtr = B.drop $ sizeOf (undefined :: Word)
 -- service because data is not altered during runtime. A single-shot service
 -- runs exactly two times during the lifetime of a worker process: the first
 -- run (when the second argument of the service, i.e. the /first-run/ flag, is
--- /True/) is immediately followed by the second run (when the the /first-run/
--- flag is /False/). On the second run the service handler is used as an
--- exception handler when the service is shutting down after the 'ThreadKilled'
--- exception thrown. Accordingly, a single-shot handler can be used for
--- allocation of some global resources (when the first-run flag is /True/), and
--- cleaning them up (when the first-run flag is /False/).
+-- /True/) is immediately followed by the second run (when the /first-run/ flag
+-- is /False/). On the second run the service handler is used as an exception
+-- handler when the service is shutting down after the 'WorkerProcessIsExiting'
+-- exception has been thrown. Accordingly, a single-shot handler can be used
+-- for allocation of some global resources (when the first-run flag is /True/),
+-- and cleaning them up (when the first-run flag is /False/).
 --
 -- Notice that service /testReadConfWithDelay/ manages time delays on its own,
 -- therefore it uses /no-sleeps/ strategy @'PersistentService' Nothing@.
@@ -579,8 +579,8 @@ ngxExportSimpleService' f c m = do
                        ([|\conf_data__ -> unless $(eFstRun) $
                               handle
                                   (\case
-                                       ThreadKilled -> void $
-                                           $(eF) conf_data__ False
+                                       WorkerProcessIsExiting ->
+                                           void $ $(eF) conf_data__ False
                                        _ -> return ()
                                   ) $ forever $ threadDelaySec $ toSec $ Hr 24
                         |]

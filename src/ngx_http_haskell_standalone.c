@@ -374,6 +374,12 @@ ngx_string(
 "instance Show TerminateWorkerProcess where\n"
 "    show (TerminateWorkerProcess s) = s\n\n"
 
+"data WorkerProcessIsExiting = WorkerProcessIsExiting deriving (Show, Eq)\n\n"
+
+"instance AUX_NGX.Exception WorkerProcessIsExiting where\n"
+"  fromException = AUX_NGX.asyncExceptionFromException\n"
+"  toException = AUX_NGX.asyncExceptionToException\n\n"
+
 "newtype RestartWorkerProcess = RestartWorkerProcess String\n\n"
 
 "instance AUX_NGX.Exception RestartWorkerProcess\n"
@@ -531,7 +537,7 @@ ngx_string(
 "                                0xC0000000 AUX_NGX..|. fromIntegral st\n"
 "                            _ -> 1\n"
 "            ,case AUX_NGX.asyncExceptionFromException e of\n"
-"                Just AUX_NGX.ThreadKilled -> True\n"
+"                Just WorkerProcessIsExiting -> True\n"
 "                _ -> False\n"
 "            )\n"
 "           )\n"
@@ -708,8 +714,8 @@ ngx_string(
 "                           [AUX_NGX.Handler $\n"
 "                                return . (, False) . not . aux_ngx_isEINTR\n"
 "                           ,AUX_NGX.Handler $\n"
-"                                return . (True, ) . (== AUX_NGX.ThreadKilled)"
-"\n"
+"                                return . (True, ) . "
+"(== WorkerProcessIsExiting)\n"
 "                           ]\n"
 "                       else return False\n"
 "        if exiting\n"
@@ -926,7 +932,7 @@ ngx_string(
 "    AUX_NGX.StablePtr (AUX_NGX.Async ()) -> IO ()\n"
 "ngxExportTerminateTask =\n"
 "    AUX_NGX.deRefStablePtr AUX_NGX.>=>\n"
-"        flip AUX_NGX.cancelWith AUX_NGX.ThreadKilled\n\n"
+"        flip AUX_NGX.cancelWith WorkerProcessIsExiting\n\n"
 
 "foreign export ccall ngxExportServiceHookInterrupt ::\n"
 "    AUX_NGX.StablePtr (AUX_NGX.Async ()) -> IO ()\n"

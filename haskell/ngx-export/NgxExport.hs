@@ -50,6 +50,7 @@ module NgxExport (
     -- * Accessing Nginx core functionality from Haskell handlers
                  ,TerminateWorkerProcess (..)
                  ,RestartWorkerProcess (..)
+                 ,WorkerProcessIsExiting (..)
                  ,FinalizeHTTPRequest (..)
     -- * Re-exported data constructors from /Foreign.C/
     -- | Re-exports are needed by exporters for marshalling in foreign calls.
@@ -513,6 +514,20 @@ instance Exception RestartWorkerProcess
 instance Show RestartWorkerProcess where
     show (RestartWorkerProcess s) = s
 
+-- | Signals that the worker process is exiting.
+--
+-- This asynchronous exception is thrown from the Nginx core to all services
+-- with 'cancelWith' when the working process is exiting. An exception handler
+-- that catches this exception is expected to perform the service's specific
+-- cleanup and finalization actions.
+--
+-- @since 1.6.4
+data WorkerProcessIsExiting = WorkerProcessIsExiting deriving (Show, Eq)
+
+instance Exception WorkerProcessIsExiting where
+  fromException = asyncExceptionFromException
+  toException = asyncExceptionToException
+
 -- | Finalizes the HTTP request.
 --
 -- Being thrown from an asynchronous variable handler, this exception makes
@@ -644,7 +659,7 @@ safeYYHandler = handle $ \e ->
                                 0xC0000000 .|. fromIntegral st
                             _ -> 1
             ,case asyncExceptionFromException e of
-                Just ThreadKilled -> True
+                Just WorkerProcessIsExiting -> True
                 _ -> False
             )
            )
@@ -772,8 +787,10 @@ asyncIOYY f x (I n) fd (I fdlk) active (ToBool efd) (ToBool fstRun) =
                                     return (True, False)
                            )
                            `catches`
-                           [E.Handler $ return . (, False) . not . isEINTR
-                           ,E.Handler $ return . (True, ) . (== ThreadKilled)
+                           [E.Handler $
+                               return . (, False) . not . isEINTR
+                           ,E.Handler $
+                               return . (True, ) . (== WorkerProcessIsExiting)
                            ]
                        else return False
         if exiting
@@ -928,7 +945,7 @@ foreign export ccall ngxExportTerminateTask ::
 ngxExportTerminateTask ::
     StablePtr (Async ()) -> IO ()
 ngxExportTerminateTask = deRefStablePtr >=>
-    flip cancelWith ThreadKilled
+    flip cancelWith WorkerProcessIsExiting
 
 foreign export ccall ngxExportServiceHookInterrupt ::
     StablePtr (Async ()) -> IO ()
