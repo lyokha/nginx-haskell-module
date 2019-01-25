@@ -578,7 +578,7 @@ ngxExportSimpleService' f c m = do
                    SingleShotService ->
                        ([|\conf_data__ -> unless $(eFstRun) $
                               handle
-                                  ((\_ -> void $ $(eF) conf_data__ False) ::
+                                  (const $ void $ $(eF) conf_data__ False ::
                                       WorkerProcessIsExiting -> IO ()
                                   ) $ forever $ threadDelaySec $ toSec $ Hr 24
                         |]
