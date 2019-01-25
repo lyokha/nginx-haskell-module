@@ -1916,6 +1916,11 @@ Content handlers log exceptions with level *error*, and return HTTP status
 Termination of nginx worker and asynchronous exception ThreadKilled
 -------------------------------------------------------------------
 
+*To prevent handling of unexpected ThreadKilled, starting from version 1.6.4 of
+this module it was replaced by a special opaque asynchronous exception
+WorkerProcessIsExiting. The following reasonings remain valid as soon as
+ThreadKilled is replaced with WorkerProcessIsExiting.*
+
 When an nginx worker terminates, it calls function *cancelWith* from package
 *async* with argument *ThreadKilled* for all asynchronous services. This
 function sends asynchronous exception *ThreadKilled* to a corresponding haskell

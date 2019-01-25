@@ -368,13 +368,13 @@ ngx_string(
 "instance Show AUX_NGX_ServiceHookInterrupt where\n"
 "    show = const \"Service was interrupted by a service hook\"\n\n"
 
-"newtype TerminateWorkerProcess = TerminateWorkerProcess String\n\n"
+"newtype TerminateWorkerProcess = TerminateWorkerProcess String deriving Eq\n\n"
 
 "instance AUX_NGX.Exception TerminateWorkerProcess\n"
 "instance Show TerminateWorkerProcess where\n"
 "    show (TerminateWorkerProcess s) = s\n\n"
 
-"newtype RestartWorkerProcess = RestartWorkerProcess String\n\n"
+"newtype RestartWorkerProcess = RestartWorkerProcess String deriving Eq\n\n"
 
 "instance AUX_NGX.Exception RestartWorkerProcess\n"
 "instance Show RestartWorkerProcess where\n"
@@ -386,8 +386,8 @@ ngx_string(
 "  fromException = AUX_NGX.asyncExceptionFromException\n"
 "  toException = AUX_NGX.asyncExceptionToException\n\n"
 
-"data FinalizeHTTPRequest =\n"
-"    FinalizeHTTPRequest Int (Maybe String)\n\n"
+"data FinalizeHTTPRequest = FinalizeHTTPRequest Int (Maybe String) deriving Eq"
+"\n\n"
 
 "instance AUX_NGX.Exception FinalizeHTTPRequest\n"
 "instance Show FinalizeHTTPRequest where\n"

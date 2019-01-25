@@ -1,3 +1,10 @@
+### 1.6.4
+
+- Added exception *WorkerProcessIsExiting* to signal services that Nginx is
+  shutting down. This has replaced *ThreadKilled* that was used formerly in
+  order to prevent erroneous handling of unexpectedly thrown *ThreadKilled*.
+- All API exceptions now derive *Eq*.
+
 ### 1.6.3
 
 - Added API exceptions *RestartWorkerProcess* and *FinalizeHTTPRequest*.

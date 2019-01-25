@@ -510,9 +510,9 @@
 
 <p>This must run really fast because it shows data that has already been retrieved by the service, requests do not trigger any network activity with <em>httpbin.org</em> by themselves!</p>
 <h2 id="termination-of-a-service">Termination of a service</h2>
-<p>Services are killed on a worker’s exit with Haskell asynchronous exception <em>ThreadKilled</em>. Then the worker waits <em>synchronously</em> until all of its services’ threads exit, and calls <em>hs_exit()</em>. This scenario has two important implications.</p>
+<p>Services are killed on a worker’s exit with an asynchronous exception <em>WorkerProcessIsExiting</em>. Then the worker waits <em>synchronously</em> until all of its services’ threads exit, and calls <em>hs_exit()</em>. This scenario has two important implications.</p>
 <ol type="1">
-<li>The Haskell service handler may catch <em>ThreadKilled</em> on exit and make persistency actions such as writing files if they are needed.</li>
+<li>The Haskell service handler may catch <em>WorkerProcessIsExiting</em> on exit and make persistency actions such as writing files if they are needed.</li>
 <li><em>Unsafe</em> <em>blocking</em> FFI calls must be avoided in service handlers as they may hang the Nginx worker, and it won’t exit. Using <em>interruptible</em> FFI fixes this problem.</li>
 </ol>
 <h1 id="shared-services">Shared services</h1>

@@ -50,7 +50,7 @@ module NgxExport (
     -- * Accessing Nginx core functionality from Haskell handlers
                  ,TerminateWorkerProcess (..)
                  ,RestartWorkerProcess (..)
-                 ,WorkerProcessIsExiting (..)
+                 ,WorkerProcessIsExiting
                  ,FinalizeHTTPRequest (..)
     -- * Re-exported data constructors from /Foreign.C/
     -- | Re-exports are needed by exporters for marshalling in foreign calls.
@@ -496,6 +496,7 @@ instance Show ServiceHookInterrupt where
 -- @since 1.6.2
 newtype TerminateWorkerProcess =
     TerminateWorkerProcess String  -- ^ Contains the message to log
+    deriving Eq
 
 instance Exception TerminateWorkerProcess
 instance Show TerminateWorkerProcess where
@@ -509,6 +510,7 @@ instance Show TerminateWorkerProcess where
 -- @since 1.6.3
 newtype RestartWorkerProcess =
     RestartWorkerProcess String  -- ^ Contains the message to log
+    deriving Eq
 
 instance Exception RestartWorkerProcess
 instance Show RestartWorkerProcess where
@@ -538,6 +540,7 @@ instance Exception WorkerProcessIsExiting where
 -- @since 1.6.3
 data FinalizeHTTPRequest =
     FinalizeHTTPRequest Int (Maybe String)  -- ^ Contains HTTP status and body
+    deriving Eq
 
 instance Exception FinalizeHTTPRequest
 instance Show FinalizeHTTPRequest where

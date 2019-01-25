@@ -611,7 +611,7 @@ by themselves!
 
 ## Termination of a service
 
-Services are killed on a worker's exit with asynchronous exception
+Services are killed on a worker's exit with an asynchronous exception
 *WorkerProcessIsExiting*. Then the worker waits *synchronously* until all of its
 services' threads exit, and calls *hs_exit()*. This scenario has two important
 implications.
