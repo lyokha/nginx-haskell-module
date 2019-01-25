@@ -1,3 +1,8 @@
+### 0.4.4.0
+
+- Using *WorkerProcessIsExiting* instead of *ThreadKilled* as required in
+  *ngx-export 1.6.4*.
+
 ### 0.4.3.0
 
 - Function *exitWorkerProcess* was renamed to *restartWorkerProcess*.

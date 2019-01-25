@@ -1,5 +1,5 @@
 name:                       ngx-export-tools
-version:                    0.4.3.0
+version:                    0.4.4.0
 synopsis:                   Extra tools for Nginx haskell module
 description:                Extra tools for
         <http://github.com/lyokha/nginx-haskell-module Nginx haskell module>.
@@ -20,7 +20,7 @@ library
                           , template-haskell >= 2.11.0.0
                           , bytestring >= 0.10.0.0
                           , binary >= 0.4
-                          , ngx-export >= 1.6.3
+                          , ngx-export >= 1.6.4
                           , aeson >= 1.0
                           , safe
 
