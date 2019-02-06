@@ -49,6 +49,7 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
     ngx_chain_t                              *out, *out_cur;
     ngx_buf_t                                *b;
     ngx_table_elt_t                          *h;
+    ngx_str_t                                 hname, hvalue;
     ngx_pool_cleanup_t                       *cln;
     ngx_http_haskell_content_handler_data_t  *clnd = NULL;
     ngx_pool_t                               *pool;
@@ -283,25 +284,38 @@ send_response:
                           "response headers, ignoring them all");
         } else {
             for (i = 0; i < hlen; i += 2) {
+                hname = hres[i];
+                hvalue = hres[i + 1];
+
+                if (hname.len == 0 || (hname.len == 1 && *hname.data == 0)) {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                            "ignored empty name for a custom response header");
+                    continue;
+                }
+
+                if (hvalue.len == 1 && *hvalue.data == 0) {
+                    hvalue.len = 0;
+                }
+
                 h = ngx_list_push(&r->headers_out.headers);
                 if (!h) {
                     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                                   "failed to create "
                                   "custom response header \"%V : %V\"",
-                                  hres[i], hres[i + 1]);
+                                  hname, hvalue);
                     continue;
                 }
 
                 h->hash = 1;
-                h->key = hres[i];
-                h->value = hres[i + 1];
+                h->key = hname;
+                h->value = hvalue;
 
-                h->lowcase_key = ngx_pnalloc(r->pool, hres[i].len);
+                h->lowcase_key = ngx_pnalloc(r->pool, hname.len);
                 if (!h->lowcase_key) {
                     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                                   "failed to create lowcase key for "
                                   "custom response header \"%V : %V\"",
-                                  hres[i], hres[i + 1]);
+                                  hname, hvalue);
                     continue;
                 }
 
