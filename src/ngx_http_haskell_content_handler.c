@@ -249,7 +249,7 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
         clnd->content_type.len = def_handler ? 0 : ct.len;
         clnd->content_type.data = def_handler ? NULL : ct.data;
         clnd->locked_ct = def_handler ? NULL : locked_ct;
-        clnd->has_locked_ct = def_handler ? 0 : 1;
+        clnd->has_locked_ct = def_handler || ct.len == 0 ? 0 : 1;
         clnd->status = st;
         cln->handler = ngx_http_haskell_content_handler_cleanup;
         cln->data = clnd;
@@ -337,7 +337,9 @@ cleanup:
             if (handlers[lcf->content_handler->handler].type
                 == ngx_http_haskell_handler_type_ch && !err)
             {
-                mcf->hs_free_stable_ptr(locked_ct);
+                if (ct.len > 0) {
+                    mcf->hs_free_stable_ptr(locked_ct);
+                }
             } else {
                 ngx_free(ct.data);
             }

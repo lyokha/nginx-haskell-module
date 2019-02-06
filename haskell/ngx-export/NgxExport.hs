@@ -143,17 +143,17 @@ data NgxExport = SS              (String -> String)
                | AsyncHandlerRB  (L.ByteString -> B.ByteString ->
                                      IO ContentHandlerResult)
 
-data NgxExportDisambiguation = Unambiguous
-                             | YYSync
-                             | YYDefHandler
-                             | IOYYSync
-                             | IOYYAsync
+data NgxExportTypeAmbiguityTag = Unambiguous
+                               | YYSync
+                               | YYDefHandler
+                               | IOYYSync
+                               | IOYYAsync
 
 do
     TyConI (DataD _ _ _ EXTRA_WILDCARD_BEFORE_CON tCs _) <-
         reify ''NgxExport
     TyConI (DataD _ _ _ EXTRA_WILDCARD_BEFORE_CON aCs _) <-
-        reify ''NgxExportDisambiguation
+        reify ''NgxExportTypeAmbiguityTag
     let tName = mkName "exportType"
         aName = mkName "exportTypeAmbiguity"
         tCons = map (\(NormalC con [(_, typ)]) -> (con, typ)) tCs
@@ -164,7 +164,7 @@ do
              map (\(fst -> c, i) ->
                     clause [conP c [wildP]] (normalB [|return i|]) []
                  ) (zip tCons [1 ..] :: [((Name, Type), Int)])
-        ,sigD aName [t|NgxExportDisambiguation -> IO CInt|]
+        ,sigD aName [t|NgxExportTypeAmbiguityTag -> IO CInt|]
         ,funD aName $
              map (\(c, i) ->
                     clause [conP c []] (normalB [|return i|]) []
@@ -589,7 +589,7 @@ toBuffers (L.null -> True) _ =
     return (nullPtr, 0)
 toBuffers s p = do
     let n = L.foldlChunks (const . succ) 0 s
-    if n == 1
+    if n == 1 && p /= nullPtr
         then do
             B.unsafeUseAsCStringLen (head $ L.toChunks s) $
                 \(x, I l) -> poke p $ NgxStrType l x
@@ -617,10 +617,11 @@ pokeLazyByteString s p pl spd = do
     when (t /= nullPtr) $ newStablePtr s >>= poke spd
 
 pokeContentTypeAndStatus :: B.ByteString ->
-    Ptr CString -> Ptr CSize -> Ptr CInt -> CInt -> IO ()
+    Ptr CString -> Ptr CSize -> Ptr CInt -> CInt -> IO CSize
 pokeContentTypeAndStatus ct pct plct pst st = do
     PtrLen sct lct <- B.unsafeUseAsCStringLen ct return
     pokeCStringLen sct lct pct plct >> poke pst st
+    return lct
 
 peekRequestBodyChunks :: Ptr NgxStrType -> Ptr NgxStrType -> Int ->
     IO L.ByteString
@@ -636,8 +637,8 @@ peekRequestBodyChunks tmpf b m =
 pokeAsyncHandlerData :: B.ByteString -> Ptr CString -> Ptr CSize ->
     Ptr (StablePtr B.ByteString) -> Ptr CInt -> CInt -> IO ()
 pokeAsyncHandlerData ct pct plct spct pst st = do
-    pokeContentTypeAndStatus ct pct plct pst st
-    newStablePtr ct >>= poke spct
+    lct <- pokeContentTypeAndStatus ct pct plct pst st
+    when (lct > 0) $ newStablePtr ct >>= poke spct
 
 safeHandler :: Ptr CString -> Ptr CInt -> IO CUInt -> IO CUInt
 safeHandler p pl = handle $ \e -> do
@@ -645,9 +646,14 @@ safeHandler p pl = handle $ \e -> do
     pokeCStringLen x l p pl
     return 1
 
-safeYYHandler :: IO (L.ByteString, (CUInt, Bool)) ->
-    IO (L.ByteString, (CUInt, Bool))
+safeYYHandler :: IO (L.ByteString, CUInt) -> IO (L.ByteString, CUInt)
 safeYYHandler = handle $ \e ->
+    return (C8L.pack $ show (e :: SomeException), 1)
+{-# INLINE safeYYHandler #-}
+
+safeAsyncYYHandler :: IO (L.ByteString, (CUInt, Bool)) ->
+    IO (L.ByteString, (CUInt, Bool))
+safeAsyncYYHandler = handle $ \e ->
     return (C8L.pack $ show e,
             (case fromException e of
                 Just ServiceHookInterrupt -> 2
@@ -666,7 +672,7 @@ safeYYHandler = handle $ \e ->
                 _ -> False
             )
            )
-{-# INLINE safeYYHandler #-}
+{-# INLINE safeAsyncYYHandler #-}
 
 isEINTR :: IOError -> Bool
 isEINTR = (Just ((\(Errno i) -> i) eINTR) ==) . ioe_errno
@@ -704,9 +710,9 @@ yY :: YY -> CString -> CInt ->
     Ptr (Ptr NgxStrType) -> Ptr CInt ->
     Ptr (StablePtr L.ByteString) -> IO CUInt
 yY f x (I n) p pl spd = do
-    (s, (r, _)) <- safeYYHandler $ do
+    (s, r) <- safeYYHandler $ do
         s <- f <$> B.unsafePackCStringLen (x, n)
-        fmap (, (0, False)) $ return $!! s
+        fmap (, 0) $ return $!! s
     pokeLazyByteString s p pl spd
     return r
 
@@ -715,9 +721,9 @@ ioyYCommon :: (CStringLen -> IO B.ByteString) ->
     Ptr (Ptr NgxStrType) -> Ptr CInt ->
     Ptr (StablePtr L.ByteString) -> IO CUInt
 ioyYCommon pack f x (I n) p pl spd = do
-    (s, (r, _)) <- safeYYHandler $ do
+    (s, r) <- safeYYHandler $ do
         s <- pack (x, n) >>= flip f False
-        fmap (, (0, False)) $ return $!! s
+        fmap (, 0) $ return $!! s
     pokeLazyByteString s p pl spd
     return r
 
@@ -742,10 +748,11 @@ asyncIOCommon :: IO (L.ByteString, Bool) ->
     Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO (StablePtr (Async ()))
 asyncIOCommon a (I fd) efd p pl pr spd =
     async
-    (do
-        (s, (r, exiting)) <- safeYYHandler $ do
-            (s, exiting) <- a
-            fmap (, (0, exiting)) $ return $!! s
+    (mask $ \restore -> do
+        (s, (r, exiting)) <- safeAsyncYYHandler $
+            restore $ do
+                (s, exiting) <- a
+                fmap (, (0, exiting)) $ return $!! s
         pokeLazyByteString s p pl spd
         poke pr r
         if exiting
@@ -768,11 +775,11 @@ asyncIOCommon a (I fd) efd p pl pr spd =
           writeFlag1b = B.unsafeUseAsCString asyncIOFlag1b $ writeBufN 1
           writeFlag8b = B.unsafeUseAsCString asyncIOFlag8b $ writeBufN 8
           closeChannel = closeFd fd `catchIOError` const (return ())
-          -- FIXME: cleanupOnWriteError should free contents of p, spd,
-          -- and spct. However, leaving this not implemented seems to be safe
-          -- because Nginx won't close the event channel or delete the request
-          -- object (for request-driven handlers) regardless of the Haskell
-          -- handler's duration.
+          -- FIXME: cleanupOnWriteError should free all previously allocated
+          -- data and stable pointers. However, leaving this not implemented
+          -- seems to be safe because Nginx won't close the event channel or
+          -- delete the request object (for request-driven handlers)
+          -- regardless of the Haskell handler's duration.
           cleanupOnWriteError = return ()
 
 asyncIOYY :: IOYY -> CString -> CInt ->
@@ -824,8 +831,8 @@ asyncHandler f x (I n) fd (ToBool efd) pct plct spct pst =
     asyncIOCommon
     (do
         x' <- B.unsafePackCStringLen (x, n)
-        (s, ct, I st) <- f x'
-        (return $!! s) >> pokeAsyncHandlerData ct pct plct spct pst st
+        v@(s, ct, I st) <- f x'
+        (return $!! v) >> mask_ (pokeAsyncHandlerData ct pct plct spct pst st)
         return (s, False)
     ) fd efd
 
@@ -839,8 +846,8 @@ asyncHandlerRB f tmpf b (I m) x (I n) fd (ToBool efd) pct plct spct pst =
     (do
         b' <- peekRequestBodyChunks tmpf b m
         x' <- B.unsafePackCStringLen (x, n)
-        (s, ct, I st) <- f b' x'
-        (return $!! s) >> pokeAsyncHandlerData ct pct plct spct pst st
+        v@(s, ct, I st) <- f b' x'
+        (return $!! v) >> mask_ (pokeAsyncHandlerData ct pct plct spct pst st)
         return (s, False)
     ) fd efd
 
@@ -882,10 +889,10 @@ handler :: Handler -> CString -> CInt -> Ptr (Ptr NgxStrType) -> Ptr CInt ->
     Ptr (StablePtr L.ByteString) -> IO CUInt
 handler f x (I n) p pl pct plct spct pst spd =
     safeHandler pct pst $ do
-        (s, ct, I st) <- f <$> B.unsafePackCStringLen (x, n)
-        (return $!! s) >> pokeContentTypeAndStatus ct pct plct pst st
-        pokeLazyByteString s p pl spd
-        newStablePtr ct >>= poke spct
+        v@(s, ct, I st) <- f <$> B.unsafePackCStringLen (x, n)
+        lct <- (return $!! v) >> pokeContentTypeAndStatus ct pct plct pst st
+        (return $!! lct) >> pokeLazyByteString s p pl spd
+        when (lct > 0) $ newStablePtr ct >>= poke spct
         return 0
 
 defHandler :: YY -> CString -> CInt ->
@@ -901,8 +908,8 @@ unsafeHandler :: UnsafeHandler -> CString -> CInt -> Ptr CString -> Ptr CSize ->
     Ptr CString -> Ptr CSize -> Ptr CInt -> IO CUInt
 unsafeHandler f x (I n) p pl pct plct pst =
     safeHandler pct pst $ do
-        (s, ct, I st) <- f <$> B.unsafePackCStringLen (x, n)
-        (return $!! s) >> pokeContentTypeAndStatus ct pct plct pst st
+        v@(s, ct, I st) <- f <$> B.unsafePackCStringLen (x, n)
+        (return $!! v) >> void (pokeContentTypeAndStatus ct pct plct pst st)
         PtrLen t l <- B.unsafeUseAsCStringLen s return
         pokeCStringLen t l p pl
         return 0

@@ -709,7 +709,7 @@ ngx_http_haskell_async_content_handler_cleanup(void *data)
     if (clnd->complete != 3 && clnd->yy_cleanup_data.n_bufs == 0) {
         return;
     }
-    if (!clnd->error) {
+    if (clnd->content_type.len > 0) {
         clnd->yy_cleanup_data.hs_free_stable_ptr(clnd->locked_ct);
     }
     ngx_http_haskell_yy_handler_cleanup(&clnd->yy_cleanup_data);
