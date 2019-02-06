@@ -148,6 +148,7 @@ ngx_http_haskell_yy_handler_cleanup(void *data)
         if (clnd->hs_free_stable_ptr != NULL) {
             clnd->hs_free_stable_ptr(clnd->locked_bytestring);
         }
+        clnd->n_bufs = 0;
     }
 }
 

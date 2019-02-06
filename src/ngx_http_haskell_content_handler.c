@@ -38,20 +38,23 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
     ngx_str_t                                 arg = ngx_null_string;
     ngx_str_t                                 ct = ngx_string("text/plain");
     HsInt32                                   len = 0, st = NGX_HTTP_OK;
+    HsInt32                                   hlen = 0;
     HsWord32                                  err;
     size_t                                    slen;
-    ngx_str_t                                *res, buf;
+    ngx_str_t                                *res, buf, *hres = NULL;
     u_char                                   *sres = NULL;
     char                                     *eres = NULL;
     ngx_int_t                                 elen = 0;
     ngx_str_t                                 ereslen;
     ngx_chain_t                              *out, *out_cur;
     ngx_buf_t                                *b;
+    ngx_table_elt_t                          *h;
     ngx_pool_cleanup_t                       *cln;
     ngx_http_haskell_content_handler_data_t  *clnd = NULL;
     ngx_pool_t                               *pool;
     HsStablePtr                               locked_bytestring = NULL;
     HsStablePtr                               locked_ct = NULL;
+    HsStablePtr                               locked_headers = NULL;
     ngx_uint_t                                def_handler;
     ngx_uint_t                                unsafe_handler;
     ngx_uint_t                                async_handler;
@@ -80,6 +83,8 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
         len = lcf->content_handler_data->yy_cleanup_data.n_bufs;
         if (!def_handler) {
             ct = lcf->content_handler_data->content_type;
+            hres = lcf->content_handler_data->headers_cleanup_data.bufs;
+            hlen = lcf->content_handler_data->headers_cleanup_data.n_bufs;
         }
         st = lcf->content_handler_data->status;
         goto send_response;
@@ -105,7 +110,8 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
         err = ((ngx_http_haskell_handler_ch)
                handlers[lcf->content_handler->handler].self)
                     (arg.data, arg.len, &res, &len, &ct.data, &ct.len,
-                     &locked_ct, &st, &locked_bytestring);
+                     &locked_ct, &st, &hlen, &hres, &locked_headers,
+                     &locked_bytestring);
         elen = st;
         eres = (char *) ct.data;
         break;
@@ -251,6 +257,12 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
         clnd->locked_ct = def_handler ? NULL : locked_ct;
         clnd->has_locked_ct = def_handler || ct.len == 0 ? 0 : 1;
         clnd->status = st;
+        clnd->headers_cleanup_data.hs_free_stable_ptr =
+                        lcf->static_content ? NULL : mcf->hs_free_stable_ptr;
+        clnd->headers_cleanup_data.locked_bytestring =
+                        lcf->static_content ? NULL : locked_headers;
+        clnd->headers_cleanup_data.bufs = hres;
+        clnd->headers_cleanup_data.n_bufs = hlen;
         cln->handler = ngx_http_haskell_content_handler_cleanup;
         cln->data = clnd;
     }
@@ -263,6 +275,40 @@ send_response:
 
     r->headers_out.status = st;
     r->headers_out.content_length_n = 0;
+
+    if (hlen > 0) {
+        if (hlen % 2 != 0) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "odd number of name / value pairs in custom "
+                          "response headers, ignoring them all");
+        } else {
+            for (i = 0; i < hlen; i += 2) {
+                h = ngx_list_push(&r->headers_out.headers);
+                if (!h) {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "failed to create "
+                                  "custom response header \"%V : %V\"",
+                                  hres[i], hres[i + 1]);
+                    continue;
+                }
+
+                h->hash = 1;
+                h->key = hres[i];
+                h->value = hres[i + 1];
+
+                h->lowcase_key = ngx_pnalloc(r->pool, hres[i].len);
+                if (!h->lowcase_key) {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "failed to create lowcase key for "
+                                  "custom response header \"%V : %V\"",
+                                  hres[i], hres[i + 1]);
+                    continue;
+                }
+
+                ngx_strlow(h->lowcase_key, h->key.data, h->key.len);
+            }
+        }
+    }
 
     out = NULL;
 
@@ -343,6 +389,10 @@ cleanup:
             } else {
                 ngx_free(ct.data);
             }
+        }
+
+        if (hlen > 1) {
+            mcf->hs_free_stable_ptr(locked_headers);
         }
     }
 
@@ -468,6 +518,12 @@ ngx_http_haskell_content_handler_cleanup(void *data)
 
     if (clnd->has_locked_ct) {
         clnd->yy_cleanup_data.hs_free_stable_ptr(clnd->locked_ct);
+        clnd->has_locked_ct = 0;
+    }
+    if (clnd->headers_cleanup_data.n_bufs > 0) {
+        clnd->headers_cleanup_data.hs_free_stable_ptr(
+                                clnd->headers_cleanup_data.locked_bytestring);
+        clnd->headers_cleanup_data.n_bufs = 0;
     }
     ngx_http_haskell_yy_handler_cleanup(&clnd->yy_cleanup_data);
 }

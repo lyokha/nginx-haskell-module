@@ -20,6 +20,7 @@ module NgxExport (
     -- * Type declarations
                   ContentHandlerResult
                  ,UnsafeContentHandlerResult
+                 ,HTTPHeaders
     -- * Exporters
     -- *** Synchronous handlers
                  ,ngxExportSS
@@ -116,8 +117,9 @@ pattern ToBool i <- (toBool -> i)
 {-# COMPLETE ToBool :: CUInt #-}
 #endif
 
--- | The /3-tuple/ contains /(content, content-type, HTTP-status)/.
-type ContentHandlerResult = (L.ByteString, B.ByteString, Int)
+-- | The /4-tuple/ contains
+--   /(content, content-type, HTTP-status, response-headers)/.
+type ContentHandlerResult = (L.ByteString, B.ByteString, Int, HTTPHeaders)
 
 -- | The /3-tuple/ contains /(content, content-type, HTTP-status)/.
 --
@@ -125,6 +127,9 @@ type ContentHandlerResult = (L.ByteString, B.ByteString, Int)
 -- low-level string literals that do not need to be freed upon an HTTP request
 -- termination and must not be garbage-collected in the Haskell RTS.
 type UnsafeContentHandlerResult = (B.ByteString, B.ByteString, Int)
+
+-- | A list of HTTP headers comprised of /name-value/ pairs.
+type HTTPHeaders = [(B.ByteString, B.ByteString)]
 
 data NgxExport = SS              (String -> String)
                | SSS             (String -> String -> String)
@@ -386,6 +391,7 @@ ngxExportHandler =
     ngxExport 'Handler 'Unambiguous 'handler
     [t|CString -> CInt -> Ptr (Ptr NgxStrType) -> Ptr CInt ->
        Ptr CString -> Ptr CSize -> Ptr (StablePtr B.ByteString) -> Ptr CInt ->
+       Ptr (Ptr NgxStrType) -> Ptr CInt -> Ptr (StablePtr L.ByteString) ->
        Ptr (StablePtr L.ByteString) -> IO CUInt|]
 
 -- | Exports a function of type
@@ -428,6 +434,7 @@ ngxExportAsyncHandler =
     ngxExport 'AsyncHandler 'Unambiguous 'asyncHandler
     [t|CString -> CInt -> CInt -> CUInt ->
        Ptr CString -> Ptr CSize -> Ptr (StablePtr B.ByteString) -> Ptr CInt ->
+       Ptr (Ptr NgxStrType) -> Ptr CInt -> Ptr (StablePtr L.ByteString) ->
        Ptr (Ptr NgxStrType) -> Ptr CInt ->
        Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO (StablePtr (Async ()))|]
 
@@ -447,6 +454,7 @@ ngxExportAsyncHandlerOnReqBody =
     [t|Ptr NgxStrType -> Ptr NgxStrType -> CInt ->
        CString -> CInt -> CInt -> CUInt ->
        Ptr CString -> Ptr CSize -> Ptr (StablePtr B.ByteString) -> Ptr CInt ->
+       Ptr (Ptr NgxStrType) -> Ptr CInt -> Ptr (StablePtr L.ByteString) ->
        Ptr (Ptr NgxStrType) -> Ptr CInt ->
        Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO (StablePtr (Async ()))|]
 
@@ -635,10 +643,12 @@ peekRequestBodyChunks tmpf b m =
         else peekNgxStringArrayLenY b m
 
 pokeAsyncHandlerData :: B.ByteString -> Ptr CString -> Ptr CSize ->
-    Ptr (StablePtr B.ByteString) -> Ptr CInt -> CInt -> IO ()
-pokeAsyncHandlerData ct pct plct spct pst st = do
+    Ptr (StablePtr B.ByteString) -> Ptr CInt -> CInt -> HTTPHeaders ->
+    Ptr (Ptr NgxStrType) -> Ptr CInt -> Ptr (StablePtr L.ByteString) -> IO ()
+pokeAsyncHandlerData ct pct plct spct pst st rhs prhs plrhs sprhs = do
     lct <- pokeContentTypeAndStatus ct pct plct pst st
     when (lct > 0) $ newStablePtr ct >>= poke spct
+    pokeLazyByteString (fromHTTPHeaders rhs) prhs plrhs sprhs
 
 safeHandler :: Ptr CString -> Ptr CInt -> IO CUInt -> IO CUInt
 safeHandler p pl = handle $ \e -> do
@@ -673,6 +683,11 @@ safeAsyncYYHandler = handle $ \e ->
             )
            )
 {-# INLINE safeAsyncYYHandler #-}
+
+fromHTTPHeaders :: HTTPHeaders -> L.ByteString
+fromHTTPHeaders = L.fromChunks . foldr (\(z -> a, z -> b) -> ([a, b] ++)) []
+    where z s | B.null s = B.singleton 0
+              | otherwise = s
 
 isEINTR :: IOError -> Bool
 isEINTR = (Just ((\(Errno i) -> i) eINTR) ==) . ioe_errno
@@ -825,29 +840,35 @@ asyncIOYYY f tmpf b (I m) x (I n) fd (ToBool efd) =
 asyncHandler :: AsyncHandler -> CString -> CInt ->
     CInt -> CUInt ->
     Ptr CString -> Ptr CSize -> Ptr (StablePtr B.ByteString) -> Ptr CInt ->
+    Ptr (Ptr NgxStrType) -> Ptr CInt -> Ptr (StablePtr L.ByteString) ->
     Ptr (Ptr NgxStrType) -> Ptr CInt ->
     Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO (StablePtr (Async ()))
-asyncHandler f x (I n) fd (ToBool efd) pct plct spct pst =
+asyncHandler f x (I n) fd (ToBool efd) pct plct spct pst
+        prhs plrhs sprhs =
     asyncIOCommon
     (do
         x' <- B.unsafePackCStringLen (x, n)
-        v@(s, ct, I st) <- f x'
-        (return $!! v) >> mask_ (pokeAsyncHandlerData ct pct plct spct pst st)
+        v@(s, ct, I st, rhs) <- f x'
+        (return $!! v) >> mask_
+            (pokeAsyncHandlerData ct pct plct spct pst st rhs prhs plrhs sprhs)
         return (s, False)
     ) fd efd
 
 asyncHandlerRB :: AsyncHandlerRB -> Ptr NgxStrType -> Ptr NgxStrType -> CInt ->
     CString -> CInt -> CInt -> CUInt ->
     Ptr CString -> Ptr CSize -> Ptr (StablePtr B.ByteString) -> Ptr CInt ->
+    Ptr (Ptr NgxStrType) -> Ptr CInt -> Ptr (StablePtr L.ByteString) ->
     Ptr (Ptr NgxStrType) -> Ptr CInt ->
     Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO (StablePtr (Async ()))
-asyncHandlerRB f tmpf b (I m) x (I n) fd (ToBool efd) pct plct spct pst =
+asyncHandlerRB f tmpf b (I m) x (I n) fd (ToBool efd) pct plct spct pst
+        prhs plrhs sprhs =
     asyncIOCommon
     (do
         b' <- peekRequestBodyChunks tmpf b m
         x' <- B.unsafePackCStringLen (x, n)
-        v@(s, ct, I st) <- f b' x'
-        (return $!! v) >> mask_ (pokeAsyncHandlerData ct pct plct spct pst st)
+        v@(s, ct, I st, rhs) <- f b' x'
+        (return $!! v) >> mask_
+            (pokeAsyncHandlerData ct pct plct spct pst st rhs prhs plrhs sprhs)
         return (s, False)
     ) fd efd
 
@@ -886,12 +907,15 @@ bY f x (I n) p pl =
 
 handler :: Handler -> CString -> CInt -> Ptr (Ptr NgxStrType) -> Ptr CInt ->
     Ptr CString -> Ptr CSize -> Ptr (StablePtr B.ByteString) -> Ptr CInt ->
+    Ptr (Ptr NgxStrType) -> Ptr CInt -> Ptr (StablePtr L.ByteString) ->
     Ptr (StablePtr L.ByteString) -> IO CUInt
-handler f x (I n) p pl pct plct spct pst spd =
+handler f x (I n) p pl pct plct spct pst prhs plrhs sprhs spd =
     safeHandler pct pst $ do
-        v@(s, ct, I st) <- f <$> B.unsafePackCStringLen (x, n)
+        v@(s, ct, I st, rhs) <- f <$> B.unsafePackCStringLen (x, n)
         lct <- (return $!! v) >> pokeContentTypeAndStatus ct pct plct pst st
-        (return $!! lct) >> pokeLazyByteString s p pl spd
+        (return $!! lct) >>
+            pokeLazyByteString (fromHTTPHeaders rhs) prhs plrhs sprhs
+        pokeLazyByteString s p pl spd
         when (lct > 0) $ newStablePtr ct >>= poke spct
         return 0
 

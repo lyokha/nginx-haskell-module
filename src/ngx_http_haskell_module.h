@@ -53,7 +53,8 @@ typedef HsStablePtr (*ngx_http_haskell_handler_async_ioy_yy)
     (HsPtr, HsPtr, HsInt32, HsPtr, HsInt32, HsInt32, HsWord32, HsPtr, HsPtr,
      HsPtr, HsPtr);
 typedef HsWord32 (*ngx_http_haskell_handler_ch)
-    (HsPtr, HsInt32, HsPtr, HsPtr, HsPtr, HsPtr, HsPtr, HsPtr, HsPtr);
+    (HsPtr, HsInt32, HsPtr, HsPtr, HsPtr, HsPtr, HsPtr, HsPtr, HsPtr, HsPtr,
+     HsPtr, HsPtr);
 typedef HsWord32 (*ngx_http_haskell_handler_dch)
     (HsPtr, HsInt32, HsPtr, HsPtr, HsPtr, HsPtr);
 typedef HsWord32 (*ngx_http_haskell_handler_uch)
@@ -180,6 +181,7 @@ typedef struct {
 
 typedef struct {
     ngx_http_haskell_yy_cleanup_data_t         yy_cleanup_data;
+    ngx_http_haskell_yy_cleanup_data_t         headers_cleanup_data;
     ngx_str_t                                  content_type;
     HsStablePtr                                locked_ct;
     HsInt32                                    status;
