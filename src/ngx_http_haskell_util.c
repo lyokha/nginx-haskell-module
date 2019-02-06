@@ -71,7 +71,8 @@ ngx_http_haskell_yy_handler_result(ngx_log_t *log, ngx_pool_t *pool,
     } else if (n_bufs == 1) {
         if (cleanup && !service /* any synchronous handler */) {
             cln = ngx_pool_cleanup_add(pool, 0);
-            clnd = ngx_palloc(pool, sizeof(ngx_http_haskell_yy_cleanup_data_t));
+            clnd = ngx_pcalloc(pool,
+                               sizeof(ngx_http_haskell_yy_cleanup_data_t));
             if (cln == NULL || clnd == NULL) {
                 if (cmvar != NULL) {
                     ngx_log_error(NGX_LOG_ERR, log, 0,
@@ -80,7 +81,6 @@ ngx_http_haskell_yy_handler_result(ngx_log_t *log, ngx_pool_t *pool,
                 }
                 goto cleanup;
             }
-            clnd->bufs = NULL;
             clnd->n_bufs = 1;
             clnd->hs_free_stable_ptr = hs_free_stable_ptr;
             clnd->locked_bytestring = locked_bytestring;
@@ -142,7 +142,7 @@ ngx_http_haskell_yy_handler_cleanup(void *data)
     ngx_http_haskell_yy_cleanup_data_t       *clnd = data;
 
     if (clnd->n_bufs > 0) {
-        if (clnd->n_bufs > 1) {
+        if (clnd->n_bufs > 1 || clnd->free_single_buffer) {
             ngx_free(clnd->bufs);
         }
         if (clnd->hs_free_stable_ptr != NULL) {

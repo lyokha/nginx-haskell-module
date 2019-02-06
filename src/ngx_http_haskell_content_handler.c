@@ -264,6 +264,7 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
                         lcf->static_content ? NULL : locked_headers;
         clnd->headers_cleanup_data.bufs = hres;
         clnd->headers_cleanup_data.n_bufs = hlen;
+        clnd->headers_cleanup_data.free_single_buffer = 1;
         cln->handler = ngx_http_haskell_content_handler_cleanup;
         cln->data = clnd;
     }
@@ -405,7 +406,8 @@ cleanup:
             }
         }
 
-        if (hlen > 1) {
+        if (hlen > 0) {
+            ngx_free(hres);
             mcf->hs_free_stable_ptr(locked_headers);
         }
     }
@@ -534,11 +536,7 @@ ngx_http_haskell_content_handler_cleanup(void *data)
         clnd->yy_cleanup_data.hs_free_stable_ptr(clnd->locked_ct);
         clnd->has_locked_ct = 0;
     }
-    if (clnd->headers_cleanup_data.n_bufs > 0) {
-        clnd->headers_cleanup_data.hs_free_stable_ptr(
-                                clnd->headers_cleanup_data.locked_bytestring);
-        clnd->headers_cleanup_data.n_bufs = 0;
-    }
     ngx_http_haskell_yy_handler_cleanup(&clnd->yy_cleanup_data);
+    ngx_http_haskell_yy_handler_cleanup(&clnd->headers_cleanup_data);
 }
 

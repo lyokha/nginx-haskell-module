@@ -176,6 +176,7 @@ typedef struct {
     void                                     (*hs_free_stable_ptr)
                                                                 (HsStablePtr);
     HsStablePtr                                locked_bytestring;
+    ngx_uint_t                                 free_single_buffer;
 } ngx_http_haskell_yy_cleanup_data_t;
 
 
