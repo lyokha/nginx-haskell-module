@@ -65,17 +65,17 @@ packLiteral l s = accursedUnutterablePerformIO $ unsafePackAddressLen l s
 delayContent :: ByteString -> IO ContentHandlerResult
 delayContent v = do
     v' <- delay v
-    return $ (, packLiteral 10 "text/plain"#, 200) $
+    return $ (, packLiteral 10 "text/plain"#, 200, []) $
         L.concat ["Waited ", v', " sec\n"]
 ngxExportAsyncHandler 'delayContent
 
 convertToPng :: L.ByteString -> ByteString -> IO ContentHandlerResult
 convertToPng t = const $ return $
     case decodeImage $ L.toStrict t of
-        Left e -> (C8L.pack e, packLiteral 10 "text/plain"#, 500)
+        Left e -> (C8L.pack e, packLiteral 10 "text/plain"#, 500, [])
         Right image -> case encodeDynamicPng image of
-                Left e -> (C8L.pack e, packLiteral 10 "text/plain"#, 500)
-                Right png -> (png, packLiteral 9 "image/png"#, 200)
+                Left e -> (C8L.pack e, packLiteral 10 "text/plain"#, 500, [])
+                Right png -> (png, packLiteral 9 "image/png"#, 200, [])
 ngxExportAsyncHandlerOnReqBody 'convertToPng
 
 httpManager :: Manager

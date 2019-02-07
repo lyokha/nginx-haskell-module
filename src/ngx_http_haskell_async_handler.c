@@ -163,6 +163,7 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
         async_data->yy_cleanup_data.hs_free_stable_ptr =
                                             mcf->hs_free_stable_ptr;
         async_data->yy_cleanup_data.locked_bytestring = NULL;
+        async_data->yy_cleanup_data.free_single_buffer = 0;
         async_data->error = 0;
         async_data->ref_count = 0;
         async_data->complete = 0;
