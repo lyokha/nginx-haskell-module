@@ -111,7 +111,7 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
         err = ((ngx_http_haskell_handler_ch)
                handlers[lcf->content_handler->handler].self)
                     (arg.data, arg.len, &res, &len, &ct.data, &ct.len,
-                     &locked_ct, &st, &hlen, &hres, &locked_headers,
+                     &locked_ct, &st, &hres, &hlen, &locked_headers,
                      &locked_bytestring);
         elen = st;
         eres = (char *) ct.data;

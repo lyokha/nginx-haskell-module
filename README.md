@@ -143,7 +143,7 @@ urlDecode = fromMaybe "" . doURLDecode
 NGX_EXPORT_S_S (urlDecode)
 
 -- compatible with Pandoc 2.0 (will not compile for older versions)
-fromMd (T.decodeUtf8 -> x) = uncurry (, packLiteral 9 "text/html"#, ) $
+fromMd (T.decodeUtf8 -> x) = uncurry (, packLiteral 9 "text/html"#, , []) $
     case runPure $ readMarkdown def x >>= writeHtml of
         Right p -> (fromText p, 200)
         Left (displayException -> e) -> (case runPure $ writeError e of
@@ -301,18 +301,20 @@ There is another haskell directive *haskell_content* which accepts a haskell
 function to generate HTTP response and an optional string that will be passed to
 the function. The function must be of one of the two types:
 *strictByteString-to-lazyByteString* and
-*strictByteString-to-3tuple(lazyByteString,strictByteString,Int)*. It must be
-exported with *NGX_EXPORT_DEF_HANDLER* (*default* content handler) in the first
-case and *NGX_EXPORT_HANDLER* in the second case. The elements in the *3tuple*
-correspond to returned content, its type (e.g. *text/html* etc.) and HTTP
-status. Default content handler sets content type to *text/plain* and HTTP
-status to *200*. Directive *haskell_content* is allowed in *location* and
-*location-if* clauses of the nginx configuration. In the location */content*
-from the above example the directive *haskell_content* makes use of a haskell
-function *fromMd* to generate HTML response from a markdown text. Function
-*fromMd* translates a markdown text to HTML using Pandoc library. Notice that
-content type is built from a string literal with a *magic hash* at the end to
-avoid unnecessary expenses (see details about using string literals in section
+*strictByteString-to-4tuple(lazyByteString,strictByteString,Int,
+list-of-pairs-of-strictByteStrings)*. It must be exported with
+*NGX_EXPORT_DEF_HANDLER* (*default* content handler) in the first case and
+*NGX_EXPORT_HANDLER* in the second case. The elements in the *4tuple* correspond
+to returned content, its type (e.g. *text/html* etc.), HTTP status, and a list
+of custom response headers. Default content handler sets content type to
+*text/plain* and HTTP status to *200*. Directive *haskell_content* is allowed in
+*location* and *location-if* clauses of the nginx configuration. In the location
+*/content* from the above example the directive *haskell_content* makes use of a
+haskell function *fromMd* to generate HTML response from a markdown text.
+Function *fromMd* translates a markdown text to HTML using Pandoc library.
+Notice that content type is built from a string literal with a *magic hash* at
+the end to avoid unnecessary expenses (see details about using string literals
+in section
 [Optimized unsafe content handler](#optimized-unsafe-content-handler)).
 
 What about doing some tests? Let's first start nginx (in this example, from the
@@ -403,11 +405,11 @@ haskell content handler
 
 ```haskell
 fromFile (C8.unpack -> "content.html") =
-    (L.fromStrict $(embedFile "/path/to/content.html"), "text/html", 200)
+    (L.fromStrict $(embedFile "/path/to/content.html"), "text/html", 200, [])
 fromFile (C8.unpack -> "content.txt") =
-    (L.fromStrict $(embedFile "/path/to/content.txt"), "text/plain", 200)
+    (L.fromStrict $(embedFile "/path/to/content.txt"), "text/plain", 200, [])
 fromFile _ =
-    (C8L.pack "File not found", "text/plain", 500)
+    (C8L.pack "File not found", "text/plain", 500, [])
 NGX_EXPORT_HANDLER (fromFile)
 ```
 
@@ -467,8 +469,8 @@ dirty implementation.
 ```haskell
 fromFile (tailSafe . C8.unpack -> f) =
     case lookup f $(embedDir "/rootpath") of
-        Just p  -> (L.fromStrict p,            "text/plain", 200)
-        Nothing -> (C8L.pack "File not found", "text/plain", 404)
+        Just p  -> (L.fromStrict p,            "text/plain", 200, [])
+        Nothing -> (C8L.pack "File not found", "text/plain", 404, [])
 NGX_EXPORT_HANDLER (fromFile)
 ```
 
@@ -765,20 +767,22 @@ run before redirection, but variable ``$hs_async_httpbin`` will never be used
 because we'll get out from the current location.
 
 Asynchronous content handlers may have two types:
-*strictByteString-to-IO(3tuple(lazyByteString,strictByteString,Int))* and
-*lazyByteString-then-strictByteString-to-IO(3tuple(lazyByteString,strictByteString,Int))*.
-They are declared with directives *haskell_async_content* and
-*haskell_async_content_on_request_body* respectively. The type of the first
-variant corresponds to that of the normal content handler, except it runs in the
-*IO Monad*, the second variant accepts additionally request body chunks in its
-first argument. The task starts from the content handler asynchronously, and the
-lazy bytestring from the *3tuple* &mdash; the contents &mdash; gets used in the
-task as is, with all of its originally computed chunks.
+*strictByteString-to-IO(4tuple(lazyByteString,strictByteString,Int,
+list-of-pairs-of-strictByteStrings))* and *lazyByteString-then-strictByteString-
+to-IO(4tuple(lazyByteString,strictByteString,Int,
+list-of-pairs-of-strictByteStrings))*. They are declared with directives
+*haskell_async_content* and *haskell_async_content_on_request_body*
+respectively. The type of the first variant corresponds to that of the normal
+content handler, except it runs in the *IO Monad*, the second variant accepts
+additionally request body chunks in its first argument. The task starts from the
+content handler asynchronously, and the lazy bytestring from the *4tuple*
+&mdash; the contents &mdash; gets used in the task as is, with all of its
+originally computed chunks.
 
 The *echo*-example with an async content handler will look like the following.
 
 ```haskell
-getUrlContent url = (, packLiteral 9 "text/html"#, 200) <$> getUrl url
+getUrlContent url = (, packLiteral 9 "text/html"#, 200, []) <$> getUrl url
     where packLiteral l s =
               accursedUnutterablePerformIO $ unsafePackAddressLen l s
 NGX_EXPORT_ASYNC_HANDLER (getUrlContent)

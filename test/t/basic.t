@@ -103,7 +103,7 @@ urlDecode = fromMaybe "" . doURLDecode
 ngxExportSS \'urlDecode
 
 -- compatible with Pandoc 2.0 (will not compile for older versions)
-fromMd (T.decodeUtf8 -> x) = uncurry (, packLiteral 9 "text/html"#, ) $
+fromMd (T.decodeUtf8 -> x) = uncurry (, packLiteral 9 "text/html"#, , []) $
     case runPure $ readMarkdown def x >>= writeHtml of
         Right p -> (fromText p, 200)
         Left (displayException -> e) -> (case runPure $ writeError e of

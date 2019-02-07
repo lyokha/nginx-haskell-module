@@ -1,3 +1,14 @@
+### 1.7.0
+
+- Now basic synchronous and all asynchronous content handlers are expected to
+  return a list of custom response headers in the *4th* field of the
+  *ContentHandlerResult*.
+- All asynchronous handlers get proper masking against asynchronous exceptions,
+  which is especially important for service handlers in presence of asynchronous
+  exceptions from service hooks.
+- Now a new StablePtr for the content type gets returned only when its value is
+  not empty.
+
 ### 1.6.4
 
 - Added exception *WorkerProcessIsExiting* to signal services that Nginx is
