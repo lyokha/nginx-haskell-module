@@ -149,6 +149,8 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
         len = ctx->content_handler_data->yy_cleanup_data.n_bufs;
         ct = ctx->content_handler_data->content_type;
         st = ctx->content_handler_data->status;
+        hres = ctx->content_handler_data->headers_cleanup_data.bufs;
+        hlen = ctx->content_handler_data->headers_cleanup_data.n_bufs;
         if (err) {
             rc = ngx_http_haskell_yy_handler_result(r->connection->log, r->pool,
                     res, len, &ereslen,

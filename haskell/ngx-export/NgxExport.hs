@@ -761,9 +761,9 @@ asyncIOFlag8b = L.toStrict $ runPut $ putWord64host 1
 asyncIOCommon :: IO (L.ByteString, Bool) ->
     CInt -> Bool -> Ptr (Ptr NgxStrType) -> Ptr CInt ->
     Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO (StablePtr (Async ()))
-asyncIOCommon a (I fd) efd p pl pr spd =
+asyncIOCommon a (I fd) efd p pl pr spd = mask $ \restore ->
     async
-    (mask $ \restore -> do
+    (do
         (s, (r, exiting)) <- safeAsyncYYHandler $
             restore $ do
                 (s, exiting) <- a

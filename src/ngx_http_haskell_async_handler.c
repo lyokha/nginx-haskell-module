@@ -362,6 +362,13 @@ ngx_http_haskell_run_async_content_handler(ngx_http_request_t *r)
     clnd->yy_cleanup_data.n_bufs = 0;
     clnd->yy_cleanup_data.hs_free_stable_ptr = mcf->hs_free_stable_ptr;
     clnd->yy_cleanup_data.locked_bytestring = NULL;
+    clnd->yy_cleanup_data.free_single_buffer = 0;
+
+    clnd->headers_cleanup_data.bufs = NULL;
+    clnd->headers_cleanup_data.n_bufs = 0;
+    clnd->headers_cleanup_data.hs_free_stable_ptr = mcf->hs_free_stable_ptr;
+    clnd->headers_cleanup_data.locked_bytestring = NULL;
+    clnd->headers_cleanup_data.free_single_buffer = 1;
 
     if (rb) {
         res = ((ngx_http_haskell_handler_ach_rb)
@@ -374,6 +381,9 @@ ngx_http_haskell_run_async_content_handler(ngx_http_request_t *r)
                  ngx_http_haskell_module_use_eventfd_channel,
                  &clnd->content_type.data, &clnd->content_type.len,
                  &clnd->locked_ct, &clnd->status,
+                 &clnd->headers_cleanup_data.bufs,
+                 &clnd->headers_cleanup_data.n_bufs,
+                 &clnd->headers_cleanup_data.locked_bytestring,
                  &clnd->yy_cleanup_data.bufs, &clnd->yy_cleanup_data.n_bufs,
                  &clnd->error, &clnd->yy_cleanup_data.locked_bytestring);
     } else {
@@ -383,6 +393,9 @@ ngx_http_haskell_run_async_content_handler(ngx_http_request_t *r)
                  ngx_http_haskell_module_use_eventfd_channel,
                  &clnd->content_type.data, &clnd->content_type.len,
                  &clnd->locked_ct, &clnd->status,
+                 &clnd->headers_cleanup_data.bufs,
+                 &clnd->headers_cleanup_data.n_bufs,
+                 &clnd->headers_cleanup_data.locked_bytestring,
                  &clnd->yy_cleanup_data.bufs, &clnd->yy_cleanup_data.n_bufs,
                  &clnd->error, &clnd->yy_cleanup_data.locked_bytestring);
     }
@@ -710,6 +723,7 @@ ngx_http_haskell_async_content_handler_cleanup(void *data)
         clnd->yy_cleanup_data.hs_free_stable_ptr(clnd->locked_ct);
         clnd->content_type.len = 0;
     }
+    ngx_http_haskell_yy_handler_cleanup(&clnd->headers_cleanup_data);
     ngx_http_haskell_yy_handler_cleanup(&clnd->yy_cleanup_data);
 }
 

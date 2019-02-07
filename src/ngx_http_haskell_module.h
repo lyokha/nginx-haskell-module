@@ -61,10 +61,10 @@ typedef HsWord32 (*ngx_http_haskell_handler_uch)
     (HsPtr, HsInt32, HsPtr, HsPtr, HsPtr, HsPtr, HsPtr);
 typedef HsStablePtr (*ngx_http_haskell_handler_ach)
     (HsPtr, HsInt32, HsInt32, HsWord32, HsPtr, HsPtr, HsPtr, HsPtr, HsPtr,
-     HsPtr, HsPtr, HsPtr);
+     HsPtr, HsPtr, HsPtr, HsPtr, HsPtr, HsPtr);
 typedef HsStablePtr (*ngx_http_haskell_handler_ach_rb)
     (HsPtr, HsPtr, HsInt32, HsPtr, HsInt32, HsInt32, HsWord32, HsPtr, HsPtr,
-     HsPtr, HsPtr, HsPtr, HsPtr, HsPtr, HsPtr);
+     HsPtr, HsPtr, HsPtr, HsPtr, HsPtr, HsPtr, HsPtr, HsPtr, HsPtr);
 
 
 typedef enum {
