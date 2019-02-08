@@ -490,8 +490,10 @@ ngx_string(
 "\n"
 "    AUX_NGX.Ptr (AUX_NGX.StablePtr AUX_NGX_BSL.ByteString) -> IO ()\n"
 "aux_ngx_pokeLazyByteString s p pl spd = do\n"
-"    (t, fromIntegral -> l) <- AUX_NGX.peek p >>= aux_ngx_toBuffers s\n"
-"    AUX_NGX.when (l /= 1) (AUX_NGX.poke p t) >> AUX_NGX.poke pl l\n"
+"    pv <- AUX_NGX.peek p\n"
+"    (t, fromIntegral -> l) <- aux_ngx_toBuffers s pv\n"
+"    AUX_NGX.when (l /= 1 || pv == AUX_NGX.nullPtr) (AUX_NGX.poke p t) >>\n"
+"        AUX_NGX.poke pl l\n"
 "    AUX_NGX.when (t /= AUX_NGX.nullPtr) $\n"
 "        AUX_NGX.newStablePtr s >>= AUX_NGX.poke spd\n\n"
 

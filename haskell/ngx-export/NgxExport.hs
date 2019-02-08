@@ -620,8 +620,9 @@ pokeLazyByteString :: L.ByteString ->
     Ptr (Ptr NgxStrType) -> Ptr CInt ->
     Ptr (StablePtr L.ByteString) -> IO ()
 pokeLazyByteString s p pl spd = do
-    PtrLen t l <- peek p >>= toBuffers s
-    when (l /= 1) (poke p t) >> poke pl l
+    pv <- peek p
+    PtrLen t l <- toBuffers s pv
+    when (l /= 1 || pv == nullPtr) (poke p t) >> poke pl l
     when (t /= nullPtr) $ newStablePtr s >>= poke spd
 
 pokeContentTypeAndStatus :: B.ByteString ->
