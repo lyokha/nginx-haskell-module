@@ -162,20 +162,21 @@ Types *ContentHandlerResult* and *UnsafeContentHandlerResult* are declared as
 type synonyms in module *NgxExport*.
 
 ``` {.haskell hl="vim"}
-type ContentHandlerResult = (L.ByteString, ByteString, Int)
+type ContentHandlerResult = (L.ByteString, ByteString, Int, HTTPHeaders)
 type UnsafeContentHandlerResult = (ByteString, ByteString, Int)
+type HTTPHeaders = [(ByteString, ByteString)]
 ```
 
 All content handlers are *pure* Haskell functions, as well as the most of other
-synchronous handlers. The *normal* content handler returns a *3-tuple*
-*(response-body, content-type, HTTP-status)*. The response body consists of a
-number of chunks packed in a *lazy bytestring*, the content type is a *strict
-bytestring* such as *text/html*. The *default* handler defaults the content type
-to *text/plain* and the HTTP status to *200*, thus returning only chunks of the
-response body. The *unsafe* handler returns a *3-tuple* with a single-chunked
-response body, the content type and the status, but the both bytestring
-parameters are supposed to be taken from static data, which must not be cleaned
-up after request termination.
+synchronous handlers. The *normal* content handler returns a *4-tuple*
+*(response-body, content-type, HTTP-status, response-headers)*. The response
+body consists of a number of chunks packed in a *lazy bytestring*, the content
+type is a *strict bytestring* such as *text/html*. The *default* handler
+defaults the content type to *text/plain* and the HTTP status to *200*, thus
+returning only chunks of the response body. The *unsafe* handler returns a
+*3-tuple* with a single-chunked response body, the content type and the status,
+but the both bytestring parameters are supposed to be taken from static data,
+which must not be cleaned up after request termination.
 
 *Normal* and *default* content handlers can be declared with two directives:
 *haskell_content* and *haskell_static_content*. The second directive runs its
@@ -392,7 +393,7 @@ packLiteral l s = accursedUnutterablePerformIO $ unsafePackAddressLen l s
 delayContent :: ByteString -> IO ContentHandlerResult
 delayContent v = do
     v' <- delay v
-    return $ (, packLiteral 10 "text/plain"#, 200) $
+    return $ (, packLiteral 10 "text/plain"#, 200, []) $
         L.concat ["Waited ", v', " sec\n"]
 ngxExportAsyncHandler 'delayContent
 ```
@@ -433,10 +434,10 @@ import           Codec.Picture
 convertToPng :: L.ByteString -> ByteString -> IO ContentHandlerResult
 convertToPng t = const $ return $
     case decodeImage $ L.toStrict t of
-        Left e -> (C8L.pack e, packLiteral 10 "text/plain"#, 500)
+        Left e -> (C8L.pack e, packLiteral 10 "text/plain"#, 500, [])
         Right image -> case encodeDynamicPng image of
-                Left e -> (C8L.pack e, packLiteral 10 "text/plain"#, 500)
-                Right png -> (png, packLiteral 9 "image/png"#, 200)
+                Left e -> (C8L.pack e, packLiteral 10 "text/plain"#, 500, [])
+                Right png -> (png, packLiteral 9 "image/png"#, 200, [])
 ngxExportAsyncHandlerOnReqBody 'convertToPng
 ```
 
@@ -1566,17 +1567,17 @@ packLiteral l s = accursedUnutterablePerformIO $ unsafePackAddressLen l s
 delayContent :: ByteString -> IO ContentHandlerResult
 delayContent v = do
     v' <- delay v
-    return $ (, packLiteral 10 "text/plain"#, 200) $
+    return $ (, packLiteral 10 "text/plain"#, 200, []) $
         L.concat ["Waited ", v', " sec\n"]
 ngxExportAsyncHandler 'delayContent
 
 convertToPng :: L.ByteString -> ByteString -> IO ContentHandlerResult
 convertToPng t = const $ return $
     case decodeImage $ L.toStrict t of
-        Left e -> (C8L.pack e, packLiteral 10 "text/plain"#, 500)
+        Left e -> (C8L.pack e, packLiteral 10 "text/plain"#, 500, [])
         Right image -> case encodeDynamicPng image of
-                Left e -> (C8L.pack e, packLiteral 10 "text/plain"#, 500)
-                Right png -> (png, packLiteral 9 "image/png"#, 200)
+                Left e -> (C8L.pack e, packLiteral 10 "text/plain"#, 500, [])
+                Right png -> (png, packLiteral 9 "image/png"#, 200, [])
 ngxExportAsyncHandlerOnReqBody 'convertToPng
 
 httpManager :: Manager

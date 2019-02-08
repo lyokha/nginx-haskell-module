@@ -38,6 +38,7 @@ Table of contents
 - [Termination of nginx worker and asynchronous exception ThreadKilled](#termination-of-nginx-worker-and-asynchronous-exception-threadkilled)
 - [Some facts about foreign functions that may block](#some-facts-about-foreign-functions-that-may-block)
 - [Troubleshooting](#troubleshooting)
+- [Tips and tricks](#tips-and-tricks)
 - [See also](#see-also)
 
 Motivational example
@@ -2099,6 +2100,13 @@ Troubleshooting
   mechanism. Compare this with running two instances of nginx on the same
   network endpoint: one of them (the slower) will claim that *Address already in
   use*.
+
+Tips and tricks
+---------------
+
+- Normal synchronous and all asynchronous content handlers can send nginx-styled
+  responses when the response body is empty and the custom response headers
+  contain a pair of empty name and value.
 
 See also
 --------

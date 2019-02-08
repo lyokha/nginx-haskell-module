@@ -59,6 +59,7 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
     ngx_uint_t                                def_handler;
     ngx_uint_t                                unsafe_handler;
     ngx_uint_t                                async_handler;
+    ngx_uint_t                                styled = 0;
     ngx_int_t                                 rc;
 
     if (ngx_http_discard_request_body(r) != NGX_OK) {
@@ -277,9 +278,6 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
 
 send_response:
 
-    r->headers_out.status = st;
-    r->headers_out.content_length_n = 0;
-
     if (hlen > 0) {
         if (hlen % 2 != 0) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
@@ -291,8 +289,14 @@ send_response:
                 hvalue = hres[i + 1];
 
                 if (hname.len == 0 || (hname.len == 1 && *hname.data == 0)) {
-                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                    if (hname.len == 1 && len == 0
+                        && hvalue.len == 1 && *hvalue.data == 0)
+                    {
+                        styled = 1;
+                    } else {
+                        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                             "ignored empty name for a custom response header");
+                    }
                     continue;
                 }
 
@@ -305,7 +309,7 @@ send_response:
                     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                                   "failed to create "
                                   "custom response header \"%V : %V\"",
-                                  hname, hvalue);
+                                  &hname, &hvalue);
                     continue;
                 }
 
@@ -318,7 +322,7 @@ send_response:
                     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                                   "failed to create lowcase key for "
                                   "custom response header \"%V : %V\"",
-                                  hname, hvalue);
+                                  &hname, &hvalue);
                     continue;
                 }
 
@@ -326,6 +330,13 @@ send_response:
             }
         }
     }
+
+    if (styled) {
+        return ngx_http_special_response_handler(r, st);
+    }
+
+    r->headers_out.status = st;
+    r->headers_out.content_length_n = 0;
 
     out = NULL;
 
