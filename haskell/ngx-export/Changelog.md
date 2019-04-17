@@ -1,3 +1,8 @@
+### 1.7.1
+
+- Added function *ngxCachedPid* to return the PID of the current worker process
+  cached in Nginx.
+
 ### 1.7.0
 
 - Now basic synchronous and all asynchronous content handlers are expected to

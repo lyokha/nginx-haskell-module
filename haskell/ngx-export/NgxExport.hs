@@ -44,10 +44,13 @@ module NgxExport (
                  ,ngxExportAsyncHandlerOnReqBody
     -- *** Service hooks
                  ,ngxExportServiceHook
-    -- * Opaque pointers to Nginx global objects
+    -- * Accessing Nginx global objects
+    -- *** Opaque pointers
                  ,ngxCyclePtr
                  ,ngxUpstreamMainConfPtr
                  ,ngxCachedTimePtr
+    -- *** Primitive objects
+                 ,ngxCachedPid
     -- * Accessing Nginx core functionality from Haskell handlers
                  ,TerminateWorkerProcess (..)
                  ,RestartWorkerProcess (..)
@@ -1034,6 +1037,12 @@ ngxUpstreamMainConfPtr = readIORef ngxUpstreamMainConfPtrStore
 ngxCachedTimePtr :: IO (Ptr (Ptr ()))
 ngxCachedTimePtr = readIORef ngxCachedTimePtrStore
 
+-- | Returns the /PID/ of the current worker process cached in Nginx.
+--
+-- @since 1.7.1
+ngxCachedPid :: IO CPid
+ngxCachedPid = readIORef ngxCachedPidStore
+
 foreign export ccall ngxExportSetCyclePtr :: Ptr () -> IO ()
 ngxExportSetCyclePtr :: Ptr () -> IO ()
 ngxExportSetCyclePtr = writeIORef ngxCyclePtrStore
@@ -1046,6 +1055,10 @@ foreign export ccall ngxExportSetCachedTimePtr :: Ptr (Ptr ()) -> IO ()
 ngxExportSetCachedTimePtr :: Ptr (Ptr ()) -> IO ()
 ngxExportSetCachedTimePtr = writeIORef ngxCachedTimePtrStore
 
+foreign export ccall ngxExportSetCachedPid :: CPid -> IO ()
+ngxExportSetCachedPid :: CPid -> IO ()
+ngxExportSetCachedPid = writeIORef ngxCachedPidStore
+
 ngxCyclePtrStore :: IORef (Ptr ())
 ngxCyclePtrStore = unsafePerformIO $ newIORef nullPtr
 {-# NOINLINE ngxCyclePtrStore #-}
@@ -1057,4 +1070,8 @@ ngxUpstreamMainConfPtrStore = unsafePerformIO $ newIORef nullPtr
 ngxCachedTimePtrStore :: IORef (Ptr (Ptr ()))
 ngxCachedTimePtrStore = unsafePerformIO $ newIORef nullPtr
 {-# NOINLINE ngxCachedTimePtrStore #-}
+
+ngxCachedPidStore :: IORef CPid
+ngxCachedPidStore = unsafePerformIO $ newIORef (-1)
+{-# NOINLINE ngxCachedPidStore #-}
 

@@ -142,6 +142,7 @@ typedef struct {
                                                                 (HsPtr);
     void                                     (*set_cached_time_ptr)
                                                             (volatile void **);
+    void                                     (*set_cached_pid)(HsInt32);
     HsBool                                   (*rts_has_thread_support)(void);
     ngx_array_t                                service_code_vars;
     ngx_array_t                                var_nocacheable;
