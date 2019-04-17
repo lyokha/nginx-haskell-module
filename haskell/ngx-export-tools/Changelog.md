@@ -1,3 +1,8 @@
+### 0.4.5.0
+
+- Added function *ngxPid* to return the PID of the current worker process
+  cached in Nginx.
+
 ### 0.4.4.0
 
 - Using *WorkerProcessIsExiting* instead of *ThreadKilled* as required in

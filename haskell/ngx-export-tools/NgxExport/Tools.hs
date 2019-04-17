@@ -24,6 +24,7 @@ module NgxExport.Tools (
                        ,finalizeHTTPRequest
                        ,ngxRequestPtr
                        ,ngxNow
+                       ,ngxPid
     -- *** Time intervals
                        ,TimeInterval (..)
                        ,toSec
@@ -72,6 +73,7 @@ import           Control.Exception
 import           Control.Concurrent
 import           GHC.Generics
 import           System.IO.Unsafe (unsafePerformIO)
+import           System.Posix.Types
 import           Safe
 
 -- | Terminates the Nginx worker process from a Haskell service.
@@ -123,6 +125,10 @@ ngxRequestPtr = wordPtrToPtr . fromIntegral . runGet getWordhost . L.fromStrict
 -- actually wrapped in a bigger C struct as its first element.
 ngxNow :: IO CTime
 ngxNow = ngxCachedTimePtr >>= peek >>= peek . castPtr
+
+-- | Returns the /PID/ of the current worker process cached in Nginx.
+ngxPid :: IO CPid
+ngxPid = ngxCachedPid
 
 -- | Time intervals.
 data TimeInterval = Hr Int          -- ^ Hours
