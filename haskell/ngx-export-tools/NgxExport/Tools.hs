@@ -126,7 +126,7 @@ ngxRequestPtr = wordPtrToPtr . fromIntegral . runGet getWordhost . L.fromStrict
 ngxNow :: IO CTime
 ngxNow = ngxCachedTimePtr >>= peek >>= peek . castPtr
 
--- | Returns the /PID/ of the current worker process cached in Nginx.
+-- | Returns the /PID/ of the current worker process cached in Nginx core.
 ngxPid :: IO CPid
 ngxPid = ngxCachedPid
 
