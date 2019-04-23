@@ -11,7 +11,7 @@ To see how *Template Haskell* declarations get instantiated, add option
 
 Before installing *test_tools.so*, you may need to collect and install all
 dependent Haskell libraries, and patch *test_tools.so* using utility
-[*hslibdeps*](/utils/README.md).
+[*hslibdeps*](/utils/README.md#utility-hslibdeps).
 
 ```ShellSession
 $ hslibdeps -t /var/lib/nginx/x86_64-linux-ghc-8.6.1 test_tools.so
