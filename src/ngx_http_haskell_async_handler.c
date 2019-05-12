@@ -24,14 +24,14 @@
 
 static ngx_int_t ngx_http_haskell_create_async_task(ngx_http_request_t *r,
     ngx_fd_t fd[2], ngx_event_handler_pt handler, ngx_uint_t *complete,
-    CWord *error, ngx_int_t index);
+    CUInt *error, ngx_int_t index);
 static void ngx_http_haskell_delete_async_task(void *data);
 static void ngx_http_haskell_post_handler(ngx_http_request_t *r);
 static ngx_int_t ngx_http_haskell_read_request_body(ngx_http_request_t *r,
     ngx_http_haskell_loc_conf_t *lcf, ngx_http_haskell_ctx_t *ctx);
 static void ngx_http_haskell_async_event(ngx_event_t *ev);
 static ngx_int_t ngx_http_haskell_async_finalize_request(ngx_http_request_t *r,
-    ngx_uint_t index, CWord status, ngx_uint_t styled);
+    ngx_uint_t index, CUInt status, ngx_uint_t styled);
 static void ngx_http_haskell_async_content_handler_event(ngx_event_t *ev);
 static void ngx_http_haskell_async_content_handler_cleanup(void *data);
 
@@ -59,7 +59,7 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
     ngx_uint_t                         rb, rb_skip;
     HsStablePtr                        res;
 
-    static CWord                       dummy_active;
+    static CUInt                       dummy_active;
 
     mcf = ngx_http_get_module_main_conf(r, ngx_http_haskell_module);
     lcf = ngx_http_get_module_loc_conf(r, ngx_http_haskell_module);
@@ -412,7 +412,7 @@ ngx_http_haskell_run_async_content_handler(ngx_http_request_t *r)
 static ngx_int_t
 ngx_http_haskell_create_async_task(ngx_http_request_t *r, ngx_fd_t fd[2],
                                    ngx_event_handler_pt handler,
-                                   ngx_uint_t *complete, CWord *error,
+                                   ngx_uint_t *complete, CUInt *error,
                                    ngx_int_t index)
 {
     ngx_http_haskell_async_event_t    *hev;
@@ -631,7 +631,7 @@ ngx_http_haskell_async_event(ngx_event_t *ev)
 
 ngx_int_t
 ngx_http_haskell_async_finalize_request(ngx_http_request_t *r, ngx_uint_t index,
-                                        CWord status, ngx_uint_t styled)
+                                        CUInt status, ngx_uint_t styled)
 {
     ngx_http_variable_value_t         *value;
     ngx_str_t                          ct = ngx_string("text/plain");
@@ -792,7 +792,7 @@ ngx_http_haskell_run_async_handler(ngx_http_request_t *r,
     if (async_data_elts[found_idx].error) {
         ngx_uint_t  finalizing =
                         (async_data_elts[found_idx].error & 0x80000000) != 0;
-        CWord       status = async_data_elts[found_idx].error & ~0xC0000000;
+        CUInt       status = async_data_elts[found_idx].error & ~0xC0000000;
         ngx_uint_t  log_level = finalizing ?
                         (status >= NGX_HTTP_SPECIAL_RESPONSE ? NGX_LOG_ALERT
                             : NGX_LOG_INFO) : NGX_LOG_ERR;

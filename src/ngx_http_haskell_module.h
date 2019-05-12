@@ -33,53 +33,53 @@ typedef HsInt64 CInt;
 #endif
 
 #if SIZEOF_UNSIGNED_INT == 4
-typedef HsWord32 CWord;
-#elif SIZEOF_INT == 8
-typedef HsWord64 CWord;
+typedef HsWord32 CUInt;
+#elif SIZEOF_UNSIGNED_INT == 8
+typedef HsWord64 CUInt;
 #else
 #error Unknown or unsupported unsigned int size
 #endif
 
 
-typedef CWord (*ngx_http_haskell_handler_s_s)
+typedef CUInt (*ngx_http_haskell_handler_s_s)
     (HsPtr, CInt, HsPtr, HsPtr);
-typedef CWord (*ngx_http_haskell_handler_s_ss)
+typedef CUInt (*ngx_http_haskell_handler_s_ss)
     (HsPtr, CInt, HsPtr, CInt, HsPtr, HsPtr);
-typedef CWord (*ngx_http_haskell_handler_s_ls)
+typedef CUInt (*ngx_http_haskell_handler_s_ls)
     (HsPtr, CInt, HsPtr, HsPtr);
-typedef CWord (*ngx_http_haskell_handler_b_s)
+typedef CUInt (*ngx_http_haskell_handler_b_s)
     (HsPtr, CInt, HsPtr, HsPtr);
-typedef CWord (*ngx_http_haskell_handler_b_ss)
+typedef CUInt (*ngx_http_haskell_handler_b_ss)
     (HsPtr, CInt, HsPtr, CInt, HsPtr, HsPtr);
-typedef CWord (*ngx_http_haskell_handler_b_ls)
+typedef CUInt (*ngx_http_haskell_handler_b_ls)
     (HsPtr, CInt, HsPtr, HsPtr);
-typedef CWord (*ngx_http_haskell_handler_y_y)
+typedef CUInt (*ngx_http_haskell_handler_y_y)
     (HsPtr, CInt, HsPtr, HsPtr, HsPtr);
-typedef CWord (*ngx_http_haskell_handler_b_y)
+typedef CUInt (*ngx_http_haskell_handler_b_y)
     (HsPtr, CInt, HsPtr, HsPtr);
-typedef CWord (*ngx_http_haskell_handler_ioy_y)
+typedef CUInt (*ngx_http_haskell_handler_ioy_y)
     (HsPtr, CInt, HsPtr, HsPtr, HsPtr);
 typedef HsStablePtr (*ngx_http_haskell_handler_async_ioy_y)
-    (HsPtr, CInt, CInt, CInt, HsPtr, CWord, CWord,
+    (HsPtr, CInt, CInt, CInt, HsPtr, CUInt, CUInt,
      HsPtr, HsPtr, HsPtr, HsPtr);
 typedef HsStablePtr (*ngx_http_haskell_handler_async_ioy_y_service)
-    (HsPtr, CInt, CInt, CInt, volatile CWord *, CWord, CWord,
+    (HsPtr, CInt, CInt, CInt, volatile CUInt *, CUInt, CUInt,
      HsPtr, HsPtr, HsPtr, HsPtr);
 typedef HsStablePtr (*ngx_http_haskell_handler_async_ioy_yy)
-    (HsPtr, HsPtr, CInt, HsPtr, CInt, CInt, CWord, HsPtr, HsPtr,
+    (HsPtr, HsPtr, CInt, HsPtr, CInt, CInt, CUInt, HsPtr, HsPtr,
      HsPtr, HsPtr);
-typedef CWord (*ngx_http_haskell_handler_ch)
+typedef CUInt (*ngx_http_haskell_handler_ch)
     (HsPtr, CInt, HsPtr, HsPtr, HsPtr, HsPtr, HsPtr, HsPtr, HsPtr, HsPtr,
      HsPtr, HsPtr);
-typedef CWord (*ngx_http_haskell_handler_dch)
+typedef CUInt (*ngx_http_haskell_handler_dch)
     (HsPtr, CInt, HsPtr, HsPtr, HsPtr, HsPtr);
-typedef CWord (*ngx_http_haskell_handler_uch)
+typedef CUInt (*ngx_http_haskell_handler_uch)
     (HsPtr, CInt, HsPtr, HsPtr, HsPtr, HsPtr, HsPtr);
 typedef HsStablePtr (*ngx_http_haskell_handler_ach)
-    (HsPtr, CInt, CInt, CWord, HsPtr, HsPtr, HsPtr, HsPtr, HsPtr,
+    (HsPtr, CInt, CInt, CUInt, HsPtr, HsPtr, HsPtr, HsPtr, HsPtr,
      HsPtr, HsPtr, HsPtr, HsPtr, HsPtr, HsPtr);
 typedef HsStablePtr (*ngx_http_haskell_handler_ach_rb)
-    (HsPtr, HsPtr, CInt, HsPtr, CInt, CInt, CWord, HsPtr, HsPtr,
+    (HsPtr, HsPtr, CInt, HsPtr, CInt, CInt, CUInt, HsPtr, HsPtr,
      HsPtr, HsPtr, HsPtr, HsPtr, HsPtr, HsPtr, HsPtr, HsPtr, HsPtr);
 
 
@@ -203,7 +203,7 @@ typedef struct {
     ngx_str_t                                  content_type;
     HsStablePtr                                locked_ct;
     CInt                                       status;
-    CWord                                      error;
+    CUInt                                      error;
     ngx_uint_t                                 complete;
     ngx_uint_t                                 has_locked_ct;
 } ngx_http_haskell_content_handler_data_t;
@@ -249,7 +249,7 @@ typedef struct {
 typedef struct {
     ngx_int_t                                  index;
     ngx_http_haskell_yy_cleanup_data_t         yy_cleanup_data;
-    CWord                                      error;
+    CUInt                                      error;
     ngx_http_haskell_async_result_t            result;
     ngx_uint_t                                 ref_count;
     ngx_uint_t                                 complete;
@@ -322,7 +322,7 @@ typedef struct {
     ngx_http_haskell_async_event_stub_t               s;
     ngx_http_request_t                               *r;
     ngx_uint_t                                       *complete;
-    CWord                                            *error;
+    CUInt                                            *error;
     ngx_int_t                                         index;
 } ngx_http_haskell_async_event_t;
 
@@ -344,7 +344,7 @@ struct ngx_http_haskell_service_code_var_data_s {
     ngx_int_t                                         shm_index;
     ngx_fd_t                                          shm_lock_fd;
     HsStablePtr                                       locked_async_task;
-    volatile CWord                                    active;
+    volatile CUInt                                    active;
     ngx_uint_t                                        cb:1;
     ngx_uint_t                                        noarg:1;
     ngx_uint_t                                        running:1;

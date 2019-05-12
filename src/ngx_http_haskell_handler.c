@@ -44,7 +44,7 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
     ngx_str_t                           *res_yy = NULL, buf_yy;
     HsStablePtr                          locked_bytestring = NULL;
     CInt                                 len;
-    CWord                                err;
+    CUInt                                err;
     ngx_str_t                            reslen;
     ngx_pool_cleanup_t                  *cln;
 
