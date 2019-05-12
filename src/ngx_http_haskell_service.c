@@ -878,8 +878,8 @@ ngx_http_haskell_run_service_hook(ngx_cycle_t *cycle,
     ngx_http_haskell_handler_t                  *handlers;
     ngx_str_t                                   *res_yy, buf_yy;
     HsStablePtr                                  locked_bytestring = NULL;
-    HsInt32                                      len;
-    HsWord32                                     err;
+    CInt                                         len;
+    CWord                                        err;
     ngx_str_t                                    reslen = ngx_null_string;
 
     handlers = mcf->handlers.elts;

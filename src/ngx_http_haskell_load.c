@@ -39,16 +39,16 @@ ngx_string("ambiguity_");
 static char  *haskell_module_install_signal_handlers_option =
 "--install-signal-handlers=yes";
 
-static const HsInt32  haskell_module_ngx_export_api_version_major = 1;
-static const HsInt32  haskell_module_ngx_export_api_version_minor = 7;
+static const CInt  haskell_module_ngx_export_api_version_major = 1;
+static const CInt  haskell_module_ngx_export_api_version_minor = 7;
 
 
 ngx_int_t
 ngx_http_haskell_load(ngx_cycle_t *cycle)
 {
-    typedef HsInt32               (*version_f_t)(HsInt32 *, HsInt32);
-    typedef HsInt32               (*type_checker_t)(void);
-    typedef HsInt32               (*ambiguity_checker_t)(void);
+    typedef CInt                  (*version_f_t)(CInt *, CInt);
+    typedef CInt                  (*type_checker_t)(void);
+    typedef CInt                  (*ambiguity_checker_t)(void);
 
     typedef enum {
         ngx_http_haskell_handler_ambiguity_unambiguous = 0,
@@ -67,7 +67,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     u_char                         *pid_value;
     size_t                          pid_len;
     version_f_t                     version_f = NULL;
-    HsInt32                         version[4], version_len;
+    CInt                            version[4], version_len;
     void                          (*install_signal_handler)(void);
     ngx_uint_t                      single_proc_fg;
 #if !(NGX_WIN32)
@@ -214,7 +214,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         goto dlclose_and_exit;
     }
 
-    mcf->set_cached_pid = (void (*)(HsInt32)) dlsym(mcf->dl_handle,
+    mcf->set_cached_pid = (void (*)(CInt)) dlsym(mcf->dl_handle,
                                             "ngxExportSetCachedPid");
     dl_error = dlerror();
     if (dl_error != NULL) {

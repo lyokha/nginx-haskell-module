@@ -37,9 +37,9 @@ ngx_http_haskell_content_handler(ngx_http_request_t *r)
     ngx_http_complex_value_t                 *args;
     ngx_str_t                                 arg = ngx_null_string;
     ngx_str_t                                 ct = ngx_string("text/plain");
-    HsInt32                                   len = 0, st = NGX_HTTP_OK;
-    HsInt32                                   hlen = 0;
-    HsWord32                                  err;
+    CInt                                      len = 0, st = NGX_HTTP_OK;
+    CInt                                      hlen = 0;
+    CWord                                     err;
     size_t                                    slen;
     ngx_str_t                                *res, buf, *hres = NULL;
     u_char                                   *sres = NULL;

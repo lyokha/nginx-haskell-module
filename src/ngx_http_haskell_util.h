@@ -19,12 +19,11 @@
 #ifndef NGX_HTTP_HASKELL_UTIL_H
 #define NGX_HTTP_HASKELL_UTIL_H
 
-#include <ngx_core.h>
-#include <ngx_http.h>
+#include "ngx_http_haskell_module.h"
 
 
 ngx_int_t ngx_http_haskell_yy_handler_result(ngx_log_t *log,
-    ngx_pool_t *pool, ngx_str_t *bufs, HsInt32 n_bufs, ngx_str_t *res,
+    ngx_pool_t *pool, ngx_str_t *bufs, CInt n_bufs, ngx_str_t *res,
     void (*hs_free_stable_ptr)(HsStablePtr), HsStablePtr locked_bytestring,
     ngx_http_variable_t *cmvar, ngx_uint_t cleanup, ngx_uint_t service);
 void ngx_http_haskell_yy_handler_cleanup(void *data);

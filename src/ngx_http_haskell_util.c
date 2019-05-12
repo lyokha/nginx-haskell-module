@@ -16,7 +16,6 @@
  * =============================================================================
  */
 
-#include "ngx_http_haskell_module.h"
 #include "ngx_http_haskell_util.h"
 
 
@@ -30,8 +29,7 @@ const ngx_uint_t  ngx_http_haskell_module_use_eventfd_channel =
 
 ngx_int_t
 ngx_http_haskell_yy_handler_result(ngx_log_t *log, ngx_pool_t *pool,
-                                   ngx_str_t *bufs, HsInt32 n_bufs,
-                                   ngx_str_t *res,
+                                   ngx_str_t *bufs, CInt n_bufs, ngx_str_t *res,
                                    void (*hs_free_stable_ptr)(HsStablePtr),
                                    HsStablePtr locked_bytestring,
                                    ngx_http_variable_t *cmvar,
