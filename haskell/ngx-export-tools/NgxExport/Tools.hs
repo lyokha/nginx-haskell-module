@@ -22,6 +22,7 @@ module NgxExport.Tools (
                         terminateWorkerProcess
                        ,restartWorkerProcess
                        ,finalizeHTTPRequest
+                       ,workerProcessIsExiting
                        ,ngxRequestPtr
                        ,ngxNow
                        ,ngxPid
@@ -101,6 +102,14 @@ restartWorkerProcess = throwIO . RestartWorkerProcess
 -- variable handler.
 finalizeHTTPRequest :: Int -> Maybe String -> IO ()
 finalizeHTTPRequest = (throwIO .) . FinalizeHTTPRequest
+
+-- | Checks that a generic exception is of type 'WorkerProcessIsExiting'.
+--
+-- This can be useful to check quickly in an exception handler whether a
+-- Haskell service has been interrupted because the worker process is exiting.
+workerProcessIsExiting :: SomeException -> Bool
+workerProcessIsExiting e =
+    isJust (fromException e :: Maybe WorkerProcessIsExiting)
 
 -- | Unmarshals the value of Nginx variable __/$_r_ptr/__ into a pointer to
 --   the Nginx request object.
