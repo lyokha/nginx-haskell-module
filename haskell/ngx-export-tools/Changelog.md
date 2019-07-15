@@ -1,3 +1,9 @@
+### 0.4.6.0
+
+- Added function *workerProcessIsExiting* to check quickly in an exception
+  handler whether a Haskell service has been interrupted because the worker
+  process is exiting.
+
 ### 0.4.5.0
 
 - Added function *ngxPid* to return the PID of the current worker process
