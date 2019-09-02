@@ -15,6 +15,12 @@ matrix:
         apt:
           packages: [cabal-install-head, ghc-8.6.5]
           sources: [hvr-ghc]
+    - env: NGXVER=1.16.1 CABALVER=head GHCVER=8.8.1
+      compiler: gcc
+      addons:
+        apt:
+          packages: [cabal-install-head, ghc-8.8.1]
+          sources: [hvr-ghc]
     - env: NGXVER=1.14.2 CABALVER=head GHCVER=8.6.5
       compiler: gcc
       addons:
@@ -31,6 +37,11 @@ matrix:
       addons:
         apt:
           packages: [cabal-install-head, ghc-head]
+          sources: [hvr-ghc]
+    - env: CABALVER=head GHCVER=8.8.1
+      addons:
+        apt:
+          packages: [cabal-install-head, ghc-8.8.1]
           sources: [hvr-ghc]
     - env: CABALVER=head GHCVER=8.6.5
       addons:
@@ -80,9 +91,9 @@ install:
     cabal --version
     echo "$(ghc --version) "`
         `"[$(ghc --print-project-git-commit-id 2>/dev/null || echo '?')]"
-    travis_retry cabal v1-update
+    travis_retry cabal v2-update
     cd haskell/ngx-export
-    cabal v1-install --only-dependencies
+    cabal v2-install --only-dependencies
     if [ -n "$NGXVER" ]
     then
         cd -
@@ -94,13 +105,13 @@ install:
                 tar xzvf nginx-${NGXVER}.tar.gz
         fi
         git clone https://github.com/openresty/echo-nginx-module.git
-        cabal v1-install cpphs regex-pcre-builtin aeson bytestring safe
+        cabal v2-install cpphs regex-pcre-builtin aeson bytestring safe
         cd -
     elif [ "$GHCVER" != "7.10.3" ]
     then
         cd -
         cd haskell/ngx-export-tools
-        cabal v1-install --only-dependencies
+        cabal v2-install --only-dependencies
         cd -
         cd haskell/ngx-export
     fi
@@ -109,11 +120,11 @@ install:
 script:
   - |
     set -e
-    cabal v1-configure
-    cabal v1-build
-    cabal v1-sdist
+    cabal v2-configure
+    cabal v2-build
+    cabal v2-sdist
     SRC_TGZ=$(cabal info . | awk '{print $2; exit}').tar.gz &&
-        (cd dist && cabal v1-install --force-reinstalls "$SRC_TGZ")
+        (cd dist && cabal v2-install --force-reinstalls "$SRC_TGZ")
     if [ -n "$NGXVER" ]
     then
         cd -
@@ -135,11 +146,11 @@ script:
     then
         cd -
         cd haskell/ngx-export-tools
-        cabal v1-configure
-        cabal v1-build
-        cabal v1-sdist
+        cabal v2-configure
+        cabal v2-build
+        cabal v2-sdist
         SRC_TGZ=$(cabal info . | awk '{print $2; exit}').tar.gz &&
-            (cd dist && cabal v1-install --force-reinstalls "$SRC_TGZ")
+            (cd dist && cabal v2-install --force-reinstalls "$SRC_TGZ")
     fi
     set +e
 
