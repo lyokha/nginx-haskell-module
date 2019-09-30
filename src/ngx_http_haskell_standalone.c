@@ -22,7 +22,7 @@
 const ngx_str_t  ngx_http_haskell_module_standalone_header =
 ngx_string(
 "{-# LANGUAGE ForeignFunctionInterface, InterruptibleFFI, CPP #-}\n"
-"{-# OPTIONS_GHC -cpp -pgmPcpphs -optP--cpp #-}\n\n"
+"{-# OPTIONS_GHC -pgmP \"cpphs --cpp\" #-}\n\n"
 
 "#define AUX_NGX_TYPECHECK(T, F, S) \\\n"
 "type_ngx_hs_ ## F = aux_ngx_exportType $ T S; \\\n"
