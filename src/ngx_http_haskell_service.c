@@ -1055,6 +1055,12 @@ ngx_http_haskell_run_service_handler(ngx_http_request_t *r,
         goto update_var;
     }
 
+    /* FIXME: using cache for res. That's OK except that shm service variables
+     * do not use cache (see the comment a few lines above). To ensure the same
+     * behavior in all cases, perhaps it makes sense to prohibit directive
+     * haskell_var_nocacheable for variables with
+     * ngx_http_haskell_run_service_handler */
+
     for (cln = r->pool->cleanup; cln != NULL; cln = cln->next) {
         if (cln->handler == ngx_http_haskell_service_handler_cleanup) {
             service_data = cln->data;
