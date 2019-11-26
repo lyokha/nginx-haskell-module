@@ -99,7 +99,7 @@ instance UrlDecodable L.ByteString where
 urlDecode = fromMaybe "" . doURLDecode
 NGX_EXPORT_S_S (urlDecode)
 
--- compatible with Pandoc 2.0 (will not compile for older versions)
+-- compatible with Pandoc 2.0 - 2.7.3 (will not compile for other versions)
 fromMd (T.decodeUtf8 -> x) = uncurry (, packLiteral 9 "text/html"#, , []) $
     case runPure $ readMarkdown def x >>= writeHtml of
         Right p -> (fromText p, 200)
