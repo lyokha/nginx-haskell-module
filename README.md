@@ -146,7 +146,6 @@ urlDecode = fromMaybe "" . doURLDecode
 NGX_EXPORT_S_S (urlDecode)
 
 -- compatible with Pandoc 2.8 (will not compile for older versions)
-simpleHtmlTemplate :: Template T.Text
 simpleHtmlTemplate = unsafePerformIO $ do
     t <- compileTemplate "" $ T.pack "<html>\\n<body>\\n$body$</body></html>"
     return $ case t of
