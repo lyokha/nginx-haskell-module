@@ -74,10 +74,12 @@ import           Data.ByteString.Unsafe
 import           Data.ByteString.Internal (accursedUnutterablePerformIO)
 import           Text.Pandoc
 import           Text.Pandoc.Builder
+import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import           Data.Function (on)
 import           Control.Monad
 import           Control.Exception
+import           System.IO.Unsafe (unsafePerformIO)
 import           Safe
 
 toUpper = map C.toUpper
@@ -143,20 +145,28 @@ instance UrlDecodable L.ByteString where
 urlDecode = fromMaybe "" . doURLDecode
 NGX_EXPORT_S_S (urlDecode)
 
--- compatible with Pandoc 2.0 - 2.7.3 (will not compile for other versions)
+-- compatible with Pandoc 2.8 (will not compile for older versions)
+simpleHtmlTemplate :: Template T.Text
+simpleHtmlTemplate = unsafePerformIO $ do
+    t <- compileTemplate "" $ T.pack "<html>\\n<body>\\n$body$</body></html>"
+    return $ case t of
+                 Right a -> a
+                 Left e -> error e
+{-# NOINLINE simpleHtmlTemplate #-}
+
 fromMd (T.decodeUtf8 -> x) = uncurry (, packLiteral 9 "text/html"#, , []) $
     case runPure $ readMarkdown def x >>= writeHtml of
         Right p -> (fromText p, 200)
-        Left (displayException -> e) -> (case runPure $ writeError e of
-                                             Right p -> fromText p
-                                             Left  _ -> C8L.pack e, 500)
+        Left (T.pack . displayException -> e) ->
+            (case runPure $ writeError e of
+                 Right p -> fromText p
+                 Left  _ -> fromText e, 500)
     where packLiteral l s =
               accursedUnutterablePerformIO $ unsafePackAddressLen l s
           fromText = C8L.fromStrict . T.encodeUtf8
-          writeHtml = writeHtml5String defHtmlWriterOptions
+          writeHtml = writeHtml5String htmlWriterOptions
           writeError = writeHtml . doc . para . singleton . Str
-          defHtmlWriterOptions = def
-              { writerTemplate = Just "<html>\\n<body>\\n$body$</body></html>" }
+          htmlWriterOptions = def { writerTemplate = Just simpleHtmlTemplate }
 NGX_EXPORT_HANDLER (fromMd)
 
 toYesNo "0" = "No"
@@ -373,16 +383,16 @@ Let's try location */content* (in a browser it looks great!)
 ```ShellSession
 $ curl -D- 'http://localhost:8010/content?n=%5B10%2C20%2C30%2C40%5D&take=3'
 HTTP/1.1 200 OK
-Server: nginx/1.8.0
-Date: Fri, 04 Mar 2016 15:17:44 GMT
+Server: nginx/1.16.0
+Date: Wed, 27 Nov 2019 12:13:46 GMT
 Content-Type: text/html
-Content-Length: 323
+Content-Length: 277
 Connection: keep-alive
 
 <html>
 <body>
-<h2 id="do-some-json-parsing">Do some JSON parsing</h2>
-<h3 id="given-10203040">Given <code>[10,20,30,40]</code></h3>
+<h2>Do some JSON parsing</h2>
+<h3>Given <code>[10,20,30,40]</code></h3>
 <ul>
 <li><p>Is this list of integer numbers?</p>
 <ul>
