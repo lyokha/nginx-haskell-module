@@ -24,6 +24,7 @@ Table of contents
 - [Asynchronous services](#asynchronous-services)
 - [Client request body handlers](#client-request-body-handlers)
 - [Synchronous short circuit bang-handler](#synchronous-short-circuit-bang-handler)
+- [Strict synchronous variable handlers](#strict-synchronous-variable-handlers)
 - [Miscellaneous nginx directives](#miscellaneous-nginx-directives)
 - [Service variables in shared memory and integration with other nginx modules](#service-variables-in-shared-memory-and-integration-with-other-nginx-modules)
 - [Shared services and global states](#shared-services-and-global-states)
@@ -1016,6 +1017,32 @@ permitted, so basically it should look like in the following example.
 The bang handler can also be used for short-circuit assignment of a variable
 normally evaluated by a synchronous haskell handler on some other level of the
 nginx configuration hierarchy.
+
+Strict synchronous variable handlers
+------------------------------------
+
+Remember how we used the empty *if* clause in the previous section to force
+evaluation of ``$hs_request_method``? This can be easily avoided by using
+*strict* variable handlers. There are *early* strict handlers which get
+evaluated during the early *rewrite phase* and strict handlers which get
+evaluated during the late *log phase*. To evaluate a variable in the early phase
+unconditionally, the handler's variable must start with ``<!``, while for the
+late evaluation the prefix must be ``!``.
+
+Thus, to avoid the empty *if* clause, the ``$hs_request_method`` must be
+declared as
+
+```nginx
+        haskell_run ! <!$hs_request_method $request_method;
+```
+
+Strict evaluation fits any synchronous haskell handler. It is especially useful
+when the handler produces side effects such as writing into some global state.
+
+The early strict handlers comply with the rule of sequencing of asynchronous
+tasks which means that they can use results of the formerly declared
+asynchronous tasks while their own results can be used in asynchronous tasks
+that were declared after them.
 
 Miscellaneous nginx directives
 ------------------------------
