@@ -44,6 +44,9 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
     ngx_uint_t                         i, j;
     ngx_http_haskell_main_conf_t      *mcf;
     ngx_http_haskell_loc_conf_t       *lcf;
+    ngx_http_core_main_conf_t         *cmcf;
+    ngx_http_variable_t               *cmvars;
+    ngx_http_variable_value_t         *value;
     ngx_http_haskell_handler_t        *handlers;
     ngx_http_haskell_code_var_data_t  *code_vars;
     ngx_http_haskell_ctx_t            *ctx;
@@ -96,6 +99,9 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
         ngx_http_set_ctx(r, ctx, ngx_http_haskell_module);
     }
 
+    cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
+    cmvars = cmcf->variables.elts;
+
     for (i = 0; i < lcf->code_vars.nelts; i++) {
         rb = handlers[code_vars[i].handler].role
                 == ngx_http_haskell_handler_role_async_variable_rb;
@@ -103,6 +109,14 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
             && handlers[code_vars[i].handler].role
             != ngx_http_haskell_handler_role_async_variable)
         {
+            if (code_vars[i].strict_early) {
+                value = ngx_http_get_indexed_variable(r, code_vars[i].index);
+                if (value == NULL || !value->valid) {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "failed to evaluate strict variable \"%V\" "
+                                  "early", &cmvars[code_vars[i].index].name);
+                }
+            }
             continue;
         }
         if (ctx == NULL) {

@@ -177,6 +177,8 @@ typedef struct {
     ngx_uint_t                                 module_failed:1;
     ngx_uint_t                                 has_async_tasks:1;
     ngx_uint_t                                 has_async_handlers:1;
+    ngx_uint_t                                 has_strict_vars:1;
+    ngx_uint_t                                 has_strict_early_vars:1;
     ngx_uint_t                                 request_var_name_done:1;
 } ngx_http_haskell_main_conf_t;
 
@@ -236,7 +238,9 @@ typedef struct {
     ngx_int_t                                  index;
     ngx_int_t                                  handler;
     ngx_array_t                                args;
-    ngx_uint_t                                 async;
+    ngx_uint_t                                 async:1;
+    ngx_uint_t                                 strict:1;
+    ngx_uint_t                                 strict_early:1;
 } ngx_http_haskell_code_var_data_t;
 
 

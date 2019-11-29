@@ -22,6 +22,39 @@
 
 
 ngx_int_t
+ngx_http_haskell_eval_strict_vars(ngx_http_request_t *r)
+{
+    ngx_uint_t                         i;
+    ngx_http_haskell_loc_conf_t       *lcf;
+    ngx_http_core_main_conf_t         *cmcf;
+    ngx_http_variable_t               *cmvars;
+    ngx_http_variable_value_t         *value;
+    ngx_http_haskell_code_var_data_t  *code_vars;
+
+    lcf = ngx_http_get_module_loc_conf(r, ngx_http_haskell_module);
+    code_vars = lcf->code_vars.elts;
+
+    cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
+    cmvars = cmcf->variables.elts;
+
+    for (i = 0; i < lcf->code_vars.nelts; i++) {
+        if (!code_vars[i].strict) {
+            continue;
+        }
+
+        value = ngx_http_get_indexed_variable(r, code_vars[i].index);
+        if (value == NULL || !value->valid) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "failed to evaluate strict variable \"%V\"",
+                          &cmvars[code_vars[i].index].name);
+        }
+    }
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
 ngx_http_haskell_run_handler(ngx_http_request_t *r,
                              ngx_http_variable_value_t *v, uintptr_t data)
 {
@@ -91,6 +124,7 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
     handlers = mcf->handlers.elts;
     args = code_vars[found_idx].args.elts;
 
+    /* this is a bang handler */
     if (code_vars[found_idx].handler == NGX_ERROR) {
         if (ngx_http_complex_value(r, &args[0], &arg1) != NGX_OK) {
             return NGX_ERROR;

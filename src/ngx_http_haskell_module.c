@@ -256,24 +256,36 @@ ngx_http_haskell_init(ngx_conf_t *cf)
         return NGX_OK;
     }
 
-    if (!mcf->has_async_tasks && mcf->var_nocacheable.nelts == 0) {
-        return NGX_OK;
+    if (mcf->has_async_tasks || mcf->has_strict_early_vars
+        || mcf->var_nocacheable.nelts > 0)
+    {
+        hs = &cmcf->phases[NGX_HTTP_REWRITE_PHASE].handlers;
+
+        h = ngx_array_push_n(hs, 2);
+        if (h == NULL) {
+            return NGX_ERROR;
+        }
+
+        hs_elts = hs->elts;
+        for (i = hs->nelts - 2 ; i > 0; i--) {
+            hs_elts[i] = hs_elts[i - 1];
+        }
+
+        *++h = ngx_http_haskell_rewrite_phase_handler;
+        hs_elts[0] = ngx_http_haskell_rewrite_phase_handler;
     }
 
-    hs = &cmcf->phases[NGX_HTTP_REWRITE_PHASE].handlers;
+    if (mcf->has_strict_vars)
+    {
+        hs = &cmcf->phases[NGX_HTTP_LOG_PHASE].handlers;
 
-    h = ngx_array_push_n(hs, 2);
-    if (h == NULL) {
-        return NGX_ERROR;
+        h = ngx_array_push(hs);
+        if (h == NULL) {
+            return NGX_ERROR;
+        }
+
+        *h = ngx_http_haskell_eval_strict_vars;
     }
-
-    hs_elts = hs->elts;
-    for (i = hs->nelts - 2 ; i > 0; i--) {
-        hs_elts[i] = hs_elts[i - 1];
-    }
-
-    *++h = ngx_http_haskell_rewrite_phase_handler;
-    hs_elts[0] = ngx_http_haskell_rewrite_phase_handler;
 
     return NGX_OK;
 }
@@ -1172,6 +1184,7 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_uint_t                                *v_idx_ptr;
     ngx_http_get_variable_pt                   get_handler;
     ngx_uint_t                                 async, rb, service, service_cb;
+    ngx_uint_t                                 strict = 0, strict_early = 0;
 
     value = cf->args->elts;
 
@@ -1196,6 +1209,27 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
     n_args = cf->args->nelts - 3;
     n_size = n_args == 0 ? 1 : n_args;
+
+    rb = ngx_strncmp(value[0].data,
+                     "haskell_run_async_on_request_body", 33) == 0;
+    async = rb ? 1 : ngx_strncmp(value[0].data, "haskell_run_async", 17) == 0;
+    mcf->has_async_tasks = mcf->has_async_tasks ? 1 : async;
+
+    if (!async && !service) {
+        if (value[2].len > 3
+            && value[2].data[0] == '<' && value[2].data[1] == '!')
+        {
+            strict_early = 1;
+            mcf->has_strict_early_vars = 1;
+            value[2].len -= 2;
+            value[2].data += 2;
+        } else if (value[2].len > 2 && value[2].data[0] == '!') {
+            strict = 1;
+            mcf->has_strict_vars = 1;
+            value[2].len--;
+            value[2].data++;
+        }
+    }
 
     if (value[2].len < 2 || value[2].data[0] != '$') {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -1234,16 +1268,13 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
+    code_var_data->strict = strict;
+    code_var_data->strict_early = strict_early;
     code_var_data->handler = NGX_ERROR;
-
-    rb = ngx_strncmp(value[0].data,
-                     "haskell_run_async_on_request_body", 33) == 0;
-    async = rb ? 1 : ngx_strncmp(value[0].data, "haskell_run_async", 17) == 0;
-    mcf->has_async_tasks = mcf->has_async_tasks ? 1 : async;
-
     code_var_data->async = async;
 
     async = async ? 1 : service;
+
     if (async
         && (mcf->compile_mode == ngx_http_haskell_compile_mode_vanilla
             || mcf->compile_mode == ngx_http_haskell_compile_mode_debug))

@@ -1014,8 +1014,8 @@ permitted, so basically it should look like in the following example.
 ```
 
 The bang handler can also be used for short-circuit assignment of a variable
-normally evaluated by a haskell handler on some other level of nginx
-configuration hierarchy.
+normally evaluated by a synchronous haskell handler on some other level of the
+nginx configuration hierarchy.
 
 Miscellaneous nginx directives
 ------------------------------
