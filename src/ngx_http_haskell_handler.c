@@ -22,7 +22,7 @@
 
 
 ngx_int_t
-ngx_http_haskell_eval_strict_vars(ngx_http_request_t *r)
+ngx_http_haskell_log_phase_handler(ngx_http_request_t *r)
 {
     ngx_uint_t                         i;
     ngx_http_haskell_loc_conf_t       *lcf;
@@ -50,7 +50,7 @@ ngx_http_haskell_eval_strict_vars(ngx_http_request_t *r)
         }
     }
 
-    return NGX_OK;
+    return NGX_DECLINED;
 }
 
 

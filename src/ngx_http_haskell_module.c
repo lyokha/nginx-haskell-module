@@ -284,7 +284,7 @@ ngx_http_haskell_init(ngx_conf_t *cf)
             return NGX_ERROR;
         }
 
-        *h = ngx_http_haskell_eval_strict_vars;
+        *h = ngx_http_haskell_log_phase_handler;
     }
 
     return NGX_OK;

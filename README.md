@@ -1029,8 +1029,8 @@ evaluated during the late *log phase*. To evaluate a variable in the early phase
 unconditionally, the handler's variable must start with ``<!``, while for the
 late evaluation the prefix must be ``!``.
 
-Thus, to avoid the empty *if* clause, the ``$hs_request_method`` must be
-declared as
+Thus, to avoid the empty *if* clause, variable ``$hs_request_method`` from the
+previous section must be declared as
 
 ```nginx
         haskell_run ! <!$hs_request_method $request_method;
