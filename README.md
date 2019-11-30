@@ -1044,6 +1044,9 @@ tasks which means that they can use results of the formerly declared
 asynchronous tasks while their own results can be used in asynchronous tasks
 that were declared after them.
 
+The strict annotations propagate down when merging nginx location configuration
+hierarchies.
+
 Miscellaneous nginx directives
 ------------------------------
 

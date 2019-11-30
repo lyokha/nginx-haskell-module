@@ -66,8 +66,6 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
 
     mcf = ngx_http_get_module_main_conf(r, ngx_http_haskell_module);
     lcf = ngx_http_get_module_loc_conf(r, ngx_http_haskell_module);
-    handlers = mcf->handlers.elts;
-    code_vars = lcf->code_vars.elts;
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_haskell_module);
     if (mcf->var_nocacheable.nelts > 0 && ctx == NULL) {
@@ -99,8 +97,15 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
         ngx_http_set_ctx(r, ctx, ngx_http_haskell_module);
     }
 
+    if (!lcf->check_async_and_strict_early) {
+        return NGX_DECLINED;
+    }
+
     cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
     cmvars = cmcf->variables.elts;
+
+    handlers = mcf->handlers.elts;
+    code_vars = lcf->code_vars.elts;
 
     for (i = 0; i < lcf->code_vars.nelts; i++) {
         rb = handlers[code_vars[i].handler].role
@@ -109,6 +114,12 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
             && handlers[code_vars[i].handler].role
             != ngx_http_haskell_handler_role_async_variable)
         {
+            /* BEWARE: a strict variable can be asked for evaluation more than
+             * once during this for-loop pass if its multiple declarations were
+             * merged in location configuration hierarchy, however this should
+             * not be a problem because all variables (including nocacheable)
+             * cache after the first evaluation and should return the cache on
+             * the next evaluations */
             if (code_vars[i].strict_early) {
                 value = ngx_http_get_indexed_variable(r, code_vars[i].index);
                 if (value == NULL || !value->valid) {

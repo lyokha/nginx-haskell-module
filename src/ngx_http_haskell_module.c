@@ -395,6 +395,13 @@ ngx_http_haskell_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         }
     }
 
+    if (!conf->check_async_and_strict_early) {
+        conf->check_async_and_strict_early = prev->check_async_and_strict_early;
+    }
+    if (!conf->check_strict) {
+        conf->check_strict = prev->check_strict;
+    }
+
     ngx_conf_merge_value(conf->request_body_read_temp_file,
                          prev->request_body_read_temp_file, 0);
     ngx_conf_merge_value(conf->service_hook_index,
@@ -1214,6 +1221,8 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                      "haskell_run_async_on_request_body", 33) == 0;
     async = rb ? 1 : ngx_strncmp(value[0].data, "haskell_run_async", 17) == 0;
     mcf->has_async_tasks = mcf->has_async_tasks ? 1 : async;
+    lcf->check_async_and_strict_early =
+            lcf->check_async_and_strict_early ? 1 : async;
 
     if (!async && !service) {
         if (value[2].len > 3
@@ -1221,11 +1230,13 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         {
             strict_early = 1;
             mcf->has_strict_early_vars = 1;
+            lcf->check_async_and_strict_early = 1;
             value[2].len -= 2;
             value[2].data += 2;
         } else if (value[2].len > 2 && value[2].data[0] == '!') {
             strict = 1;
             mcf->has_strict_vars = 1;
+            lcf->check_strict = 1;
             value[2].len--;
             value[2].data++;
         }

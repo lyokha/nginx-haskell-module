@@ -218,7 +218,9 @@ typedef struct {
     ngx_http_haskell_content_handler_data_t   *content_handler_data;
     ngx_flag_t                                 request_body_read_temp_file;
     ngx_int_t                                  service_hook_index;
-    ngx_uint_t                                 static_content;
+    ngx_uint_t                                 static_content:1;
+    ngx_uint_t                                 check_async_and_strict_early:1;
+    ngx_uint_t                                 check_strict:1;
 } ngx_http_haskell_loc_conf_t;
 
 

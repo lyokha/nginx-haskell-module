@@ -32,6 +32,11 @@ ngx_http_haskell_log_phase_handler(ngx_http_request_t *r)
     ngx_http_haskell_code_var_data_t  *code_vars;
 
     lcf = ngx_http_get_module_loc_conf(r, ngx_http_haskell_module);
+
+    if (!lcf->check_strict) {
+        return NGX_DECLINED;
+    }
+
     code_vars = lcf->code_vars.elts;
 
     cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
@@ -42,6 +47,12 @@ ngx_http_haskell_log_phase_handler(ngx_http_request_t *r)
             continue;
         }
 
+        /* BEWARE: a strict variable can be asked for evaluation more than
+         * once during this for-loop pass if its multiple declarations were
+         * merged in location configuration hierarchy, however this should
+         * not be a problem because all variables (including nocacheable)
+         * cache after the first evaluation and should return the cache on
+         * the next evaluations */
         value = ngx_http_get_indexed_variable(r, code_vars[i].index);
         if (value == NULL || !value->valid) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
