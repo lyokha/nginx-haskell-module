@@ -663,7 +663,10 @@ with more efficient *eventfd* channels if possible.
 All types of exceptions are caught inside async handlers. If an exception has
 happened, the async handler writes its message in the bound variable's data,
 whereas the variable handler logs it when accessed. However, for better control,
-you may want to catch exceptions inside your code like in the *getUrl*.
+you may want to catch exceptions inside your code like in the *getUrl*. You can
+also put the name of the bound variable into the list of directive
+*haskell_var_empty_on_error* to return the empty value on errors while still
+logging them.
 
 Let's do some tests.
 
@@ -1064,6 +1067,11 @@ Miscellaneous nginx directives
 The two directives above make internal redirections with *error_page*
 *Turing-complete* computations by allowing potentially infinite location loops
 with a no-cacheable condition test variable.
+
+- *haskell_var_empty_on_error ``<list>``* &mdash; Makes variables in the
+  *``<list>``* return the empty value on errors while still logging the errors.
+  Applicable for effectful synchronous variable handlers and asynchronous
+  variable handlers.
 
 - *haskell_service_var_ignore_empty ``<list>``* &mdash; Makes variables in the
   *``<list>``* do not update when related services return empty strings. Accepts

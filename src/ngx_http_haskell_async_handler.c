@@ -779,10 +779,12 @@ ngx_http_haskell_run_async_handler(ngx_http_request_t *r,
     ngx_int_t                         *index = (ngx_int_t *) data;
 
     ngx_uint_t                         i;
+    ngx_http_haskell_main_conf_t      *mcf;
     ngx_http_core_main_conf_t         *cmcf;
     ngx_http_variable_t               *cmvars;
     ngx_http_haskell_ctx_t            *ctx;
     ngx_http_haskell_async_data_t     *async_data_elts;
+    ngx_http_haskell_var_handle_t     *vars;
     ngx_int_t                          found_idx = NGX_ERROR;
     ngx_int_t                          rc;
 
@@ -860,9 +862,18 @@ ngx_http_haskell_run_async_handler(ngx_http_request_t *r,
                       "asynchronously: \"%V\"", &event_msg,
                       &cmvars[*index].name,
                       &async_data_elts[found_idx].result);
+
+        mcf = ngx_http_get_module_main_conf(r, ngx_http_haskell_module);
         /* BEWARE: return the value of the exception (to avoid returning the
          * exception's message, wrap the haskell handler in an exception
-         * handler) */
+         * handler or add the corresponding variable to the list of directive
+         * haskell_var_empty_on_error) */
+        vars = mcf->var_empty_on_error.elts;
+        for (i = 0; i < mcf->var_empty_on_error.nelts; i++) {
+            if (vars[i].index == *index) {
+                return NGX_ERROR;
+            }
+        }
     }
 
     v->len = async_data_elts[found_idx].result.data.len;

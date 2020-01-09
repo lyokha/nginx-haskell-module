@@ -163,6 +163,7 @@ typedef struct {
     ngx_array_t                                service_code_vars;
     ngx_array_t                                var_nocacheable;
     ngx_array_t                                var_compensate_uri_changes;
+    ngx_array_t                                var_empty_on_error;
     ngx_array_t                                service_var_ignore_empty;
     ngx_array_t                                service_var_in_shm;
     ngx_shm_zone_t                            *shm_zone;

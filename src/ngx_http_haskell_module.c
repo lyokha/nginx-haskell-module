@@ -180,6 +180,12 @@ static ngx_command_t  ngx_http_haskell_module_commands[] = {
       NGX_HTTP_MAIN_CONF_OFFSET,
       0,
       NULL },
+    { ngx_string("haskell_var_empty_on_error"),
+      NGX_HTTP_MAIN_CONF|NGX_CONF_1MORE,
+      ngx_http_haskell_var_configure,
+      NGX_HTTP_MAIN_CONF_OFFSET,
+      0,
+      NULL },
     { ngx_string("haskell_service_var_ignore_empty"),
       NGX_HTTP_MAIN_CONF|NGX_CONF_1MORE,
       ngx_http_haskell_var_configure,
@@ -540,7 +546,35 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
         }
         if (found == 0) {
             ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
-                          "variable \"%V\" was not declared", &vars[i]);
+                          "variable \"%V\" was not declared", &vars[i].name);
+        }
+    }
+
+    vars = mcf->var_empty_on_error.elts;
+    for (i = 0; i < mcf->var_empty_on_error.nelts; i++) {
+        found = 0;
+        for (j = 0; j < cmcf->variables.nelts; j++) {
+            if (vars[i].name.len == cmvars[j].name.len
+                && ngx_strncmp(vars[i].name.data, cmvars[j].name.data,
+                               vars[i].name.len) == 0)
+            {
+                if (cmvars[j].get_handler != ngx_http_haskell_run_handler
+                    && cmvars[j].get_handler !=
+                        ngx_http_haskell_run_async_handler)
+                {
+                    ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
+                                  "variable \"%V\" has incompatible "
+                                  "get handler", &vars[i].name);
+                } else {
+                    vars[i].index = cmvars[j].index;
+                }
+                found = 1;
+                break;
+            }
+        }
+        if (found == 0) {
+            ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
+                          "variable \"%V\" was not declared", &vars[i].name);
         }
     }
 
@@ -1875,6 +1909,11 @@ ngx_http_haskell_var_configure(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         == 0)
     {
         data = &mcf->var_compensate_uri_changes;
+    } else if (value[0].len == 26
+        && ngx_strncmp(value[0].data, "haskell_var_empty_on_error", 26)
+        == 0)
+    {
+        data = &mcf->var_empty_on_error;
     } else if (value[0].len == 32
         && ngx_strncmp(value[0].data, "haskell_service_var_ignore_empty", 32)
         == 0)

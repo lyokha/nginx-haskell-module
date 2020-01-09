@@ -6,10 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <title>Nginx Haskell module (yet another doc with examples)</title>
   <style>
-      code{white-space: pre-wrap;}
-      span.smallcaps{font-variant: small-caps;}
-      span.underline{text-decoration: underline;}
-      div.column{display: inline-block; vertical-align: top; width: 50%;}
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    span.underline{text-decoration: underline;}
+    div.column{display: inline-block; vertical-align: top; width: 50%;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    ul.task-list{list-style: none;}
   </style>
   <link rel="stylesheet" href="./pandoc.css" />
   <!--[if lt IE 9]>
@@ -79,7 +81,6 @@
 <p>There are two kinds of exporters which differ only in their implementations. The first kind — <em>camel-cased</em> exporters — is implemented by means of <em>Template Haskell</em>, the other kind — exporters in braces, as they are shown in the table — is implemented using <em>CPP macros</em>. Both of them provide <em>FFI</em> declarations for functions they export, but the camel-cased exporters are available only from a separate Haskell module <a href="http://hackage.haskell.org/package/ngx-export"><em>ngx-export</em></a>, which can be downloaded and installed by <em>cabal</em>, whereas the CPP exporters are implemented inside the <em>nginx-haskell-module</em> in so-called <em>standalone</em> approach, where custom Haskell declarations get wrapped inside common Haskell code.</p>
 <h2 id="examples">Examples</h2>
 <p>In all examples in this section and later we will use <em>modular</em> approach with <em>camel-cased</em> exporters and separate compilation of Haskell code.</p>
-
 <p><strong>File test.hs</strong></p>
 <pre style="overflow-x: auto; background: #FFE">
 <span style="color: #870087;">{-# LANGUAGE TemplateHaskell #-}</span>
@@ -360,7 +361,6 @@
 </pre>
 
 <p>For the <em>content type</em> we used a static string <em>“text/plain”#</em> that ends with a <em>magic hash</em> merely to avoid any dynamic memory allocations.</p>
-
 <p><strong>File test.conf</strong> (<em>additions</em>)</p>
 <pre style="overflow-x: auto; background: #FFE">
         <span style="color: #005FAF;">location</span><span style="color: #000000;"> /timer/ch {</span>
@@ -1146,21 +1146,26 @@
 <td style="text-align: left;">All variables in the list allow to cheat <em>error_page</em> when used in its redirections and make the cycle infinite.</td>
 </tr>
 <tr class="odd">
+<td style="text-align: left;"><code>haskell_var_empty_on_error</code></td>
+<td style="text-align: left;"><code>http</code></td>
+<td style="text-align: left;">All variables in the list return empty values on errors while the errors are still being logged by Nginx. Applicable for effectful synchronous and asynchronous variable handlers.</td>
+</tr>
+<tr class="even">
 <td style="text-align: left;"><code>haskell_service_var_ignore_empty</code></td>
 <td style="text-align: left;"><code>http</code></td>
 <td style="text-align: left;">Do not write the service result when its value is empty.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;"><code>haskell_service_var_in_shm</code></td>
 <td style="text-align: left;"><code>http</code></td>
 <td style="text-align: left;">Store the service result in a shared memory. Implicitly declares a shared service.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;"><code>haskell_service_hooks_zone</code></td>
 <td style="text-align: left;"><code>http</code></td>
 <td style="text-align: left;">Declare shm zone for a temporary storage of service hooks data.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;"><code>haskell_request_variable_name</code></td>
 <td style="text-align: left;"><code>http</code></td>
 <td style="text-align: left;">Change the name of the request variable if default value <em>_r_ptr</em> is already used.</td>
@@ -1176,9 +1181,7 @@
 <li>Special service exporters (<em>simple services</em>) combine various <em>sleeping</em> strategies and typing policies of services and can be used to avoid usual boilerplate code needed in the vanilla service exporters from module <em>NgxExport</em>.</li>
 <li>Special service adapters (<em>split services</em>) allow for distinguishing between <em>ignition</em> services (those that run when the service runs for the first time) and <em>deferred</em> services (those that run when the service runs for the second time and later).</li>
 </ul>
-
 <h1 id="appendix">Appendix</h1>
-
 <!--\appendixpagenumbering[TEST.HS]-->
 <h2 id="file-test.hs">File <em>test.hs</em></h2>
 <pre style="overflow-x: auto; background: #FFE">

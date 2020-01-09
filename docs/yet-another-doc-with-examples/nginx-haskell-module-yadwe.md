@@ -1448,6 +1448,11 @@ Directive                                                                 Level 
                                                                                                 when used in its redirections and make the cycle
                                                                                                 infinite.
 
+`haskell_var_empty_on_error`                                              `http`                All variables in the list return empty values on errors
+                                                                                                while the errors are still being logged by Nginx.
+                                                                                                Applicable for effectful synchronous and asynchronous
+                                                                                                variable handlers.
+
 `haskell_service_var_ignore_empty`                                        `http`                Do not write the service result when its value is empty.
 
 `haskell_service_var_in_shm`                                              `http`                Store the service result in a shared memory. Implicitly

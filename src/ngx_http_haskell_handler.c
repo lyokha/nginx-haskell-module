@@ -79,7 +79,7 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
     ngx_http_haskell_ctx_t              *ctx;
     ngx_http_haskell_wrap_ctx_t         *wctx;
     ngx_int_t                            j, found_idx = NGX_ERROR;
-    ngx_http_haskell_var_handle_t       *vars_comp;
+    ngx_http_haskell_var_handle_t       *vars;
     ngx_http_haskell_var_cache_t        *var_nocacheable_cache;
     ngx_http_haskell_handler_t          *handlers;
     ngx_http_haskell_code_var_data_t    *code_vars;
@@ -304,10 +304,18 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
             /* BEWARE: return the value of the exception in case of the
              * effectful IO handler ngx_http_haskell_handler_type_ioy_y (to
              * avoid returning the exception's message in this case, wrap the
-             * haskell handler in an exception handler) */
+             * haskell handler in an exception handler or add the corresponding
+             * variable to the list of directive haskell_var_empty_on_error) */
             if (handlers[code_vars[found_idx].handler].type
-                != ngx_http_haskell_handler_type_ioy_y)
+                == ngx_http_haskell_handler_type_ioy_y)
             {
+                vars = mcf->var_empty_on_error.elts;
+                for (i = 0; i < mcf->var_empty_on_error.nelts; i++) {
+                    if (vars[i].index == *index) {
+                        return NGX_ERROR;
+                    }
+                }
+            } else {
                 return NGX_ERROR;
             }
         }
@@ -332,9 +340,9 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
     }
 
     if (r->internal) {
-        vars_comp = mcf->var_compensate_uri_changes.elts;
+        vars = mcf->var_compensate_uri_changes.elts;
         for (i = 0; i < mcf->var_compensate_uri_changes.nelts; i++) {
-            if (vars_comp[i].index == *index
+            if (vars[i].index == *index
                 && r->uri_changes < NGX_HTTP_MAX_URI_CHANGES + 1)
             {
                 ++r->uri_changes;
