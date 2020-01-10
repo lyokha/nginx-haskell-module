@@ -301,22 +301,21 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
                           "an exception was caught while getting value of "
                           "variable \"%V\": \"%V\"",
                           &cmvars[*index].name, &reslen);
+            if (handlers[code_vars[found_idx].handler].type
+                != ngx_http_haskell_handler_type_ioy_y)
+            {
+                return NGX_ERROR;
+            }
             /* BEWARE: return the value of the exception in case of the
              * effectful IO handler ngx_http_haskell_handler_type_ioy_y (to
              * avoid returning the exception's message in this case, wrap the
              * haskell handler in an exception handler or add the corresponding
              * variable to the list of directive haskell_var_empty_on_error) */
-            if (handlers[code_vars[found_idx].handler].type
-                == ngx_http_haskell_handler_type_ioy_y)
-            {
-                vars = mcf->var_empty_on_error.elts;
-                for (i = 0; i < mcf->var_empty_on_error.nelts; i++) {
-                    if (vars[i].index == *index) {
-                        return NGX_ERROR;
-                    }
+            vars = mcf->var_empty_on_error.elts;
+            for (i = 0; i < mcf->var_empty_on_error.nelts; i++) {
+                if (vars[i].index == *index) {
+                    return NGX_ERROR;
                 }
-            } else {
-                return NGX_ERROR;
             }
         }
         break;

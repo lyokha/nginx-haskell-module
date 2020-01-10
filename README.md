@@ -1070,8 +1070,7 @@ with a no-cacheable condition test variable.
 
 - *haskell_var_empty_on_error ``<list>``* &mdash; Makes variables in the
   *``<list>``* return the empty value on errors while still logging the errors.
-  Applicable for effectful synchronous variable handlers and asynchronous
-  variable handlers.
+  Applicable for effectful synchronous and asynchronous variable handlers.
 
 - *haskell_service_var_ignore_empty ``<list>``* &mdash; Makes variables in the
   *``<list>``* do not update when related services return empty strings. Accepts
