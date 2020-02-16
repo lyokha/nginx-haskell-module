@@ -24,7 +24,8 @@
 
 #if (NGX_HTTP_UPSTREAM_ZONE)
 
-#include <jsmn/jsmn.h>
+#define JSMN_STATIC
+#include <jsmn.h>
 
 #include "ngx_inet_slab.h"
 #include "ngx_http_upconf_module.h"

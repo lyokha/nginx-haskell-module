@@ -1,19 +1,7 @@
 ngx_addon_name=ngx_http_haskell_module
 
-NGX_HTTP_HASKELL_MODULE_SRCS="                                              \
-        $ngx_addon_dir/src/ngx_http_haskell_module.c                        \
-        $ngx_addon_dir/src/ngx_http_haskell_standalone.c                    \
-        $ngx_addon_dir/src/ngx_http_haskell_compile.c                       \
-        $ngx_addon_dir/src/ngx_http_haskell_load.c                          \
-        $ngx_addon_dir/src/ngx_http_haskell_handler.c                       \
-        $ngx_addon_dir/src/ngx_http_haskell_content_handler.c               \
-        $ngx_addon_dir/src/ngx_http_haskell_async_handler.c                 \
-        $ngx_addon_dir/src/ngx_http_haskell_service.c                       \
-        $ngx_addon_dir/src/ngx_http_haskell_util.c                          \
-        "
-
 NGX_HTTP_HASKELL_MODULE_DEPS="                                              \
-        $ngx_addon_dir/src/ngx_http_haskell_module.h                        \
+        $ngx_addon_dir/src/${ngx_addon_name}.h                              \
         $ngx_addon_dir/src/ngx_http_haskell_standalone.h                    \
         $ngx_addon_dir/src/ngx_http_haskell_compile.h                       \
         $ngx_addon_dir/src/ngx_http_haskell_load.h                          \
@@ -22,6 +10,18 @@ NGX_HTTP_HASKELL_MODULE_DEPS="                                              \
         $ngx_addon_dir/src/ngx_http_haskell_async_handler.h                 \
         $ngx_addon_dir/src/ngx_http_haskell_service.h                       \
         $ngx_addon_dir/src/ngx_http_haskell_util.h                          \
+        "
+
+NGX_HTTP_HASKELL_MODULE_SRCS="                                              \
+        $ngx_addon_dir/src/${ngx_addon_name}.c                              \
+        $ngx_addon_dir/src/ngx_http_haskell_standalone.c                    \
+        $ngx_addon_dir/src/ngx_http_haskell_compile.c                       \
+        $ngx_addon_dir/src/ngx_http_haskell_load.c                          \
+        $ngx_addon_dir/src/ngx_http_haskell_handler.c                       \
+        $ngx_addon_dir/src/ngx_http_haskell_content_handler.c               \
+        $ngx_addon_dir/src/ngx_http_haskell_async_handler.c                 \
+        $ngx_addon_dir/src/ngx_http_haskell_service.c                       \
+        $ngx_addon_dir/src/ngx_http_haskell_util.c                          \
         "
 
 NGX_HASKELL_MODULE_LIBDL=
@@ -35,16 +35,16 @@ if test -n "$ngx_module_link"
 then
     ngx_module_type=HTTP
     ngx_module_name=$ngx_addon_name
-    ngx_module_incs="$(ghc --print-libdir)/include"
     ngx_module_deps="$NGX_HTTP_HASKELL_MODULE_DEPS"
     ngx_module_srcs="$NGX_HTTP_HASKELL_MODULE_SRCS"
+    ngx_module_incs="$(ghc --print-libdir)/include"
     ngx_module_libs="$NGX_HASKELL_MODULE_LIBDL"
 
     . auto/module
 else
     HTTP_MODULES="$HTTP_MODULES $ngx_addon_name"
-    NGX_ADDON_SRCS="$NGX_ADDON_SRCS $NGX_HTTP_HASKELL_MODULE_SRCS"
     NGX_ADDON_DEPS="$NGX_ADDON_DEPS $NGX_HTTP_HASKELL_MODULE_DEPS"
+    NGX_ADDON_SRCS="$NGX_ADDON_SRCS $NGX_HTTP_HASKELL_MODULE_SRCS"
     CFLAGS="$CFLAGS -I$(ghc --print-libdir)/include"
     CORE_LIBS="$CORE_LIBS $NGX_HASKELL_MODULE_LIBDL"
 fi
