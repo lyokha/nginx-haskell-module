@@ -18,13 +18,11 @@ then
     ngx_module_name=$ngx_addon_name
     ngx_module_deps="$NGX_HTTP_UPCONF_MODULE_DEPS"
     ngx_module_srcs="$NGX_HTTP_UPCONF_MODULE_SRCS"
-    ngx_module_incs="/usr/include/jsmn"
 
     . auto/module
 else
     HTTP_MODULES="$HTTP_MODULES $ngx_addon_name"
     NGX_ADDON_DEPS="$NGX_ADDON_DEPS NGX_HTTP_UPCONF_MODULE_DEPS"
     NGX_ADDON_SRCS="$NGX_ADDON_SRCS NGX_HTTP_UPCONF_MODULE_SRCS"
-    CFLAGS="$CFLAGS -I/usr/include/jsmn"
 fi
 
