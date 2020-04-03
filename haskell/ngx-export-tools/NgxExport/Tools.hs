@@ -145,7 +145,7 @@ data TimeInterval = Hr Int          -- ^ Hours
                   | Sec Int         -- ^ Seconds
                   | HrMin Int Int   -- ^ Hours and minutes
                   | MinSec Int Int  -- ^ Minutes and seconds
-                  deriving (Generic, Lift, Read, Show)
+                  deriving (Generic, Lift, Read, Show, Eq)
 instance FromJSON TimeInterval
 
 -- | Converts a time interval into seconds.

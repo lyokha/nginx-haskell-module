@@ -1,3 +1,7 @@
+### 0.4.7.0
+
+- Derive *TimeInterval* from *Eq*.
+
 ### 0.4.6.0
 
 - Added function *workerProcessIsExiting* to check quickly in an exception
