@@ -1,3 +1,8 @@
+### 0.4.8.0
+
+- Correct implementation of *Eq* and *Ord* instances for *TimeInterval*.
+- A new value *Unset* equal to *Sec 0* added in *TimeInterval*.
+
 ### 0.4.7.0
 
 - Derive *TimeInterval* from *Eq*.

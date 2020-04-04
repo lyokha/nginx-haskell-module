@@ -68,6 +68,8 @@ import           Data.Binary.Get
 import           Data.IORef
 import           Data.Maybe
 import           Data.Aeson
+import           Data.Function (on)
+import           Data.Ord (comparing)
 import           Control.Monad
 import           Control.Arrow
 import           Control.Exception
@@ -145,8 +147,16 @@ data TimeInterval = Hr Int          -- ^ Hours
                   | Sec Int         -- ^ Seconds
                   | HrMin Int Int   -- ^ Hours and minutes
                   | MinSec Int Int  -- ^ Minutes and seconds
-                  deriving (Generic, Lift, Read, Show, Eq)
+                  | Unset           -- ^ Zero time interval, equal to @Sec 0@
+                  deriving (Generic, Lift, Read, Show)
+
 instance FromJSON TimeInterval
+
+instance Eq TimeInterval where
+    (==) = (==) `on` toSec
+
+instance Ord TimeInterval where
+    compare = comparing toSec
 
 -- | Converts a time interval into seconds.
 toSec :: TimeInterval -> Int
@@ -155,8 +165,9 @@ toSec (Min m)      = 60 * m
 toSec (Sec s)      = s
 toSec (HrMin h m)  = 3600 * h + 60 * m
 toSec (MinSec m s) = 60 * m + s
+toSec Unset        = 0
 
--- | Delays the current thread for the specified number of seconds.
+-- | Delays the current thread by the specified number of seconds.
 threadDelaySec :: Int -> IO ()
 threadDelaySec = threadDelay . (* 1e6)
 

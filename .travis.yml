@@ -83,6 +83,7 @@ matrix:
     - env: NGXVER=head CABALVER=head GHCVER=head
     - env: NGXVER=head CABALVER=head GHCVER=8.10.1
     - env: CABALVER=head GHCVER=head
+    - env: NGXVER=1.16.1 CABALVER=head GHCVER=8.10.1
 
 before_install:
   - |
