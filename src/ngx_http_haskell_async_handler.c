@@ -197,7 +197,7 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
         async_data->index = code_vars[i].index;
         ngx_str_null(&async_data->result.data);
         async_data->result.complete = 0;
-        async_data->yy_cleanup_data.bufs = &async_data->result.data;
+        async_data->yy_cleanup_data.bufs = NULL;
         async_data->yy_cleanup_data.n_bufs = 0;
         async_data->yy_cleanup_data.hs_free_stable_ptr =
                                             mcf->hs_free_stable_ptr;
@@ -235,6 +235,8 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
             async_data->complete = 1;
             continue;
         }
+
+        async_data->yy_cleanup_data.bufs = &async_data->result.data;
 
         if (rb) {
             res = ((ngx_http_haskell_handler_async_ioy_yy)
