@@ -14,11 +14,12 @@ dependent Haskell libraries, and patch *test_tools.so* using utility
 [*hslibdeps*](/utils/README.md#utility-hslibdeps).
 
 ```ShellSession
-$ hslibdeps -t /var/lib/nginx/x86_64-linux-ghc-8.6.1 test_tools.so
+$ hslibdeps -t /var/lib/nginx/$(arch)-linux-ghc-$(ghc --numeric-version) test_tools.so
 ```
 
 The name of the target directory is arbitrary: the only requirement is that it
-must be accessible by Nginx worker processes' user (i.e. *nginx* or *nobody*).
+must be accessible by the user of Nginx worker processes (i.e. *nginx* or
+*nobody*).
 
 Copy library *test_tools.so* into directory */var/lib/nginx/* (this must
 correspond to the directory specified in Nginx directive *haskell load*) being
@@ -28,10 +29,10 @@ a superuser.
 # cp test_tools.so /var/lib/nginx
 ```
 
-Then copy all dependent Haskell libraries into directory
+Then copy all dependent Haskell libraries into the target directory.
 */var/lib/nginx/x86_64-linux-ghc-8.6.1/*
 
 ```ShellSession
-# cp -v .hslibs/* /var/lib/nginx/x86_64-linux-ghc-8.6.1
+# cp -v .hslibs/* /var/lib/nginx/$(arch)-linux-ghc-$(ghc --numeric-version)
 ```
 
