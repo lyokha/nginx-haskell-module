@@ -30,7 +30,6 @@ a superuser.
 ```
 
 Then copy all dependent Haskell libraries into the target directory.
-*/var/lib/nginx/x86_64-linux-ghc-8.6.1/*
 
 ```ShellSession
 # cp -v .hslibs/* /var/lib/nginx/$(arch)-linux-ghc-$(ghc --numeric-version)
