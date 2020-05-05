@@ -1003,37 +1003,35 @@ ngxExportVersion x (I n) = fromIntegral <$>
 -- | Returns an opaque pointer to the Nginx /cycle object/
 --   for using it in C plugins.
 --
--- Actual type of the returned pointer is
+-- The actual type of the returned pointer is
 --
 -- > ngx_cycle_t *
 --
--- (value of argument __/cycle/__ in the worker's initialization function).
+-- (the value of argument __/cycle/__ in the worker's initialization function).
 ngxCyclePtr :: IO (Ptr ())
 ngxCyclePtr = readIORef ngxCyclePtrStore
 
 -- | Returns an opaque pointer to the Nginx /upstream main configuration/
 --   for using it in C plugins.
 --
--- Actual type of the returned pointer is
+-- The actual type of the returned pointer is
 --
 -- > ngx_http_upstream_main_conf_t *
 --
--- (value of expression
---
--- >     ngx_http_cycle_get_module_main_conf(cycle, ngx_http_upstream_module)
---
--- in the worker's initialization function).
+-- (the value of expression
+-- @ngx_http_cycle_get_module_main_conf(cycle, ngx_http_upstream_module)@ in
+-- the worker's initialization function).
 ngxUpstreamMainConfPtr :: IO (Ptr ())
 ngxUpstreamMainConfPtr = readIORef ngxUpstreamMainConfPtrStore
 
 -- | Returns an opaque pointer to the Nginx /cached time object/
 --   for using it in C plugins.
 --
--- Actual type of the returned pointer is
+-- The actual type of the returned pointer is
 --
 -- > volatile ngx_time_t **
 --
--- (/address/ of the Nginx global variable __/ngx_cached_time/__).
+-- (the /address/ of the Nginx global variable __/ngx_cached_time/__).
 ngxCachedTimePtr :: IO (Ptr (Ptr ()))
 ngxCachedTimePtr = readIORef ngxCachedTimePtrStore
 
