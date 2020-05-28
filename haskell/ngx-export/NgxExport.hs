@@ -1032,6 +1032,11 @@ ngxUpstreamMainConfPtr = readIORef ngxUpstreamMainConfPtrStore
 -- > volatile ngx_time_t **
 --
 -- (the /address/ of the Nginx global variable __/ngx_cached_time/__).
+--
+-- Be aware that time gotten from this pointer is not reliable in asynchronous
+-- tasks and services as soon as it gets updated only when some event happens
+-- inside the Nginx worker to which the task is bound and thus can be heavily
+-- outdated.
 ngxCachedTimePtr :: IO (Ptr (Ptr ()))
 ngxCachedTimePtr = readIORef ngxCachedTimePtrStore
 
