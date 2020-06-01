@@ -133,9 +133,9 @@ script:
     set -e
     cabal v1-configure
     cabal v1-build
-    cabal v1-sdist
+    cabal v2-sdist --builddir=dist
     SRC_TGZ=$(cabal info . | awk '{print $2; exit}').tar.gz &&
-        (cd dist && cabal v1-install --force-reinstalls "$SRC_TGZ")
+        (cd dist/sdist && cabal v1-install --force-reinstalls "$SRC_TGZ")
     if [ -n "$NGXVER" ]
     then
         cd -
@@ -159,9 +159,9 @@ script:
         cd haskell/ngx-export-tools
         cabal v1-configure
         cabal v1-build
-        cabal v1-sdist
+        cabal v2-sdist --builddir=dist
         SRC_TGZ=$(cabal info . | awk '{print $2; exit}').tar.gz &&
-            (cd dist && cabal v1-install --force-reinstalls "$SRC_TGZ")
+            (cd dist/sdist && cabal v1-install --force-reinstalls "$SRC_TGZ")
     fi
     set +e
 
