@@ -290,7 +290,7 @@ typedef struct {
 
 typedef struct {
     ngx_int_t                                  index;
-    ngx_msec_t                                 modified;
+    uintptr_t                                  seqn;
 } ngx_http_haskell_shm_var_handle_data_t;
 
 

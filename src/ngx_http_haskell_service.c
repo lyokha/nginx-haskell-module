@@ -43,7 +43,7 @@ typedef struct {
 typedef struct {
     ngx_http_haskell_var_handle_t              handle;
     ngx_http_haskell_async_data_t              data;
-    ngx_msec_t                                 modified;
+    uintptr_t                                  seqn;
     ngx_http_haskell_shm_stats_var_t           stats;
 } ngx_http_haskell_shm_var_handle_t;
 
@@ -432,7 +432,6 @@ ngx_http_haskell_service_event(ngx_event_t *ev)
     ngx_http_haskell_async_data_t             *async_data;
     ngx_http_complex_value_t                  *args;
     ngx_str_t                                  arg = ngx_null_string;
-    ngx_msec_t                                 old_modified;
     time_t                                     modified;
     ngx_uint_t                                 shm_var_updated = 0;
     ngx_uint_t                                 skip_hooks = 0;
@@ -605,7 +604,7 @@ ngx_http_haskell_service_event(ngx_event_t *ev)
                 }
             }
         }
-        shm_vars[shm_index].modified = ngx_current_msec;
+        ++shm_vars[shm_index].seqn;
         /* FIXME: semantics of the following stats fields depends on actual
          * usage of a callback, because the current code scope may have been
          * skipped from the upper for-cycle depending on the value of flag
@@ -618,8 +617,7 @@ ngx_http_haskell_service_event(ngx_event_t *ev)
 
     shm_var_updated = 1;
 
-    old_modified = shm_vars[shm_index].modified;
-    shm_vars[shm_index].modified = ngx_current_msec;
+    ++shm_vars[shm_index].seqn;
 
     shm_vars[shm_index].stats.modified = modified;
     shm_vars[shm_index].stats.size = async_data->result.data.len;
@@ -639,7 +637,7 @@ ngx_http_haskell_service_event(ngx_event_t *ev)
                       "failed to allocate memory to store "
                       "service variable \"%V\", using old value",
                       &shm_vars[shm_index].handle.name);
-        shm_vars[shm_index].modified = old_modified;
+        --shm_vars[shm_index].seqn;
         shm_vars[shm_index].stats.failed = 1;
         shm_vars[shm_index].stats.size = var->len;
         ++shm_vars[shm_index].stats.failures;
@@ -1116,7 +1114,6 @@ ngx_http_haskell_shm_update_var_handler(ngx_http_request_t *r,
     ngx_http_haskell_shm_var_handle_t         *shm_vars;
     ngx_int_t                                  shm_index = NGX_ERROR;
     ngx_str_t                                  res = ngx_null_string;
-    ngx_msec_t                                 elapsed;
 
     shm_handle_data = (ngx_http_haskell_shm_var_handle_data_t *) data;
 
@@ -1143,15 +1140,16 @@ ngx_http_haskell_shm_update_var_handler(ngx_http_request_t *r,
 
     NGX_HTTP_HASKELL_SHM_RLOCK
 
-    elapsed = ngx_abs((ngx_msec_int_t) (shm_vars[shm_index].modified -
-                                        shm_handle_data->modified));
-
-    if (elapsed == 0) {
+    /* FIXME: there is an extremely rare hypothetical case when seqn in shm
+     * wraps around after overflow while the local value of seqn did not change
+     * during the whole wrapping cycle, and thus the variable will mistakenly
+     * not be updated */
+    if (shm_handle_data->seqn == shm_vars[shm_index].seqn) {
         NGX_HTTP_HASKELL_SHM_UNLOCK
         goto update_var;
     }
 
-    shm_handle_data->modified = shm_vars[shm_index].modified;
+    shm_handle_data->seqn = shm_vars[shm_index].seqn;
 
     if (shm_vars[shm_index].data.result.data.len == 0) {
         NGX_HTTP_HASKELL_SHM_UNLOCK

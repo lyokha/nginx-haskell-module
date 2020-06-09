@@ -1975,7 +1975,7 @@ ngx_http_haskell_var_configure(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                    value[j].data,
                    value[j].len);
 
-        v = ngx_http_add_variable(cf, &v_name, 0);
+        v = ngx_http_add_variable(cf, &v_name, NGX_HTTP_VAR_NOHASH);
         if (v == NULL) {
             return NGX_CONF_ERROR;
         }
@@ -2005,7 +2005,7 @@ ngx_http_haskell_var_configure(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                    value[j].data,
                    value[j].len);
 
-        v = ngx_http_add_variable(cf, &v_name, 0);
+        v = ngx_http_add_variable(cf, &v_name, NGX_HTTP_VAR_NOHASH);
         if (v == NULL) {
             return NGX_CONF_ERROR;
         }
