@@ -43,7 +43,7 @@ typedef struct {
 typedef struct {
     ngx_http_haskell_var_handle_t              handle;
     ngx_http_haskell_async_data_t              data;
-    uintptr_t                                  seqn;
+    uint64_t                                   seqn;
     ngx_http_haskell_shm_stats_var_t           stats;
 } ngx_http_haskell_shm_var_handle_t;
 
