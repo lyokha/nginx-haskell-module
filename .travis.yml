@@ -1,7 +1,7 @@
-sudo: false
+os: linux
 language: c
 
-matrix:
+jobs:
   include:
     - env: NGXVER=head CABALVER=head GHCVER=head
       compiler: gcc
