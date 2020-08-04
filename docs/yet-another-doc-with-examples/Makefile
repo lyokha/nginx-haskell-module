@@ -1,7 +1,9 @@
 NAME             := nginx-haskell-module-yadwe
 NAME_TEX_CONTENT := $(NAME)-content.tex
-RST_SED_REPLACE  := s/shelloutput/shell-session/; s/^\(\s*\)|||/\1$$/
 RST_COLUMNS      := 160
+RST_IN_REPLACE   := s/shelloutput/shell-session/; s/^\(\s*\)|||/\1$$/
+RST_OUT_REPLACE  := s/\.\. code::/.. code-block::/
+INDEX_RST        := index.rst
 
 all : html pdf rst
 
@@ -13,8 +15,9 @@ pdf: $(NAME).md $(NAME).tex
 	latexmk $(NAME)
 
 rst: $(NAME).md
-	sed -e '$(RST_SED_REPLACE)' $(NAME).md | \
-	pandoc --columns $(RST_COLUMNS) -o ../index.rst
+	sed -e '$(RST_IN_REPLACE)' $(NAME).md | \
+	pandoc --columns $(RST_COLUMNS) -o ../$(INDEX_RST)
+	sed -i -e '$(RST_OUT_REPLACE)' ../$(INDEX_RST)
 
 clean:
 	latexmk -c $(NAME)

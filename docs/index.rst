@@ -52,7 +52,7 @@ In all examples in this section and later we will use *modular* approach with *c
 
 **File test.hs**
 
-.. code:: haskell
+.. code-block:: haskell
 
    {-# LANGUAGE TemplateHaskell #-}
 
@@ -75,7 +75,7 @@ In all examples in this section and later we will use *modular* approach with *c
 In this module we declared three synchronous handlers: *toUpper*, *reverse*, and *isInList*. Handler *reverse* exports existing and well-known Haskell function
 *reverse* which reverses lists. Let’s compile *test.hs* and move the library to a directory, from where we will load this.
 
-.. code:: shell-session
+.. code-block:: shell-session
 
    $ ghc -O2 -dynamic -shared -fPIC -L$(ghc --print-libdir)/rts -lHSrts-ghc$(ghc --numeric-version) test.hs -o test.so
    [1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )
@@ -84,7 +84,7 @@ In this module we declared three synchronous handlers: *toUpper*, *reverse*, and
 
 **File test.conf**
 
-.. code:: nginx
+.. code-block:: nginx
 
    user                    nginx;
    worker_processes        4;
@@ -121,7 +121,7 @@ handler only when the result is needed in a content handler or rewrite directive
 
 Let’s test the configuration with *curl*.
 
-.. code:: shell-session
+.. code-block:: shell-session
 
    $ curl 'http://127.0.0.1:8010/?u=hello&r=world&a=1&b=10&c=1'
    toUpper hello = HELLO
@@ -146,7 +146,7 @@ There are three types of exporters for synchronous content handlers.
 
 Types *ContentHandlerResult* and *UnsafeContentHandlerResult* are declared as type synonyms in module *NgxExport*.
 
-.. code:: haskell
+.. code-block:: haskell
 
    type ContentHandlerResult = (L.ByteString, ByteString, Int, HTTPHeaders)
    type UnsafeContentHandlerResult = (ByteString, ByteString, Int)
@@ -167,7 +167,7 @@ An example
 
 Let’s replace Nginx directive *echo* with our own default content handler *echo*. Add in *test.hs*,
 
-.. code:: haskell
+.. code-block:: haskell
 
    import           Data.ByteString (ByteString)
    import qualified Data.ByteString.Lazy as L
@@ -180,7 +180,7 @@ Let’s replace Nginx directive *echo* with our own default content handler *ech
 
 compile it and put *test.so* into */var/lib/nginx/*. Add new location */ch* into *test.conf*,
 
-.. code:: nginx
+.. code-block:: nginx
 
            location /ch {
                haskell_run toUpper $hs_upper $arg_u;
@@ -195,7 +195,7 @@ compile it and put *test.so* into */var/lib/nginx/*. Add new location */ch* into
 
 and test again.
 
-.. code:: shell-session
+.. code-block:: shell-session
 
    $ curl 'http://127.0.0.1:8010/ch?u=content&r=handler&a=needle&b=needle&c=in&d=stack'
    toUpper content = CONTENT
@@ -242,7 +242,7 @@ seconds.
 
 **File test.hs** (*additions*)
 
-.. code:: haskell
+.. code-block:: haskell
 
    import qualified Data.ByteString.Char8 as C8
    import qualified Data.ByteString.Lazy.Char8 as C8L
@@ -265,7 +265,7 @@ seconds.
 
 This code must be linked with *threaded* Haskell RTS this time!
 
-.. code:: shell-session
+.. code-block:: shell-session
 
    $ ghc -O2 -dynamic -shared -fPIC -L$(ghc --print-libdir)/rts -lHSrts_thr-ghc$(ghc --numeric-version) test.hs -o test.so
    [1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )
@@ -276,7 +276,7 @@ Let’s make location */timer*, where we will read how many seconds to wait in P
 
 **File test.conf** (*additions*)
 
-.. code:: nginx
+.. code-block:: nginx
 
            location /timer {
                haskell_run_async_on_request_body reqFld $hs_timeout timer;
@@ -286,7 +286,7 @@ Let’s make location */timer*, where we will read how many seconds to wait in P
 
 Run curl tests.
 
-.. code:: shell-session
+.. code-block:: shell-session
 
    $ curl -d 'timer=3' 'http://127.0.0.1:8010/timer'
    Waited 3 sec
@@ -313,7 +313,7 @@ The first handler is declared with directive *haskell_async_content*, the handle
 
 It’s easy to emulate effects in a synchronous content handler by combining the latter with an asynchronous task like in the following example.
 
-.. code:: nginx
+.. code-block:: nginx
 
            location /async_content {
                haskell_run_async getUrl $hs_async_httpbin "http://httpbin.org";
@@ -336,7 +336,7 @@ Let’s rewrite our *timer* example using *haskell_async_content*.
 
 **File test.hs** (*additions*)
 
-.. code:: haskell
+.. code-block:: haskell
 
    {-# LANGUAGE TupleSections #-}
    {-# LANGUAGE MagicHash #-}
@@ -367,7 +367,7 @@ For the *content type* we used a static string *“text/plain”#* that ends wit
 
 **File test.conf** (*additions*)
 
-.. code:: nginx
+.. code-block:: nginx
 
            location /timer/ch {
                haskell_run_async_on_request_body reqFld $hs_timeout timer;
@@ -376,7 +376,7 @@ For the *content type* we used a static string *“text/plain”#* that ends wit
 
 Run curl tests.
 
-.. code:: shell-session
+.. code-block:: shell-session
 
    $ curl -d 'timer=3' 'http://127.0.0.1:8010/timer/ch'
    Waited 3 sec
@@ -387,7 +387,7 @@ In the next example we will create an *online image converter* to convert images
 
 **File test.hs** (*additions*)
 
-.. code:: haskell
+.. code-block:: haskell
 
    import           Codec.Picture
 
@@ -404,7 +404,7 @@ In the next example we will create an *online image converter* to convert images
 
 We are going to run instances of *convertToPng* on multiple CPU cores, and therefore it’s better now to compile this with option *-feager-blackholing*.
 
-.. code:: shell-session
+.. code-block:: shell-session
 
    $ ghc -O2 -feager-blackholing -dynamic -shared -fPIC -L$(ghc --print-libdir)/rts -lHSrts_thr-ghc$(ghc --numeric-version) test.hs -o test.so
    [1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )
@@ -413,7 +413,7 @@ We are going to run instances of *convertToPng* on multiple CPU cores, and there
 
 **File test.conf** (*additions*)
 
-.. code:: nginx
+.. code-block:: nginx
 
        haskell rts_options -N4 -A32m -qg;
 
@@ -440,7 +440,7 @@ that we do not pass any value into directive *haskell_async_content_on_request_b
 
 For running tests, an original file, say *sample.tif*, must be prepared. We will pipe command *display* from *ImageMagick* to the output of curl for more fun.
 
-.. code:: shell-session
+.. code-block:: shell-session
 
    $ curl --data-binary @sample.tif 'http://127.0.0.1:8010/convert/topng' | display
 
@@ -465,7 +465,7 @@ never been called before in this worker process: this can be used to initialize 
 Services are declared with Nginx directive *haskell_run_service*. As far as they are not bound to requests, the directive is only available on the *http*
 configuration level.
 
-.. code:: nginx
+.. code-block:: nginx
 
        haskell_run_service getUrlService $hs_service_httpbin "http://httpbin.org";
 
@@ -487,7 +487,7 @@ Let’s retrieve content of a specific URL, say *httpbin.org*, in background. Da
 
 **File test.hs** (*additions*)
 
-.. code:: haskell
+.. code-block:: haskell
 
    import           Network.HTTP.Client
    import           Control.Exception
@@ -521,7 +521,7 @@ caught by *catchHttpException*, others hit the handler on top of the custom Hask
 
 **File test.conf** (*additions*)
 
-.. code:: nginx
+.. code-block:: nginx
 
        haskell_run_service getUrlService $hs_service_httpbin "http://httpbin.org";
 
@@ -533,7 +533,7 @@ caught by *catchHttpException*, others hit the handler on top of the custom Hask
 
 Run curl tests.
 
-.. code:: shell-session
+.. code-block:: shell-session
 
    $ curl 'http://127.0.0.1:8010/httpbin'
    <!DOCTYPE html>
@@ -564,7 +564,7 @@ Shared services
 An asynchronous service may store its result in shared memory accessible from all worker processes. This is achieved with directive
 *haskell_service_var_in_shm*. For example, the following declaration (in *http* clause),
 
-.. code:: nginx
+.. code-block:: nginx
 
        haskell_service_var_in_shm httpbin 512k /tmp $hs_service_httpbin;
 
@@ -602,7 +602,7 @@ page content on every request. But the page may appear huge, let’s extract all
 
 **File test.hs** (*additions*)
 
-.. code:: haskell
+.. code-block:: haskell
 
    {-# LANGUAGE OverloadedStrings #-}
 
@@ -650,7 +650,7 @@ example when the bytestring gets deserialized into an object in-place. Handler *
 
 **File test.conf** (*additions*)
 
-.. code:: nginx
+.. code-block:: nginx
 
        haskell_service_var_in_shm httpbin 512k /tmp $hs_service_httpbin;
 
@@ -667,7 +667,7 @@ remember that Nginx directives are lazy? On the other hand, *\_upd_links\_* is a
 
 Run curl tests.
 
-.. code:: shell-session
+.. code-block:: shell-session
 
    $ curl 'http://127.0.0.1:8010/httpbin/sortlinks'
    /
@@ -697,7 +697,7 @@ Let’s add a location to show shm stats about our *httpbin* service. This time 
 
 **File test.conf** (*additions*)
 
-.. code:: nginx
+.. code-block:: nginx
 
            location /httpbin/shmstats {
                echo "Httpbin service shm stats: $_shm__hs_service_httpbin";
@@ -705,7 +705,7 @@ Let’s add a location to show shm stats about our *httpbin* service. This time 
 
 Run curl tests.
 
-.. code:: shell-session
+.. code-block:: shell-session
 
    $ curl 'http://127.0.0.1:8010/httpbin/shmstats'
    Httpbin service shm stats: 1516274639 | 13011 | 1 | 0 | 0
@@ -718,7 +718,7 @@ Update callbacks
 
 There is a special type of single-shot services called update callbacks. They are declared like
 
-.. code:: nginx
+.. code-block:: nginx
 
        haskell_service_var_update_callback cbHttpbin $hs_service_httpbin optional_value;
 
@@ -740,7 +740,7 @@ initialization because *httpbin.org* looks like a static page, but responses app
 
 **File test.hs** (*additions*)
 
-.. code:: haskell
+.. code-block:: haskell
 
    cbHttpbin :: ByteString -> Bool -> IO L.ByteString
    cbHttpbin url firstRun = do
@@ -753,7 +753,7 @@ while Nginx workers may appear to be not ready to accept it.
 
 **File test.conf** (*additions*)
 
-.. code:: nginx
+.. code-block:: nginx
 
        haskell_service_var_update_callback cbHttpbin $hs_service_httpbin
                                            "http://127.0.0.1:8010/httpbin/count";
@@ -771,14 +771,14 @@ while Nginx workers may appear to be not ready to accept it.
 
 Wait at least 5 seconds after Nginx start and run curl tests.
 
-.. code:: shell-session
+.. code-block:: shell-session
 
    $ curl 'http://127.0.0.1:8010/counters'
    Httpbin service changes count: 1
 
 Further the count will probably be steadily increasing.
 
-.. code:: shell-session
+.. code-block:: shell-session
 
    $ curl 'http://127.0.0.1:8010/counters'
    Httpbin service changes count: 3
@@ -798,7 +798,7 @@ and can be thought of as service API handlers, thereto being run from dedicated 
 
 Service hooks install a content handler when declared. In the following example,
 
-.. code:: nginx
+.. code-block:: nginx
 
            location /httpbin/url {
                haskell_service_hook getUrlServiceHook $hs_service_httpbin $arg_v;
@@ -820,7 +820,7 @@ value will reside.
 
 **File test.hs** (*additions, getUrlService reimplemented*)
 
-.. code:: haskell
+.. code-block:: haskell
 
    import           Data.Maybe
 
@@ -859,7 +859,7 @@ service *getUrlService* that the URL has been updated.
 
 **File test.conf** (*additions*)
 
-.. code:: nginx
+.. code-block:: nginx
 
        haskell_service_hooks_zone hooks 32k;
 
@@ -879,7 +879,7 @@ Run curl tests.
 
 First let’s check that *httpbin.org* replies as expected.
 
-.. code:: shell-session
+.. code-block:: shell-session
 
    $ curl 'http://127.0.0.1:8010/httpbin'
    <!DOCTYPE html>
@@ -902,13 +902,13 @@ First let’s check that *httpbin.org* replies as expected.
 
 Then change URL to, say, *example.com*,
 
-.. code:: shell-session
+.. code-block:: shell-session
 
    $ curl 'http://127.0.0.1:8010/httpbin/url?v=http://example.com'
 
 and peek, by the way, into the Nginx error log.
 
-.. code:: shell-session
+.. code-block:: shell-session
 
    2018/02/13 16:12:33 [alert] 28794#0: service hook reported "getUrlService set URL http://example.com"
    2018/02/13 16:12:33 [alert] 28795#0: service hook reported "getUrlService set URL http://example.com"
@@ -921,7 +921,7 @@ value*: the new URL will be read in by the service from the global state immedia
 
 Let’s see what we are getting now.
 
-.. code:: shell-session
+.. code-block:: shell-session
 
    $ curl 'http://127.0.0.1:8010/httpbin'
    <!doctype html>
@@ -937,7 +937,7 @@ Let’s see what we are getting now.
 
 Let’s reset the URL.
 
-.. code:: shell-session
+.. code-block:: shell-session
 
    $ curl 'http://127.0.0.1:8010/httpbin/url'
    $ curl 'http://127.0.0.1:8010/httpbin'
@@ -961,7 +961,7 @@ Let’s reset the URL.
 
 In the log we’ll find
 
-.. code:: shell-session
+.. code-block:: shell-session
 
    2018/02/13 16:24:12 [alert] 28795#0: service hook reported "getUrlService reset URL"
    2018/02/13 16:24:12 [alert] 28794#0: service hook reported "getUrlService reset URL"
@@ -993,7 +993,7 @@ Let’s reimplement the example with update of service links using a service hoo
 
 **File test.hs** (*additions*)
 
-.. code:: haskell
+.. code-block:: haskell
 
    grepHttpbinLinksHook :: ByteString -> IO L.ByteString
    grepHttpbinLinksHook v = do
@@ -1008,7 +1008,7 @@ Let’s reimplement the example with update of service links using a service hoo
 
 **File test.conf** (*additions*)
 
-.. code:: nginx
+.. code-block:: nginx
 
        haskell_service_update_hook grepHttpbinLinksHook $hs_service_httpbin;
 
@@ -1041,7 +1041,7 @@ Let’s write a plugin that will add an HTTP header to the response.
 
 **File test_c_plugin.h**
 
-.. code:: c
+.. code-block:: c
 
    #ifndef NGX_HTTP_HASKELL_TEST_C_PLUGIN_H
    #define NGX_HTTP_HASKELL_TEST_C_PLUGIN_H
@@ -1055,7 +1055,7 @@ Let’s write a plugin that will add an HTTP header to the response.
 
 **File test_c_plugin.c**
 
-.. code:: c
+.. code-block:: c
 
    #include "test_c_plugin.h"
 
@@ -1091,13 +1091,13 @@ null pointer.
 
 Let’s compile the C code. For this we need a directory where Nginx sources were sometime compiled. Let’s refer to it in an environment variable *NGX_HOME*.
 
-.. code:: shell-session
+.. code-block:: shell-session
 
    $ NGX_HOME=/path/to/nginx_sources
 
 Here we are going to mimic the Nginx build process.
 
-.. code:: shell-session
+.. code-block:: shell-session
 
    $ gcc -O2 -fPIC -c -o test_c_plugin.o -I $NGX_HOME/src/core -I $NGX_HOME/src/http -I $NGX_HOME/src/http/modules -I $NGX_HOME/src/event -I $NGX_HOME/src/evwnt/modules -I $NGX_HOME/src/os/unix -I $NGX_HOME/objs test_c_plugin.c
 
@@ -1105,7 +1105,7 @@ Now we have an object file *test_c_plugin.o* to link with the Haskell code. Belo
 
 **File test.hs** (*additions*)
 
-.. code:: haskell
+.. code-block:: haskell
 
    import           Data.Binary.Get
    import           Foreign.C.Types
@@ -1130,7 +1130,7 @@ Now we have an object file *test_c_plugin.o* to link with the Haskell code. Belo
 Handler *testCPlugin* runs function *ngx_http_haskell_test_c_plugin()* from the C plugin and returns *Success!* or *Failure!* in cases when the C function
 returns *NGX_OK* or *NGX_ERROR* respectively. When compiled with *ghc*, this code has to be linked with *test_c_plugin.o*.
 
-.. code:: shell-session
+.. code-block:: shell-session
 
    $ ghc -O2 -dynamic -shared -fPIC -L$(ghc --print-libdir)/rts -lHSrts_thr-ghc$(ghc --numeric-version) test_c_plugin.o test.hs -o test.so
    [1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )
@@ -1139,7 +1139,7 @@ returns *NGX_OK* or *NGX_ERROR* respectively. When compiled with *ghc*, this cod
 
 **File test.conf** (*additions*)
 
-.. code:: nginx
+.. code-block:: nginx
 
            location /cplugin {
                haskell_run testCPlugin $hs_test_c_plugin $_r_ptr;
@@ -1148,7 +1148,7 @@ returns *NGX_OK* or *NGX_ERROR* respectively. When compiled with *ghc*, this cod
 
 Run curl tests.
 
-.. code:: shell-session
+.. code-block:: shell-session
 
    $ curl -D- 'http://localhost:8010/cplugin'
    HTTP/1.1 200 OK
@@ -1362,7 +1362,7 @@ Appendix
 File *test.hs*
 --------------
 
-.. code:: haskell
+.. code-block:: haskell
 
    {-# LANGUAGE TemplateHaskell #-}
    {-# LANGUAGE TupleSections #-}
@@ -1546,7 +1546,7 @@ File *test.hs*
 File *test.conf*
 ----------------
 
-.. code:: nginx
+.. code-block:: nginx
 
    user                    nginx;
    worker_processes        4;
@@ -1671,7 +1671,7 @@ File *test.conf*
 File *test_c_plugin.h*
 ----------------------
 
-.. code:: c
+.. code-block:: c
 
    /* Compile:
     *      NGX_HOME=/path/to/nginx_sources
@@ -1702,7 +1702,7 @@ File *test_c_plugin.h*
 File *test_c_plugin.c*
 ----------------------
 
-.. code:: c
+.. code-block:: c
 
    #include "test_c_plugin.h"
 
