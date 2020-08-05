@@ -7,6 +7,12 @@ html_short_title = "Nginx Haskell module"
 
 master_doc = 'index'
 
+html_theme_options = {
+    'collapse_navigation': False,
+    'sticky_navigation': True,
+    'navigation_depth': 3
+}
+
 pygments_style = 'friendly'
 
 html_static_path = ['_static']
