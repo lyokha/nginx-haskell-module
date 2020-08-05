@@ -4,4 +4,4 @@ Nginx Haskell module
 .. toctree::
    :maxdepth: 3
 
-   yet-another-doc-with-examples/nginx-haskell-module-yadwe.rst
+   Yet another doc with examples <yet-another-doc-with-examples/nginx-haskell-module-yadwe.rst>
