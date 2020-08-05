@@ -1,3 +1,5 @@
+master_doc = 'index'
+
 pygments_style = 'friendly'
 
 html_static_path = ['_static']
