@@ -1,3 +1,11 @@
+====================================================
+Nginx Haskell module (yet another doc with examples)
+====================================================
+
+.. contents::
+   :depth: 3
+..
+
 Why bother?
 ===========
 
