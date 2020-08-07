@@ -1,1 +1,13 @@
-.highlight  { background: #ffffee !important; }
+/* custom backgrount color in code blocks */
+.highlight {
+    background: #ffffee !important;
+}
+
+/* wrapping lines in tables */
+.wy-table-responsive table td {
+    white-space: normal !important;
+}
+.wy-table-responsive {
+    overflow: visible !important;
+}
+
