@@ -9,23 +9,23 @@ jobs:
         apt:
           packages: [cabal-install-head, ghc-head]
           sources: [hvr-ghc]
-    - env: NGXVER=head CABALVER=head GHCVER=8.10.1
+    - env: NGXVER=head CABALVER=head GHCVER=8.10.2
       compiler: gcc
       addons:
         apt:
-          packages: [cabal-install-head, ghc-8.10.1]
+          packages: [cabal-install-head, ghc-8.10.2]
           sources: [hvr-ghc]
-    - env: NGXVER=1.18.0 CABALVER=head GHCVER=8.10.1
+    - env: NGXVER=1.18.0 CABALVER=head GHCVER=8.10.2
       compiler: gcc
       addons:
         apt:
-          packages: [cabal-install-head, ghc-8.10.1]
+          packages: [cabal-install-head, ghc-8.10.2]
           sources: [hvr-ghc]
-    - env: NGXVER=1.16.1 CABALVER=head GHCVER=8.8.3
+    - env: NGXVER=1.16.1 CABALVER=head GHCVER=8.8.4
       compiler: gcc
       addons:
         apt:
-          packages: [cabal-install-head, ghc-8.8.3]
+          packages: [cabal-install-head, ghc-8.8.4]
           sources: [hvr-ghc]
     - env: NGXVER=1.14.2 CABALVER=head GHCVER=8.6.5
       compiler: gcc
@@ -44,15 +44,15 @@ jobs:
         apt:
           packages: [cabal-install-head, ghc-head]
           sources: [hvr-ghc]
-    - env: CABALVER=head GHCVER=8.10.1
+    - env: CABALVER=head GHCVER=8.10.2
       addons:
         apt:
-          packages: [cabal-install-head, ghc-8.10.1]
+          packages: [cabal-install-head, ghc-8.10.2]
           sources: [hvr-ghc]
-    - env: CABALVER=head GHCVER=8.8.3
+    - env: CABALVER=head GHCVER=8.8.4
       addons:
         apt:
-          packages: [cabal-install-head, ghc-8.8.3]
+          packages: [cabal-install-head, ghc-8.8.4]
           sources: [hvr-ghc]
     - env: CABALVER=head GHCVER=8.6.5
       addons:
@@ -81,7 +81,7 @@ jobs:
           sources: [hvr-ghc]
   allow_failures:
     - env: NGXVER=head CABALVER=head GHCVER=head
-    - env: NGXVER=head CABALVER=head GHCVER=8.10.1
+    - env: NGXVER=head CABALVER=head GHCVER=8.10.2
     - env: CABALVER=head GHCVER=head
 
 before_install:

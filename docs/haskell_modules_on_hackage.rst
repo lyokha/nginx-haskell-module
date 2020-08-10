@@ -1,7 +1,8 @@
 Haskell modules on Hackage
 ==========================
 
-A list of packages and docs to modules on Hackage.
+A list of links to packages and docs with examples for Haskell modules on
+Hackage.
 
 * Package `ngx-export <https://hackage.haskell.org/package/ngx-export>`__
 
