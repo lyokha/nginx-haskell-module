@@ -23,7 +23,7 @@
 
 
 char *ngx_http_haskell_write_code(ngx_conf_t *cf, void *conf,
-    ngx_str_t source_name, ngx_str_t fragment);
+    ngx_str_t source_name, ngx_str_t *fragments, ngx_int_t n_fragments);
 char *ngx_http_haskell_compile(ngx_conf_t *cf, void *conf,
     ngx_str_t source_name);
 

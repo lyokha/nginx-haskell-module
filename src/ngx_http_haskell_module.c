@@ -1082,13 +1082,6 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         break;
     }
 
-    if (idx < cf->args->nelts - 2) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "directives haskell compile / load expect "
-                           "at most 2 parameters after compile and wrap modes");
-        return NGX_CONF_ERROR;
-    }
-
     shift_modes = has_threaded + has_debug + has_wrap_mode;
 
     if (cf->args->nelts < 3 + shift_modes) {
@@ -1165,7 +1158,8 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     if (!load) {
-        if (ngx_http_haskell_write_code(cf, conf, value[idx], value[idx + 1])
+        if (ngx_http_haskell_write_code(cf, conf, value[idx], &value[idx + 1],
+                                        cf->args->nelts - 1 - idx)
             != NGX_CONF_OK)
         {
             return NGX_CONF_ERROR;

@@ -39,31 +39,13 @@ ngx_string(" -lHSrts_thr_debug-ghc$(ghc --numeric-version)");
 
 char *
 ngx_http_haskell_write_code(ngx_conf_t *cf, void *conf, ngx_str_t source_name,
-                            ngx_str_t fragment)
+                            ngx_str_t *fragments, ngx_int_t n_fragments)
 {
     ngx_http_haskell_main_conf_t  *mcf = conf;
 
+    ngx_int_t                      i;
     ngx_file_t                     out;
-    ngx_str_t                      code;
-    ngx_uint_t                     code_head_len = 0, code_tail_len = 0;
-
-    if (mcf->wrap_mode == ngx_http_haskell_module_wrap_mode_standalone) {
-        code_head_len = ngx_http_haskell_module_standalone_header.len;
-        code_tail_len = ngx_http_haskell_module_standalone_footer.len;
-    }
-
-    code.len = code_head_len + fragment.len + code_tail_len;
-    code.data = ngx_pnalloc(cf->pool, code.len);
-    if (code.data == NULL) {
-        return NGX_CONF_ERROR;
-    }
-
-    ngx_memcpy(code.data,
-               ngx_http_haskell_module_standalone_header.data, code_head_len);
-    ngx_memcpy(code.data + code_head_len,
-               fragment.data, fragment.len);
-    ngx_memcpy(code.data + code_head_len + fragment.len,
-               ngx_http_haskell_module_standalone_footer.data, code_tail_len);
+    ngx_uint_t                     standalone_mode;
 
     ngx_memzero(&out, sizeof(ngx_file_t));
 
@@ -78,12 +60,40 @@ ngx_http_haskell_write_code(ngx_conf_t *cf, void *conf, ngx_str_t source_name,
 
     out.fd = ngx_open_file(out.name.data, NGX_FILE_WRONLY, NGX_FILE_TRUNCATE,
                            NGX_FILE_DEFAULT_ACCESS);
-    if (out.fd == NGX_INVALID_FILE
-        || ngx_write_file(&out, code.data, code.len, 0) == NGX_ERROR)
+    if (out.fd == NGX_INVALID_FILE) {
+        goto write_failed;
+    }
+
+    standalone_mode =
+            mcf->wrap_mode == ngx_http_haskell_module_wrap_mode_standalone;
+
+    if (standalone_mode
+        && ngx_write_file(&out,
+                          ngx_http_haskell_module_standalone_header.data,
+                          ngx_http_haskell_module_standalone_header.len,
+                          out.offset)
+        == NGX_ERROR)
     {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno,
-                           "failed to write haskell source code file");
-        return NGX_CONF_ERROR;
+        goto write_failed;
+    }
+    for (i = 0; i < n_fragments; i++) {
+        if (ngx_write_file(&out,
+                           fragments[i].data,
+                           fragments[i].len,
+                           out.offset)
+            == NGX_ERROR)
+        {
+            goto write_failed;
+        }
+    }
+    if (standalone_mode
+        && ngx_write_file(&out,
+                          ngx_http_haskell_module_standalone_footer.data,
+                          ngx_http_haskell_module_standalone_footer.len,
+                          out.offset)
+        == NGX_ERROR)
+    {
+        goto write_failed;
     }
 
     if (ngx_close_file(out.fd) == NGX_FILE_ERROR) {
@@ -92,6 +102,13 @@ ngx_http_haskell_write_code(ngx_conf_t *cf, void *conf, ngx_str_t source_name,
     }
 
     return NGX_CONF_OK;
+
+write_failed:
+
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno,
+                       "failed to write haskell source code file");
+
+    return NGX_CONF_ERROR;
 }
 
 
