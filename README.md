@@ -2139,6 +2139,15 @@ Troubleshooting
           -optl-Wl,-rpath,/var/lib/nginx/x86_64-linux-ghc-8.6.1;
     ```
 
+- _Nginx master process does not start and logs a message like ``too long
+  argument, probably missing ...``_.
+
+  Arguments in nginx configuration directives are limited in size (normally,
+  4096 bytes), therefore too long custom haskell code in directive *haskell
+  compile* may break parsing of configuration. To work this around, the big
+  block of Haskell code can be broken down into several smaller arguments: the
+  smaller blocks will be joined at the compilation phase.
+
 - When running multiple instances of nginx with identical sets of file lock
   attributes for a shared service (i.e. the path to lock files and the service
   variable name), the shared service will only work at one of the instance! In
