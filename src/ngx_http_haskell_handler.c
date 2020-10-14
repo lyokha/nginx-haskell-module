@@ -143,13 +143,10 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
             return NGX_ERROR;
         }
 
-        v->len = arg1.len;
-        v->data = arg1.data;
-        v->valid = 1;
-        v->no_cacheable = 0;
-        v->not_found = 0;
+        len = arg1.len;
+        res = (char *) arg1.data;
 
-        return NGX_OK;
+        goto update_var;
     }
 
     switch (handlers[code_vars[found_idx].handler].type) {
@@ -337,6 +334,8 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
     default:
         return NGX_ERROR;
     }
+
+update_var:
 
     if (r->internal) {
         vars = mcf->var_compensate_uri_changes.elts;
