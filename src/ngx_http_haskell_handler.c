@@ -343,7 +343,7 @@ update_var:
             if (vars[i].index == *index
                 && r->uri_changes < NGX_HTTP_MAX_URI_CHANGES + 1)
             {
-                ++r->uri_changes;
+                r->uri_changes = NGX_HTTP_MAX_URI_CHANGES + 1;
                 break;
             }
         }
