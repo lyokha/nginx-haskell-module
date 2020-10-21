@@ -1,3 +1,7 @@
+### 0.4.9.0
+
+- Exposed function *skipRPtr* which can be useful in many contexts.
+
 ### 0.4.8.0
 
 - Correct implementation of *Eq* and *Ord* instances for *TimeInterval*.

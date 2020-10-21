@@ -36,6 +36,7 @@ module NgxExport.Tools (
                        ,readFromByteStringAsJSON
                        ,readFromByteStringWithRPtr
                        ,readFromByteStringWithRPtrAsJSON
+                       ,skipRPtr
     -- * Exporters of simple services
     -- $simpleServices
                        ,ServiceMode (..)
@@ -359,6 +360,11 @@ readFromByteStringWithRPtrAsJSON :: FromJSON a =>
 readFromByteStringWithRPtrAsJSON =
     ngxRequestPtr &&& readFromByteStringAsJSON . skipRPtr
 
+-- | Skips the number of bytes equal to the size of a pointer from the beginning
+--   of a 'ByteString'.
+--
+-- This can be useful to drop a pointer to the Nginx request object passed at
+-- the beginning of a handler's argument.
 skipRPtr :: ByteString -> ByteString
 skipRPtr = B.drop $ sizeOf (undefined :: Word)
 
