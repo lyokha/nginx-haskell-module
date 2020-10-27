@@ -673,7 +673,7 @@ ngx_http_haskell_async_event(ngx_event_t *ev)
 }
 
 
-ngx_int_t
+static ngx_int_t
 ngx_http_haskell_async_finalize_request(ngx_http_request_t *r, ngx_uint_t index,
                                         CUInt status, ngx_uint_t styled)
 {
