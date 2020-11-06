@@ -282,7 +282,7 @@ ngx_http_haskell_init(ngx_conf_t *cf)
         }
 
         hs_elts = hs->elts;
-        for (i = hs->nelts - 2 ; i > 0; i--) {
+        for (i = hs->nelts - 2; i > 0; i--) {
             hs_elts[i] = hs_elts[i - 1];
         }
 
