@@ -258,7 +258,7 @@ ngx_http_haskell_init(ngx_conf_t *cf)
     ngx_uint_t                      i, j;
     ngx_http_haskell_main_conf_t   *mcf;
     ngx_http_core_main_conf_t      *cmcf;
-    ngx_http_variable_t            *cmvars;
+    ngx_hash_key_t                 *cmkeys;
     ngx_http_haskell_var_handle_t  *vars;
     ngx_array_t                    *hs;
     ngx_http_handler_pt            *h, *hs_elts;
@@ -302,40 +302,25 @@ ngx_http_haskell_init(ngx_conf_t *cf)
         *h = ngx_http_haskell_log_phase_handler;
     }
 
-    cmvars = cmcf->variables.elts;
-
-    vars = mcf->var_nocacheable.elts;
-    for (i = 0; i < mcf->var_nocacheable.nelts; i++) {
-        found = 0;
-        for (j = 0; j < cmcf->variables.nelts; j++) {
-            if (vars[i].name.len == cmvars[j].name.len
-                && ngx_strncmp(vars[i].name.data, cmvars[j].name.data,
-                               vars[i].name.len) == 0)
-            {
-                vars[i].index = cmvars[j].index;
-                /* variables with any get handler are allowed here! */
-                cmvars[j].flags |= NGX_HTTP_VAR_NOCACHEABLE;
-                found = 1;
-                break;
-            }
-        }
-        if (found == 0) {
-            ngx_conf_log_error(NGX_LOG_ERR, cf, 0,
-                            "variable \"%V\" was not declared", &vars[i].name);
-        }
+    if (cmcf->variables_keys == NULL) {
+        return NGX_OK;
     }
+
+    cmkeys = cmcf->variables_keys->keys.elts;
 
     vars = mcf->var_nohash.elts;
     for (i = 0; i < mcf->var_nohash.nelts; i++) {
         found = 0;
-        for (j = 0; j < cmcf->variables.nelts; j++) {
-            if (vars[i].name.len == cmvars[j].name.len
-                && ngx_strncmp(vars[i].name.data, cmvars[j].name.data,
+        for (j = 0; j < cmcf->variables_keys->keys.nelts; j++) {
+            if (vars[i].name.len == cmkeys[j].key.len
+                && ngx_strncmp(vars[i].name.data, cmkeys[j].key.data,
                                vars[i].name.len) == 0)
             {
-                vars[i].index = cmvars[j].index;
                 /* variables with any get handler are allowed here! */
-                cmvars[j].flags |= NGX_HTTP_VAR_NOHASH;
+                /* flags will be copied into cmcf->variables in
+                 * ngx_http_variables_init_vars() */
+                ((ngx_http_variable_t *) cmkeys[j].value)->flags
+                        |= NGX_HTTP_VAR_NOHASH;
                 found = 1;
                 break;
             }
@@ -581,6 +566,27 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
     }
 
     cmvars = cmcf->variables.elts;
+
+    vars = mcf->var_nocacheable.elts;
+    for (i = 0; i < mcf->var_nocacheable.nelts; i++) {
+        found = 0;
+        for (j = 0; j < cmcf->variables.nelts; j++) {
+            if (vars[i].name.len == cmvars[j].name.len
+                && ngx_strncmp(vars[i].name.data, cmvars[j].name.data,
+                               vars[i].name.len) == 0)
+            {
+                vars[i].index = cmvars[j].index;
+                /* variables with any get handler are allowed here! */
+                cmvars[j].flags |= NGX_HTTP_VAR_NOCACHEABLE;
+                found = 1;
+                break;
+            }
+        }
+        if (found == 0) {
+            ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
+                          "variable \"%V\" was not declared", &vars[i].name);
+        }
+    }
 
     vars = mcf->var_empty_on_error.elts;
     for (i = 0; i < mcf->var_empty_on_error.nelts; i++) {
