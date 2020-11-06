@@ -1307,7 +1307,10 @@ Summary table of all Nginx directives of the module
 +-------------------------------------------------------------------------+---------------------+---------------------------------------------------------+
 | ``haskell_var_nocacheable``                                             | ``http``            | All variables in the list become no cacheable and safe  |
 |                                                                         |                     | for using in ad-hoc iterations over *error_page*        |
-|                                                                         |                     | cycles.                                                 |
+|                                                                         |                     | cycles. Applicable to variables of any *get handler*.   |
++-------------------------------------------------------------------------+---------------------+---------------------------------------------------------+
+| ``haskell_var_nohash``                                                  | ``http``            | Nginx won’t build hashes for variables in the list.     |
+|                                                                         |                     | Applicable to variables of any *get handler*.           |
 +-------------------------------------------------------------------------+---------------------+---------------------------------------------------------+
 | ``haskell_var_compensate_uri_changes``                                  | ``http``            | All variables in the list allow to cheat *error_page*   |
 |                                                                         |                     | when used in its redirections and make the cycle        |
@@ -1315,14 +1318,15 @@ Summary table of all Nginx directives of the module
 +-------------------------------------------------------------------------+---------------------+---------------------------------------------------------+
 | ``haskell_var_empty_on_error``                                          | ``http``            | All variables in the list return empty values on errors |
 |                                                                         |                     | while the errors are still being logged by Nginx.       |
-|                                                                         |                     | Applicable for effectful synchronous and asynchronous   |
+|                                                                         |                     | Applicable to effectful synchronous and asynchronous    |
 |                                                                         |                     | variable handlers.                                      |
 +-------------------------------------------------------------------------+---------------------+---------------------------------------------------------+
-| ``haskell_service_var_ignore_empty``                                    | ``http``            | Do not write the service result when its value is       |
-|                                                                         |                     | empty.                                                  |
+| ``haskell_service_var_ignore_empty``                                    | ``http``            | All service variables in the list do not write the      |
+|                                                                         |                     | service result when its value is empty.                 |
 +-------------------------------------------------------------------------+---------------------+---------------------------------------------------------+
-| ``haskell_service_var_in_shm``                                          | ``http``            | Store the service result in a shared memory. Implicitly |
-|                                                                         |                     | declares a shared service.                              |
+| ``haskell_service_var_in_shm``                                          | ``http``            | All service variables in the list store the service     |
+|                                                                         |                     | result in a shared memory. Implicitly declares a shared |
+|                                                                         |                     | service.                                                |
 +-------------------------------------------------------------------------+---------------------+---------------------------------------------------------+
 | ``haskell_service_hooks_zone``                                          | ``http``            | Declare shm zone for a temporary storage of service     |
 |                                                                         |                     | hooks data.                                             |

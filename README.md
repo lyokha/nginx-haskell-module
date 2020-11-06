@@ -1069,9 +1069,12 @@ The two directives above make internal redirections with *error_page*
 *Turing-complete* computations by allowing potentially infinite location loops
 with a no-cacheable condition test variable.
 
+- *haskell_var_nohash ``<list>``* &mdash; Asks Nginx to not build hashes for
+  variables in the *``<list>``*. Accepts all types of variables.
+
 - *haskell_var_empty_on_error ``<list>``* &mdash; Makes variables in the
   *``<list>``* return the empty value on errors while still logging the errors.
-  Applicable for effectful synchronous and asynchronous variable handlers.
+  Applicable to effectful synchronous and asynchronous variable handlers.
 
 - *haskell_service_var_ignore_empty ``<list>``* &mdash; Makes variables in the
   *``<list>``* do not update when related services return empty strings. Accepts
