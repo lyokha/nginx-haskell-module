@@ -174,6 +174,12 @@ static ngx_command_t  ngx_http_haskell_module_commands[] = {
       NGX_HTTP_MAIN_CONF_OFFSET,
       0,
       NULL },
+    { ngx_string("haskell_var_nohash"),
+      NGX_HTTP_MAIN_CONF|NGX_CONF_1MORE,
+      ngx_http_haskell_var_configure,
+      NGX_HTTP_MAIN_CONF_OFFSET,
+      0,
+      NULL },
     { ngx_string("haskell_var_compensate_uri_changes"),
       NGX_HTTP_MAIN_CONF|NGX_CONF_1MORE,
       ngx_http_haskell_var_configure,
@@ -249,11 +255,14 @@ ngx_module_t  ngx_http_haskell_module = {
 static ngx_int_t
 ngx_http_haskell_init(ngx_conf_t *cf)
 {
-    ngx_uint_t                     i;
-    ngx_http_haskell_main_conf_t  *mcf;
-    ngx_http_core_main_conf_t     *cmcf;
-    ngx_array_t                   *hs;
-    ngx_http_handler_pt           *h, *hs_elts;
+    ngx_uint_t                      i, j;
+    ngx_http_haskell_main_conf_t   *mcf;
+    ngx_http_core_main_conf_t      *cmcf;
+    ngx_http_variable_t            *cmvars;
+    ngx_http_haskell_var_handle_t  *vars;
+    ngx_array_t                    *hs;
+    ngx_http_handler_pt            *h, *hs_elts;
+    ngx_uint_t                      found;
 
     mcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_haskell_module);
     cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
@@ -291,6 +300,50 @@ ngx_http_haskell_init(ngx_conf_t *cf)
         }
 
         *h = ngx_http_haskell_log_phase_handler;
+    }
+
+    cmvars = cmcf->variables.elts;
+
+    vars = mcf->var_nocacheable.elts;
+    for (i = 0; i < mcf->var_nocacheable.nelts; i++) {
+        found = 0;
+        for (j = 0; j < cmcf->variables.nelts; j++) {
+            if (vars[i].name.len == cmvars[j].name.len
+                && ngx_strncmp(vars[i].name.data, cmvars[j].name.data,
+                               vars[i].name.len) == 0)
+            {
+                vars[i].index = cmvars[j].index;
+                /* variables with any get handler are allowed here! */
+                cmvars[j].flags |= NGX_HTTP_VAR_NOCACHEABLE;
+                found = 1;
+                break;
+            }
+        }
+        if (found == 0) {
+            ngx_conf_log_error(NGX_LOG_ERR, cf, 0,
+                            "variable \"%V\" was not declared", &vars[i].name);
+        }
+    }
+
+    vars = mcf->var_nohash.elts;
+    for (i = 0; i < mcf->var_nohash.nelts; i++) {
+        found = 0;
+        for (j = 0; j < cmcf->variables.nelts; j++) {
+            if (vars[i].name.len == cmvars[j].name.len
+                && ngx_strncmp(vars[i].name.data, cmvars[j].name.data,
+                               vars[i].name.len) == 0)
+            {
+                vars[i].index = cmvars[j].index;
+                /* variables with any get handler are allowed here! */
+                cmvars[j].flags |= NGX_HTTP_VAR_NOHASH;
+                found = 1;
+                break;
+            }
+        }
+        if (found == 0) {
+            ngx_conf_log_error(NGX_LOG_ERR, cf, 0,
+                            "variable \"%V\" was not declared", &vars[i].name);
+        }
     }
 
     return NGX_OK;
@@ -529,27 +582,6 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
 
     cmvars = cmcf->variables.elts;
 
-    vars = mcf->var_nocacheable.elts;
-    for (i = 0; i < mcf->var_nocacheable.nelts; i++) {
-        found = 0;
-        for (j = 0; j < cmcf->variables.nelts; j++) {
-            if (vars[i].name.len == cmvars[j].name.len
-                && ngx_strncmp(vars[i].name.data, cmvars[j].name.data,
-                               vars[i].name.len) == 0)
-            {
-                vars[i].index = cmvars[j].index;
-                /* variables with any get handler are allowed here! */
-                cmvars[j].flags |= NGX_HTTP_VAR_NOCACHEABLE;
-                found = 1;
-                break;
-            }
-        }
-        if (found == 0) {
-            ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
-                          "variable \"%V\" was not declared", &vars[i].name);
-        }
-    }
-
     vars = mcf->var_empty_on_error.elts;
     for (i = 0; i < mcf->var_empty_on_error.nelts; i++) {
         found = 0;
@@ -629,7 +661,6 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
 #ifdef NGX_HTTP_HASKELL_SHM_USE_SHARED_RLOCK
                 found = 1;
 #endif
-
                 break;
             }
         }
@@ -1898,6 +1929,11 @@ ngx_http_haskell_var_configure(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         == 0)
     {
         data = &mcf->var_nocacheable;
+    } else if (value[0].len == 18
+        && ngx_strncmp(value[0].data, "haskell_var_nohash", 18)
+        == 0)
+    {
+        data = &mcf->var_nohash;
     } else if (value[0].len == 34
         && ngx_strncmp(value[0].data, "haskell_var_compensate_uri_changes", 34)
         == 0)

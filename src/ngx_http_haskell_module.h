@@ -162,6 +162,7 @@ typedef struct {
     HsBool                                   (*rts_has_thread_support)(void);
     ngx_array_t                                service_code_vars;
     ngx_array_t                                var_nocacheable;
+    ngx_array_t                                var_nohash;
     ngx_array_t                                var_compensate_uri_changes;
     ngx_array_t                                var_empty_on_error;
     ngx_array_t                                service_var_ignore_empty;
