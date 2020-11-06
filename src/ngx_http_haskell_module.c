@@ -317,8 +317,6 @@ ngx_http_haskell_init(ngx_conf_t *cf)
                                vars[i].name.len) == 0)
             {
                 /* variables with any get handler are allowed here! */
-                /* flags will be copied into cmcf->variables in
-                 * ngx_http_variables_init_vars() */
                 ((ngx_http_variable_t *) cmkeys[j].value)->flags
                         |= NGX_HTTP_VAR_NOHASH;
                 found = 1;
