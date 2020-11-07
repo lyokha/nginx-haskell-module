@@ -869,7 +869,7 @@ handler would write into the file reliably when it is called after a shared
 memory segment, that corresponds to the shared service variable, gets updated.
 
 Complex scenarios may require synchronous access to handlers with side effects.
-For example it could be an ad-hoc *error_page* redirection loop: asynchronous
+For example, it could be an ad-hoc *error_page* redirection loop: asynchronous
 handlers do not suit here very well. For such cases another handler
 *NGX_EXPORT_IOY_Y* may appear useful. Below is a toy example of a synchronous
 handler declaration.
@@ -1070,8 +1070,10 @@ The two directives above make internal redirections with *error_page*
 with a no-cacheable condition test variable.
 
 - *haskell_var_nohash ``<list>``* &mdash; Asks Nginx to not build hashes for
-  variables in the *``<list>``*. Accepts all types of variables with the
-  exception of prefix variables.
+  variables in the *``<list>``*. If an element of the list ends with *&#42;*
+  then it is regarded as a wildcard. For example, *&#36;hs_&#42* will make all
+  variables that start with *&#36;hs_* no-hash. Accepts all types of variables
+  with the exception of prefix variables.
 
 - *haskell_var_empty_on_error ``<list>``* &mdash; Makes variables in the
   *``<list>``* return the empty value on errors while still logging the errors.
@@ -1500,7 +1502,7 @@ to the new haskell code.
 - *Haskell code fails to compile.* The new workers won't start, the old workers
   will proceed.
 
-- *Haskell code compiles but type check of handlers fails.* (For example a
+- *Haskell code compiles but type check of handlers fails.* (For example, a
   haskell function that had been exported as content handler was passed to a
   directive *haskell_run* in some location.) The new workers will start but fail
   the module initialization and shut down, the old workers will shut down. No
@@ -1688,7 +1690,7 @@ directory and try to track down all dependencies and sub-dependencies of
 packages that we're going to use: *base*, *file-embed*, *template-haskell* (only
 dependencies, not itself), *bytestring*, *safe* and *ngx-export*. To see
 versions and dependencies of the installed packages command *ghc-pkg field* can
-be used. For example
+be used. For example,
 
 ```ShellSession
 $ ghc-pkg field base version,depends

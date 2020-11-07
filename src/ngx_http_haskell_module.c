@@ -262,7 +262,7 @@ ngx_http_haskell_init(ngx_conf_t *cf)
     ngx_http_haskell_var_handle_t  *vars;
     ngx_array_t                    *hs;
     ngx_http_handler_pt            *h, *hs_elts;
-    ngx_uint_t                      found;
+    ngx_uint_t                      found, wildcard, len, len_matches;
 
     mcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_haskell_module);
     cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
@@ -310,17 +310,22 @@ ngx_http_haskell_init(ngx_conf_t *cf)
 
     vars = mcf->var_nohash.elts;
     for (i = 0; i < mcf->var_nohash.nelts; i++) {
-        found = 0;
+        wildcard = vars[i].name.data[vars[i].name.len - 1] == '*' ? 1 : 0;
+        len = wildcard ? vars[i].name.len - 1 : vars[i].name.len;
+        found = wildcard;
         for (j = 0; j < cmcf->variables_keys->keys.nelts; j++) {
-            if (vars[i].name.len == cmkeys[j].key.len
-                && ngx_strncmp(vars[i].name.data, cmkeys[j].key.data,
-                               vars[i].name.len) == 0)
+            len_matches = wildcard ?
+                    len <= cmkeys[j].key.len : len == cmkeys[j].key.len;
+            if (len_matches
+                && ngx_strncmp(vars[i].name.data, cmkeys[j].key.data, len) == 0)
             {
                 /* variables with any get handler are allowed here! */
                 ((ngx_http_variable_t *) cmkeys[j].value)->flags
                         |= NGX_HTTP_VAR_NOHASH;
                 found = 1;
-                break;
+                if (!wildcard) {
+                    break;
+                }
             }
         }
         if (found == 0) {
