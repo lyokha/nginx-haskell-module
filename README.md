@@ -1071,9 +1071,9 @@ with a no-cacheable condition test variable.
 
 - *haskell_var_nohash ``<list>``* &mdash; Asks Nginx to not build hashes for
   variables in the *``<list>``*. If an element of the list ends with an asterisk
-  (*&#42;*) then it is regarded as a wildcard. For example, *&#36;hs_&#42;* will
-  make all variables that start with *&#36;hs_* no-hash. Accepts all types of
-  variables with the exception of prefix variables.
+  then it is regarded as a wildcard. For example, *&#36;hs_&#42;* will make all
+  variables that start with *&#36;hs_* no-hash. Accepts all types of variables
+  with the exception of prefix variables.
 
 - *haskell_var_empty_on_error ``<list>``* &mdash; Makes variables in the
   *``<list>``* return the empty value on errors while still logging the errors.
