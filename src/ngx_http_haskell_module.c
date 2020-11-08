@@ -312,7 +312,7 @@ ngx_http_haskell_init(ngx_conf_t *cf)
     for (i = 0; i < mcf->var_nohash.nelts; i++) {
         wildcard = vars[i].name.data[vars[i].name.len - 1] == '*' ? 1 : 0;
         len = wildcard ? vars[i].name.len - 1 : vars[i].name.len;
-        found = wildcard;
+        found = 0;
         for (j = 0; j < cmcf->variables_keys->keys.nelts; j++) {
             len_matches = wildcard ?
                     len <= cmkeys[j].key.len : len == cmkeys[j].key.len;
@@ -329,8 +329,13 @@ ngx_http_haskell_init(ngx_conf_t *cf)
             }
         }
         if (found == 0) {
-            ngx_conf_log_error(NGX_LOG_ERR, cf, 0,
-                            "variable \"%V\" was not declared", &vars[i].name);
+            if (wildcard) {
+                ngx_conf_log_error(NGX_LOG_ERR, cf, 0,
+                        "no variable matches wildcard \"%V\"", &vars[i].name);
+            } else {
+                ngx_conf_log_error(NGX_LOG_ERR, cf, 0,
+                        "variable \"%V\" was not declared", &vars[i].name);
+            }
         }
     }
 
