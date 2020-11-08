@@ -1073,7 +1073,7 @@ with a no-cacheable condition test variable.
   variables in the *``<list>``*. If an element of the list ends with an asterisk
   then it is regarded as a wildcard. For example, *&#36;hs_&#42;* will make all
   variables that start with *&#36;hs_* no-hash. This directive can be used when
-  there are many variables and nginx claims that it *could not build
+  there are too many variables and nginx claims that it *could not build
   variables_hash*. Accepts all types of variables with the exception of prefix
   variables.
 
