@@ -775,11 +775,11 @@
 
 <p>and peek, by the way, into the Nginx error log.</p>
 <pre style="overflow-x: auto; border-style: none none none solid; border-color: #6DF; border-width: 10px; padding: 5px 10px">
-<span style="color: #808080;">2018/02/13 16:12:33 [alert] 28794#0: service hook reported &quot;getUrlService set URL http://example.com&quot;</span>
-<span style="color: #808080;">2018/02/13 16:12:33 [alert] 28795#0: service hook reported &quot;getUrlService set URL http://example.com&quot;</span>
-<span style="color: #808080;">2018/02/13 16:12:33 [alert] 28797#0: service hook reported &quot;getUrlService set URL http://example.com&quot;</span>
-<span style="color: #808080;">2018/02/13 16:12:33 [alert] 28798#0: service hook reported &quot;getUrlService set URL http://example.com&quot;</span>
-<span style="color: #808080;">2018/02/13 16:12:33 [alert] 28797#0: an exception was caught while getting value of service variable &quot;hs_service_httpbin&quot;: &quot;Service was interrupted by a service hook&quot;, using old value</span>
+<span style="color: #808080;">2018/02/13 16:12:33 [notice] 28794#0: service hook reported &quot;getUrlService set URL http://example.com&quot;</span>
+<span style="color: #808080;">2018/02/13 16:12:33 [notice] 28795#0: service hook reported &quot;getUrlService set URL http://example.com&quot;</span>
+<span style="color: #808080;">2018/02/13 16:12:33 [notice] 28797#0: service hook reported &quot;getUrlService set URL http://example.com&quot;</span>
+<span style="color: #808080;">2018/02/13 16:12:33 [notice] 28798#0: service hook reported &quot;getUrlService set URL http://example.com&quot;</span>
+<span style="color: #808080;">2018/02/13 16:12:33 [notice] 28797#0: an exception was caught while getting value of service variable &quot;hs_service_httpbin&quot;: &quot;Service was interrupted by a service hook&quot;, using old value</span>
 </pre>
 
 <p>All 4 workers were signaled, and the only <em>active</em> service (remember that <em>getUrlService</em> was made <em>shared</em>) was interrupted. Do not be deceived by <em>using old value</em>: the new URL will be read in by the service from the global state immediately after restart, and the service variable will be updated.</p>
@@ -823,11 +823,11 @@
 
 <p>In the log we’ll find</p>
 <pre style="overflow-x: auto; border-style: none none none solid; border-color: #6DF; border-width: 10px; padding: 5px 10px">
-<span style="color: #808080;">2018/02/13 16:24:12 [alert] 28795#0: service hook reported &quot;getUrlService reset URL&quot;</span>
-<span style="color: #808080;">2018/02/13 16:24:12 [alert] 28794#0: service hook reported &quot;getUrlService reset URL&quot;</span>
-<span style="color: #808080;">2018/02/13 16:24:12 [alert] 28797#0: service hook reported &quot;getUrlService reset URL&quot;</span>
-<span style="color: #808080;">2018/02/13 16:24:12 [alert] 28798#0: service hook reported &quot;getUrlService reset URL&quot;</span>
-<span style="color: #808080;">2018/02/13 16:24:12 [alert] 28797#0: an exception was caught while getting value of service variable &quot;hs_service_httpbin&quot;: &quot;Service was interrupted by a service hook&quot;, using old value</span>
+<span style="color: #808080;">2018/02/13 16:24:12 [notice] 28795#0: service hook reported &quot;getUrlService reset URL&quot;</span>
+<span style="color: #808080;">2018/02/13 16:24:12 [notice] 28794#0: service hook reported &quot;getUrlService reset URL&quot;</span>
+<span style="color: #808080;">2018/02/13 16:24:12 [notice] 28797#0: service hook reported &quot;getUrlService reset URL&quot;</span>
+<span style="color: #808080;">2018/02/13 16:24:12 [notice] 28798#0: service hook reported &quot;getUrlService reset URL&quot;</span>
+<span style="color: #808080;">2018/02/13 16:24:12 [notice] 28797#0: an exception was caught while getting value of service variable &quot;hs_service_httpbin&quot;: &quot;Service was interrupted by a service hook&quot;, using old value</span>
 </pre>
 
 <h2 id="service-update-hooks">Service update hooks</h2>
@@ -1377,9 +1377,13 @@
     <span style="color: #008700;">worker_connections</span><span style="color: #000000;">  1024;</span>
 <span style="color: #000000;">}</span>
 
+<span style="color: #008700;">error_log</span><span style="color: #000000;">               /tmp/nginx-test-haskell-error.log info;</span>
+
 <span style="color: #005FAF;">http</span><span style="color: #000000;"> {</span>
     <span style="color: #008700;">default_type</span><span style="color: #000000;">        application/octet-stream;</span>
     <span style="color: #008700;">sendfile</span>            <span style="color: #AF5F00;">on</span><span style="color: #000000;">;</span>
+    <span style="color: #008700;">error_log</span><span style="color: #000000;">           /tmp/nginx-test-haskell-error.log info;</span>
+    <span style="color: #008700;">access_log</span><span style="color: #000000;">          /tmp/nginx-test-haskell-access.log;</span>
 
 <span style="color: #000000;">    haskell load /var/lib/nginx/test.so;</span>
 

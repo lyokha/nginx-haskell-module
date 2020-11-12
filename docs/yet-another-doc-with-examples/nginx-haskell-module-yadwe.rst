@@ -914,11 +914,11 @@ and peek, by the way, into the Nginx error log.
 
 .. code-block:: console
 
-   2018/02/13 16:12:33 [alert] 28794#0: service hook reported "getUrlService set URL http://example.com"
-   2018/02/13 16:12:33 [alert] 28795#0: service hook reported "getUrlService set URL http://example.com"
-   2018/02/13 16:12:33 [alert] 28797#0: service hook reported "getUrlService set URL http://example.com"
-   2018/02/13 16:12:33 [alert] 28798#0: service hook reported "getUrlService set URL http://example.com"
-   2018/02/13 16:12:33 [alert] 28797#0: an exception was caught while getting value of service variable "hs_service_httpbin": "Service was interrupted by a service hook", using old value
+   2018/02/13 16:12:33 [notice] 28794#0: service hook reported "getUrlService set URL http://example.com"
+   2018/02/13 16:12:33 [notice] 28795#0: service hook reported "getUrlService set URL http://example.com"
+   2018/02/13 16:12:33 [notice] 28797#0: service hook reported "getUrlService set URL http://example.com"
+   2018/02/13 16:12:33 [notice] 28798#0: service hook reported "getUrlService set URL http://example.com"
+   2018/02/13 16:12:33 [notice] 28797#0: an exception was caught while getting value of service variable "hs_service_httpbin": "Service was interrupted by a service hook", using old value
 
 All 4 workers were signaled, and the only *active* service (remember that *getUrlService* was made *shared*) was interrupted. Do not be deceived by *using old
 value*: the new URL will be read in by the service from the global state immediately after restart, and the service variable will be updated.
@@ -967,11 +967,11 @@ In the log we’ll find
 
 .. code-block:: console
 
-   2018/02/13 16:24:12 [alert] 28795#0: service hook reported "getUrlService reset URL"
-   2018/02/13 16:24:12 [alert] 28794#0: service hook reported "getUrlService reset URL"
-   2018/02/13 16:24:12 [alert] 28797#0: service hook reported "getUrlService reset URL"
-   2018/02/13 16:24:12 [alert] 28798#0: service hook reported "getUrlService reset URL"
-   2018/02/13 16:24:12 [alert] 28797#0: an exception was caught while getting value of service variable "hs_service_httpbin": "Service was interrupted by a service hook", using old value
+   2018/02/13 16:24:12 [notice] 28795#0: service hook reported "getUrlService reset URL"
+   2018/02/13 16:24:12 [notice] 28794#0: service hook reported "getUrlService reset URL"
+   2018/02/13 16:24:12 [notice] 28797#0: service hook reported "getUrlService reset URL"
+   2018/02/13 16:24:12 [notice] 28798#0: service hook reported "getUrlService reset URL"
+   2018/02/13 16:24:12 [notice] 28797#0: an exception was caught while getting value of service variable "hs_service_httpbin": "Service was interrupted by a service hook", using old value
 
 Service update hooks
 --------------------
@@ -1563,9 +1563,13 @@ File *test.conf*
        worker_connections  1024;
    }
 
+   error_log               /tmp/nginx-test-haskell-error.log info;
+
    http {
        default_type        application/octet-stream;
        sendfile            on;
+       error_log           /tmp/nginx-test-haskell-error.log info;
+       access_log          /tmp/nginx-test-haskell-access.log;
 
        haskell load /var/lib/nginx/test.so;
 

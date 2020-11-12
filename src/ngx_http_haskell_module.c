@@ -810,7 +810,7 @@ ngx_http_haskell_exit_worker(ngx_cycle_t *cycle)
             && ngx_close_file(service_code_vars[i].shm_lock_fd)
             == NGX_FILE_ERROR)
         {
-            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+            ngx_log_error(NGX_LOG_ERR, cycle->log, ngx_errno,
                           "failed to close file lock handle for variable "
                           "in shared memory");
         }
@@ -820,7 +820,7 @@ ngx_http_haskell_exit_worker(ngx_cycle_t *cycle)
     if (mcf->shm_lock_fd != NGX_INVALID_FILE
         && ngx_close_file(mcf->shm_lock_fd) == NGX_FILE_ERROR)
     {
-        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+        ngx_log_error(NGX_LOG_ERR, cycle->log, ngx_errno,
                       "failed to close file lock handle for shared memory");
 
     }

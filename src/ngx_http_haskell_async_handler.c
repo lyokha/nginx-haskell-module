@@ -568,7 +568,7 @@ ngx_http_haskell_post_handler(ngx_http_request_t *r)
         if (!lcf->request_body_read_temp_file
             && ctx->request_body_read_cycle == 0)
         {
-            ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+            ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0,
                           "request body is being saved in a temporary file, "
                           "exiting from haskell POST handler");
         }
@@ -840,7 +840,7 @@ ngx_http_haskell_run_async_handler(ngx_http_request_t *r,
                         (async_data_elts[found_idx].error & 0x80000000) != 0;
         CUInt       status = async_data_elts[found_idx].error & ~0xC0000000;
         ngx_uint_t  log_level = finalizing ?
-                        (status >= NGX_HTTP_SPECIAL_RESPONSE ? NGX_LOG_ALERT
+                        (status >= NGX_HTTP_SPECIAL_RESPONSE ? NGX_LOG_NOTICE
                             : NGX_LOG_INFO) : NGX_LOG_ERR;
         ngx_str_t   event_msg = ngx_string("an exception was caught");
 

@@ -507,7 +507,7 @@ ngx_http_haskell_service_event(ngx_event_t *ev)
                               "the worker process shall be respawned");
             exit(terminating ? 2 : 1);
         }
-        log_level = async_data->error == 2 ? NGX_LOG_ALERT : NGX_LOG_ERR;
+        log_level = async_data->error == 2 ? NGX_LOG_NOTICE : NGX_LOG_ERR;
         ngx_log_error(log_level, cycle->log, 0,
                       "an exception was caught while getting "
                       "value of service variable \"%V\": \"%V\", "
@@ -902,7 +902,7 @@ ngx_http_haskell_run_service_hook(ngx_cycle_t *cycle,
                                            &reslen, NULL, NULL, NULL, 0, 1)
         == NGX_ERROR)
     {
-        ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
+        ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0,
                       "service hook returned bad result");
     } else {
         if (err) {
@@ -910,7 +910,7 @@ ngx_http_haskell_run_service_hook(ngx_cycle_t *cycle,
                           "an exception was caught while running service hook: "
                           "\"%V\"", &reslen);
         } else if (reslen.len > 0) {
-            ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
+            ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0,
                           "service hook reported \"%V\"", &reslen);
         }
     }

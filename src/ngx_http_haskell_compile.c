@@ -97,7 +97,7 @@ ngx_http_haskell_write_code(ngx_conf_t *cf, void *conf, ngx_str_t source_name,
     }
 
     if (ngx_close_file(out.fd) == NGX_FILE_ERROR) {
-        ngx_conf_log_error(NGX_LOG_ALERT, cf, ngx_errno,
+        ngx_conf_log_error(NGX_LOG_ERR, cf, ngx_errno,
                            "failed to close haskell source code file handle");
     }
 

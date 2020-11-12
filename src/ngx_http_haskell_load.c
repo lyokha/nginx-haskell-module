@@ -252,7 +252,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     for (i = 0; i < mcf->program_options.nelts; i++) {
         argv[1 + i] = ((char **) mcf->program_options.elts)[i];
         if (ngx_strcmp(argv[1 + i], "+RTS") == 0) {
-            ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
+            ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0,
                           "found option \"+RTS\" in the list of "
                           "\"ghc program_options\", consider using directive "
                           "\"ghc rts_options\" for RTS options");
