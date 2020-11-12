@@ -330,7 +330,7 @@ ngx_http_haskell_init(ngx_conf_t *cf)
         }
         if (found == 0) {
             if (wildcard) {
-                ngx_conf_log_error(NGX_LOG_ERR, cf, 0,
+                ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
                         "no variable matches wildcard \"%V\"", &vars[i].name);
             } else {
                 ngx_conf_log_error(NGX_LOG_ERR, cf, 0,
