@@ -367,6 +367,7 @@ ngx_http_haskell_run_service(ngx_cycle_t *cycle,
     }
 
     service_code_var->running = 1;
+    service_code_var->future_async_data.error = service_result_not_ready;
     ++service_code_var->seqn;
 
     event = &service_code_var->event;
@@ -410,7 +411,6 @@ ngx_http_haskell_run_service(ngx_cycle_t *cycle,
 
     service_code_var->future_async_data.yy_cleanup_data.bufs =
             &service_code_var->future_async_data.result.data;
-    service_code_var->future_async_data.error = service_result_not_ready;
     args = service_code_var->data->args.elts;
     arg1 = args[0].value;
     service_code_var->locked_async_task =
@@ -931,11 +931,12 @@ ngx_http_haskell_service_supervise_event(ngx_event_t *ev)
             if (service_code_vars[i].seqn
                 == service_code_vars[i].seqn_idle_ready)
             {
-                ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
+                ngx_log_error(NGX_LOG_CRIT, cycle->log, 0,
                               "service bound to variable \"%V\" seems to have "
                               "stalled which is probably caused by a bug in "
-                              "event delivery system",
+                              "event delivery system, resuming service",
                               &cmvars[service_code_vars[i].data->index].name);
+                ngx_http_haskell_service_event(&service_code_vars[i].event);
             } else {
                 service_code_vars[i].seqn_idle_ready =
                         service_code_vars[i].seqn;
