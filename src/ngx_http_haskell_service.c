@@ -30,6 +30,9 @@
 #define NGX_HTTP_HASKELL_SHM_UNLOCK  ngx_shmtx_unlock(&shpool->mutex);
 #endif
 
+static const CUInt  service_result_not_ready = 0x10000;
+static const ngx_msec_t  service_supervise_timer = 60000;
+
 
 typedef struct {
     time_t                                     modified;
@@ -58,6 +61,7 @@ static ngx_int_t ngx_http_haskell_run_service(ngx_cycle_t *cycle,
     ngx_uint_t service_first_run);
 static void ngx_http_haskell_service_event(ngx_event_t *ev);
 static void ngx_http_haskell_service_hook_event(ngx_event_t *ev);
+static void ngx_http_haskell_service_supervise_event(ngx_event_t *ev);
 static void ngx_http_haskell_run_service_hook(ngx_cycle_t *cycle,
     ngx_http_haskell_main_conf_t *mcf, ngx_http_haskell_service_hook_t *hook,
     ngx_str_t *arg);
@@ -70,6 +74,7 @@ static ngx_err_t ngx_http_haskell_rlock_fd(ngx_fd_t fd);
 #endif
 
 static ngx_event_t  dummy_write_event;
+static ngx_event_t  service_supervise_event;
 
 
 ngx_int_t
@@ -78,6 +83,7 @@ ngx_http_haskell_init_services(ngx_cycle_t *cycle)
     ngx_uint_t                                 i;
     ngx_http_haskell_main_conf_t              *mcf;
     ngx_http_haskell_service_code_var_data_t  *service_code_vars;
+    ngx_uint_t                                 found = 0;
 
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
     if (mcf == NULL || !mcf->code_loaded) {
@@ -87,14 +93,24 @@ ngx_http_haskell_init_services(ngx_cycle_t *cycle)
     service_code_vars = mcf->service_code_vars.elts;
 
     for (i = 0; i < mcf->service_code_vars.nelts; i++) {
-        if (!service_code_vars[i].cb
-            && ngx_http_haskell_run_service(cycle, &service_code_vars[i], 1)
-            != NGX_OK)
-        {
-            ngx_log_error(NGX_LOG_CRIT, cycle->log, 0,
-                          "failed to start haskell services");
-            return NGX_ERROR;
+        if (!service_code_vars[i].cb) {
+            if (ngx_http_haskell_run_service(cycle, &service_code_vars[i], 1)
+                != NGX_OK)
+            {
+                ngx_log_error(NGX_LOG_CRIT, cycle->log, 0,
+                              "failed to start haskell services");
+                return NGX_ERROR;
+            }
+            found = 1;
         }
+    }
+
+    if (found) {
+        service_supervise_event.data = cycle;
+        service_supervise_event.handler =
+                ngx_http_haskell_service_supervise_event;
+        service_supervise_event.log = cycle->log;
+        ngx_add_timer(&service_supervise_event, service_supervise_timer);
     }
 
     return NGX_OK;
@@ -146,6 +162,9 @@ ngx_http_haskell_stop_services(ngx_cycle_t *cycle)
                           "failed to close async event channel "
                           "while stopping service");
         }
+    }
+    if (service_supervise_event.timer_set) {
+        ngx_del_timer(&service_supervise_event);
     }
 }
 
@@ -348,6 +367,7 @@ ngx_http_haskell_run_service(ngx_cycle_t *cycle,
     }
 
     service_code_var->running = 1;
+    ++service_code_var->seqn;
 
     event = &service_code_var->event;
     hev = &service_code_var->hev;
@@ -390,6 +410,7 @@ ngx_http_haskell_run_service(ngx_cycle_t *cycle,
 
     service_code_var->future_async_data.yy_cleanup_data.bufs =
             &service_code_var->future_async_data.result.data;
+    service_code_var->future_async_data.error = service_result_not_ready;
     args = service_code_var->data->args.elts;
     arg1 = args[0].value;
     service_code_var->locked_async_task =
@@ -757,13 +778,13 @@ run_service:
 static void
 ngx_http_haskell_service_hook_event(ngx_event_t *ev)
 {
-    ngx_http_haskell_service_hook_event_t       *hev = ev->data;
-    ngx_cycle_t                                 *cycle = hev->cycle;
+    ngx_http_haskell_service_hook_event_t     *hev = ev->data;
+    ngx_cycle_t                               *cycle = hev->cycle;
 
-    ngx_http_haskell_main_conf_t                *mcf;
-    ngx_http_haskell_service_code_var_data_t    *service_code_var;
-    ngx_slab_pool_t                             *shpool;
-    ngx_str_t                                    arg = ngx_null_string;
+    ngx_http_haskell_main_conf_t              *mcf;
+    ngx_http_haskell_service_code_var_data_t  *service_code_var;
+    ngx_slab_pool_t                           *shpool;
+    ngx_str_t                                  arg = ngx_null_string;
 
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
 
@@ -864,6 +885,65 @@ run_handler:
     {
         mcf->service_hook_interrupt(service_code_var->locked_async_task);
     }
+}
+
+
+static void
+ngx_http_haskell_service_supervise_event(ngx_event_t *ev)
+{
+    ngx_uint_t                                 i;
+    ngx_cycle_t                               *cycle = ev->data;
+
+    ngx_http_haskell_main_conf_t              *mcf;
+    ngx_http_core_main_conf_t                 *cmcf;
+    ngx_http_variable_t                       *cmvars;
+    ngx_http_haskell_service_code_var_data_t  *service_code_vars;
+
+    mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
+
+    /* make scan-build happy */
+    if (mcf == NULL) {
+        return;
+    }
+
+    cmcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_core_module);
+
+    /* make scan-build happy */
+    if (cmcf == NULL) {
+        return;
+    }
+
+    cmvars = cmcf->variables.elts;
+
+    service_code_vars = mcf->service_code_vars.elts;
+
+    for (i = 0; i < mcf->service_code_vars.nelts; i++) {
+        if (service_code_vars[i].cb) {
+            continue;
+        }
+        if (service_code_vars[i].running
+            && service_code_vars[i].future_async_data.error
+            != service_result_not_ready)
+        {
+            /* FIXME: there is an extremely rare hypothetical case when seqn
+             * wraps around after overflow and gets equal to a very old value
+             * of seqn_idle_ready */
+            if (service_code_vars[i].seqn
+                == service_code_vars[i].seqn_idle_ready)
+            {
+                ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
+                              "service bound to variable \"%V\" seems to have "
+                              "stalled which is probably caused by a bug in "
+                              "event delivery system",
+                              &cmvars[service_code_vars[i].data->index].name);
+            } else {
+                service_code_vars[i].seqn_idle_ready =
+                        service_code_vars[i].seqn;
+            }
+        }
+    }
+
+    ngx_add_timer(ev, service_supervise_timer);
 }
 
 

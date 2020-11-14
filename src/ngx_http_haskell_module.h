@@ -359,6 +359,8 @@ struct ngx_http_haskell_service_code_var_data_s {
     ngx_fd_t                                          shm_lock_fd;
     HsStablePtr                                       locked_async_task;
     volatile CUInt                                    active;
+    ngx_uint_t                                        seqn;
+    ngx_uint_t                                        seqn_idle_ready;
     ngx_uint_t                                        cb:1;
     ngx_uint_t                                        noarg:1;
     ngx_uint_t                                        running:1;
