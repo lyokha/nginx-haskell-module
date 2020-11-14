@@ -110,6 +110,7 @@ ngx_http_haskell_init_services(ngx_cycle_t *cycle)
         service_supervise_event.handler =
                 ngx_http_haskell_service_supervise_event;
         service_supervise_event.log = cycle->log;
+        service_supervise_event.cancelable = 1;
         ngx_add_timer(&service_supervise_event, service_supervise_timer);
     }
 
@@ -127,6 +128,10 @@ ngx_http_haskell_stop_services(ngx_cycle_t *cycle)
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
     if (mcf == NULL || !mcf->code_loaded) {
         return;
+    }
+
+    if (service_supervise_event.timer_set) {
+        ngx_del_timer(&service_supervise_event);
     }
 
     service_code_vars = mcf->service_code_vars.elts;
@@ -162,9 +167,6 @@ ngx_http_haskell_stop_services(ngx_cycle_t *cycle)
                           "failed to close async event channel "
                           "while stopping service");
         }
-    }
-    if (service_supervise_event.timer_set) {
-        ngx_del_timer(&service_supervise_event);
     }
 }
 
@@ -355,15 +357,15 @@ ngx_http_haskell_run_service(ngx_cycle_t *cycle,
     ngx_str_t                                  arg1;
     ngx_fd_t                                   fd[2];
 
+    if (ngx_terminate || ngx_exiting) {
+        return NGX_OK;
+    }
+
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
 
     /* make scan-build happy */
     if (mcf == NULL) {
         return NGX_ERROR;
-    }
-
-    if (ngx_terminate || ngx_exiting) {
-        return NGX_OK;
     }
 
     service_code_var->running = 1;
@@ -898,6 +900,10 @@ ngx_http_haskell_service_supervise_event(ngx_event_t *ev)
     ngx_http_core_main_conf_t                 *cmcf;
     ngx_http_variable_t                       *cmvars;
     ngx_http_haskell_service_code_var_data_t  *service_code_vars;
+
+    if (ngx_terminate || ngx_exiting) {
+        return;
+    }
 
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
 

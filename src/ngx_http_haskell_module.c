@@ -1340,6 +1340,7 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         service_code_var_data->shm_lock_fd = NGX_INVALID_FILE;
         service_code_var_data->cb = service_cb ? 1 : 0;
         service_code_var_data->noarg = n_args > 0 ? 0 : 1;
+        service_code_var_data->event.cancelable = 1;
     } else {
         code_var_data = ngx_array_push(&lcf->code_vars);
         if (code_var_data == NULL) {
