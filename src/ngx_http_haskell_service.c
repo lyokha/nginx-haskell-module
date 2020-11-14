@@ -97,7 +97,7 @@ ngx_http_haskell_init_services(ngx_cycle_t *cycle)
             if (ngx_http_haskell_run_service(cycle, &service_code_vars[i], 1)
                 != NGX_OK)
             {
-                ngx_log_error(NGX_LOG_CRIT, cycle->log, 0,
+                ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                               "failed to start haskell services");
                 return NGX_ERROR;
             }
