@@ -989,7 +989,7 @@ ngx_http_haskell_run_service_hook(ngx_cycle_t *cycle,
                                            &reslen, NULL, NULL, NULL, 0, 1)
         == NGX_ERROR)
     {
-        ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
+        ngx_log_error(NGX_LOG_CRIT, cycle->log, 0,
                       "service hook returned bad result");
     } else {
         if (err) {
