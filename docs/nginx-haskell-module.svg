@@ -172,10 +172,10 @@
      pagecolor="#ffffff"
      bordercolor="#666666"
      borderopacity="1.0"
-     inkscape:pageopacity="0.0"
+     inkscape:pageopacity="0"
      inkscape:pageshadow="2"
      inkscape:zoom="0.7"
-     inkscape:cx="664.6227"
+     inkscape:cx="764.62272"
      inkscape:cy="309.23241"
      inkscape:document-units="mm"
      inkscape:current-layer="layer1"
@@ -194,7 +194,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title />
+        <dc:title></dc:title>
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -202,10 +202,10 @@
      inkscape:label="Слой 1"
      inkscape:groupmode="layer"
      id="layer1"
-     transform="translate(-24.90156,-74.829541)">
+     transform="translate(1.5567799,-74.829541)">
     <g
        aria-label="N"
-       transform="matrix(0.98650277,0,-0.35262988,0.76332149,21.849184,37.235078)"
+       transform="matrix(0.98650277,0,-0.35262988,0.76332149,-4.6091563,37.235078)"
        id="text12"
        style="font-style:normal;font-weight:normal;font-size:193.041px;line-height:1.25;font-family:sans-serif;mix-blend-mode:normal;fill:#00cd00;fill-opacity:0.7;fill-rule:nonzero;stroke:url(#meshgradient3546);stroke-width:2;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;paint-order:fill markers stroke;filter:url(#filter874)"
        inkscape:export-xdpi="96"
