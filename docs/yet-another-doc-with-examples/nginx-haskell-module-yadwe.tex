@@ -2,6 +2,7 @@
 % adjust page geometry
 \usepackage[a4paper,vmargin={2cm,2cm},hmargin={2cm,2cm}]{geometry}
 \usepackage[raggedright]{titlesec}
+\usepackage{titling}
 
 \usepackage[T1]{fontenc}
 \usepackage{inconsolata}
@@ -156,6 +157,16 @@
     (yet another doc with examples)}
 \author{Alexey Radkov}
 \date{\today}
+
+\pretitle{%
+  \begin{center}
+  \Large
+  \includegraphics[width=4cm,height=3.92cm]{../nginx-haskell-module.png}
+      \\[\bigskipamount]
+}
+\posttitle{
+  \end{center}
+}
 
 \begin{document}
 
