@@ -5,7 +5,7 @@ copyright = u'2016-2020, Alexey Radkov'
 version = '2.6.4'
 
 html_title = u'Nginx Haskell module'
-html_logo = 'nginx-haskell-module-200.png'
+html_logo = 'nginx-haskell-module-120.png'
 
 master_doc = 'index'
 
