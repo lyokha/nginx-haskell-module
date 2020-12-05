@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/nginx-haskell-module-social.png">
+  <img src="docs/images/nginx-haskell-module-social.png">
 </div>
 
 [![Build Status](https://travis-ci.com/lyokha/nginx-haskell-module.svg?branch=master)](https://travis-ci.com/lyokha/nginx-haskell-module)
