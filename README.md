@@ -1,5 +1,6 @@
-Nginx Haskell module
-====================
+<div align="center">
+  <img src="docs/nginx-haskell-module-social.png">
+</div>
 
 [![Build Status](https://travis-ci.com/lyokha/nginx-haskell-module.svg?branch=master)](https://travis-ci.com/lyokha/nginx-haskell-module)
 [![Hackage](https://img.shields.io/hackage/v/ngx-export.svg?label=hackage%20%7C%20ngx-export)](https://hackage.haskell.org/package/ngx-export)
