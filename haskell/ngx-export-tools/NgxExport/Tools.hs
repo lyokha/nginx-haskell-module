@@ -177,7 +177,7 @@ data ReadableAsJSON a
 
 class FromByteString a where
     type WrappedT a
-    fromByteString :: Maybe a -> ByteString -> Maybe (WrappedT a)
+    fromByteString :: a -> ByteString -> Maybe (WrappedT a)
 
 instance Read a => FromByteString (Readable a) where
     type WrappedT (Readable a) = a
@@ -329,14 +329,14 @@ instance FromByteString ByteString where
 --
 -- Returns 'Nothing' if reading fails.
 readFromByteString :: Read a => ByteString -> Maybe a
-readFromByteString = fromByteString (Nothing :: Maybe (Readable a))
+readFromByteString = fromByteString (undefined :: Readable a)
 
 -- | Reads an object of a custom type implementing an instance of 'FromJSON'
 --   from a 'ByteString'.
 --
 -- Returns 'Nothing' if reading fails.
 readFromByteStringAsJSON :: FromJSON a => ByteString -> Maybe a
-readFromByteStringAsJSON = fromByteString (Nothing :: Maybe (ReadableAsJSON a))
+readFromByteStringAsJSON = fromByteString (undefined :: ReadableAsJSON a)
 
 -- | Reads a pointer to the Nginx request object followed by an object of
 --   a custom type implementing an instance of 'Read' from a 'ByteString'.
@@ -599,7 +599,7 @@ ngxExportSimpleService' f c m = do
                                      ) (return . Just)
                            |]
                    else [|return $
-                              fromByteString (Nothing :: Maybe ByteString)
+                              fromByteString (undefined :: ByteString)
                                   $(eConfBs)
                         |]
         (waitTime, runService) =
