@@ -1851,7 +1851,7 @@ ngx_http_haskell_service_update_hook(ngx_conf_t *cf, ngx_command_t *cmd,
             && service_hooks[i].update_hook)
         {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "update hook for variable \"%V\" was already ",
+                               "update hook for variable \"%V\" was already "
                                "declared", &value[2]);
             return NGX_CONF_ERROR;
         }
