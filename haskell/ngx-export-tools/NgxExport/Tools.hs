@@ -4,7 +4,7 @@
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  NgxExport.Tools
--- Copyright   :  (c) Alexey Radkov 2018-2020
+-- Copyright   :  (c) Alexey Radkov 2018-2021
 -- License     :  BSD-style
 --
 -- Maintainer  :  alexey.radkov@gmail.com
@@ -71,6 +71,7 @@ import           Data.Maybe
 import           Data.Aeson
 import           Data.Function (on)
 import           Data.Ord (comparing)
+import           Data.Proxy
 import           Control.Monad
 import           Control.Arrow
 import           Control.Exception
@@ -177,7 +178,7 @@ data ReadableAsJSON a
 
 class FromByteString a where
     type WrappedT a
-    fromByteString :: a -> ByteString -> Maybe (WrappedT a)
+    fromByteString :: Proxy a -> ByteString -> Maybe (WrappedT a)
 
 instance Read a => FromByteString (Readable a) where
     type WrappedT (Readable a) = a
@@ -329,14 +330,14 @@ instance FromByteString ByteString where
 --
 -- Returns 'Nothing' if reading fails.
 readFromByteString :: Read a => ByteString -> Maybe a
-readFromByteString = fromByteString (undefined :: Readable a)
+readFromByteString = fromByteString (Proxy :: Proxy (Readable a))
 
 -- | Reads an object of a custom type implementing an instance of 'FromJSON'
 --   from a 'ByteString'.
 --
 -- Returns 'Nothing' if reading fails.
 readFromByteStringAsJSON :: FromJSON a => ByteString -> Maybe a
-readFromByteStringAsJSON = fromByteString (undefined :: ReadableAsJSON a)
+readFromByteStringAsJSON = fromByteString (Proxy :: Proxy (ReadableAsJSON a))
 
 -- | Reads a pointer to the Nginx request object followed by an object of
 --   a custom type implementing an instance of 'Read' from a 'ByteString'.
@@ -599,7 +600,7 @@ ngxExportSimpleService' f c m = do
                                      ) (return . Just)
                            |]
                    else [|return $
-                              fromByteString (undefined :: ByteString)
+                              fromByteString (Proxy :: Proxy ByteString)
                                   $(eConfBs)
                         |]
         (waitTime, runService) =
