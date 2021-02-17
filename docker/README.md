@@ -5,7 +5,7 @@ This docker image contains Nginx built with *nginx-haskell-module*,
 plugins [*nginx-healthcheck-plugin*](https://github.com/lyokha/nginx-healthcheck-plugin)
 and [*nginx-log-plugin*](https://github.com/lyokha/nginx-log-plugin). For
 building custom Haskell libraries and C plugins, it additionally contains *gcc*
-and *ghc* compilers and Nginx source code.
+and *ghc* compilers, *cabal* and Nginx source code.
 
 The image can be pulled from *Docker hub*.
 
