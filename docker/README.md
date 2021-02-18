@@ -1,3 +1,5 @@
+#### Basic docker image
+
 This docker image contains Nginx built with *nginx-haskell-module*,
 [*nginx-custom-counters-module*](https://github.com/lyokha/nginx-custom-counters-module),
 [*nginx-combined-upstream-module*](https://github.com/lyokha/nginx-combined-upstreams-module),
@@ -47,5 +49,198 @@ $ docker kill -s QUIT test-yadwe
 test-yadwe
 $ docker rm test-yadwe
 test-yadwe
+```
+
+#### Building custom docker images
+
+The basic docker image can be used to spin off another docker image with
+different Haskell handlers and Nginx configuration. Say, we want to test custom
+Prometheus metrics available with *nginx-custom-counters-module* and
+[*ngx-export-tools-extra*](https://github.com/lyokha/ngx-export-tools-extra).
+
+Below are Dockerfile and files *test-prometheus.hs* and *test-prometheus.conf*
+put in sub-directory *data/*.
+
+```Dockerfile
+FROM lyokha/nginx-haskell-module
+
+COPY data/test-prometheus.conf /opt/nginx/conf/nginx.conf
+COPY data/test-prometheus.hs /build/test-prometheus.hs
+
+RUN cd /build                                        && \
+    ghc -Wall -O2 -dynamic -shared -fPIC              \
+            -lHSrts_thr-ghc$(ghc --numeric-version)   \
+            -lngx_healthcheck_plugin -lngx_log_plugin \
+            test-prometheus.hs -o test-prometheus.so && \
+    mv test-prometheus.so /var/lib/nginx             && \
+    cd ..                                            && \
+    rm -rf /build
+
+CMD ["/opt/nginx/sbin/nginx", "-g", "daemon off;"]
+```
+
+```haskell
+module DockerTestPrometheus where
+
+import NgxExport.Tools.Prometheus ()
+```
+
+The basic docker image already contains the required Haskell package
+*ngx-export-tools-extra*. It may happen that the custom Haskell code requires
+modules from packages not installed in the basic image: in this case `cabal
+v1-update && cabal v1-install <list-of-required-packages>` must be put inside
+the RUN recipe of the Dockerfile.
+
+```nginx
+user                    nginx;
+worker_processes        4;
+
+events {
+    worker_connections  1024;
+}
+
+error_log               /tmp/nginx-test-haskell-error.log info;
+
+http {
+    default_type        application/octet-stream;
+    sendfile            on;
+    error_log           /tmp/nginx-test-haskell-error.log info;
+    access_log          /tmp/nginx-test-haskell-access.log;
+
+    haskell load /var/lib/nginx/test-prometheus.so;
+
+    haskell_run_service simpleService_prometheusConf $hs_prometheus_conf
+            'PrometheusConf
+                { pcMetrics = fromList
+                    [("cnt_a", "Number of visits to /a")
+                    ,("cnt_b", "Number of visits with /b")
+                    ,("cnt_other", "Number of visits to the fallback location")
+                    ]
+                , pcGauges = fromList
+                    ["cnt_stub_status_active"]
+                , pcScale1000 = fromList
+                    []
+                }';
+
+    haskell_var_empty_on_error $hs_prom_metrics;
+
+    server {
+        listen       8010;
+        server_name  main;
+        error_log    /tmp/nginx-test-haskell-error.log;
+        access_log   /tmp/nginx-test-haskell-access.log;
+
+        location /a {
+            counter $cnt_a inc;
+            return 200;
+        }
+
+        location /b {
+            counter $cnt_b inc;
+            return 200;
+        }
+
+        location / {
+            counter $cnt_other inc;
+            return 200;
+        }
+    }
+
+    server {
+        listen       8020;
+        server_name  stats;
+
+        location / {
+            haskell_run toPrometheusMetrics $hs_prom_metrics
+                    '["main"
+                     ,$cnt_collection
+                     ,$cnt_histograms
+                     ,{"cnt_stub_status_active": $cnt_stub_status_active
+                      ,"cnt_uptime": $cnt_uptime
+                      ,"cnt_uptime_reload": $cnt_uptime_reload
+                      }
+                     ]';
+
+            if ($hs_prom_metrics = '') {
+                return 503;
+            }
+
+            default_type "text/plain; version=0.0.4; charset=utf-8";
+
+            echo -n $hs_prom_metrics;
+        }
+
+        location /counters {
+            echo $cnt_collection;
+        }
+
+        location /histograms {
+            echo $cnt_histograms;
+        }
+
+        location /uptime {
+            echo "Uptime (after reload): $cnt_uptime ($cnt_uptime_reload)";
+        }
+    }
+}
+```
+
+Let's build module,
+
+```ShellSession
+$ docker build -t nginx-haskell-module-test-prometheus .
+```
+
+run a container,
+
+```ShellSession
+$ docker run --name test-prometheus --network host -d nginx-haskell-module-test-prometheus
+```
+
+and do some tests.
+
+```ShellSession
+$ for i in {1..20} ; do curl 'http://127.0.0.1:8010/a' & done
+  ...
+$ for i in {1..50} ; do curl 'http://127.0.0.1:8010/b' & done
+  ...
+$ curl 'http://127.0.0.1:8020/'
+# HELP cnt_a Number of visits to /a
+# TYPE cnt_a counter
+cnt_a 20.0
+# HELP cnt_b Number of visits with /b
+# TYPE cnt_b counter
+cnt_b 50.0
+# HELP cnt_other Number of visits to the fallback location
+# TYPE cnt_other counter
+cnt_other 0.0
+# HELP cnt_stub_status_active
+# TYPE cnt_stub_status_active gauge
+cnt_stub_status_active 1.0
+# HELP cnt_uptime
+# TYPE cnt_uptime counter
+cnt_uptime 71.0
+# HELP cnt_uptime_reload
+# TYPE cnt_uptime_reload counter
+cnt_uptime_reload 71.0
+$ curl -s 'http://127.0.0.1:8020/counters' | jq
+{
+  "main": {
+    "cnt_a": 20,
+    "cnt_b": 50,
+    "cnt_other": 0
+  }
+}
+$ curl 'http://127.0.0.1:8020/uptime'
+Uptime (after reload): 250 (250)
+```
+
+Stop and delete the container.
+
+```ShellSession
+$ docker kill -s QUIT test-prometheus
+test-prometheus
+$ docker rm test-prometheus
+test-prometheus
 ```
 
