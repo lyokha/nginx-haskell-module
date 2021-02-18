@@ -20,7 +20,7 @@ Basically, the image was supposed to be used for testing examples shown in
 examples*](https://nginx-haskell-module.readthedocs.io/en/latest/yet-another-doc-with-examples/nginx-haskell-module-yadwe.html), but it can be easily adapted for using with other Haskell handlers
 and Nginx configurations.
 
-Run the image with
+Run a container with
 
 ```ShellSession
 $ docker run --name test-yadwe --network host -d lyokha/nginx-haskell-module:2.7.1-fedora-33-ghc-8.8
