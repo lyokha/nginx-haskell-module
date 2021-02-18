@@ -139,9 +139,7 @@ http {
     haskell_run_service simpleService_prometheusConf $hs_prometheus_conf
             'PrometheusConf
                 { pcMetrics = fromList
-                    [("cnt_a", "Number of visits to /a")
-                    ,("cnt_b", "Number of visits with /b")
-                    ,("cnt_other", "Number of visits to the fallback location")
+                    [("cnt_visits", "Number of visits to specific locations")
                     ]
                 , pcGauges = fromList
                     ["cnt_stub_status_active"]
@@ -156,17 +154,17 @@ http {
         server_name  main;
 
         location /a {
-            counter $cnt_a inc;
+            counter $cnt_visits@location=(/a) inc;
             return 200;
         }
 
         location /b {
-            counter $cnt_b inc;
+            counter $cnt_visits@location=(/b) inc;
             return 200;
         }
 
         location / {
-            counter $cnt_other inc;
+            counter $cnt_visits@location=(other) inc;
             return 200;
         }
     }
@@ -199,10 +197,6 @@ http {
             echo $cnt_collection;
         }
 
-        location /histograms {
-            echo $cnt_histograms;
-        }
-
         location /uptime {
             echo "Uptime (after reload): $cnt_uptime ($cnt_uptime_reload)";
         }
@@ -230,40 +224,36 @@ $ for i in {1..20} ; do curl 'http://127.0.0.1:8010/a' & done
 $ for i in {1..50} ; do curl 'http://127.0.0.1:8010/b' & done
   ...
 $ curl 'http://127.0.0.1:8020/'
-# HELP cnt_a Number of visits to /a
-# TYPE cnt_a counter
-cnt_a 20.0
-# HELP cnt_b Number of visits with /b
-# TYPE cnt_b counter
-cnt_b 50.0
-# HELP cnt_other Number of visits to the fallback location
-# TYPE cnt_other counter
-cnt_other 0.0
 # HELP cnt_stub_status_active
 # TYPE cnt_stub_status_active gauge
 cnt_stub_status_active 1.0
 # HELP cnt_uptime
 # TYPE cnt_uptime counter
-cnt_uptime 71.0
+cnt_uptime 19.0
 # HELP cnt_uptime_reload
 # TYPE cnt_uptime_reload counter
-cnt_uptime_reload 71.0
+cnt_uptime_reload 19.0
+# HELP cnt_visits Number of visits to specific locations
+# TYPE cnt_visits counter
+cnt_visits{location="/a"} 20.0
+cnt_visits{location="/b"} 50.0
+cnt_visits{location="other"} 0.0
 ```
 
 ```ShellSession
 $ curl -s 'http://127.0.0.1:8020/counters' | jq
 {
   "main": {
-    "cnt_a": 20,
-    "cnt_b": 50,
-    "cnt_other": 0
+    "cnt_visits@location=(/a)": 20,
+    "cnt_visits@location=(/b)": 50,
+    "cnt_visits@location=(other)": 0
   }
 }
 ```
 
 ```ShellSession
 $ curl 'http://127.0.0.1:8020/uptime'
-Uptime (after reload): 250 (250)
+Uptime (after reload): 64 (64)
 ```
 
 Stop and delete the container.
