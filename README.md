@@ -1423,7 +1423,7 @@ $ NGX_HOME=/path/to/nginx_sources
 Here we are going to mimic the Nginx build process.
 
 ```ShellSession
-$ gcc -O2 -fPIC -c -o test_c_plugin.o -I $NGX_HOME/src/core -I $NGX_HOME/src/http -I $NGX_HOME/src/http/modules -I $NGX_HOME/src/event -I $NGX_HOME/src/evwnt/modules -I $NGX_HOME/src/os/unix -I $NGX_HOME/objs test_c_plugin.c
+$ gcc -O2 -fPIC -c -o test_c_plugin.o -I $NGX_HOME/src/core -I $NGX_HOME/src/http -I $NGX_HOME/src/http/modules -I $NGX_HOME/src/event -I $NGX_HOME/src/event/modules -I $NGX_HOME/src/os/unix -I $NGX_HOME/objs test_c_plugin.c
 ```
 
 Now we have an object file *test_c_plugin.o* to link with the Haskell code.

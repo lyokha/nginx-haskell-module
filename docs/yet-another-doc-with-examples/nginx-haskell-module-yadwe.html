@@ -924,7 +924,7 @@
 
 <p>Here we are going to mimic the Nginx build process.</p>
 <pre style="overflow-x: auto; border-style: none none none solid; border-color: #6DF; border-width: 10px; padding: 5px 10px">
-<span style="color: #005FAF;">gcc -O2 -fPIC -c -o test_c_plugin.o -I $NGX_HOME/src/core -I $NGX_HOME/src/http -I $NGX_HOME/src/http/modules -I $NGX_HOME/src/event -I $NGX_HOME/src/evwnt/modules -I $NGX_HOME/src/os/unix -I $NGX_HOME/objs test_c_plugin.c</span>
+<span style="color: #005FAF;">gcc -O2 -fPIC -c -o test_c_plugin.o -I $NGX_HOME/src/core -I $NGX_HOME/src/http -I $NGX_HOME/src/http/modules -I $NGX_HOME/src/event -I $NGX_HOME/src/event/modules -I $NGX_HOME/src/os/unix -I $NGX_HOME/objs test_c_plugin.c</span>
 </pre>
 
 <p>Now we have an object file <em>test_c_plugin.o</em> to link with the Haskell code. Below is the Haskell code itself.</p>
@@ -1501,7 +1501,7 @@
 <span style="color: #808080;"> *          -I $NGX_HOME/src/http \</span>
 <span style="color: #808080;"> *          -I $NGX_HOME/src/http/modules \</span>
 <span style="color: #808080;"> *          -I $NGX_HOME/src/event \</span>
-<span style="color: #808080;"> *          -I $NGX_HOME/src/evwnt/modules \</span>
+<span style="color: #808080;"> *          -I $NGX_HOME/src/event/modules \</span>
 <span style="color: #808080;"> *          -I $NGX_HOME/src/os/unix \</span>
 <span style="color: #808080;"> *          -I $NGX_HOME/objs test_c_plugin.c</span>
  <span style="color: #808080;">*/</span>

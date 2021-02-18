@@ -5,7 +5,7 @@
  *          -I $NGX_HOME/src/http \
  *          -I $NGX_HOME/src/http/modules \
  *          -I $NGX_HOME/src/event \
- *          -I $NGX_HOME/src/evwnt/modules \
+ *          -I $NGX_HOME/src/event/modules \
  *          -I $NGX_HOME/src/os/unix \
  *          -I $NGX_HOME/objs test_c_plugin.c
  */
