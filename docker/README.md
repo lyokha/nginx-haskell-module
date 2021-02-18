@@ -33,13 +33,40 @@ $ curl 'http://127.0.0.1:8010/?u=hello&r=world&a=1&b=10&c=1'
 toUpper hello = HELLO
 reverse world = dlrow
 1 `isInList` [10, 1, ] = 1
+```
+
+```ShellSession
 $ curl -d 'timer=3' 'http://127.0.0.1:8010/timer'
 Waited 3 sec
+```
+
+```ShellSession
 $ curl 'http://127.0.0.1:8010/httpbin/sortlinks'
 /forms/post
 https://github.com/requests/httpbin
 https://kennethreitz.org
 mailto:me@kennethreitz.org
+```
+
+```ShellSession
+$ file marbles.tif
+marbles.tif: TIFF image data, big-endian, direntries=16, height=1001, bps=0, compression=LZW, PhotometricIntepretation=RGB, width=1419
+$ curl -s --data-binary @marbles.tif 'http://127.0.0.1:8010/convert/topng' -o marbles.png
+$ file marbles.png
+marbles.png: PNG image data, 1419 x 1001, 8-bit/color RGB, non-interlaced
+```
+
+```ShellSession
+$ curl -D- 'http://localhost:8010/cplugin'
+HTTP/1.1 200 OK
+Server: nginx/1.18.0
+Date: Thu, 18 Feb 2021 15:02:58 GMT
+Content-Type: application/octet-stream
+Transfer-Encoding: chunked
+Connection: keep-alive
+X-Powered-By: Nginx Haskell module
+
+Test C plugin returned Success!
 ```
 
 Stop and delete the container.
@@ -202,6 +229,9 @@ $ for i in {1..20} ; do curl 'http://127.0.0.1:8010/a' & done
   ...
 $ for i in {1..50} ; do curl 'http://127.0.0.1:8010/b' & done
   ...
+```
+
+```ShellSession
 $ curl 'http://127.0.0.1:8020/'
 # HELP cnt_a Number of visits to /a
 # TYPE cnt_a counter
@@ -221,6 +251,9 @@ cnt_uptime 71.0
 # HELP cnt_uptime_reload
 # TYPE cnt_uptime_reload counter
 cnt_uptime_reload 71.0
+```
+
+```ShellSession
 $ curl -s 'http://127.0.0.1:8020/counters' | jq
 {
   "main": {
@@ -229,6 +262,9 @@ $ curl -s 'http://127.0.0.1:8020/counters' | jq
     "cnt_other": 0
   }
 }
+```
+
+```ShellSession
 $ curl 'http://127.0.0.1:8020/uptime'
 Uptime (after reload): 250 (250)
 ```
