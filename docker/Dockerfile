@@ -97,6 +97,7 @@ RUN curl -L 'https://github.com/openresty/echo-nginx-module/archive/v0.62.tar.gz
             nginx-healthcheck-plugin-1.0 nginx-log-plugin-0.2      \
             nginx.tar.gz
 
+
 FROM nginx-build
 
 COPY data/test.conf /opt/nginx/conf/nginx.conf
