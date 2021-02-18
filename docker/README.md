@@ -229,9 +229,6 @@ $ for i in {1..20} ; do curl 'http://127.0.0.1:8010/a' & done
   ...
 $ for i in {1..50} ; do curl 'http://127.0.0.1:8010/b' & done
   ...
-```
-
-```ShellSession
 $ curl 'http://127.0.0.1:8020/'
 # HELP cnt_a Number of visits to /a
 # TYPE cnt_a counter
