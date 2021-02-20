@@ -88,6 +88,8 @@ Prometheus metrics available with *nginx-custom-counters-module* and
 Below are Dockerfile and files *test-prometheus.hs* and *test-prometheus.conf*
 put in sub-directory *data/*.
 
+##### *Dockerfile*
+
 ```Dockerfile
 FROM lyokha/nginx-haskell-module
 
@@ -106,6 +108,8 @@ RUN cd /build                                        && \
 CMD ["/opt/nginx/sbin/nginx", "-g", "daemon off;"]
 ```
 
+##### *test-prometheus.hs*
+
 ```haskell
 module DockerTestPrometheus where
 
@@ -117,6 +121,8 @@ The basic docker image already contains the required Haskell package
 modules from packages not installed in the basic image: in this case `cabal
 v1-update && cabal v1-install <list-of-required-packages>` must be put inside
 the RUN recipe of the Dockerfile.
+
+##### *test-prometheus.conf*
 
 ```nginx
 user                    nginx;
