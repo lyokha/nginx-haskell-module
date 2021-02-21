@@ -1,10 +1,12 @@
 FROM fedora:33 AS base
 
+ARG GHC_VERSION=8.8
+
 ENV CABAL_DIR=/cabal
 ENV CABAL_UPDATE_DIR=/cabal-update
 
 RUN dnf install -y gcc xz pcre-devel zlib-devel procps-ng                  && \
-    dnf module enable -y ghc:8.8                                           && \
+    dnf module enable -y ghc:$GHC_VERSION                                  && \
     dnf module install -y ghc/minimal                                      && \
     dnf install -y ghc-template-haskell-devel ghc-time-devel ghc-stm-devel && \
     dnf clean all                                                          && \

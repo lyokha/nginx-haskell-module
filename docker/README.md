@@ -12,7 +12,7 @@ and *ghc* compilers, *cabal* and Nginx source code.
 The image can be pulled from *Docker hub*.
 
 ```ShellSession
-$ docker pull lyokha/nginx-haskell-module:2.7.1-fedora-33-ghc-8.8
+$ docker pull lyokha/nginx-haskell-module
 ```
 
 Basically, the image was supposed to be used for testing examples shown in
@@ -23,7 +23,7 @@ and Nginx configurations.
 Run a container with
 
 ```ShellSession
-$ docker run --name test-yadwe --network host -d lyokha/nginx-haskell-module:2.7.1-fedora-33-ghc-8.8
+$ docker run --name test-yadwe --network host -d lyokha/nginx-haskell-module
 ```
 
 Do some testing with *curl* (see details in the aforementioned document).
