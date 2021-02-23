@@ -46,12 +46,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Setup
+      - name: Install GHC and Cabal
         uses: haskell/actions/setup@v1
         with:
           ghc-version: ${{ matrix.ghc }}
           cabal-version: ${{ matrix.cabal }}
-      - name: Install dependencies
+      - name: Install and test
         env:
           GHCVER: ${{ matrix.ghc }}
           NGXVER: ${{ matrix.nginx }}
@@ -90,13 +90,6 @@ jobs:
               cd -
               cd haskell/ngx-export
           fi
-          set +e
-      - name: Install and test
-        env:
-          GHCVER: ${{ matrix.ghc }}
-          NGXVER: ${{ matrix.nginx }}
-        run: |
-          set -e
           cabal v1-configure
           cabal v1-build
           cabal v2-sdist --builddir=dist
