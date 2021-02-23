@@ -1,0 +1,132 @@
+name: CI
+on:
+  push:
+    branches: [master]
+  workflow-dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+       include:
+         - ghc: 9.0.1
+           cabal: 3.2
+           nginx: head
+         - ghc: 9.0.1
+           cabal: 3.2
+           nginx: 1.18.0
+         - ghc: 8.10.2
+           cabal: 3.2
+           nginx: 1.18.0
+         - ghc: 8.8.4
+           cabal: 3.2
+           nginx: 1.16.1
+         - ghc: 8.6.5
+           cabal: 3.2
+           nginx: 1.14.2
+         - ghc: 8.4.4
+           cabal: 3.2
+           nginx: 1.12.2
+         - ghc: 9.0.1
+           cabal: 3.2
+         - ghc: 8.10.2
+           cabal: 3.2
+         - ghc: 8.8.4
+           cabal: 3.2
+         - ghc: 8.6.5
+           cabal: 3.2
+         - ghc: 8.4.4
+           cabal: 3.2
+         - ghc: 8.2.2
+           cabal: 3.2
+         - ghc: 8.0.2
+           cabal: 3.2
+         - ghc: 7.10.3
+           cabal: 3.2
+    steps:
+      - name: Setup
+        uses: actions/checkout@v2
+        uses: haskell/actions/setup@v1
+        with:
+          ghc-version: ${{ matrix.ghc }}
+          cabal-version: ${{ matrix.cabal }}
+      - name: Install dependencies
+        env:
+          GHCVER: ${{ matrix.ghc }}
+          NGXVER: ${{ matrix.nginx }}
+        run: |
+          set -e
+          if [ -n "$NGXVER" ]
+          then
+              cpanm -v --notest --local-lib=~/perl5 local::lib Test::Nginx &&
+                  eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib)
+              export PATH=~/.cabal/bin:$PATH
+          fi
+          cabal --version
+          echo "$(ghc --version) "`
+              `"[$(ghc --print-project-git-commit-id 2>/dev/null || echo '?')]"
+          cabal v1-update
+          cd haskell/ngx-export
+          cabal v1-install --only-dependencies
+          if [ -n "$NGXVER" ]
+          then
+              cd -
+              if [ "$NGXVER" == head ]
+              then
+                  git clone https://github.com/nginx/nginx.git nginx-head
+              else
+                  wget http://nginx.org/download/nginx-${NGXVER}.tar.gz &&
+                      tar xzvf nginx-${NGXVER}.tar.gz
+              fi
+              git clone https://github.com/openresty/echo-nginx-module.git
+              cabal v1-install cpphs regex-pcre-builtin aeson bytestring safe
+              cd -
+          elif [ "$GHCVER" != "7.10.3" ]
+          then
+              cd -
+              cd haskell/ngx-export-tools
+              cabal v1-install --only-dependencies
+              cd -
+              cd haskell/ngx-export
+          fi
+          set +e
+      - name: Install and test
+        env:
+          GHCVER: ${{ matrix.ghc }}
+          NGXVER: ${{ matrix.nginx }}
+        run: |
+          set -e
+          cabal v1-configure
+          cabal v1-build
+          cabal v2-sdist --builddir=dist
+          SRC_TGZ=$(cabal info . | awk '{print $2; exit}').tar.gz &&
+              (cd dist/sdist && cabal v1-install --force-reinstalls "$SRC_TGZ")
+          if [ -n "$NGXVER" ]
+          then
+              cd -
+              cd nginx-${NGXVER}/
+              if [ "$NGXVER" == head ]
+              then
+                  NGX_CONFIGURE=./auto/configure
+              else
+                  NGX_CONFIGURE=./configure
+              fi
+              $NGX_CONFIGURE --add-module=.. --add-module=../echo-nginx-module
+              make -j2
+              export PATH=$(pwd)/objs:$PATH
+              cd -
+              cd test
+              set +e
+              prove -r t-travis
+          elif [ "$GHCVER" != "7.10.3" ]
+          then
+              cd -
+              cd haskell/ngx-export-tools
+              cabal v1-configure
+              cabal v1-build
+              cabal v2-sdist --builddir=dist
+              SRC_TGZ=$(cabal info . | awk '{print $2; exit}').tar.gz &&
+                  (cd dist/sdist &&
+                  cabal v1-install --force-reinstalls "$SRC_TGZ")
+          fi
+          set +e
