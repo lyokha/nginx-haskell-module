@@ -2,7 +2,8 @@
   <img src="docs/images/nginx-haskell-module-social.png">
 </div>
 
-[![Build Status](https://travis-ci.com/lyokha/nginx-haskell-module.svg?branch=master)](https://travis-ci.com/lyokha/nginx-haskell-module)
+<!--[![Build Status](https://travis-ci.com/lyokha/nginx-haskell-module.svg?branch=master)](https://travis-ci.com/lyokha/nginx-haskell-module)-->
+[![Build Status](https://github.com/lyokha/nginx-haskell-module/workflows/CI/badge.svg)](https://github.com/lyokha/nginx-haskell-module/actions?query=workflow%3ACI)
 [![Hackage](https://img.shields.io/hackage/v/ngx-export.svg?label=hackage%20%7C%20ngx-export)](https://hackage.haskell.org/package/ngx-export)
 [![Hackage](https://img.shields.io/hackage/v/ngx-export-tools.svg?label=hackage%20%7C%20ngx-export-tools)](https://hackage.haskell.org/package/ngx-export-tools)
 [![Read the Docs](https://readthedocs.org/projects/nginx-haskell-module/badge/?version=latest)](https://nginx-haskell-module.readthedocs.io/en/latest/)
