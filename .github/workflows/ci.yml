@@ -74,9 +74,10 @@ jobs:
           set -e
           if [ -n "$NGXVER" ]
           then
-              curl -L https://cpanmin.us | perl - App::cpanminus
-              cpanm -v --notest --local-lib=~/perl5 local::lib Test::Nginx &&
-                  eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib)
+              curl -L https://cpanmin.us |
+                  perl - -l ~/perl5 App::cpanminus local::lib
+              eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib)
+              cpanm -v --notest --local-lib=~/perl5 local::lib Test::Nginx
               export PATH=~/.cabal/bin:$PATH
           fi
           cabal --version
