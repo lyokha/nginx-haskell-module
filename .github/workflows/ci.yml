@@ -44,8 +44,9 @@ jobs:
          - ghc: 7.10.3
            cabal: 3.2
     steps:
-      - name: Setup
+      - name: Checkout
         uses: actions/checkout@v2
+      - name: Setup
         uses: haskell/actions/setup@v1
         with:
           ghc-version: ${{ matrix.ghc }}
@@ -130,3 +131,4 @@ jobs:
                   cabal v1-install --force-reinstalls "$SRC_TGZ")
           fi
           set +e
+
