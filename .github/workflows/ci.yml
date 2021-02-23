@@ -21,31 +21,43 @@ jobs:
          - ghc: 8.10.2
            cabal: 3.2
            nginx: 1.18.0
+           experimental: false
          - ghc: 8.8.4
            cabal: 3.2
            nginx: 1.16.1
+           experimental: false
          - ghc: 8.6.5
            cabal: 3.2
            nginx: 1.14.2
+           experimental: false
          - ghc: 8.4.4
            cabal: 3.2
            nginx: 1.12.2
+           experimental: false
          - ghc: 9.0.1
            cabal: 3.2
+           experimental: false
          - ghc: 8.10.2
            cabal: 3.2
+           experimental: false
          - ghc: 8.8.4
            cabal: 3.2
+           experimental: false
          - ghc: 8.6.5
            cabal: 3.2
+           experimental: false
          - ghc: 8.4.4
            cabal: 3.2
+           experimental: false
          - ghc: 8.2.2
            cabal: 3.2
+           experimental: false
          - ghc: 8.0.2
            cabal: 3.2
+           experimental: false
          - ghc: 7.10.3
            cabal: 3.2
+           experimental: false
     steps:
       - name: Checkout
         uses: actions/checkout@v2
