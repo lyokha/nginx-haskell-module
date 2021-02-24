@@ -9,55 +9,34 @@ jobs:
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       matrix:
-       include:
-         - ghc: 9.0.1
-           cabal: 3.2
-           nginx: head
-           experimental: true
-         - ghc: 9.0.1
-           cabal: 3.2
-           nginx: 1.18.0
-           experimental: true
-         - ghc: 8.10.2
-           cabal: 3.2
-           nginx: 1.18.0
-           experimental: false
-         - ghc: 8.8.4
-           cabal: 3.2
-           nginx: 1.16.1
-           experimental: false
-         - ghc: 8.6.5
-           cabal: 3.2
-           nginx: 1.14.2
-           experimental: false
-         - ghc: 8.4.4
-           cabal: 3.2
-           nginx: 1.12.2
-           experimental: false
-         - ghc: 9.0.1
-           cabal: 3.2
-           experimental: false
-         - ghc: 8.10.2
-           cabal: 3.2
-           experimental: false
-         - ghc: 8.8.4
-           cabal: 3.2
-           experimental: false
-         - ghc: 8.6.5
-           cabal: 3.2
-           experimental: false
-         - ghc: 8.4.4
-           cabal: 3.2
-           experimental: false
-         - ghc: 8.2.2
-           cabal: 3.2
-           experimental: false
-         - ghc: 8.0.2
-           cabal: 3.2
-           experimental: false
-         - ghc: 7.10.3
-           cabal: 3.2
-           experimental: false
+        ghc: [7.10.3, 8.0.2, 8.2.2, 8.4.4, 8.6.5, 8.8.4, 8.10.2, 9.0.1]
+        cabal: [3.2]
+        experimental: [false]
+        include:
+          - ghc: 9.0.1
+            cabal: 3.2
+            nginx: head
+            experimental: true
+          - ghc: 9.0.1
+            cabal: 3.2
+            nginx: 1.18.0
+            experimental: true
+          - ghc: 8.10.2
+            cabal: 3.2
+            nginx: 1.18.0
+            experimental: false
+          - ghc: 8.8.4
+            cabal: 3.2
+            nginx: 1.16.1
+            experimental: false
+          - ghc: 8.6.5
+            cabal: 3.2
+            nginx: 1.14.2
+            experimental: false
+          - ghc: 8.4.4
+            cabal: 3.2
+            nginx: 1.12.2
+            experimental: false
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -66,20 +45,18 @@ jobs:
         with:
           ghc-version: ${{ matrix.ghc }}
           cabal-version: ${{ matrix.cabal }}
+      - name: Install prove
+        if: matrix.nginx != ''
+        uses: perl-actions/install-with-cpanm@v1
+        with:
+          install: "Test::Nginx"
+          tests: false
       - name: Install and test
         env:
           GHCVER: ${{ matrix.ghc }}
           NGXVER: ${{ matrix.nginx }}
         run: |
           set -e
-          if [ -n "$NGXVER" ]
-          then
-              curl -L https://cpanmin.us |
-                  perl - -l ~/perl5 App::cpanminus local::lib
-              eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib)
-              cpanm -v --notest --local-lib=~/perl5 local::lib Test::Nginx
-              export PATH=~/.cabal/bin:$PATH
-          fi
           cabal --version
           echo "$(ghc --version) "`
               `"[$(ghc --print-project-git-commit-id 2>/dev/null || echo '?')]"
@@ -128,6 +105,7 @@ jobs:
               cd -
               cd test
               set +e
+              export PATH=~/.cabal/bin:$PATH
               prove -r t-travis
           elif [ "$GHCVER" != "7.10.3" ]
           then
