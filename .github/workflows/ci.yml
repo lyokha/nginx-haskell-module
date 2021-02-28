@@ -9,17 +9,21 @@ jobs:
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       matrix:
-        ghc: [7.10.3, 8.0.2, 8.2.2, 8.4.4, 8.6.5, 8.8.4, 8.10.2, 9.0.1]
+        ghc: [7.10.3, 8.0.2, 8.2.2, 8.4.4, 8.6.5, 8.8.4, 8.10.2]
         cabal: [3.2]
         nginx: ['']
         experimental: [false]
         include:
           - ghc: 9.0.1
-            cabal: 3.2
+            cabal: 3.4
+            nginx: ''
+            experimental: false
+          - ghc: 9.0.1
+            cabal: 3.4
             nginx: head
             experimental: true
           - ghc: 9.0.1
-            cabal: 3.2
+            cabal: 3.4
             nginx: 1.18.0
             experimental: true
           - ghc: 8.10.2
