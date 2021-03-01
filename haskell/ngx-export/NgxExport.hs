@@ -816,12 +816,13 @@ asyncIOYY f x (I n) fd (I fdlk) active (ToBool efd) (ToBool fstRun) =
     asyncIOCommon
     (do
         exiting <- if fstRun && fdlk /= -1
-                       then interruptible $ snd <$>
+                       then snd <$>
                            iterateUntil fst
-                           ((safeWaitToSetLock fdlk
-                                 (WriteLock, AbsoluteSeek, 0, 0) >>
-                                     return (True, False)
-                            )
+                           (interruptible
+                                (safeWaitToSetLock fdlk
+                                    (WriteLock, AbsoluteSeek, 0, 0) >>
+                                        return (True, False)
+                                )
                             `catches`
                             [E.Handler $
                                 return . (, False) . not . isEINTR
