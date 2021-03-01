@@ -773,7 +773,8 @@ run_hooks:
 
 run_service:
 
-    ngx_http_haskell_run_service(cycle, service_code_var, 0);
+    ngx_http_haskell_run_service(cycle, service_code_var,
+                                 async_data->error == 5 ? 1 : 0);
 }
 
 

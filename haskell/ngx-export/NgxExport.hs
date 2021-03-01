@@ -4,7 +4,7 @@
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  NgxExport
--- Copyright   :  (c) Alexey Radkov 2016-2019
+-- Copyright   :  (c) Alexey Radkov 2016-2021
 -- License     :  BSD-style
 --
 -- Maintainer  :  alexey.radkov@gmail.com
@@ -62,7 +62,7 @@ module NgxExport (
                  ,Foreign.C.CUInt (..)
                  ) where
 
-import           Language.Haskell.TH
+import           Language.Haskell.TH hiding (interruptible)
 import           Foreign.C
 import           Foreign.Ptr
 import           Foreign.StablePtr
@@ -497,6 +497,12 @@ instance Exception ServiceHookInterrupt
 instance Show ServiceHookInterrupt where
     show = const "Service was interrupted by a service hook"
 
+newtype ServiceSomeInterrupt = ServiceSomeInterrupt String
+
+instance Exception ServiceSomeInterrupt
+instance Show ServiceSomeInterrupt where
+    show (ServiceSomeInterrupt s) = s
+
 -- | Terminates the worker process.
 --
 -- Being thrown from a service, this exception makes Nginx log the supplied
@@ -680,7 +686,9 @@ safeAsyncYYHandler = handle $ \e ->
                                 0x80000000 .|. fromIntegral st
                             Just (FinalizeHTTPRequest st Nothing) ->
                                 0xC0000000 .|. fromIntegral st
-                            _ -> 1
+                            _ -> case fromException e of
+                                Just (ServiceSomeInterrupt _) -> 5
+                                _ -> 1
             ,case asyncExceptionFromException e of
                 Just WorkerProcessIsExiting -> True
                 _ -> False
@@ -765,13 +773,12 @@ asyncIOFlag8b = L.toStrict $ runPut $ putWord64host 1
 asyncIOCommon :: IO (L.ByteString, Bool) ->
     CInt -> Bool -> Ptr (Ptr NgxStrType) -> Ptr CInt ->
     Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO (StablePtr (Async ()))
-asyncIOCommon a (I fd) efd p pl pr spd = mask $ \restore ->
+asyncIOCommon a (I fd) efd p pl pr spd = mask_ $
     async
     (do
-        (s, (r, exiting)) <- safeAsyncYYHandler $
-            restore $ do
-                (s, exiting) <- a
-                fmap (, (0, exiting)) $ return $!! s
+        (s, (r, exiting)) <- safeAsyncYYHandler $ do
+            (s, exiting) <- a
+            interruptible $ fmap (, (0, exiting)) $ return $!! s
         pokeLazyByteString s p pl spd
         poke pr r
         if exiting
@@ -809,25 +816,30 @@ asyncIOYY f x (I n) fd (I fdlk) active (ToBool efd) (ToBool fstRun) =
     asyncIOCommon
     (do
         exiting <- if fstRun && fdlk /= -1
-                       then snd <$>
-                           iterateUntil ((True ==) . fst)
-                           (safeWaitToSetLock fdlk
-                                (WriteLock, AbsoluteSeek, 0, 0) >>
-                                    return (True, False)
+                       then interruptible $ snd <$>
+                           iterateUntil fst
+                           ((safeWaitToSetLock fdlk
+                                 (WriteLock, AbsoluteSeek, 0, 0) >>
+                                     return (True, False)
+                            )
+                            `catches`
+                            [E.Handler $
+                                return . (, False) . not . isEINTR
+                            ,E.Handler $
+                                return . (True, ) . (== WorkerProcessIsExiting)
+                            ,E.Handler
+                                (throwIO . ServiceSomeInterrupt . show ::
+                                    SomeException -> IO (Bool, Bool)
+                                )
+                            ]
                            )
-                           `catches`
-                           [E.Handler $
-                               return . (, False) . not . isEINTR
-                           ,E.Handler $
-                               return . (True, ) . (== WorkerProcessIsExiting)
-                           ]
                        else return False
         if exiting
             then return (L.empty, True)
             else do
                 when fstRun $ poke active 1
                 x' <- B.unsafePackCStringLen (x, n)
-                (, False) <$> f x' fstRun
+                interruptible $ (, False) <$> f x' fstRun
     ) fd efd
 
 asyncIOYYY :: IOYYY -> Ptr NgxStrType -> Ptr NgxStrType -> CInt ->
@@ -838,7 +850,7 @@ asyncIOYYY f tmpf b (I m) x (I n) fd (ToBool efd) =
     (do
         b' <- peekRequestBodyChunks tmpf b m
         x' <- B.unsafePackCStringLen (x, n)
-        (, False) <$> f b' x'
+        interruptible $ (, False) <$> f b' x'
     ) fd efd
 
 asyncHandler :: AsyncHandler -> CString -> CInt ->
@@ -852,9 +864,10 @@ asyncHandler f x (I n) fd (ToBool efd) pct plct spct pst
     asyncIOCommon
     (do
         x' <- B.unsafePackCStringLen (x, n)
-        v@(s, ct, I st, rhs) <- f x'
-        (return $!! v) >> mask_
-            (pokeAsyncHandlerData ct pct plct spct pst st rhs prhs plrhs sprhs)
+        (s, ct, I st, rhs) <- interruptible $ do
+            v <- f x'
+            return $!! v
+        pokeAsyncHandlerData ct pct plct spct pst st rhs prhs plrhs sprhs
         return (s, False)
     ) fd efd
 
@@ -870,9 +883,10 @@ asyncHandlerRB f tmpf b (I m) x (I n) fd (ToBool efd) pct plct spct pst
     (do
         b' <- peekRequestBodyChunks tmpf b m
         x' <- B.unsafePackCStringLen (x, n)
-        v@(s, ct, I st, rhs) <- f b' x'
-        (return $!! v) >> mask_
-            (pokeAsyncHandlerData ct pct plct spct pst st rhs prhs plrhs sprhs)
+        (s, ct, I st, rhs) <- interruptible $ do
+            v <- f b' x'
+            return $!! v
+        pokeAsyncHandlerData ct pct plct spct pst st rhs prhs plrhs sprhs
         return (s, False)
     ) fd efd
 

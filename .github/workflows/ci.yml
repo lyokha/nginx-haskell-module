@@ -9,7 +9,7 @@ jobs:
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       matrix:
-        ghc: [7.10.3, 8.0.2, 8.2.2, 8.4.4, 8.6.5, 8.8.4, 8.10.2]
+        ghc: [8.0.2, 8.2.2, 8.4.4, 8.6.5, 8.8.4, 8.10.2]
         cabal: [3.2]
         nginx: ['']
         experimental: [false]
@@ -81,8 +81,7 @@ jobs:
               git clone https://github.com/openresty/echo-nginx-module.git
               cabal v1-install cpphs regex-pcre-builtin aeson bytestring safe
               cd -
-          elif [ "$GHCVER" != "7.10.3" ]
-          then
+          else
               cd -
               cd haskell/ngx-export-tools
               cabal v1-install --only-dependencies
@@ -112,8 +111,7 @@ jobs:
               set +e
               export PATH=~/.cabal/bin:$PATH
               prove -r t-travis
-          elif [ "$GHCVER" != "7.10.3" ]
-          then
+          else
               cd -
               cd haskell/ngx-export-tools
               cabal v1-configure
