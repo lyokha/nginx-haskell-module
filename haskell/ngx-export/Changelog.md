@@ -1,3 +1,9 @@
+### 1.7.2
+
+- More robust masking in async handlers. As this uses function *interruptible*
+  from module *Control.Exception*, support of GHC versions *7.x* was dropped.
+- Fixed waiting on file-locks of inactive shared services.
+
 ### 1.7.1
 
 - Added function *ngxCachedPid* to return the PID of the current worker process
