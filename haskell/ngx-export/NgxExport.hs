@@ -62,7 +62,11 @@ module NgxExport (
                  ,Foreign.C.CUInt (..)
                  ) where
 
+#if MIN_VERSION_template_haskell(2,12,0)
 import           Language.Haskell.TH hiding (interruptible)
+#else
+import           Language.Haskell.TH
+#endif
 import           Foreign.C
 import           Foreign.Ptr
 import           Foreign.StablePtr
