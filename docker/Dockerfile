@@ -66,7 +66,7 @@ RUN curl -L 'https://github.com/openresty/echo-nginx-module/archive/v0.62.tar.gz
     curl -L 'https://github.com/lyokha/nginx-combined-upstreams-module/archive/2.1.tar.gz' \
             -o nginx-combined-upstreams-module.tar.gz  && \
     tar xvf nginx-combined-upstreams-module.tar.gz     && \
-    curl -L 'https://github.com/lyokha/nginx-haskell-module/archive/2.7.1.tar.gz' \
+    curl -L 'https://github.com/lyokha/nginx-haskell-module/archive/2.8.0.tar.gz' \
             -o nginx-haskell-module.tar.gz             && \
     tar xvf nginx-haskell-module.tar.gz                && \
     curl -L 'https://nginx.org/download/nginx-1.18.0.tar.gz' \
@@ -80,7 +80,7 @@ RUN curl -L 'https://github.com/openresty/echo-nginx-module/archive/v0.62.tar.gz
             --add-module=../echo-nginx-module-0.62              \
             --add-module=../nginx-custom-counters-module-4.3    \
             --add-module=../nginx-combined-upstreams-module-2.1 \
-            --add-module=../nginx-haskell-module-2.7.1          \
+            --add-module=../nginx-haskell-module-2.8.0          \
             --add-dynamic-module=/nginx-healthcheck-plugin-1.0  \
             --add-dynamic-module=/nginx-log-plugin-0.2 && \
     make                                               && \
@@ -95,7 +95,7 @@ RUN curl -L 'https://github.com/openresty/echo-nginx-module/archive/v0.62.tar.gz
             nginx-custom-counters-module-4.3                       \
             nginx-combined-upstreams-module.tar.gz                 \
             nginx-combined-upstreams-module-2.1                    \
-            nginx-haskell-module.tar.gz nginx-haskell-module-2.7.1 \
+            nginx-haskell-module.tar.gz nginx-haskell-module-2.8.0 \
             nginx-healthcheck-plugin-1.0 nginx-log-plugin-0.2      \
             nginx.tar.gz
 
