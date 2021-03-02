@@ -83,6 +83,7 @@ import qualified Control.Exception as E
 import           Control.Exception hiding (Handler)
 import           GHC.IO.Exception (ioe_errno)
 import           GHC.IO.Device (SeekMode (..))
+import           Control.Concurrent
 import           Control.Concurrent.Async
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Unsafe as B
@@ -824,8 +825,30 @@ asyncIOYY f x (I n) fd (I fdlk) active (ToBool efd) (ToBool fstRun) =
                                         return (True, False)
                                 )
                             `catches`
-                            [E.Handler $
-                                return . (, False) . not . isEINTR
+                            [E.Handler $ \e ->
+                                if isEINTR e
+                                    then return (False, False)
+                                    else do
+                                        -- wait some time to avoid fastly
+                                        -- repeated calls; threadDelay is
+                                        -- interruptible even in exception
+                                        -- handlers
+                                        exiting <-
+                                            (threadDelay 500000 >>
+                                                return False
+                                            )
+                                            `catches`
+                                            [E.Handler $ return .
+                                                (== WorkerProcessIsExiting)
+                                            ,E.Handler
+                                                (const $ return False ::
+                                                    SomeException -> IO Bool
+                                                )
+                                            ]
+                                        if exiting
+                                            then return (True, True)
+                                            else throwIO $
+                                                ServiceSomeInterrupt $ show e
                             ,E.Handler $
                                 return . (True, ) . (== WorkerProcessIsExiting)
                             ,E.Handler

@@ -1,3 +1,7 @@
+### 1.7.3
+
+- Further fixes for inactive shared services waiting on file-locks.
+
 ### 1.7.2
 
 - More robust masking in async handlers. As this uses function *interruptible*
