@@ -29,8 +29,11 @@ RUN useradd -s /sbin/nologin nginx
 
 FROM base AS cabal-install
 
+ARG CABAL_CONSTRAINTS
+
 RUN cabal v1-update                                               && \
-    cabal v1-install ngx-export-tools-extra                       && \
+    eval "cabal v1-install ngx-export-tools-extra \
+            $CABAL_CONSTRAINTS"                                   && \
     curl -L 'https://github.com/lyokha/nginx-healthcheck-plugin/archive/1.0.tar.gz' \
             -o nginx-healthcheck-plugin.tar.gz                    && \
     tar xvf nginx-healthcheck-plugin.tar.gz                       && \
@@ -38,12 +41,13 @@ RUN cabal v1-update                                               && \
             -o nginx-log-plugin.tar.gz                            && \
     tar xvf nginx-log-plugin.tar.gz                               && \
     cd nginx-healthcheck-plugin-1.0                               && \
-    cabal v1-install                                              && \
+    eval "cabal v1-install $CABAL_CONSTRAINTS  "                  && \
     cd ../nginx-log-plugin-0.2                                    && \
-    cabal v1-install                                              && \
+    eval "cabal v1-install $CABAL_CONSTRAINTS"                    && \
     cd ..                                                         && \
     rm -f nginx-healthcheck-plugin.tar.gz nginx-log-plugin.tar.gz && \
-    cabal v1-install JuicyPixels regex-pcre-builtin               && \
+    eval "cabal v1-install JuicyPixels regex-pcre-builtin \
+            $CABAL_CONSTRAINTS"                                   && \
     mkdir $CABAL_UPDATE_DIR                                       && \
     mv "$CABAL_DIR"/packages/hackage.haskell.org/01-index.* \
             "$CABAL_UPDATE_DIR"                                   && \
