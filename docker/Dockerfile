@@ -33,7 +33,7 @@ ARG CABAL_CONSTRAINTS
 
 RUN cabal v1-update                                               && \
     cabal_constraints=$(echo $CABAL_CONSTRAINTS | \
-            sed "s/\s*\([^;]*\)\s*;\?\s*/--constraint='\1' /g")   && \
+            sed "s/\s*\([^;]\+\)\s*;\?\s*/--constraint='\1' /g")  && \
     eval "cabal v1-install ngx-export-tools-extra \
             $cabal_constraints"                                   && \
     curl -L 'https://github.com/lyokha/nginx-healthcheck-plugin/archive/1.0.tar.gz' \
