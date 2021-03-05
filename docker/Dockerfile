@@ -32,8 +32,10 @@ FROM base AS cabal-install
 ARG CABAL_CONSTRAINTS
 
 RUN cabal v1-update                                               && \
+    cabal_constraints=$(echo $CABAL_CONSTRAINTS | \
+            sed "s/\s*\([^;]*\)\s*;\?\s*/--constraint='\1' /g")   && \
     eval "cabal v1-install ngx-export-tools-extra \
-            $CABAL_CONSTRAINTS"                                   && \
+            $cabal_constraints"                                   && \
     curl -L 'https://github.com/lyokha/nginx-healthcheck-plugin/archive/1.0.tar.gz' \
             -o nginx-healthcheck-plugin.tar.gz                    && \
     tar xvf nginx-healthcheck-plugin.tar.gz                       && \
@@ -41,13 +43,13 @@ RUN cabal v1-update                                               && \
             -o nginx-log-plugin.tar.gz                            && \
     tar xvf nginx-log-plugin.tar.gz                               && \
     cd nginx-healthcheck-plugin-1.0                               && \
-    eval "cabal v1-install $CABAL_CONSTRAINTS  "                  && \
+    eval "cabal v1-install $cabal_constraints"                    && \
     cd ../nginx-log-plugin-0.2                                    && \
-    eval "cabal v1-install $CABAL_CONSTRAINTS"                    && \
+    eval "cabal v1-install $cabal_constraints"                    && \
     cd ..                                                         && \
     rm -f nginx-healthcheck-plugin.tar.gz nginx-log-plugin.tar.gz && \
     eval "cabal v1-install JuicyPixels regex-pcre-builtin \
-            $CABAL_CONSTRAINTS"                                   && \
+            $cabal_constraints"                                   && \
     mkdir $CABAL_UPDATE_DIR                                       && \
     mv "$CABAL_DIR"/packages/hackage.haskell.org/01-index.* \
             "$CABAL_UPDATE_DIR"                                   && \
