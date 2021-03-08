@@ -196,29 +196,95 @@ ngx_http_haskell_close_async_event_channel(ngx_log_t *log, ngx_fd_t fd[2])
 ssize_t
 ngx_http_haskell_signal_async_event_channel(ngx_fd_t fd)
 {
+    ssize_t  res = 0, cur = 0;
+
 #if (NGX_HAVE_EVENTFD)
-        uint64_t  v = 1;
+    uint64_t  v = 1;
 
-        return write(fd, &v, sizeof(uint64_t));
+    for ( ;; ) {
+        cur = write(fd, &v + cur, sizeof(uint64_t) - cur);
+        if (cur == -1) {
+            if (ngx_errno == NGX_EINTR) {
+                cur = res;
+                continue;
+            } else {
+                return -1;
+            }
+        }
+        res += cur;
+        if (res >= (ssize_t) sizeof(uint64_t) || cur == 0) {
+            break;
+        }
+    }
 #else
-        uint8_t  v = 1;
+    uint8_t  v = 1;
 
-        return write(fd, &v, sizeof(uint8_t));
+    for ( ;; ) {
+        cur = write(fd, &v + cur, sizeof(uint8_t) - cur);
+        if (cur == -1) {
+            if (ngx_errno == NGX_EINTR) {
+                cur = res;
+                continue;
+            } else {
+                return -1;
+            }
+        }
+        res += cur;
+        if (res >= (ssize_t) sizeof(uint8_t) || cur == 0) {
+            break;
+        }
+    }
 #endif
+
+    return res;
 }
 
 
 ssize_t
 ngx_http_haskell_consume_from_async_event_channel(ngx_fd_t fd)
 {
+    ssize_t  res = 0, cur = 0;
+
 #if (NGX_HAVE_EVENTFD)
-        uint64_t  v;
+    uint64_t  v;
 
-        return read(fd, &v, sizeof(uint64_t));
+    for ( ;; ) {
+        cur = read(fd, &v + cur, sizeof(uint64_t) - cur);
+        if (cur == -1) {
+            if (ngx_errno == NGX_EINTR) {
+                cur = res;
+                continue;
+            } else {
+                return -1;
+            }
+        }
+        res += cur;
+        if (res >= (ssize_t) sizeof(uint64_t) || cur == 0) {
+            break;
+        }
+    }
 #else
-        uint8_t  v;
+    uint8_t  v;
 
-        return read(fd, &v, sizeof(uint8_t));
+    for ( ;; ) {
+        cur = read(fd, &v + cur, sizeof(uint8_t) - cur);
+        if (cur == -1) {
+            if (ngx_errno == NGX_EAGAIN) {
+                break;
+            } else if (ngx_errno == NGX_EINTR) {
+                cur = res;
+                continue;
+            } else {
+                return -1;
+            }
+        }
+        res += cur;
+        if (cur == 0) {
+            break;
+        }
+    }
 #endif
+
+    return res;
 }
 
