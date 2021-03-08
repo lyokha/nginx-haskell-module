@@ -267,7 +267,8 @@ ngx_http_haskell_consume_from_async_event_channel(ngx_fd_t fd)
     uint8_t  v;
 
     for ( ;; ) {
-        cur = read(fd, &v + cur, sizeof(uint8_t) - cur);
+        cur = read(fd, &v + cur % sizeof(uint8_t),
+                   sizeof(uint8_t) - cur % sizeof(uint8_t));
         if (cur == -1) {
             if (ngx_errno == NGX_EAGAIN) {
                 break;
