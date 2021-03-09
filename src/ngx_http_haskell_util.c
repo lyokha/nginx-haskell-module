@@ -196,43 +196,35 @@ ngx_http_haskell_close_async_event_channel(ngx_log_t *log, ngx_fd_t fd[2])
 ssize_t
 ngx_http_haskell_signal_async_event_channel(ngx_fd_t fd)
 {
-    ssize_t  res = 0, cur = 0;
+    ssize_t  res;
 
 #if (NGX_HAVE_EVENTFD)
     uint64_t  v = 1;
 
     for ( ;; ) {
-        cur = write(fd, &v + cur, sizeof(uint64_t) - cur);
-        if (cur == -1) {
+        res = write(fd, &v, sizeof(uint64_t));
+        if (res == -1) {
             if (ngx_errno == NGX_EINTR) {
-                cur = res;
                 continue;
             } else {
                 return -1;
             }
         }
-        res += cur;
-        if (res >= (ssize_t) sizeof(uint64_t) || cur == 0) {
-            break;
-        }
+        break;
     }
 #else
     uint8_t  v = 1;
 
     for ( ;; ) {
-        cur = write(fd, &v + cur, sizeof(uint8_t) - cur);
-        if (cur == -1) {
+        res = write(fd, &v, sizeof(uint8_t));
+        if (res == -1) {
             if (ngx_errno == NGX_EINTR) {
-                cur = res;
                 continue;
             } else {
                 return -1;
             }
         }
-        res += cur;
-        if (res >= (ssize_t) sizeof(uint8_t) || cur == 0) {
-            break;
-        }
+        break;
     }
 #endif
 
@@ -243,37 +235,34 @@ ngx_http_haskell_signal_async_event_channel(ngx_fd_t fd)
 ssize_t
 ngx_http_haskell_consume_from_async_event_channel(ngx_fd_t fd)
 {
-    ssize_t  res = 0, cur = 0;
+    ssize_t  res;
 
 #if (NGX_HAVE_EVENTFD)
     uint64_t  v;
 
     for ( ;; ) {
-        cur = read(fd, &v + cur, sizeof(uint64_t) - cur);
-        if (cur == -1) {
+        res = read(fd, &v, sizeof(uint64_t));
+        if (res == -1) {
             if (ngx_errno == NGX_EINTR) {
-                cur = res;
                 continue;
             } else {
                 return -1;
             }
         }
-        res += cur;
-        if (res >= (ssize_t) sizeof(uint64_t) || cur == 0) {
-            break;
-        }
+        break;
     }
 #else
+    ssize_t  cur;
     uint8_t  v;
 
+    res = 0;
+
     for ( ;; ) {
-        cur = read(fd, &v + cur % sizeof(uint8_t),
-                   sizeof(uint8_t) - cur % sizeof(uint8_t));
+        cur = read(fd, &v, sizeof(uint8_t));
         if (cur == -1) {
             if (ngx_errno == NGX_EAGAIN) {
                 break;
             } else if (ngx_errno == NGX_EINTR) {
-                cur = res;
                 continue;
             } else {
                 return -1;
