@@ -27,7 +27,9 @@ library
                           , unix
 
   exposed-modules:          NgxExport
-  other-modules:            Paths_ngx_export
+  other-modules:            NgxExport.Internal.SafeFileLock
+                            Paths_ngx_export
+
   default-extensions:       CPP
 
   ghc-options:             -Wall

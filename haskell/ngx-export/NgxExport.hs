@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell, ForeignFunctionInterface, InterruptibleFFI #-}
+{-# LANGUAGE TemplateHaskell, ForeignFunctionInterface #-}
 {-# LANGUAGE ViewPatterns, PatternSynonyms, TupleSections #-}
 
 -----------------------------------------------------------------------------
@@ -62,6 +62,8 @@ module NgxExport (
                  ,Foreign.C.CUInt (..)
                  ) where
 
+import           NgxExport.Internal.SafeFileLock
+
 #if MIN_VERSION_template_haskell(2,12,0)
 import           Language.Haskell.TH hiding (interruptible)
 #else
@@ -79,14 +81,12 @@ import           System.IO.Error
 import           System.Posix.IO
 import           System.Posix.Types
 import           System.Posix.Signals hiding (Handler)
-import           System.Posix.Internals
 import           Control.Monad
 import           Control.Monad.Loops
 import           Control.DeepSeq
 import qualified Control.Exception as E
 import           Control.Exception hiding (Handler)
 import           GHC.IO.Exception (ioe_errno)
-import           GHC.IO.Device (SeekMode (..))
 import           Control.Concurrent
 import           Control.Concurrent.Async
 import qualified Data.ByteString as B
@@ -706,9 +706,17 @@ fromHTTPHeaders = L.fromChunks . foldr (\(z -> a, z -> b) -> ([a, b] ++)) []
     where z s | B.null s = B.singleton 0
               | otherwise = s
 
+isIOError :: Errno -> IOError -> Bool
+isIOError e = (Just ((\(Errno i) -> i) e) ==) . ioe_errno
+{-# INLINE isIOError #-}
+
 isEINTR :: IOError -> Bool
-isEINTR = (Just ((\(Errno i) -> i) eINTR) ==) . ioe_errno
+isEINTR = isIOError eINTR
 {-# INLINE isEINTR #-}
+
+isEDEADLK :: IOError -> Bool
+isEDEADLK = isIOError eDEADLK
+{-# INLINE isEDEADLK #-}
 
 sS :: SS -> CString -> CInt ->
     Ptr CString -> Ptr CInt -> IO CUInt
@@ -821,46 +829,7 @@ asyncIOYY f x (I n) fd (I fdlk) active (ToBool efd) (ToBool fstRun) =
     asyncIOCommon
     (do
         exiting <- if fstRun && fdlk /= -1
-                       then snd <$>
-                           iterateUntil fst
-                           (interruptible
-                                (safeWaitToSetLock fdlk
-                                    (WriteLock, AbsoluteSeek, 0, 0) >>
-                                        return (True, False)
-                                )
-                            `catches`
-                            [E.Handler $ \e ->
-                                if isEINTR e
-                                    then return (False, False)
-                                    else do
-                                        -- wait some time to avoid fastly
-                                        -- repeated calls; threadDelay is
-                                        -- interruptible even in exception
-                                        -- handlers
-                                        exiting <-
-                                            (threadDelay 500000 >>
-                                                return False
-                                            )
-                                            `catches`
-                                            [E.Handler $ return .
-                                                (== WorkerProcessIsExiting)
-                                            ,E.Handler
-                                                (const $ return False ::
-                                                    SomeException -> IO Bool
-                                                )
-                                            ]
-                                        if exiting
-                                            then return (True, True)
-                                            else throwIO $
-                                                ServiceSomeInterrupt $ show e
-                            ,E.Handler $
-                                return . (True, ) . (== WorkerProcessIsExiting)
-                            ,E.Handler
-                                (throwIO . ServiceSomeInterrupt . show ::
-                                    SomeException -> IO (Bool, Bool)
-                                )
-                            ]
-                           )
+                       then getBestLockImpl fdlk >>= acquireLock
                        else return False
         if exiting
             then return (L.empty, True)
@@ -869,6 +838,38 @@ asyncIOYY f x (I n) fd (I fdlk) active (ToBool efd) (ToBool fstRun) =
                 x' <- B.unsafePackCStringLen (x, n)
                 interruptible $ (, False) <$> f x' fstRun
     ) fd efd
+    where acquireLock cmd = snd <$>
+              iterateUntil fst
+              (interruptible (safeWaitToSetLock fdlk cmd >>
+                                return (True, False)
+                            )
+               `catches`
+               [E.Handler $ \e ->
+                   if isEINTR e
+                       then return (False, False)
+                       else do
+                           -- wait some time to avoid fastly repeated calls;
+                           -- threadDelay is interruptible even in exception
+                           -- handlers
+                           exiting <- (threadDelay 500000 >> return False)
+                               `catches`
+                               [E.Handler $ return . (== WorkerProcessIsExiting)
+                               ,E.Handler (const $ return False ::
+                                              SomeException -> IO Bool
+                                          )
+                               ]
+                           if exiting
+                               then return (True, True)
+                               else if isEDEADLK e
+                                        then return (False, False)
+                                        else throwIO $
+                                            ServiceSomeInterrupt $ show e
+               ,E.Handler $ return . (True, ) . (== WorkerProcessIsExiting)
+               ,E.Handler (throwIO . ServiceSomeInterrupt . show ::
+                              SomeException -> IO (Bool, Bool)
+                          )
+               ]
+              )
 
 asyncIOYYY :: IOYYY -> Ptr NgxStrType -> Ptr NgxStrType -> CInt ->
     CString -> CInt -> CInt -> CUInt -> Ptr (Ptr NgxStrType) -> Ptr CInt ->
@@ -983,37 +984,6 @@ unsafeHandler f x (I n) p pl pct plct pst =
         PtrLen t l <- B.unsafeUseAsCStringLen s return
         pokeCStringLen t l p pl
         return 0
-
-{- SPLICE: safe version of waitToSetLock as defined in System.Posix.IO -}
-
-foreign import ccall interruptible "HsBase.h fcntl"
-    safe_c_fcntl_lock :: CInt -> CInt -> Ptr CFLock -> IO CInt
-
-mode2Int :: SeekMode -> CShort
-mode2Int AbsoluteSeek = 0
-mode2Int RelativeSeek = 1
-mode2Int SeekFromEnd  = 2
-
-lockReq2Int :: LockRequest -> CShort
-lockReq2Int ReadLock  = 0
-lockReq2Int WriteLock = 1
-lockReq2Int Unlock    = 2
-
-allocaLock :: FileLock -> (Ptr CFLock -> IO a) -> IO a
-allocaLock (lockreq, mode, start, len) io =
-    allocaBytes 32 $ \p -> do
-        (`pokeByteOff`  0) p (lockReq2Int lockreq)
-        (`pokeByteOff`  2) p (mode2Int mode)
-        (`pokeByteOff`  8) p start
-        (`pokeByteOff` 16) p len
-        io p
-
-safeWaitToSetLock :: Fd -> FileLock -> IO ()
-safeWaitToSetLock (Fd fd) lock = allocaLock lock $
-    \p_flock -> throwErrnoIfMinus1_ "safeWaitToSetLock" $
-        safe_c_fcntl_lock fd 7 p_flock
-
-{- SPLICE: END -}
 
 foreign export ccall ngxExportInstallSignalHandler :: IO ()
 ngxExportInstallSignalHandler :: IO ()
