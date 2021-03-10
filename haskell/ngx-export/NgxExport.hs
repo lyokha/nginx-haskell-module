@@ -841,8 +841,8 @@ asyncIOYY f x (I n) fd (I fdlk) active (ToBool efd) (ToBool fstRun) =
     where acquireLock cmd = snd <$>
               iterateUntil fst
               (interruptible (safeWaitToSetLock fdlk cmd >>
-                                return (True, False)
-                            )
+                                 return (True, False)
+                             )
                `catches`
                [E.Handler $ \e ->
                    if isEINTR e

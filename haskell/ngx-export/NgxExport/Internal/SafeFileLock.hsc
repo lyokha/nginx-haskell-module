@@ -23,20 +23,20 @@ import GHC.IO.Device
 
 fcntlOfdSetlkw :: CInt
 #ifdef F_OFD_SETLKW
-fcntlOfdSetlkw = #const F_OFD_SETLKW
+fcntlOfdSetlkw = (#const F_OFD_SETLKW)
 #else
 fcntlOfdSetlkw = 38
 #endif
 
 fcntlOfdGetlk :: CInt
 #ifdef F_OFD_SETLKW
-fcntlOfdGetlk = #const F_OFD_GETLK
+fcntlOfdGetlk = (#const F_OFD_GETLK)
 #else
 fcntlOfdGetlk = 36
 #endif
 
 fcntlSetlkw :: CInt
-fcntlSetlkw = #const F_SETLKW
+fcntlSetlkw = (#const F_SETLKW)
 
 -- the functions below are mostly adopted from System.Posix.IO.Common
 
