@@ -829,7 +829,7 @@ asyncIOYY f x (I n) fd (I fdlk) active (ToBool efd) (ToBool fstRun) =
     asyncIOCommon
     (do
         exiting <- if fstRun && fdlk /= -1
-                       then getBestLockImpl fdlk >>= acquireLock
+                       then getBestLockImpl fdlk >>= acquireLock fdlk
                        else return False
         if exiting
             then return (L.empty, True)
@@ -838,11 +838,9 @@ asyncIOYY f x (I n) fd (I fdlk) active (ToBool efd) (ToBool fstRun) =
                 x' <- B.unsafePackCStringLen (x, n)
                 interruptible $ (, False) <$> f x' fstRun
     ) fd efd
-    where acquireLock cmd = snd <$>
+    where acquireLock lk cmd = snd <$>
               iterateUntil fst
-              (interruptible (safeWaitToSetLock fdlk cmd >>
-                                 return (True, False)
-                             )
+              (interruptible (safeWaitToSetLock lk cmd >> return (True, False))
                `catches`
                [E.Handler $ \e ->
                    if isEINTR e

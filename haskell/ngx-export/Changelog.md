@@ -1,3 +1,15 @@
+### 1.7.4
+
+- Function *safeWaitToSetLock* was moved into a new internal module
+  *NgxExport.Internal.SafeFileLock*.
+- Implemented run-time choice of the best available file-lock implementation
+  (i.e. standard POSIX *F_SETLKW* or *F_OFD_SETLKW* which is a better choice as
+  it does not involve deadlock detection and thus better matches our purposes).
+- Catch *EDEADLK* inside *safeWaitToSetLock* to make file-locks with *F_SETLKW*
+  behave more nicely.
+- Calculate positions of fields in *struct flock* correctly using *hsc2hs*
+  directives.
+
 ### 1.7.3
 
 - Further fixes for inactive shared services waiting on file-locks.

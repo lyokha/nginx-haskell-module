@@ -16,7 +16,7 @@ import GHC.IO.Device
 #include <HsFFI.h>
 
 #ifndef HAVE_FCNTL_H
-#error Required C header file fcntl.h is not usable
+#error HsFFI claims that required C header file fcntl.h is missing
 #endif
 
 #include <fcntl.h>
@@ -38,7 +38,7 @@ fcntlOfdGetlk = 36
 fcntlSetlkw :: CInt
 fcntlSetlkw = (#const F_SETLKW)
 
--- the functions below are mostly adopted from System.Posix.IO.Common
+-- functions below were mostly adopted from System.Posix.IO.Common
 
 mode2Int :: SeekMode -> CInt
 mode2Int AbsoluteSeek = (#const SEEK_SET)
@@ -60,25 +60,26 @@ allocaLock (lockreq, mode, start, len) io =
     (#poke struct flock, l_pid)    p (0 :: CPid)
     io p
 
+writeLock :: FileLock
+writeLock = (WriteLock, AbsoluteSeek, 0, 0)
+
 foreign import ccall interruptible "HsBase.h fcntl"
     safe_c_fcntl_lock :: CInt -> CInt -> Ptr CFLock -> IO CInt
 
 -- interruptible version of waitToSetLock as defined in System.Posix.IO
 safeWaitToSetLock :: Fd -> CInt -> IO ()
-safeWaitToSetLock (Fd fd) cmd = allocaLock (WriteLock, AbsoluteSeek, 0, 0) $
-    \p_flock -> throwErrnoIfMinus1_ "safeWaitToSetLock" $
-        safe_c_fcntl_lock fd cmd p_flock
+safeWaitToSetLock (Fd fd) cmd = allocaLock writeLock $ \p_flock ->
+    throwErrnoIfMinus1_ "safeWaitToSetLock" $ safe_c_fcntl_lock fd cmd p_flock
 
 -- returns fcntlOfdSetlkw if OFD locks are available, or fcntlSetlkw otherwise
 getBestLockImpl :: Fd -> IO CInt
-getBestLockImpl (Fd fd) = allocaLock (WriteLock, AbsoluteSeek, 0, 0) $
-    \p_flock -> do
-        res <- c_fcntl_lock fd fcntlOfdGetlk p_flock
-        if res == -1
-            then do
-                errno <- getErrno
-                return $ if errno == eINVAL
-                             then fcntlSetlkw
-                             else fcntlOfdSetlkw
-            else return fcntlOfdSetlkw
+getBestLockImpl (Fd fd) = allocaLock writeLock $ \p_flock -> do
+    res <- c_fcntl_lock fd fcntlOfdGetlk p_flock
+    if res == -1
+        then do
+            errno <- getErrno
+            return $ if errno == eINVAL
+                         then fcntlSetlkw
+                         else fcntlOfdSetlkw
+        else return fcntlOfdSetlkw
 
