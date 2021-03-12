@@ -21,11 +21,11 @@ jobs:
           - ghc: 9.0.1
             cabal: 3.4.0.0
             nginx: head
-            experimental: true
+            experimental: false
           - ghc: 9.0.1
             cabal: 3.4.0.0
             nginx: 1.18.0
-            experimental: true
+            experimental: false
           - ghc: 8.10.2
             cabal: 3.2
             nginx: 1.18.0
