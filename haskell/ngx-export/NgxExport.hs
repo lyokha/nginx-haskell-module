@@ -549,8 +549,8 @@ instance Show RestartWorkerProcess where
 data WorkerProcessIsExiting = WorkerProcessIsExiting deriving (Show, Eq)
 
 instance Exception WorkerProcessIsExiting where
-  fromException = asyncExceptionFromException
-  toException = asyncExceptionToException
+    fromException = asyncExceptionFromException
+    toException = asyncExceptionToException
 
 -- | Finalizes the HTTP request.
 --
@@ -707,7 +707,7 @@ fromHTTPHeaders = L.fromChunks . foldr (\(z -> a, z -> b) -> ([a, b] ++)) []
               | otherwise = s
 
 isIOError :: Errno -> IOError -> Bool
-isIOError e = (Just ((\(Errno i) -> i) e) ==) . ioe_errno
+isIOError (Errno e) = (Just e ==) . ioe_errno
 {-# INLINE isIOError #-}
 
 isEINTR :: IOError -> Bool

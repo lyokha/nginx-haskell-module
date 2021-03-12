@@ -402,8 +402,8 @@ ngx_string(
 "    deriving (Show, Eq)\n\n"
 
 "instance AUX_NGX.Exception WorkerProcessIsExiting where\n"
-"  fromException = AUX_NGX.asyncExceptionFromException\n"
-"  toException = AUX_NGX.asyncExceptionToException\n\n"
+"    fromException = AUX_NGX.asyncExceptionFromException\n"
+"    toException = AUX_NGX.asyncExceptionToException\n\n"
 
 "data FinalizeHTTPRequest = FinalizeHTTPRequest Int (Maybe String) deriving Eq"
 "\n\n"
@@ -586,8 +586,7 @@ ngx_string(
 "              | otherwise = s\n\n"
 
 "aux_ngx_isIOError :: AUX_NGX.Errno -> AUX_NGX.IOError -> Bool\n"
-"aux_ngx_isIOError e =\n"
-"    (Just ((\\(AUX_NGX.Errno i) -> i) e) ==) . AUX_NGX.ioe_errno\n"
+"aux_ngx_isIOError (AUX_NGX.Errno e) = (Just e ==) . AUX_NGX.ioe_errno\n"
 "{-# INLINE aux_ngx_isIOError #-}\n\n"
 
 "aux_ngx_isEINTR :: AUX_NGX.IOError -> Bool\n"
