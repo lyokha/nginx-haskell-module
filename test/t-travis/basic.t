@@ -73,6 +73,7 @@ instance UrlDecodable L.ByteString where
     doURLDecode (L.uncons -> Just (x, xs)) = (x `L.cons`) <$> doURLDecode xs
 
 -- does not match when any of the 2 args is empty or not decodable
+matches :: String -> String -> Bool
 matches = (fromMaybe False .) . liftM2 (=~) `on` (doURLDecode =<<) . toMaybe
     where toMaybe [] = Nothing
           toMaybe a  = Just a
