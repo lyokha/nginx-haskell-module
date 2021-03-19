@@ -38,10 +38,6 @@ jobs:
             cabal: 3.2
             nginx: 1.14.2
             experimental: false
-          - ghc: 8.4.4
-            cabal: 3.2
-            nginx: 1.12.2
-            experimental: false
     steps:
       - name: Checkout
         uses: actions/checkout@v2
