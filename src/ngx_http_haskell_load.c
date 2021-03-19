@@ -39,6 +39,8 @@ ngx_string("ambiguity_");
 static char  *haskell_module_install_signal_handlers_option =
 "--install-signal-handlers=yes";
 
+static void ngx_http_haskell_ghc_rts_exit(int unused_exit_status);
+
 static const CInt  haskell_module_ngx_export_api_version_major = 1;
 static const CInt  haskell_module_ngx_export_api_version_minor = 7;
 
@@ -46,9 +48,9 @@ static const CInt  haskell_module_ngx_export_api_version_minor = 7;
 ngx_int_t
 ngx_http_haskell_load(ngx_cycle_t *cycle)
 {
-    typedef CInt                  (*version_f_t)(CInt *, CInt);
-    typedef CInt                  (*type_checker_t)(void);
-    typedef CInt                  (*ambiguity_checker_t)(void);
+    typedef CInt                   (*version_f_t)(CInt *, CInt);
+    typedef CInt                   (*type_checker_t)(void);
+    typedef CInt                   (*ambiguity_checker_t)(void);
 
     typedef enum {
         ngx_http_haskell_handler_ambiguity_unambiguous = 0,
@@ -58,22 +60,23 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         ngx_http_haskell_handler_ambiguity_ioy_y_async
     } ngx_http_haskell_handler_ambiguity_e;
 
-    ngx_uint_t                      i;
-    ngx_http_haskell_main_conf_t   *mcf;
-    ngx_http_haskell_handler_t     *handlers;
-    char                           *dl_error;
-    char                          **argv = NULL;
-    int                             argc;
-    u_char                         *pid_value;
-    size_t                          pid_len;
-    version_f_t                     version_f = NULL;
-    CInt                            version[4], version_len;
-    void                          (*install_signal_handler)(void);
-    ngx_uint_t                      single_proc_fg;
+    ngx_uint_t                       i;
+    ngx_http_haskell_main_conf_t    *mcf;
+    ngx_http_haskell_handler_t      *handlers;
+    char                            *dl_error;
+    char                           **argv = NULL;
+    int                              argc;
+    u_char                          *pid_value;
+    size_t                           pid_len;
+    version_f_t                      version_f = NULL;
+    CInt                             version[4], version_len;
+    void                          (**exit_fn)(int);
+    void                           (*install_signal_handler)(void);
+    ngx_uint_t                       single_proc_fg;
 #if !(NGX_WIN32)
-    struct sigaction                sa;
+    struct sigaction                 sa;
 #endif
-    ngx_str_t                       checker_name = ngx_null_string;
+    ngx_str_t                        checker_name = ngx_null_string;
 
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
     if (mcf == NULL || !mcf->code_loaded) {
@@ -120,6 +123,15 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     if (dl_error != NULL) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                       "failed to load function \"hs_exit\": %s", dl_error);
+        goto dlclose_and_exit;
+    }
+
+    exit_fn = (void (**)(int)) dlsym(mcf->dl_handle, "exitFn");
+    dl_error = dlerror();
+    if (dl_error != NULL) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                      "failed to load function ponter \"exitFn\": %s",
+                      dl_error);
         goto dlclose_and_exit;
     }
 
@@ -285,8 +297,8 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     }
 #endif
 
-    /* FIXME: hs_init() may exit(EXIT_FAILURE), and in this case Nginx master
-     * may begin to continuously restart workers; not sure if it's fixable */
+    *exit_fn = ngx_http_haskell_ghc_rts_exit;
+
     mcf->hs_init(&argc, &argv);
     ngx_pfree(cycle->pool, argv);
 
@@ -586,5 +598,14 @@ ngx_http_haskell_unload(ngx_cycle_t *cycle, ngx_uint_t exiting)
         }
         mcf->dl_handle = NULL;
     }
+}
+
+
+static void
+ngx_http_haskell_ghc_rts_exit(int unused_exit_status)
+{
+    ngx_log_error(NGX_LOG_EMERG, ngx_cycle->log, 0,
+                  "ghc RTS exited prematurely, terminating the worker process");
+    exit(2);
 }
 
