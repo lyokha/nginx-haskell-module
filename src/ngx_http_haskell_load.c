@@ -605,7 +605,7 @@ static void
 ngx_http_haskell_ghc_rts_exit(int unused_exit_status)
 {
     ngx_log_error(NGX_LOG_EMERG, ngx_cycle->log, 0,
-                  "ghc RTS exited prematurely, terminating the worker process");
+                  "ghc RTS exited abnormally, terminating the worker process");
     exit(2);
 }
 
