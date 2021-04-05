@@ -17,5 +17,6 @@ Hackage.
     * Module `NgxExport.Tools.Aggregate <https://hackage.haskell.org/package/ngx-export-tools-extra/docs/NgxExport-Tools-Aggregate.html>`__
     * Module `NgxExport.Tools.EDE <https://hackage.haskell.org/package/ngx-export-tools-extra/docs/NgxExport-Tools-EDE.html>`__
     * Module `NgxExport.Tools.Prometheus <https://hackage.haskell.org/package/ngx-export-tools-extra/docs/NgxExport-Tools-Prometheus.html>`__
+    * Module `NgxExport.Tools.ServiceHookAdaptor <https://hackage.haskell.org/package/ngx-export-tools-extra/docs/NgxExport-Tools-ServiceHookAdaptor.html>`__
     * Module `NgxExport.Tools.Subrequest <https://hackage.haskell.org/package/ngx-export-tools-extra/docs/NgxExport-Tools-Subrequest.html>`__
 
