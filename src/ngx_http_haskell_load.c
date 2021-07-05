@@ -39,7 +39,7 @@ ngx_string("ambiguity_");
 static char  *haskell_module_install_signal_handlers_option =
 "--install-signal-handlers=yes";
 
-static void ngx_http_haskell_ghc_rts_exit(int unused_exit_status);
+static void ngx_http_haskell_ghc_rts_exit(int exit_status);
 
 static const CInt  haskell_module_ngx_export_api_version_major = 1;
 static const CInt  haskell_module_ngx_export_api_version_minor = 7;
@@ -602,10 +602,11 @@ ngx_http_haskell_unload(ngx_cycle_t *cycle, ngx_uint_t exiting)
 
 
 static void
-ngx_http_haskell_ghc_rts_exit(int unused_exit_status)
+ngx_http_haskell_ghc_rts_exit(int exit_status)
 {
     ngx_log_error(NGX_LOG_EMERG, ngx_cycle->log, 0,
-                  "ghc RTS exited abnormally, terminating the worker process");
+                  "ghc RTS exited abnormally with status %d, "
+                  "terminating the worker process", exit_status);
     exit(2);
 }
 
