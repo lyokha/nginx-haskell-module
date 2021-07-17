@@ -1,0 +1,14 @@
+# generate compile_flags.txt for clangd by running this as
+#
+#   NGX_HOME=/path/to/nginx_sources . compile_flags.stub > compile_flags.txt
+#
+
+echo -I$NGX_HOME/src/core
+echo -I$NGX_HOME/src/http
+echo -I$NGX_HOME/src/http/modules
+echo -I$NGX_HOME/src/event
+echo -I$NGX_HOME/src/event/modules
+echo -I$NGX_HOME/src/os/unix
+echo -I$NGX_HOME/objs
+echo -I$(ghc --print-libdir)/include
+
