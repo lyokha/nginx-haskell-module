@@ -267,7 +267,49 @@ ngx_http_haskell_init(ngx_conf_t *cf)
     mcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_haskell_module);
     cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
 
-    if (mcf == NULL || !mcf->code_loaded) {
+    if (mcf == NULL) {
+        return NGX_OK;
+    }
+
+    if (cmcf->variables_keys != NULL) {
+        cmkeys = cmcf->variables_keys->keys.elts;
+
+        vars = mcf->var_nohash.elts;
+        for (i = 0; i < mcf->var_nohash.nelts; i++) {
+            wildcard = vars[i].name.data[vars[i].name.len - 1] == '*' ? 1 : 0;
+            len = wildcard ? vars[i].name.len - 1 : vars[i].name.len;
+            found = 0;
+            for (j = 0; j < cmcf->variables_keys->keys.nelts; j++) {
+                len_matches = wildcard ?
+                        len <= cmkeys[j].key.len : len == cmkeys[j].key.len;
+                if (len_matches
+                    && ngx_strncmp(vars[i].name.data,
+                                   cmkeys[j].key.data, len) == 0)
+                {
+                    /* variables with any get handler are allowed here! */
+                    ((ngx_http_variable_t *) cmkeys[j].value)->flags
+                            |= NGX_HTTP_VAR_NOHASH;
+                    found = 1;
+                    if (!wildcard) {
+                        break;
+                    }
+                }
+            }
+            if (found == 0) {
+                if (wildcard) {
+                    ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                                       "no variable matches wildcard \"%V\"",
+                                       &vars[i].name);
+                } else {
+                    ngx_conf_log_error(NGX_LOG_ERR, cf, 0,
+                                       "variable \"%V\" was not declared",
+                                       &vars[i].name);
+                }
+            }
+        }
+    }
+
+    if (!mcf->code_loaded) {
         return NGX_OK;
     }
 
@@ -300,43 +342,6 @@ ngx_http_haskell_init(ngx_conf_t *cf)
         }
 
         *h = ngx_http_haskell_log_phase_handler;
-    }
-
-    if (cmcf->variables_keys == NULL) {
-        return NGX_OK;
-    }
-
-    cmkeys = cmcf->variables_keys->keys.elts;
-
-    vars = mcf->var_nohash.elts;
-    for (i = 0; i < mcf->var_nohash.nelts; i++) {
-        wildcard = vars[i].name.data[vars[i].name.len - 1] == '*' ? 1 : 0;
-        len = wildcard ? vars[i].name.len - 1 : vars[i].name.len;
-        found = 0;
-        for (j = 0; j < cmcf->variables_keys->keys.nelts; j++) {
-            len_matches = wildcard ?
-                    len <= cmkeys[j].key.len : len == cmkeys[j].key.len;
-            if (len_matches
-                && ngx_strncmp(vars[i].name.data, cmkeys[j].key.data, len) == 0)
-            {
-                /* variables with any get handler are allowed here! */
-                ((ngx_http_variable_t *) cmkeys[j].value)->flags
-                        |= NGX_HTTP_VAR_NOHASH;
-                found = 1;
-                if (!wildcard) {
-                    break;
-                }
-            }
-        }
-        if (found == 0) {
-            if (wildcard) {
-                ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
-                        "no variable matches wildcard \"%V\"", &vars[i].name);
-            } else {
-                ngx_conf_log_error(NGX_LOG_ERR, cf, 0,
-                        "variable \"%V\" was not declared", &vars[i].name);
-            }
-        }
     }
 
     return NGX_OK;
