@@ -72,9 +72,16 @@ static void ngx_http_haskell_rlock(ngx_fd_t fd);
 static void ngx_http_haskell_unlock(ngx_fd_t fd);
 static ngx_err_t ngx_http_haskell_rlock_fd(ngx_fd_t fd);
 #endif
+#if (NGX_PCRE)
+static void * ngx_libc_cdecl ngx_http_haskell_regex_malloc(size_t size);
+static void ngx_libc_cdecl ngx_http_haskell_regex_free(void *p);
+#endif
 
-static ngx_event_t  dummy_write_event;
-static ngx_event_t  service_supervise_event;
+static ngx_event_t   dummy_write_event;
+static ngx_event_t   service_supervise_event;
+#if (NGX_PCRE)
+static ngx_pool_t   *ngx_http_haskell_pcre_pool;
+#endif
 
 
 ngx_int_t
@@ -460,6 +467,10 @@ ngx_http_haskell_service_event(ngx_event_t *ev)
     ngx_uint_t                                 skip_hooks = 0;
     ngx_uint_t                                 log_level;
     ngx_int_t                                  rc;
+#if (NGX_PCRE)
+    void                                    *(*old_pcre_malloc)(size_t) = NULL;
+    void                                     (*old_pcre_free)(void *) = NULL;
+#endif
 
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
 
@@ -738,8 +749,24 @@ run_hooks:
                     arg.data = var_data;
                     arg.len = var->len;
                 }
+#if (NGX_PCRE)
+                if (hev->first_run) {
+                    old_pcre_malloc = pcre_malloc;
+                    old_pcre_free = pcre_free;
+                    pcre_malloc = ngx_http_haskell_regex_malloc;
+                    pcre_free = ngx_http_haskell_regex_free;
+                    ngx_http_haskell_pcre_pool = hev->cycle->pool;
+                }
+#endif
                 ngx_http_haskell_run_service_hook(cycle, mcf,
                                                   &service_hooks[i], &arg);
+#if (NGX_PCRE)
+                if (hev->first_run) {
+                    pcre_malloc = old_pcre_malloc;
+                    pcre_free = old_pcre_free;
+                    ngx_http_haskell_pcre_pool = NULL;
+                }
+#endif
                 break;
             }
             if (ngx_http_haskell_consume_from_async_event_channel(
@@ -1401,6 +1428,30 @@ ngx_http_haskell_rlock_fd(ngx_fd_t fd)
     }
 
     return 0;
+}
+
+#endif
+
+
+#if (NGX_PCRE)
+
+static void * ngx_libc_cdecl
+ngx_http_haskell_regex_malloc(size_t size)
+{
+    ngx_pool_t  *pool = ngx_http_haskell_pcre_pool;
+
+    if (pool) {
+        return ngx_palloc(pool, size);
+    }
+
+    return NULL;
+}
+
+
+static void ngx_libc_cdecl
+ngx_http_haskell_regex_free(void *p)
+{
+    return;
 }
 
 #endif
