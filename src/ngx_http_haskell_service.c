@@ -763,6 +763,12 @@ run_hooks:
 #if (NGX_PCRE)
                 if (hev->first_run) {
                     pcre_malloc = old_pcre_malloc;
+                    /* BEWARE: Haskell modules like pcre-light shall free
+                     * compiled regexes with ngx_http_haskell_regex_free() at
+                     * the exit even though pcre_free gets reset below: this is
+                     * because the address of the function gets stored by value
+                     * as the finalizer of the foreign pointer returned after
+                     * compilation of the regexes */
                     pcre_free = old_pcre_free;
                     ngx_http_haskell_pcre_pool = NULL;
                 }
