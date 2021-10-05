@@ -41,29 +41,31 @@ static ngx_event_t  dummy_write_event;
 ngx_int_t
 ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
 {
-    ngx_uint_t                         i, j;
-    ngx_http_haskell_main_conf_t      *mcf;
-    ngx_http_haskell_loc_conf_t       *lcf;
-    ngx_http_core_main_conf_t         *cmcf;
-    ngx_http_variable_t               *cmvars;
-    ngx_http_variable_value_t         *value;
-    ngx_http_haskell_handler_t        *handlers;
-    ngx_http_haskell_code_var_data_t  *code_vars;
-    ngx_http_haskell_ctx_t            *ctx;
-    ngx_http_haskell_wrap_ctx_t       *wctx;
-    ngx_http_haskell_async_data_t     *async_data, *async_data_elts;
-    ngx_http_haskell_var_handle_t     *var_nocacheable;
-    ngx_http_haskell_var_cache_t      *var_nocacheable_cache;
-    ngx_int_t                          found_idx;
-    ngx_uint_t                         task_complete;
-    ngx_http_complex_value_t          *args;
-    ngx_str_t                          arg1;
-    ngx_fd_t                           fd[2];
-    ngx_pool_cleanup_t                *cln;
-    ngx_uint_t                         rb, rb_skip;
-    HsStablePtr                        res;
+    ngx_uint_t                                    i, j;
+    ngx_http_haskell_main_conf_t                 *mcf;
+    ngx_http_haskell_loc_conf_t                  *lcf;
+    ngx_http_core_main_conf_t                    *cmcf;
+    ngx_http_variable_t                          *cmvars;
+    ngx_http_variable_value_t                    *value;
+    ngx_http_haskell_handler_t                   *handlers;
+    ngx_http_haskell_code_var_data_t             *code_vars;
+    ngx_http_haskell_ctx_t                       *ctx;
+    ngx_http_haskell_wrap_ctx_t                  *wctx;
+    ngx_http_haskell_async_data_t                *async_data, *async_data_elts;
+    ngx_http_haskell_var_handle_t                *var_nocacheable;
+    ngx_http_haskell_var_cache_t                 *var_nocacheable_cache;
+    ngx_http_haskell_volatile_var_handle_data_t  *strict_volatile_vars;
+    ngx_http_haskell_volatile_var_handle_data_t  *strict_volatile_var;
+    ngx_int_t                                     found_idx;
+    ngx_uint_t                                    task_complete;
+    ngx_http_complex_value_t                     *args;
+    ngx_str_t                                     arg1;
+    ngx_fd_t                                      fd[2];
+    ngx_pool_cleanup_t                           *cln;
+    ngx_uint_t                                    rb, rb_skip, se_skip;
+    HsStablePtr                                   res;
 
-    static CUInt                       dummy_active;
+    static CUInt                                  dummy_active;
 
     mcf = ngx_http_get_module_main_conf(r, ngx_http_haskell_module);
     lcf = ngx_http_get_module_loc_conf(r, ngx_http_haskell_module);
@@ -131,13 +133,70 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
              * merged in location configuration hierarchy, however this should
              * not be a problem because all variables (including nocacheable)
              * cache after the first evaluation and should return the cache on
-             * the next evaluations */
+             * the next evaluations; strict volatile variables get asked for
+             * evaluation more than once intentionally */
             if (code_vars[i].strict_early) {
-                value = ngx_http_get_indexed_variable(r, code_vars[i].index);
-                if (value == NULL || !value->valid) {
-                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                                  "failed to evaluate strict variable \"%V\" "
-                                  "early", &cmvars[code_vars[i].index].name);
+                se_skip = 0;
+                if (code_vars[i].strict_volatile) {
+                    if (ctx == NULL) {
+                        wctx = ngx_pcalloc(r->pool,
+                                           sizeof(ngx_http_haskell_wrap_ctx_t));
+                        if (wctx == NULL) {
+                            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                          "failed to create request context, "
+                                          "declining phase handler");
+                            return NGX_DECLINED;
+                        }
+                        ctx = &wctx->ctx;
+                        ctx->initialized = 1;
+                        if (ngx_array_init(
+                            &ctx->strict_volatile_vars, r->pool, 1,
+                            sizeof(ngx_http_haskell_volatile_var_handle_data_t))
+                            != NGX_OK)
+                        {
+                            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                          "failed to create strict volatile "
+                                          "variable data array, "
+                                          "declining phase handler");
+                            return NGX_DECLINED;
+                        }
+                        ngx_http_set_ctx(r, ctx, ngx_http_haskell_module);
+                    }
+                    strict_volatile_var = NULL;
+                    strict_volatile_vars = ctx->strict_volatile_vars.elts;
+                    for (j = 0; j < ctx->strict_volatile_vars.nelts; j++) {
+                        if (strict_volatile_vars[j].index == code_vars[i].index)
+                        {
+                            strict_volatile_var = &strict_volatile_vars[j];
+                            if (strict_volatile_vars[j].id == lcf->numeric_id) {
+                                se_skip = 1;
+                            }
+                            break;
+                        }
+                    }
+                    if (strict_volatile_var == NULL) {
+                        strict_volatile_var =
+                                ngx_array_push(&ctx->strict_volatile_vars);
+                        if (strict_volatile_var == NULL) {
+                            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                          "failed to create strict volatile "
+                                          "variable data, "
+                                          "declining phase handler");
+                            return NGX_DECLINED;
+                        }
+                        strict_volatile_var->index = code_vars[i].index;
+                    }
+                    strict_volatile_var->id = lcf->numeric_id;
+                }
+                if (!se_skip) {
+                    value = code_vars[i].strict_volatile ?
+                        ngx_http_get_flushed_variable(r, code_vars[i].index) :
+                        ngx_http_get_indexed_variable(r, code_vars[i].index);
+                    if (value == NULL || !value->valid) {
+                        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                "failed to evaluate strict variable ""\"%V\" "
+                                "early", &cmvars[code_vars[i].index].name);
+                    }
                 }
             }
             continue;
@@ -145,7 +204,10 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
         if (ctx == NULL) {
             wctx = ngx_pcalloc(r->pool, sizeof(ngx_http_haskell_wrap_ctx_t));
             if (wctx == NULL) {
-                goto decline_phase_handler;
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "failed to create request context, "
+                              "declining phase handler");
+                return NGX_DECLINED;
             }
             ctx = &wctx->ctx;
             ctx->initialized = 1;

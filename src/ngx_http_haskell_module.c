@@ -80,6 +80,7 @@ static ngx_inline ngx_uint_t ngx_http_haskell_has_async_tasks(
     ngx_http_haskell_main_conf_t *mcf);
 
 static u_char  haskell_module_r_ptr0[sizeof(uintptr_t) / sizeof(u_char)];
+static ngx_uint_t  haskell_module_global_cnt;
 
 
 static ngx_command_t  ngx_http_haskell_module_commands[] = {
@@ -406,6 +407,7 @@ ngx_http_haskell_create_loc_conf(ngx_conf_t *cf)
 
     lcf->request_body_read_temp_file = NGX_CONF_UNSET;
     lcf->service_hook_index = NGX_ERROR;
+    lcf->numeric_id = ++haskell_module_global_cnt;
 
     return lcf;
 }
@@ -417,17 +419,44 @@ ngx_http_haskell_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_haskell_loc_conf_t       *prev = parent;
     ngx_http_haskell_loc_conf_t       *conf = child;
 
-    ngx_uint_t                         i, j;
-    ngx_uint_t                         nelts, prev_nelts;
+    ngx_uint_t                         i, j = 0;
+    ngx_uint_t                         nelts, prev_nelts, cv_nelts = 0;
     ngx_http_haskell_code_var_data_t  *cv_elts, *prev_cv_elts;
+    ngx_array_t                        filtered_prev_cv;
     ngx_int_t                          index;
 
     prev_nelts = prev->code_vars.nelts;
+    prev_cv_elts = prev->code_vars.elts;
+
+    for (i = 0; i < prev_nelts; i++) {
+        if (!prev_cv_elts[i].strict_volatile) {
+            ++cv_nelts;
+        }
+    }
+
+    if (cv_nelts > 0) {
+        if (ngx_array_init(&filtered_prev_cv, cf->pool, cv_nelts,
+                           sizeof(ngx_http_haskell_code_var_data_t)) != NGX_OK
+            || ngx_array_push_n(&filtered_prev_cv, cv_nelts) == NULL)
+        {
+            return NGX_CONF_ERROR;
+        }
+        cv_elts = filtered_prev_cv.elts;
+        for (i = 0; i < prev_nelts; i++) {
+            if (!prev_cv_elts[i].strict_volatile) {
+                cv_elts[j++] = prev_cv_elts[i];
+            }
+        }
+    }
+
+    prev_nelts = cv_nelts;
+
     if (prev_nelts > 0) {
         if (ngx_array_push_n(&conf->code_vars, prev_nelts) == NULL) {
             return NGX_CONF_ERROR;
         }
 
+        prev_cv_elts = cv_elts;
         cv_elts = conf->code_vars.elts;
         nelts = conf->code_vars.nelts;
         if (nelts > prev_nelts) {
@@ -436,7 +465,6 @@ ngx_http_haskell_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
             }
         }
 
-        prev_cv_elts = prev->code_vars.elts;
         for (i = 0; i < prev_nelts; i++) {
             cv_elts[i] = prev_cv_elts[i];
             if (cv_elts[i].async) {
@@ -1270,6 +1298,7 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_get_variable_pt                   get_handler;
     ngx_uint_t                                 async, rb, service, service_cb;
     ngx_uint_t                                 strict = 0, strict_early = 0;
+    ngx_uint_t                                 strict_volatile = 0;
 
     value = cf->args->elts;
 
@@ -1304,9 +1333,11 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (!async && !service) {
         if (value[2].len > 3
-            && value[2].data[0] == '<' && value[2].data[1] == '!')
+            && value[2].data[0] == '<'
+            && (value[2].data[1] == '!' || value[2].data[1] == '~'))
         {
             strict_early = 1;
+            strict_volatile = value[2].data[1] == '~' ? 1 : 0;
             mcf->has_strict_early_vars = 1;
             lcf->check_async_and_strict_early = 1;
             value[2].len -= 2;
@@ -1318,6 +1349,12 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             value[2].len--;
             value[2].data++;
         }
+    }
+
+    if (strict_volatile && cf->cmd_type & NGX_HTTP_SRV_CONF) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "strict volatile variables are not allowed here");
+        return NGX_CONF_ERROR;
     }
 
     if (value[2].len < 2 || value[2].data[0] != '$') {
@@ -1360,6 +1397,7 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     code_var_data->strict = strict;
     code_var_data->strict_early = strict_early;
+    code_var_data->strict_volatile = strict_volatile;
     code_var_data->handler = NGX_ERROR;
     code_var_data->async = async;
 
@@ -1472,8 +1510,16 @@ add_variable:
             return NGX_CONF_ERROR;
         }
     } else {
-        v = ngx_http_add_variable(cf, &value[2], NGX_HTTP_VAR_CHANGEABLE);
+        v = ngx_http_add_variable(cf, &value[2], NGX_HTTP_VAR_CHANGEABLE
+                    | (strict_volatile ? NGX_HTTP_VAR_NOCACHEABLE : 0));
         if (v == NULL) {
+            return NGX_CONF_ERROR;
+        }
+        if (strict_volatile && !(v->flags & NGX_HTTP_VAR_NOCACHEABLE)) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "strict volatile variable \"%V\" cannot be set "
+                               "as nocacheable, probably it has already been "
+                               "declared in another context", &value[2]);
             return NGX_CONF_ERROR;
         }
         v_idx = ngx_http_get_variable_index(cf, &value[2]);

@@ -220,6 +220,7 @@ typedef struct {
     ngx_http_haskell_content_handler_data_t   *content_handler_data;
     ngx_flag_t                                 request_body_read_temp_file;
     ngx_int_t                                  service_hook_index;
+    ngx_uint_t                                 numeric_id;
     ngx_uint_t                                 static_content:1;
     ngx_uint_t                                 check_async_and_strict_early:1;
     ngx_uint_t                                 check_strict:1;
@@ -245,6 +246,7 @@ typedef struct {
     ngx_uint_t                                 async:1;
     ngx_uint_t                                 strict:1;
     ngx_uint_t                                 strict_early:1;
+    ngx_uint_t                                 strict_volatile:1;
 } ngx_http_haskell_code_var_data_t;
 
 
@@ -267,6 +269,7 @@ typedef struct {
 typedef struct {
     ngx_array_t                                async_data;
     ngx_array_t                                request_body;
+    ngx_array_t                                strict_volatile_vars;
     ngx_http_haskell_content_handler_data_t   *content_handler_data;
     ngx_uint_t                                 request_body_read_cycle;
     ngx_uint_t                                 initialized:1;
@@ -293,6 +296,12 @@ typedef struct {
     ngx_int_t                                  index;
     uint64_t                                   seqn;
 } ngx_http_haskell_shm_var_handle_data_t;
+
+
+typedef struct {
+    ngx_int_t                                  index;
+    ngx_uint_t                                 id;
+} ngx_http_haskell_volatile_var_handle_data_t;
 
 
 typedef struct {
