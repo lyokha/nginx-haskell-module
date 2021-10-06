@@ -223,6 +223,7 @@ typedef struct {
     ngx_uint_t                                 numeric_id;
     ngx_uint_t                                 static_content:1;
     ngx_uint_t                                 check_async_and_strict_early:1;
+    ngx_uint_t                                 share_async_and_strict_early:1;
     ngx_uint_t                                 check_strict:1;
 } ngx_http_haskell_loc_conf_t;
 

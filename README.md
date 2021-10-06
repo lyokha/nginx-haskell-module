@@ -1032,8 +1032,8 @@ evaluation of ``$hs_request_method``? This can be easily avoided by using
 *strict* variable handlers. There are *early* strict handlers which get
 evaluated during the early *rewrite phase* and strict handlers which get
 evaluated during the late *log phase*. To evaluate a variable in the early phase
-unconditionally, the handler's variable must start with ``<!``, while for the
-late evaluation the prefix must be ``!``.
+unconditionally, the handler's variable must start with ``<!`` or ``<~``, while
+for the late evaluation the prefix must be ``!``.
 
 Thus, to avoid the empty *if* clause, variable ``$hs_request_method`` from the
 previous section must be declared as
@@ -1041,6 +1041,11 @@ previous section must be declared as
 ```nginx
         haskell_run ! <!$hs_request_method $request_method;
 ```
+
+Variables tagged with prefix ``<~`` are *strict volatile* which means that they
+are *nocacheable* and thus can eagerly drive running their handlers several
+times during a single request: they can be useful in handlers which perform
+logging from many places in the configuration file.
 
 Strict evaluation fits any synchronous haskell handler. It is especially useful
 when the handler produces side effects such as writing into some global state.

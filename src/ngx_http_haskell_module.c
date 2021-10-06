@@ -422,7 +422,7 @@ ngx_http_haskell_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_uint_t                         i, j = 0;
     ngx_uint_t                         nelts, prev_nelts, cv_nelts = 0;
     ngx_http_haskell_code_var_data_t  *cv_elts, *prev_cv_elts;
-    ngx_array_t                        filtered_prev_cv;
+    ngx_array_t                        tmp_prev_cv;
     ngx_int_t                          index;
 
     prev_nelts = prev->code_vars.nelts;
@@ -434,14 +434,18 @@ ngx_http_haskell_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         }
     }
 
-    if (cv_nelts > 0) {
-        if (ngx_array_init(&filtered_prev_cv, cf->pool, cv_nelts,
+    ngx_memzero(&tmp_prev_cv, sizeof(ngx_array_t));
+
+    cv_elts = prev_cv_elts;
+
+    if (cv_nelts > 0 && cv_nelts < prev_nelts) {
+        if (ngx_array_init(&tmp_prev_cv, cf->pool, cv_nelts,
                            sizeof(ngx_http_haskell_code_var_data_t)) != NGX_OK
-            || ngx_array_push_n(&filtered_prev_cv, cv_nelts) == NULL)
+            || ngx_array_push_n(&tmp_prev_cv, cv_nelts) == NULL)
         {
             return NGX_CONF_ERROR;
         }
-        cv_elts = filtered_prev_cv.elts;
+        cv_elts = tmp_prev_cv.elts;
         for (i = 0; i < prev_nelts; i++) {
             if (!prev_cv_elts[i].strict_volatile) {
                 cv_elts[j++] = prev_cv_elts[i];
@@ -480,8 +484,13 @@ ngx_http_haskell_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         }
     }
 
+    ngx_pfree(cf->pool, tmp_prev_cv.elts);
+
     if (!conf->check_async_and_strict_early) {
-        conf->check_async_and_strict_early = prev->check_async_and_strict_early;
+        conf->check_async_and_strict_early = prev->share_async_and_strict_early;
+    }
+    if (!conf->share_async_and_strict_early) {
+        conf->share_async_and_strict_early = prev->share_async_and_strict_early;
     }
     if (!conf->check_strict) {
         conf->check_strict = prev->check_strict;
@@ -1330,6 +1339,8 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     mcf->has_async_tasks = mcf->has_async_tasks ? 1 : async;
     lcf->check_async_and_strict_early =
             lcf->check_async_and_strict_early ? 1 : async;
+    lcf->share_async_and_strict_early =
+            lcf->share_async_and_strict_early ? 1 : async;
 
     if (!async && !service) {
         if (value[2].len > 3
@@ -1340,6 +1351,9 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             strict_volatile = value[2].data[1] == '~' ? 1 : 0;
             mcf->has_strict_early_vars = 1;
             lcf->check_async_and_strict_early = 1;
+            lcf->share_async_and_strict_early =
+                    lcf->share_async_and_strict_early ? 1 :
+                    strict_volatile ? 0 : 1;
             value[2].len -= 2;
             value[2].data += 2;
         } else if (value[2].len > 2 && value[2].data[0] == '!') {
@@ -1515,12 +1529,23 @@ add_variable:
         if (v == NULL) {
             return NGX_CONF_ERROR;
         }
-        if (strict_volatile && !(v->flags & NGX_HTTP_VAR_NOCACHEABLE)) {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "strict volatile variable \"%V\" cannot be set "
-                               "as nocacheable, probably it has already been "
-                               "declared in another context", &value[2]);
-            return NGX_CONF_ERROR;
+        if (strict_volatile) {
+            if (!(v->flags & NGX_HTTP_VAR_NOCACHEABLE)) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "strict volatile variable \"%V\" cannot be "
+                                   "set as nocacheable, probably it has "
+                                   "already been declared in another context",
+                                   &value[2]);
+                return NGX_CONF_ERROR;
+            }
+        } else {
+            if (v->flags & NGX_HTTP_VAR_NOCACHEABLE) {
+                ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                                   "variable \"%V\" has nocacheable bit set, "
+                                   "probably it has already been declared as "
+                                   "strict volatile",
+                                   &value[2]);
+            }
         }
         v_idx = ngx_http_get_variable_index(cf, &value[2]);
         if (v_idx == NGX_ERROR) {
