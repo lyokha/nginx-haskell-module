@@ -80,7 +80,7 @@ static ngx_inline ngx_uint_t ngx_http_haskell_has_async_tasks(
     ngx_http_haskell_main_conf_t *mcf);
 
 static u_char  haskell_module_r_ptr0[sizeof(uintptr_t) / sizeof(u_char)];
-static ngx_uint_t  haskell_module_global_cnt;
+static ngx_uint_t  haskell_module_global_aux_cnt;
 
 
 static ngx_command_t  ngx_http_haskell_module_commands[] = {
@@ -407,7 +407,7 @@ ngx_http_haskell_create_loc_conf(ngx_conf_t *cf)
 
     lcf->request_body_read_temp_file = NGX_CONF_UNSET;
     lcf->service_hook_index = NGX_ERROR;
-    lcf->numeric_id = ++haskell_module_global_cnt;
+    lcf->numeric_id = ++haskell_module_global_aux_cnt;
 
     return lcf;
 }

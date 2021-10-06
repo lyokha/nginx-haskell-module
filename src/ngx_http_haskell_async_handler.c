@@ -217,7 +217,10 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
             && ngx_array_init(&ctx->async_data, r->pool, 1,
                               sizeof(ngx_http_haskell_async_data_t)) != NGX_OK)
         {
-            goto decline_phase_handler;
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "failed to create an async task, "
+                          "declining phase handler");
+            return NGX_DECLINED;
         }
 
         if (ctx->waiting_more_request_body) {
@@ -254,7 +257,10 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
 
         async_data = ngx_array_push(&ctx->async_data);
         if (async_data == NULL) {
-            goto decline_phase_handler;
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "failed to create an async task, "
+                          "declining phase handler");
+            return NGX_DECLINED;
         }
         async_data->index = code_vars[i].index;
         ngx_str_null(&async_data->result.data);
@@ -328,13 +334,6 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
 
         return NGX_DONE;
     }
-
-    return NGX_DECLINED;
-
-decline_phase_handler:
-
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                  "failed to create an async task, declining phase handler");
 
     return NGX_DECLINED;
 }
