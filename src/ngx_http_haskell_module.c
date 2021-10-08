@@ -419,10 +419,9 @@ ngx_http_haskell_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_haskell_loc_conf_t       *prev = parent;
     ngx_http_haskell_loc_conf_t       *conf = child;
 
-    ngx_uint_t                         i, j = 0;
-    ngx_uint_t                         nelts, prev_nelts, cv_nelts = 0;
+    ngx_uint_t                         i, j, k = 0;
+    ngx_uint_t                         nelts, prev_nelts, new_nelts = 0;
     ngx_http_haskell_code_var_data_t  *cv_elts, *prev_cv_elts;
-    ngx_array_t                        tmp_prev_cv;
     ngx_int_t                          index;
 
     prev_nelts = prev->code_vars.nelts;
@@ -430,70 +429,48 @@ ngx_http_haskell_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     for (i = 0; i < prev_nelts; i++) {
         if (!prev_cv_elts[i].strict_volatile) {
-            ++cv_nelts;
+            ++new_nelts;
         }
     }
 
-    ngx_memzero(&tmp_prev_cv, sizeof(ngx_array_t));
-
-    cv_elts = prev_cv_elts;
-
-    if (cv_nelts > 0 && cv_nelts < prev_nelts) {
-        if (ngx_array_init(&tmp_prev_cv, cf->pool, cv_nelts,
-                           sizeof(ngx_http_haskell_code_var_data_t)) != NGX_OK
-            || ngx_array_push_n(&tmp_prev_cv, cv_nelts) == NULL)
-        {
-            return NGX_CONF_ERROR;
-        }
-        cv_elts = tmp_prev_cv.elts;
-        for (i = 0; i < prev_nelts; i++) {
-            if (!prev_cv_elts[i].strict_volatile) {
-                cv_elts[j++] = prev_cv_elts[i];
-            }
-        }
-    }
-
-    prev_nelts = cv_nelts;
-
-    if (prev_nelts > 0) {
-        if (ngx_array_push_n(&conf->code_vars, prev_nelts) == NULL) {
+    if (new_nelts > 0) {
+        if (ngx_array_push_n(&conf->code_vars, new_nelts) == NULL) {
             return NGX_CONF_ERROR;
         }
 
-        prev_cv_elts = cv_elts;
         cv_elts = conf->code_vars.elts;
         nelts = conf->code_vars.nelts;
-        if (nelts > prev_nelts) {
-            for (i = nelts - 1; i > prev_nelts - 1; i--) {
-                cv_elts[i] = cv_elts[i - prev_nelts];
+        if (nelts > new_nelts) {
+            for (i = nelts - 1; i > new_nelts - 1; i--) {
+                cv_elts[i] = cv_elts[i - new_nelts];
             }
         }
 
         for (i = 0; i < prev_nelts; i++) {
-            cv_elts[i] = prev_cv_elts[i];
-            if (cv_elts[i].async) {
-                index = cv_elts[i].index;
-                for (j = prev_nelts; j < nelts; j++) {
+            if (prev_cv_elts[i].strict_volatile) {
+                continue;
+            }
+            cv_elts[k] = prev_cv_elts[i];
+            if (cv_elts[k].async) {
+                index = cv_elts[k].index;
+                for (j = new_nelts; j < nelts; j++) {
                     if (index == cv_elts[j].index && cv_elts[j].async) {
-                        cv_elts[i].handler = cv_elts[j].handler;
-                        cv_elts[i].args = cv_elts[j].args;
+                        cv_elts[k].handler = cv_elts[j].handler;
+                        cv_elts[k].args = cv_elts[j].args;
                         break;
                     }
                 }
             }
+            ++k;
         }
     }
 
-    ngx_pfree(cf->pool, tmp_prev_cv.elts);
-
-    if (!conf->check_async_and_strict_early) {
-        conf->check_async_and_strict_early = prev->share_async_and_strict_early;
+    if (prev->share_async_and_strict_early) {
+        conf->check_async_and_strict_early = 1;
+        conf->share_async_and_strict_early = 1;
     }
-    if (!conf->share_async_and_strict_early) {
-        conf->share_async_and_strict_early = prev->share_async_and_strict_early;
-    }
-    if (!conf->check_strict) {
-        conf->check_strict = prev->check_strict;
+    if (prev->check_strict) {
+        conf->check_strict = 1;
     }
 
     ngx_conf_merge_value(conf->request_body_read_temp_file,
