@@ -225,6 +225,7 @@ typedef struct {
     ngx_uint_t                                 check_async_and_strict_early:1;
     ngx_uint_t                                 share_async_and_strict_early:1;
     ngx_uint_t                                 check_strict:1;
+    ngx_uint_t                                 merge_strict_volatile_vars:1;
 } ngx_http_haskell_loc_conf_t;
 
 

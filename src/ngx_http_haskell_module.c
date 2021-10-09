@@ -427,9 +427,13 @@ ngx_http_haskell_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     prev_nelts = prev->code_vars.nelts;
     prev_cv_elts = prev->code_vars.elts;
 
-    for (i = 0; i < prev_nelts; i++) {
-        if (!prev_cv_elts[i].strict_volatile) {
-            ++new_nelts;
+    if (prev->merge_strict_volatile_vars) {
+        new_nelts = prev_nelts;
+    } else {
+        for (i = 0; i < prev_nelts; i++) {
+            if (!prev_cv_elts[i].strict_volatile) {
+                ++new_nelts;
+            }
         }
     }
 
@@ -447,7 +451,9 @@ ngx_http_haskell_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         }
 
         for (i = 0; i < prev_nelts; i++) {
-            if (prev_cv_elts[i].strict_volatile) {
+            if (!prev->merge_strict_volatile_vars
+                && prev_cv_elts[i].strict_volatile)
+            {
                 continue;
             }
             cv_elts[k] = prev_cv_elts[i];
@@ -468,6 +474,10 @@ ngx_http_haskell_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     if (prev->share_async_and_strict_early) {
         conf->check_async_and_strict_early = 1;
         conf->share_async_and_strict_early = 1;
+    }
+    if (prev->check_async_and_strict_early && prev->merge_strict_volatile_vars)
+    {
+        conf->check_async_and_strict_early = 1;
     }
     if (prev->check_strict) {
         conf->check_strict = 1;
@@ -1342,11 +1352,7 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
     }
 
-    if (strict_volatile && cf->cmd_type & NGX_HTTP_SRV_CONF) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "strict volatile variables are not allowed here");
-        return NGX_CONF_ERROR;
-    }
+    lcf->merge_strict_volatile_vars = cf->cmd_type & NGX_HTTP_SRV_CONF ? 1 : 0;
 
     if (value[2].len < 2 || value[2].data[0] != '$') {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,

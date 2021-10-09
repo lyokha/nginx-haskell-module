@@ -1045,8 +1045,7 @@ previous section must be declared as
 Variables tagged with prefix ``<~`` are *strict volatile* which means that they
 are *nocacheable* and thus can eagerly drive running their handlers several
 times during a single request: they can be useful in handlers which perform
-logging from many places in the configuration file. Strict volatile variables
-are not allowed in *server* clauses.
+logging from many places in the configuration file.
 
 Strict evaluation fits any synchronous haskell handler. It is especially useful
 when the handler produces side effects such as writing into some global state.
