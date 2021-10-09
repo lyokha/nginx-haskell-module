@@ -474,11 +474,12 @@ ngx_http_haskell_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     if (prev->share_async_and_strict_early) {
         conf->check_async_and_strict_early = 1;
         conf->share_async_and_strict_early = 1;
-    }
-    if (prev->check_async_and_strict_early && prev->merge_strict_volatile_vars)
+    } else if (prev->check_async_and_strict_early
+               && prev->merge_strict_volatile_vars)
     {
         conf->check_async_and_strict_early = 1;
     }
+
     if (prev->check_strict) {
         conf->check_strict = 1;
     }
