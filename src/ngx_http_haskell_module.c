@@ -43,8 +43,6 @@ static struct {
 
 
 static char *ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd,
-    void *conf);
 static char *ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_haskell_service_update_hook(ngx_conf_t *cf,
@@ -1274,7 +1272,7 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
-static char *
+char *
 ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_haskell_loc_conf_t               *lcf = conf;

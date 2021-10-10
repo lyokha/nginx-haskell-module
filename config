@@ -1,4 +1,5 @@
 ngx_addon_name=ngx_http_haskell_module
+ngx_http_haskell_module_dir=$ngx_addon_dir
 
 NGX_HTTP_HASKELL_MODULE_DEPS="                                              \
         $ngx_addon_dir/src/${ngx_addon_name}.h                              \
