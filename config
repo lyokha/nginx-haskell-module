@@ -42,6 +42,26 @@ then
     ngx_module_libs="$NGX_HASKELL_MODULE_LIBDL"
 
     . auto/module
+
+    ngx_feature="haskell_module_attach_reuseport_cbpf"
+    ngx_feature_name="NGX_HTTP_HASKELL_MODULE_HAVE_SO_ATTACH_REUSEPORT_CBPF"
+    ngx_feature_run=no
+    ngx_feature_incs="#include <linux/filter.h>
+                      #include <sys/socket.h>"
+    ngx_feature_path=
+    ngx_feature_libs=
+    ngx_feature_test="struct sock_filter  bpf_code[] = {
+                          { 0x6, 0, 0, 0x00000000 }
+                      };
+                      struct sock_fprog   bpf = {
+                          .len = 1, .filter = bpf_code
+                      };
+                      if (setsockopt(0, SOL_SOCKET, SO_ATTACH_REUSEPORT_CBPF,
+                          (const void *) &bpf, sizeof(bpf)) == -1) {
+                          return 1;
+                      }"
+
+    . auto/feature
 else
     HTTP_MODULES="$HTTP_MODULES $ngx_addon_name"
     NGX_ADDON_DEPS="$NGX_ADDON_DEPS $NGX_HTTP_HASKELL_MODULE_DEPS"

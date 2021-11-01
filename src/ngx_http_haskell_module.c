@@ -23,6 +23,19 @@
 #include "ngx_http_haskell_service.h"
 #include "ngx_http_haskell_util.h"
 
+#if (NGX_HTTP_HASKELL_MODULE_HAVE_SO_ATTACH_REUSEPORT_CBPF)
+#include <linux/filter.h>
+#endif
+
+
+#if (NGX_HTTP_HASKELL_MODULE_HAVE_SO_ATTACH_REUSEPORT_CBPF)
+
+typedef struct {
+    ngx_flag_t  single_listener;
+} ngx_http_haskell_srv_conf_t;
+
+#endif
+
 
 const ngx_str_t  ngx_http_haskell_module_handler_prefix =
 ngx_string("ngx_hs_");
@@ -57,6 +70,13 @@ static char *ngx_http_haskell_request_variable_name(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf);
 static ngx_int_t ngx_http_haskell_init(ngx_conf_t *cf);
 static void *ngx_http_haskell_create_main_conf(ngx_conf_t *cf);
+
+#if (NGX_HTTP_HASKELL_MODULE_HAVE_SO_ATTACH_REUSEPORT_CBPF)
+static void *ngx_http_haskell_create_srv_conf(ngx_conf_t *cf);
+static char *ngx_http_haskell_merge_srv_conf(ngx_conf_t *cf, void *parent,
+    void *child);
+#endif
+
 static void *ngx_http_haskell_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_haskell_merge_loc_conf(ngx_conf_t *cf, void *parent,
     void *child);
@@ -215,6 +235,14 @@ static ngx_command_t  ngx_http_haskell_module_commands[] = {
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_haskell_loc_conf_t, request_body_read_temp_file),
       NULL },
+#if (NGX_HTTP_HASKELL_MODULE_HAVE_SO_ATTACH_REUSEPORT_CBPF)
+    { ngx_string("single_listener"),
+      NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_haskell_srv_conf_t, single_listener),
+      NULL },
+#endif
 
       ngx_null_command
 };
@@ -227,8 +255,13 @@ static ngx_http_module_t  ngx_http_haskell_module_ctx = {
     ngx_http_haskell_create_main_conf,       /* create main configuration */
     NULL,                                    /* init main configuration */
 
+#if (NGX_HTTP_HASKELL_MODULE_HAVE_SO_ATTACH_REUSEPORT_CBPF)
+    ngx_http_haskell_create_srv_conf,        /* create server configuration */
+    ngx_http_haskell_merge_srv_conf,         /* merge server configuration */
+#else
     NULL,                                    /* create server configuration */
     NULL,                                    /* merge server configuration */
+#endif
 
     ngx_http_haskell_create_loc_conf,        /* create location configuration */
     ngx_http_haskell_merge_loc_conf          /* merge location configuration */
@@ -387,10 +420,42 @@ ngx_http_haskell_create_main_conf(ngx_conf_t *cf)
 }
 
 
+#if (NGX_HTTP_HASKELL_MODULE_HAVE_SO_ATTACH_REUSEPORT_CBPF)
+
+static void *
+ngx_http_haskell_create_srv_conf(ngx_conf_t *cf)
+{
+    ngx_http_haskell_srv_conf_t   *scf;
+
+    scf = ngx_pcalloc(cf->pool, sizeof(ngx_http_haskell_srv_conf_t));
+    if (scf == NULL) {
+        return NULL;
+    }
+
+    scf->single_listener = NGX_CONF_UNSET;
+
+    return scf;
+}
+
+
+static char *
+ngx_http_haskell_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
+{
+    ngx_http_haskell_srv_conf_t   *prev = parent;
+    ngx_http_haskell_srv_conf_t   *conf = child;
+
+    ngx_conf_merge_value(conf->single_listener, prev->single_listener, 0);
+
+    return NGX_CONF_OK;
+}
+
+#endif
+
+
 static void *
 ngx_http_haskell_create_loc_conf(ngx_conf_t *cf)
 {
-    ngx_http_haskell_loc_conf_t  *lcf;
+    ngx_http_haskell_loc_conf_t   *lcf;
 
     lcf = ngx_pcalloc(cf->pool, sizeof(ngx_http_haskell_loc_conf_t));
     if (lcf == NULL) {
@@ -498,7 +563,90 @@ ngx_http_haskell_init_module(ngx_cycle_t *cycle)
     ngx_http_haskell_main_conf_t              *mcf;
     ngx_event_conf_t                          *ecf;
     void                                    ***cf;
+#if (NGX_HTTP_HASKELL_MODULE_HAVE_SO_ATTACH_REUSEPORT_CBPF)
+    ngx_uint_t                                 j;
+    ngx_http_haskell_srv_conf_t               *scf;
+    ngx_http_core_srv_conf_t                  *cscf;
+    ngx_listening_t                           *ls;
+    ngx_http_port_t                           *port;
+    ngx_http_in_addr_t                        *addr;
+#if (NGX_HAVE_INET6)
+    ngx_http_in6_addr_t                       *addr6 = NULL;
+#endif
+    ngx_http_addr_conf_t                      *addr_conf;
+#endif
     ngx_http_haskell_service_hook_t           *service_hooks;
+
+#if (NGX_HTTP_HASKELL_MODULE_HAVE_SO_ATTACH_REUSEPORT_CBPF)
+    struct sock_filter  bpf_code[] = { { 0x6, 0, 0, 0x00000000 } };
+    struct sock_fprog   bpf = { .len = 1, .filter = bpf_code };
+#endif
+
+#if (NGX_HTTP_HASKELL_MODULE_HAVE_SO_ATTACH_REUSEPORT_CBPF)
+    ls = cycle->listening.elts;
+
+    for (i = 0; i < cycle->listening.nelts; i++) {
+        port = ls[i].servers;
+
+        if (ls[i].sockaddr->sa_family != AF_INET
+#if (NGX_HAVE_INET6)
+            && ls[i].sockaddr->sa_family != AF_INET6
+#endif
+            )
+        {
+            continue;
+        }
+
+        addr = NULL;
+
+#if (NGX_HAVE_INET6)
+        if (ls[i].sockaddr->sa_family == AF_INET6) {
+            addr6 = port->addrs;
+        } else {
+#endif
+            addr = port->addrs;
+#if (NGX_HAVE_INET6)
+        }
+#endif
+
+        for (j = 0; j < port->naddrs; j++) {
+#if (NGX_HAVE_INET6)
+            if (addr == NULL) {
+                addr_conf = &addr6[j].conf;
+            } else {
+#endif
+                addr_conf = &addr[j].conf;
+#if (NGX_HAVE_INET6)
+            }
+#endif
+
+            if (addr_conf == NULL) {
+                continue;
+            }
+
+            cscf = addr_conf->default_server;
+            scf = cscf->ctx->srv_conf[ngx_http_haskell_module.ctx_index];
+
+            if (scf->single_listener) {
+                if (!ls[i].reuseport) {
+                    ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                                  "single listener \"%V\" must use reuseport",
+                                  &ls[i].addr_text);
+                    return NGX_ERROR;
+                }
+
+                if (setsockopt(ls[i].fd, SOL_SOCKET, SO_ATTACH_REUSEPORT_CBPF,
+                               (const void *) &bpf, sizeof(bpf))
+                    == -1)
+                {
+                    ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_socket_errno,
+                                  "setsockopt(SO_ATTACH_REUSEPORT_CBPF) %V "
+                                  "failed", &ls[i].addr_text);
+                }
+            }
+        }
+    }
+#endif
 
     ngx_http_haskell_cleanup_service_hook_fd(cycle);
 
