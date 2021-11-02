@@ -1334,6 +1334,9 @@ Summary table of all Nginx directives of the module
 | ``haskell_request_variable_name``                                       | ``http``            | Change the name of the request variable if default      |
 |                                                                         |                     | value *\_r_ptr* is already used.                        |
 +-------------------------------------------------------------------------+---------------------+---------------------------------------------------------+
+| ``single_listener``                                                     | ``server``          | Make the virtual server accept client requests only     |
+|                                                                         |                     | from a single worker process.                           |
++-------------------------------------------------------------------------+---------------------+---------------------------------------------------------+
 
 Module NgxExport.Tools
 ======================

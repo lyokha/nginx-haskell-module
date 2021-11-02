@@ -1109,6 +1109,12 @@ nginx configuration.
   *location-if* clauses. If not set then buffered request bodies are not read in
   haskell handlers.
 
+- *single_listener ``<on/off>``* &mdash; Makes the virtual server where it is
+  declared accept client requests only from a single worker process. This
+  requires that the virtual server listens with option *reuseport*. The
+  directive is only available on Linux with socket option
+  *SO_ATTACH_REUSEPORT_CBPF*. Allowed in *server* clauses.
+
 Service variables in shared memory and integration with other nginx modules
 ---------------------------------------------------------------------------
 
