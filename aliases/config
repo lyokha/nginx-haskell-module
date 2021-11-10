@@ -1,0 +1,26 @@
+ngx_addon_name=ngx_http_haskell_aliases_module
+
+NGX_HTTP_HASKELL_ALIASES_MODULE_DEPS="                                      \
+        $ngx_http_haskell_module_dir/src/ngx_http_haskell_module.h          \
+        "
+
+NGX_HTTP_HASKELL_ALIASES_MODULE_SRCS="                                      \
+        $ngx_addon_dir/${ngx_addon_name}.c                                  \
+        "
+
+if test -n "$ngx_module_link"
+then
+    ngx_module_type=HTTP
+    ngx_module_name=$ngx_addon_name
+    ngx_module_deps="$NGX_HTTP_HASKELL_ALIASES_MODULE_DEPS"
+    ngx_module_srcs="$NGX_HTTP_HASKELL_ALIASES_MODULE_SRCS"
+    ngx_module_incs="$ngx_http_haskell_module_dir/src"
+
+    . auto/module
+else
+    HTTP_MODULES="$HTTP_MODULES $ngx_addon_name"
+    NGX_ADDON_DEPS="$NGX_ADDON_DEPS $NGX_HTTP_HASKELL_ALIASES_MODULE_DEPS"
+    NGX_ADDON_SRCS="$NGX_ADDON_SRCS $NGX_HTTP_HASKELL_ALIASES_MODULE_SRCS"
+    CFLAGS="$CFLAGS -I$ngx_http_haskell_module_dir/include/src"
+fi
+
