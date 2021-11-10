@@ -1,12 +1,16 @@
-This module declares handy configuration alias directives for common directive
-patterns met when using Nginx Haskell module. Currently, it contains only one
-alias directive *cache_variable* that gets translated as in the following table.
+##### Aliases
+
+This module declares handy aliases for common patterns built of directives from
+Nginx Haskell module. Currently, it contains only one alias directive
+*cache_variable* that gets translated as shown in the following table.
 
 | Aliases (in examples)              | Translations                        |
 | ---------------------------------- | ----------------------------------- |
 | `cache_variable $hs_arg_a $arg_a;` | `haskell_run ! <!$hs_arg_a $arg_a;` |
 
+##### Build
+
 To build the module, add option
-`--add-module=/home/lyokha/devel/nginx-haskell-module/aliases` when configuring
-Nginx build.
+`--add-module=/path/to/nginx-haskell-module/aliases` after option
+`--add-module=/path/to/nginx-haskell-module` when configuring Nginx build.
 
