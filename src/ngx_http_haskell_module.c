@@ -2136,7 +2136,7 @@ ngx_http_haskell_var_configure(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_str_t                               *value;
     ngx_array_t                             *data;
     ngx_http_haskell_var_handle_t           *vars;
-    ngx_uint_t                               n_vars;
+    ngx_uint_t                               n_vars, n_prev;
     ngx_http_variable_t                     *v;
     ngx_http_haskell_shm_var_handle_data_t  *v_data;
     ngx_str_t                                v_name;
@@ -2181,20 +2181,21 @@ ngx_http_haskell_var_configure(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    if (data->nalloc > 0) {
-        return "is duplicate";
-    }
-
     n_vars = cf->args->nelts - idx - 1;
 
-    if (ngx_array_init(data, cf->pool, n_vars,
-                       sizeof(ngx_http_haskell_var_handle_t)) != NGX_OK
-        || ngx_array_push_n(data, n_vars) == NULL)
+    if (data->nalloc == 0
+        && ngx_array_init(data, cf->pool, n_vars,
+                          sizeof(ngx_http_haskell_var_handle_t)) != NGX_OK)
     {
         return NGX_CONF_ERROR;
     }
 
+    if (ngx_array_push_n(data, n_vars) == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
     vars = data->elts;
+    n_prev = data->nelts - n_vars;
 
     for (i = 0, j = idx + 1; i < n_vars; i++, j++) {
         if (value[j].len < 2 || value[j].data[0] != '$') {
@@ -2206,8 +2207,8 @@ ngx_http_haskell_var_configure(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         value[j].len--;
         value[j].data++;
         ngx_strlow(value[j].data, value[j].data, value[j].len);
-        vars[i].name = value[j];
-        vars[i].index = -1;
+        vars[i + n_prev].name = value[j];
+        vars[i + n_prev].index = -1;
 
         if (!create_shm_aux_vars) {
             continue;
@@ -2238,7 +2239,7 @@ ngx_http_haskell_var_configure(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 
         v_data->index = NGX_ERROR;
-        vars[i].data = v_data;
+        vars[i + n_prev].data = v_data;
 
         v->data = (uintptr_t) v_data;
         v->get_handler = ngx_http_haskell_shm_update_var_handler;
@@ -2275,12 +2276,9 @@ ngx_http_haskell_service_var_in_shm(ngx_conf_t *cf, ngx_command_t *cmd,
 {
     ngx_http_haskell_main_conf_t      *mcf = conf;
 
+    ngx_uint_t                         i;
     ngx_str_t                         *value;
     ssize_t                            shm_size;
-
-    if (mcf->shm_zone != NULL) {
-        return "is duplicate";
-    }
 
     if (cf->args->nelts < 5) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "too few arguments");
@@ -2288,6 +2286,19 @@ ngx_http_haskell_service_var_in_shm(ngx_conf_t *cf, ngx_command_t *cmd,
     }
 
     value = cf->args->elts;
+
+    if (mcf->shm_zone != NULL) {
+        for (i = 0; i < 3; i++) {
+            if (value[i + 1].len != 1 || *value[i + 1].data != '_') {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "extra declarations of directive \"%V\" "
+                                   "must use placeholders \"_\" in the "
+                                   "leftmost three arguments", &value[0]);
+                return NGX_CONF_ERROR;
+            }
+        }
+        return ngx_http_haskell_var_configure(cf, cmd, conf);
+    }
 
     shm_size = ngx_parse_size(&value[2]);
 
