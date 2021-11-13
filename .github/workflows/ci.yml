@@ -15,11 +15,11 @@ jobs:
         experimental: [false]
         include:
           - ghc: 9.2.1
-            cabal: 3.4.0.0
+            cabal: 3.6.2.0
             nginx: ''
-            experimental: true
+            experimental: false
           - ghc: 9.2.1
-            cabal: 3.4.0.0
+            cabal: 3.6.2.0
             nginx: head
             experimental: true
           - ghc: 9.0.1

@@ -1,5 +1,5 @@
 {-# LANGUAGE TemplateHaskell, ForeignFunctionInterface #-}
-{-# LANGUAGE ViewPatterns, PatternSynonyms, TupleSections #-}
+{-# LANGUAGE ViewPatterns, PatternSynonyms, TupleSections, LambdaCase #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -109,7 +109,9 @@ pattern I :: (Num i, Integral a) => i -> a
 #endif
 pattern I i <- (fromIntegral -> i)
 #if MIN_TOOL_VERSION_ghc(8,2,1)
+{-# COMPLETE I :: Int #-}
 {-# COMPLETE I :: CInt #-}
+{-# COMPLETE I :: CSize #-}
 #endif
 
 #if MIN_TOOL_VERSION_ghc(8,0,1)
@@ -169,8 +171,14 @@ do
         reify ''NgxExportTypeAmbiguityTag
     let tName = mkName "exportType"
         aName = mkName "exportTypeAmbiguity"
-        tCons = map (\(NormalC con [(_, typ)]) -> (con, typ)) tCs
-        aCons = map (\(NormalC con []) -> con) aCs
+        tCons = map (\case
+                         NormalC con [(_, typ)] -> (con, typ)
+                         _ -> undefined
+                    ) tCs
+        aCons = map (\case
+                         NormalC con [] -> con
+                         _ -> undefined
+                    ) aCs
     sequence $
         [sigD tName [t|NgxExport -> IO CInt|]
         ,funD tName $
