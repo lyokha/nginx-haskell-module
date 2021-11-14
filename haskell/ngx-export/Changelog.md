@@ -1,3 +1,8 @@
+### 1.7.5
+
+- More robust pattern exhaustion check after inclusion of option
+  *-Wincomplete-uni-patterns* into *-Wall* in GHC *9.2.1*.
+
 ### 1.7.4
 
 - Function *safeWaitToSetLock* was moved into a new internal module
