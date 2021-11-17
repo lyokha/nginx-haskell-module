@@ -1,15 +1,31 @@
 #include "ngx_http_haskell_module.h"
 
 
-static char *ngx_http_haskell_aliases_cache_variable(ngx_conf_t *cf,
+typedef enum {
+    ngx_http_haskell_aliases_set_mode_cache,
+    ngx_http_haskell_aliases_set_mode_lazy
+} ngx_http_haskell_aliases_set_mode_e;
+
+
+static char *ngx_http_haskell_aliases_set(ngx_conf_t *cf,
+    ngx_command_t *cmd, void *conf, ngx_http_haskell_aliases_set_mode_e mode);
+static char *ngx_http_haskell_aliases_cache_set(ngx_conf_t *cf,
+    ngx_command_t *cmd, void *conf);
+static char *ngx_http_haskell_aliases_lazy_set(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf);
 
 
 static ngx_command_t  ngx_http_haskell_aliases_module_commands[] = {
 
-    { ngx_string("cache_variable"),
+    { ngx_string("cache_set"),
       NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE2,
-      ngx_http_haskell_aliases_cache_variable,
+      ngx_http_haskell_aliases_cache_set,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      NULL },
+    { ngx_string("lazy_set"),
+      NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE2,
+      ngx_http_haskell_aliases_lazy_set,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
@@ -50,13 +66,13 @@ ngx_module_t  ngx_http_haskell_aliases_module = {
 
 
 static char *
-ngx_http_haskell_aliases_cache_variable(ngx_conf_t *cf, ngx_command_t *cmd,
-                                        void *conf)
+ngx_http_haskell_aliases_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf,
+                             ngx_http_haskell_aliases_set_mode_e mode)
 {
     ngx_str_t                       *value;
     ngx_conf_t                       cf_haskell_run;
     ngx_array_t                      cf_haskell_run_args;
-    ngx_str_t                       *directive, *handler, *var, *cached_var;
+    ngx_str_t                       *directive, *handler, *var, *referred_var;
     ngx_http_haskell_loc_conf_t     *hlcf;
 
     value = cf->args->elts;
@@ -65,8 +81,8 @@ ngx_http_haskell_aliases_cache_variable(ngx_conf_t *cf, ngx_command_t *cmd,
         != NGX_OK)
     {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "failed to allocate memory for directive "
-                           "\"cache_variable\" data");
+                           "failed to allocate memory for directive \"%V\" "
+                           "data", &value[0]);
         return NGX_CONF_ERROR;
     }
 
@@ -89,20 +105,29 @@ ngx_http_haskell_aliases_cache_variable(ngx_conf_t *cf, ngx_command_t *cmd,
         return NGX_CONF_ERROR;
     }
 
-    var->len = value[1].len + 2;
-    var->data = ngx_pnalloc(cf->pool, var->len);
-    if (var->data == NULL) {
+    switch (mode) {
+    case ngx_http_haskell_aliases_set_mode_cache:
+        var->len = value[1].len + 2;
+        var->data = ngx_pnalloc(cf->pool, var->len);
+        if (var->data == NULL) {
+            return NGX_CONF_ERROR;
+        }
+        ngx_memcpy(var->data, (u_char *) "<!", 2);
+        ngx_memcpy(var->data + 2, value[1].data, value[1].len);
+        break;
+    case ngx_http_haskell_aliases_set_mode_lazy:
+        *var = value[1];
+        break;
+    default:
         return NGX_CONF_ERROR;
     }
-    ngx_memcpy(var->data, (u_char *) "<!", 2);
-    ngx_memcpy(var->data + 2, value[1].data, value[1].len);
 
-    cached_var = ngx_array_push(&cf_haskell_run_args);
-    if (cached_var == NULL) {
+    referred_var = ngx_array_push(&cf_haskell_run_args);
+    if (referred_var == NULL) {
         return NGX_CONF_ERROR;
     }
 
-    *cached_var = value[2];
+    *referred_var = value[2];
 
     cf_haskell_run = *cf;
     cf_haskell_run.args = &cf_haskell_run_args;
@@ -110,5 +135,23 @@ ngx_http_haskell_aliases_cache_variable(ngx_conf_t *cf, ngx_command_t *cmd,
     hlcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_haskell_module);
 
     return ngx_http_haskell_run(&cf_haskell_run, NULL, hlcf);
+}
+
+
+static char *
+ngx_http_haskell_aliases_cache_set(ngx_conf_t *cf, ngx_command_t *cmd,
+                                   void *conf)
+{
+    return ngx_http_haskell_aliases_set(cf, cmd, conf,
+                                    ngx_http_haskell_aliases_set_mode_cache);
+}
+
+
+static char *
+ngx_http_haskell_aliases_lazy_set(ngx_conf_t *cf, ngx_command_t *cmd,
+                                  void *conf)
+{
+    return ngx_http_haskell_aliases_set(cf, cmd, conf,
+                                    ngx_http_haskell_aliases_set_mode_lazy);
 }
 
