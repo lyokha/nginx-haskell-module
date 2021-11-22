@@ -1,5 +1,5 @@
 name:                       ngx-export-distribution
-version:                    0.1.0.0
+version:                    0.1.1.0
 synopsis:                   Build custom libraries for Nginx haskell module
 description:                Build custom libraries for
         <http://github.com/lyokha/nginx-haskell-module Nginx haskell module>.
@@ -18,7 +18,7 @@ cabal-version:              1.20
 library
   default-language:         Haskell2010
   build-depends:            base >= 4.8 && < 5
-                          , Cabal
+                          , Cabal >= 3.0.0.0
                           , filepath
 
   exposed-modules:          NgxExport.Distribution
