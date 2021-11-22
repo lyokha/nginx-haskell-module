@@ -70,13 +70,16 @@ import Data.Maybe
 -- name:                       ngx-distribution-test
 -- version:                    0.1.0.0
 -- build-type:                 __/Custom/__
--- cabal-version:              1.20
+-- cabal-version:              1.24
+--
+-- __/custom-setup/__
+--   setup-depends:            base >= 4.8 && < 5
+--                           , __/ngx-export-distribution/__
 --
 -- library
 --   default-language:         Haskell2010
 --   build-depends:            base >= 4.8 && < 5
 --                           , ngx-export
---                           , ngx-export-distribution
 --                           , bytestring
 --                           , aeson
 --
