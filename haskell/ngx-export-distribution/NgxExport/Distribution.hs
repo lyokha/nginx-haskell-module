@@ -160,9 +160,9 @@ hslibdeps = simpleProgram "hslibdeps"
 patchelf :: Program
 patchelf = simpleProgram "patchelf"
 
-buildAndHslibdeps :: Verbosity -> PackageDescription -> LocalBuildInfo ->
-    BuildFlags -> IO ()
-buildAndHslibdeps verbosity desc lbi flags = do
+buildSharedLib :: Verbosity -> PackageDescription -> LocalBuildInfo ->
+    BuildFlags -> IO FilePath
+buildSharedLib verbosity desc lbi flags = do
     let configGhcOptions =
             maybe [] (map ("ghc", )) $
                 lookup GHC $ perCompilerFlavorToList $
@@ -183,43 +183,44 @@ buildAndHslibdeps verbosity desc lbi flags = do
                   ) (Nothing, False) $
                       buildProgramArgs flags ++
                           map (second pure) configGhcOptions
-        env = map (second fromPathTemplate) $
-            compilerTemplateEnv (compilerInfo $ compiler lbi) ++
-                platformTemplateEnv (hostPlatform lbi)
-        dir = maybeUnknown (lookup ArchVar env) ++
-            '-' : maybeUnknown (lookup OSVar env) ++
-                '-' : maybeUnknown (lookup CompilerVar env)
-        dirArg = "-d" : [dir]
-        maybeUnknown = fromMaybe "unknown"
-        rpathArg = maybe [] (("-t" :) . pure . (</> dir) . fromPathTemplate) $
-            flagToMaybe $ prefix $ configInstallDirs $ configFlags lbi
     when (isNothing lib) $ throwIO LibNameNotSpecified
-    let lib' = fromJust lib
-        plbi = withPrograms lbi
-    ghcP <- fst <$> requireProgram verbosity ghcProgram plbi
+    ghcP <- fst <$> requireProgram verbosity ghcProgram (withPrograms lbi)
     let ghcR = programInvocation ghcP $ ["-dynamic", "-shared", "-fPIC"] ++
             map snd configGhcOptions
     runProgramInvocation verbosity ghcR
+    return $ fromJust lib
+
+patchAndCollectDependentLibs :: Verbosity -> FilePath -> PackageDescription ->
+    LocalBuildInfo -> IO ()
+patchAndCollectDependentLibs verbosity lib desc lbi = do
+    let dir = prettyShow (hostPlatform lbi) ++
+            '-' : prettyShow (compilerId $ compiler lbi)
+        dirArg = "-d" : [dir]
+        rpathArg = maybe [] (("-t" :) . pure . (</> dir) . fromPathTemplate) $
+            flagToMaybe $ prefix $ configInstallDirs $ configFlags lbi
+        plbi = withPrograms lbi
     hslibdepsP <- fst <$> requireProgram verbosity hslibdeps plbi
-    let hslibdepsR = programInvocation hslibdepsP $ lib' : rpathArg ++ dirArg
+    let hslibdepsR = programInvocation hslibdepsP $ lib : rpathArg ++ dirArg
     runProgramInvocation verbosity hslibdepsR
     tarP <- fst <$> requireProgram verbosity tarProgram plbi
     let ver = pkgVersion $ package desc
-        tar = addExtension (takeBaseName lib' ++ '-' : prettyShow ver) "tar.gz"
-        tarR = programInvocation tarP ["czf", tar, lib', dir]
+        tar = addExtension (takeBaseName lib ++ '-' : prettyShow ver) "tar.gz"
+        tarR = programInvocation tarP ["czf", tar, lib, dir]
     runProgramInvocation verbosity tarR
 
 ngxExportHooks :: UserHooks
 ngxExportHooks =
     let hooks = simpleUserHooks
+        verbosity = normal
     in hooks { hookedPrograms = [hslibdeps]
              , confHook = \desc flags -> do
                  let pdb = configPrograms flags
-                 _ <- requireProgram normal hslibdeps pdb >>=
-                          requireProgram normal patchelf . snd
+                 _ <- requireProgram verbosity hslibdeps pdb >>=
+                          requireProgram verbosity patchelf . snd
                  confHook simpleUserHooks desc flags
              , buildHook =  \desc lbi _ flags ->
-                 buildAndHslibdeps normal desc lbi flags
+                 buildSharedLib verbosity desc lbi flags >>= \lib ->
+                     patchAndCollectDependentLibs verbosity lib desc lbi
              }
 
 -- | A simple implementation of /main/ for a Cabal setup script.
