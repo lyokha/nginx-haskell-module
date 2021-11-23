@@ -164,22 +164,25 @@ buildAndHslibdeps :: Verbosity -> PackageDescription -> LocalBuildInfo ->
     BuildFlags -> IO ()
 buildAndHslibdeps verbosity desc lbi flags = do
     let configGhcOptions =
-            map (("ghc", ) . pure) . concatMap snd
-            . filter (\(c, o) -> c == GHC && not (null o)) $
-                perCompilerFlavorToList $
+            maybe [] (map ("ghc", )) $
+                lookup GHC $ perCompilerFlavorToList $
                     options $ libBuildInfo $ fromJust $ library desc
         lib = fst $
-            foldl (\a@(r, ready) (prog, v) ->
-                if prog /= "ghc" || null v || isJust r
+            foldl (\a@(r, _) (prog, v) ->
+                if prog /= "ghc" || isJust r
                     then a
-                    else let v' = head v
-                         in if v' == "-o"
-                                then (Nothing, True)
-                                else if ready
-                                         then (Just v', False)
-                                         else (Nothing, False)
+                    else foldl (\a'@(r', ready) v' ->
+                                    if isJust r'
+                                        then a'
+                                        else if v' == "-o"
+                                                 then (Nothing, True)
+                                                 else if ready
+                                                          then (Just v', False)
+                                                          else (Nothing, False)
+                               ) a v
                   ) (Nothing, False) $
-                      buildProgramArgs flags ++ configGhcOptions
+                      buildProgramArgs flags ++
+                          map (second pure) configGhcOptions
         env = map (second fromPathTemplate) $
             compilerTemplateEnv (compilerInfo $ compiler lbi) ++
                 platformTemplateEnv (hostPlatform lbi)
@@ -195,7 +198,7 @@ buildAndHslibdeps verbosity desc lbi flags = do
         plbi = withPrograms lbi
     ghcP <- fst <$> requireProgram verbosity ghcProgram plbi
     let ghcR = programInvocation ghcP $ ["-dynamic", "-shared", "-fPIC"] ++
-            map (head . snd) configGhcOptions
+            map snd configGhcOptions
     runProgramInvocation verbosity ghcR
     hslibdepsP <- fst <$> requireProgram verbosity hslibdeps plbi
     let hslibdepsR = programInvocation hslibdepsP $ lib' : rpathArg ++ dirArg
