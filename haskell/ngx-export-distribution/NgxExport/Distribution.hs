@@ -20,7 +20,10 @@
 module NgxExport.Distribution (
     -- * Usage and examples
     -- $usage
-                               defaultMain
+                               buildSharedLib
+                              ,patchAndCollectDependentLibs
+                              ,ngxExportHooks
+                              ,defaultMain
                               ) where
 
 import Distribution.Simple hiding (defaultMain)
@@ -141,11 +144,11 @@ import Data.Maybe
 -- With this building approach, the following list of drawbacks must be taken
 -- into account.
 --
--- 1. Utility /hslibdeps/ collects only libraries prefixed with /libHS/.
--- 2. Command /cabal v1-clean/ only deletes directory /dist/, it does not
---    delete build artifacts in the current working directory.
--- 3. Behavior of Cabal commands other than /configure/, /build/ and /clean/ is
---    not well defined.
+-- - Utility /hslibdeps/ collects only libraries prefixed with /libHS/,
+-- - command /cabal v1-clean/ only deletes directory /dist/, it does not delete
+--   build artifacts in the current working directory,
+-- - behavior of Cabal commands other than /configure/, /build/ and /clean/ is
+--   not well defined.
 
 data LibNameNotSpecified = LibNameNotSpecified
 
@@ -160,8 +163,23 @@ hslibdeps = simpleProgram "hslibdeps"
 patchelf :: Program
 patchelf = simpleProgram "patchelf"
 
-buildSharedLib :: Verbosity -> PackageDescription -> LocalBuildInfo ->
-    BuildFlags -> IO FilePath
+-- | Builds a shared library.
+--
+-- Runs /ghc/ compiler with the following arguments.
+--
+-- - /-dynamic/, /-shared/, /-fPIC/,
+-- - all arguments listed in /ghc-options/ in the Cabal file,
+-- - all arguments passed in option /--ghc-options/ from command-line.
+--
+-- Requires that the arguments contain /-o path/ for the path to the shared
+-- library to build.
+--
+-- Returns the path to the built shared library.
+buildSharedLib :: Verbosity                         -- ^ Verbosity level
+               -> PackageDescription                -- ^ Package description
+               -> LocalBuildInfo                    -- ^ Local build info
+               -> BuildFlags                        -- ^ Build flags
+               -> IO FilePath
 buildSharedLib verbosity desc lbi flags = do
     let configGhcOptions =
             maybe [] (map ("ghc", )) $
@@ -190,8 +208,25 @@ buildSharedLib verbosity desc lbi flags = do
     runProgramInvocation verbosity ghcR
     return $ fromJust lib
 
-patchAndCollectDependentLibs :: Verbosity -> FilePath -> PackageDescription ->
-    LocalBuildInfo -> IO ()
+-- | Patches the shared library and collects dependent Haskell libraries.
+--
+-- Performs the following steps.
+--
+-- - Adds the value of /prefix/ to the list of /rpath/ in the shared library,
+-- - collects all dependent Haskell libraries in a directory whose name forms
+--   as /arch-os-compiler/,
+-- - archives the shared library and the directory with the collected dependent
+--   libraries in a /tar.gz/ file.
+--
+-- The initial 2 steps are performed by utility
+-- <https://github.com/lyokha/nginx-haskell-module/blob/master/utils/hslibdeps hslibdeps>.
+-- It collects all libraries with prefix /libHS/ from the list returned by
+-- command /ldd/ applied to the shared library.
+patchAndCollectDependentLibs :: Verbosity           -- ^ Verbosity level
+                             -> FilePath            -- ^ Path to the library
+                             -> PackageDescription  -- ^ Package description
+                             -> LocalBuildInfo      -- ^ Local build info
+                             -> IO ()
 patchAndCollectDependentLibs verbosity lib desc lbi = do
     let dir = prettyShow (hostPlatform lbi) ++
             '-' : prettyShow (compilerId $ compiler lbi)
@@ -208,10 +243,21 @@ patchAndCollectDependentLibs verbosity lib desc lbi = do
         tarR = programInvocation tarP ["czf", tar, lib, dir]
     runProgramInvocation verbosity tarR
 
-ngxExportHooks :: UserHooks
-ngxExportHooks =
+-- | Build hooks.
+--
+-- Based on 'simpleUserHooks'. Overrides
+--
+-- - 'confHook' by configuring programs /hslibdeps/ and /patchelf/ and then
+--   running the original /confHook/ from /simpleUserHooks/,
+-- - 'buildHook' by running in sequence 'buildSharedLib' and
+--   'patchAndCollectDependentLibs'.
+--
+-- Other hooks from /simpleUserHooks/ get derived as is. Running them is
+-- neither tested nor recommended.
+ngxExportHooks :: Verbosity                         -- ^ Verbosity level
+               -> UserHooks
+ngxExportHooks verbosity =
     let hooks = simpleUserHooks
-        verbosity = normal
     in hooks { hookedPrograms = [hslibdeps]
              , confHook = \desc flags -> do
                  let pdb = configPrograms flags
@@ -224,6 +270,12 @@ ngxExportHooks =
              }
 
 -- | A simple implementation of /main/ for a Cabal setup script.
+--
+-- Implemented as
+--
+-- @
+-- defaultMain = 'defaultMainWithHooks' $ 'ngxExportHooks' 'normal'
+-- @
 defaultMain :: IO ()
-defaultMain = defaultMainWithHooks ngxExportHooks
+defaultMain = defaultMainWithHooks $ ngxExportHooks normal
 
