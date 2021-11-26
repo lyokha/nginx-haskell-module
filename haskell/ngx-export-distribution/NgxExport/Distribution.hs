@@ -228,8 +228,8 @@ patchAndCollectDependentLibs :: Verbosity           -- ^ Verbosity level
                              -> LocalBuildInfo      -- ^ Local build info
                              -> IO ()
 patchAndCollectDependentLibs verbosity lib desc lbi = do
-    let dir = prettyShow (hostPlatform lbi) ++
-            '-' : prettyShow (compilerId $ compiler lbi)
+    let dir = maybe "unspecified-abi" fromPathTemplate $ lookup AbiVar $
+            abiTemplateEnv (compilerInfo $ compiler lbi) $ hostPlatform lbi
         dirArg = "-d" : [dir]
         rpathArg = maybe [] (("-t" :) . pure . (</> dir) . fromPathTemplate) $
             flagToMaybe $ prefix $ configInstallDirs $ configFlags lbi
