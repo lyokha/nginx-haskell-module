@@ -58,9 +58,8 @@ variable *PATH*.
 
 Building is a bit cumbersome: it expects explicit option *--prefix* at the
 configuration step (which will be interpreted as the first part of the
-*rpath* by utility *hslibdeps*), and requires explicit ghc option *-o* at
-the build step which is as well used by *hslibdeps* as the name of the
-target library.
+*rpath* by utility *hslibdeps*) and explicit ghc option *-o* at the build
+step which is as well used by *hslibdeps* as the name of the target library.
 
 Let's build the example with commands *cabal v1-configure* and
 *cabal v1-build* (the *v2-* commands should probably work as well).
