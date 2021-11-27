@@ -103,8 +103,7 @@ import Data.Maybe
 -- configuration step (which will be interpreted as the first part of the
 -- /rpath/ by utility /hslibdeps/), and requires explicit ghc option /-o/ at
 -- the build step which is as well used by /hslibdeps/ as the name of the
--- target library. The build also requires the explicit option for linkage
--- against the Haskell RTS library.
+-- target library.
 --
 -- Let's build the example with commands /cabal v1-configure/ and
 -- /cabal v1-build/ (the /v2-/commands should probably work as well).
@@ -115,11 +114,11 @@ import Data.Maybe
 -- > Linking ./dist/setup/setup ...
 -- > Configuring ngx-distribution-test-0.1.0.0...
 --
--- > $ cabal v1-build --ghc-options="ngx_distribution_test.hs -o ngx_distribution_test.so -lHSrts_thr-ghc$(ghc --numeric-version)"
+-- > $ cabal v1-build --ghc-options="ngx_distribution_test.hs -o ngx_distribution_test.so"
 -- > [1 of 1] Compiling NgxDistributionTest ( ngx_distribution_test.hs, ngx_distribution_test.o )
 -- > Linking ngx_distribution_test.so ...
 -- > ---> Collecting libraries
--- > '/usr/lib64/libHSrts_thr-ghc8.10.5.so' -> 'x86_64-linux-ghc-8.10.5/libHSrts_thr-ghc8.10.5.so'
+-- > '/usr/lib64/libHSrts-ghc8.10.5.so' -> 'x86_64-linux-ghc-8.10.5/libHSrts-ghc8.10.5.so'
 -- > '/home/lyokha/.cabal/lib/x86_64-linux-ghc-8.10.5/libHSngx-export-1.7.5-JzTEmHewqdC9gGi6rzcAtt-ghc8.10.5.so' -> 'x86_64-linux-ghc-8.10.5/libHSngx-export-1.7.5-JzTEmHewqdC9gGi6rzcAtt-ghc8.10.5.so'
 -- > '/home/lyokha/.cabal/lib/x86_64-linux-ghc-8.10.5/libHSmonad-loops-0.4.3-8Lx5Hn3pTtO62yOPdPW77x-ghc8.10.5.so' -> 'x86_64-linux-ghc-8.10.5/libHSmonad-loops-0.4.3-8Lx5Hn3pTtO62yOPdPW77x-ghc8.10.5.so'
 -- > '/home/lyokha/.cabal/lib/x86_64-linux-ghc-8.10.5/libHSasync-2.2.4-ENjuIeC23kaKyMVDRYThP3-ghc8.10.5.so' -> 'x86_64-linux-ghc-8.10.5/libHSasync-2.2.4-ENjuIeC23kaKyMVDRYThP3-ghc8.10.5.so'
@@ -167,7 +166,7 @@ patchelf = simpleProgram "patchelf"
 --
 -- Runs /ghc/ compiler with the following arguments.
 --
--- - /-dynamic/, /-shared/, /-fPIC/,
+-- - /-dynamic/, /-shared/, /-fPIC/, /-flink-rts/,
 -- - all arguments listed in /ghc-options/ in the Cabal file,
 -- - all arguments passed in option /--ghc-options/ from command-line.
 --
@@ -203,8 +202,9 @@ buildSharedLib verbosity desc lbi flags = do
                           map (second pure) configGhcOptions
     when (isNothing lib) $ throwIO LibNameNotSpecified
     ghcP <- fst <$> requireProgram verbosity ghcProgram (withPrograms lbi)
-    let ghcR = programInvocation ghcP $ ["-dynamic", "-shared", "-fPIC"] ++
-            map snd configGhcOptions
+    let ghcR = programInvocation ghcP $
+            ["-dynamic", "-shared", "-fPIC", "-flink-rts"] ++
+                map snd configGhcOptions
     runProgramInvocation verbosity ghcR
     return $ fromJust lib
 
