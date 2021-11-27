@@ -136,7 +136,7 @@ import Data.Maybe
 -- > /var/lib/nginx/x86_64-linux-ghc-8.10.5:/home/lyokha/.cabal/lib/x86_64-linux-ghc-8.10.5:/usr/lib64:/usr/lib64/ghc-8.10.5/rts
 --
 -- Now the current working directory contains new files
--- /ngx_distribution_test.so/ and /ngx_distribution_test-0.1.0.0.tar.gz/ and a
+-- /ngx_distribution_test.so/ and /ngx-distribution-test-0.1.0.0.tar.gz/ and a
 -- new directory /x86_64-linux-ghc-8.10.5/. The tar-file contains the patched
 -- shared library and the directory with dependent libraries: it is ready for
 -- installation in directory /\/var\/lib\/nginx/ at the target system.
@@ -238,8 +238,7 @@ patchAndCollectDependentLibs verbosity lib desc lbi = do
     let hslibdepsR = programInvocation hslibdepsP $ lib : rpathArg ++ dirArg
     runProgramInvocation verbosity hslibdepsR
     tarP <- fst <$> requireProgram verbosity tarProgram plbi
-    let ver = pkgVersion $ package desc
-        tar = addExtension (takeBaseName lib ++ '-' : prettyShow ver) "tar.gz"
+    let tar = addExtension (prettyShow $ package desc) "tar.gz"
         tarR = programInvocation tarP ["czf", tar, lib, dir]
     runProgramInvocation verbosity tarR
 

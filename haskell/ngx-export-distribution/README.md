@@ -97,7 +97,7 @@ Linking ngx_distribution_test.so ...
 ```
 
 Now the current working directory contains new files
-*ngx_distribution_test.so* and *ngx_distribution_test-0.1.0.0.tar.gz* and a
+*ngx_distribution_test.so* and *ngx-distribution-test-0.1.0.0.tar.gz* and a
 new directory *x86_64-linux-ghc-8.10.5*. The tar-file contains the patched
 shared library and the directory with dependent libraries: it is ready for
 installation in directory */var/lib/nginx* at the target system.
