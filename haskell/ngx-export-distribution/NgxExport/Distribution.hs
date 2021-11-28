@@ -195,15 +195,11 @@ buildSharedLib verbosity desc lbi flags = do
                        nameSo = addExtension name "so"
                    in (nameSo, [addExtension name "hs", "-o", nameSo])
                   ) (, []) lib
-    (extraSourceFile, extraSourceFileDoesNotExist) <-
-        if null extraGhcOptions
-            then return (Nothing, False)
-            else do
-                let file = head extraGhcOptions
-                (Just file, ) . not <$> doesFileExist file
-    when extraSourceFileDoesNotExist $
-        ioError $ userError $
-            "File " ++ fromJust extraSourceFile ++ " does not exist,\
+    unless (null extraGhcOptions) $ do
+        let extraSourceFile = head extraGhcOptions
+        extraSourceFileExists <- doesFileExist extraSourceFile
+        unless extraSourceFileExists $ ioError $ userError $
+            "File " ++ extraSourceFile ++ " does not exist,\
             \ you may want to specify input and output files in --ghc-options"
     ghcP <- fst <$> requireProgram verbosity ghcProgram (withPrograms lbi)
     let ghcR = programInvocation ghcP $
