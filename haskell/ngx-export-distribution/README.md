@@ -57,7 +57,7 @@ The configuration step requires that utilities *patchelf* and
 variable *PATH*.
 
 Building is a bit cumbersome: it expects explicit option *--prefix* at the
-configuration step (which will be interpreted as the first part of the
+configuration step (which will be interpreted as the prefix part of the
 *rpath* by utility *hslibdeps*) and explicit ghc option *-o* at the build
 step which is as well used by *hslibdeps* as the name of the target library.
 
