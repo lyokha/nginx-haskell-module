@@ -79,11 +79,13 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
     ngx_http_haskell_ctx_t              *ctx;
     ngx_http_haskell_wrap_ctx_t         *wctx;
     ngx_int_t                            j, found_idx = NGX_ERROR;
+    ngx_http_variable_value_t           *value;
     ngx_http_haskell_var_handle_t       *vars;
     ngx_http_haskell_var_cache_t        *var_nocacheable_cache;
     ngx_http_haskell_handler_t          *handlers;
     ngx_http_haskell_code_var_data_t    *code_vars;
     ngx_http_complex_value_t            *args;
+    ngx_int_t                            arg_index;
     ngx_str_t                            arg1, arg2, *argn = NULL;
     char                                *res = NULL;
     ngx_str_t                           *res_yy = NULL, buf_yy;
@@ -136,10 +138,18 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
     mcf = ngx_http_get_module_main_conf(r, ngx_http_haskell_module);
     handlers = mcf->handlers.elts;
     args = code_vars[found_idx].args.elts;
+    arg_index = code_vars[found_idx].arg_index;
 
     /* this is a bang handler */
     if (code_vars[found_idx].handler == NGX_ERROR) {
-        if (ngx_http_complex_value(r, &args[0], &arg1) != NGX_OK) {
+        if (arg_index != NGX_ERROR) {
+            value = ngx_http_get_indexed_variable(r, arg_index);
+            if (value == NULL || !value->valid) {
+                return NGX_ERROR;
+            }
+            arg1.len = value->len;
+            arg1.data = value->data;
+        } else if (ngx_http_complex_value(r, &args[0], &arg1) != NGX_OK) {
             return NGX_ERROR;
         }
 
@@ -163,20 +173,38 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
     case ngx_http_haskell_handler_type_s_s:
     case ngx_http_haskell_handler_type_b_s:
     case ngx_http_haskell_handler_type_b_y:
-        if (ngx_http_complex_value(r, &args[0], &arg1) != NGX_OK) {
+        if (arg_index != NGX_ERROR) {
+            value = ngx_http_get_indexed_variable(r, arg_index);
+            if (value == NULL || !value->valid) {
+                return NGX_ERROR;
+            }
+            arg1.len = value->len;
+            arg1.data = value->data;
+        } else if (ngx_http_complex_value(r, &args[0], &arg1) != NGX_OK) {
             return NGX_ERROR;
         }
         break;
     case ngx_http_haskell_handler_type_s_ls:
     case ngx_http_haskell_handler_type_b_ls:
         argn = ngx_palloc(r->pool,
-                          sizeof(ngx_str_t) * code_vars[found_idx].args.nelts);
+                          sizeof(ngx_str_t) *
+                              (arg_index == NGX_ERROR ?
+                               code_vars[found_idx].args.nelts : 1));
         if (argn == NULL) {
             return NGX_ERROR;
         }
-        for (i = 0; i < code_vars[found_idx].args.nelts; i++) {
-            if (ngx_http_complex_value(r, &args[i], &argn[i]) != NGX_OK) {
+        if (arg_index != NGX_ERROR) {
+            value = ngx_http_get_indexed_variable(r, arg_index);
+            if (value == NULL || !value->valid) {
                 return NGX_ERROR;
+            }
+            argn[0].len = value->len;
+            argn[0].data = value->data;
+        } else {
+            for (i = 0; i < code_vars[found_idx].args.nelts; i++) {
+                if (ngx_http_complex_value(r, &args[i], &argn[i]) != NGX_OK) {
+                    return NGX_ERROR;
+                }
             }
         }
         break;

@@ -1442,6 +1442,7 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_uint_t                                 async, rb, service, service_cb;
     ngx_uint_t                                 strict = 0, strict_early = 0;
     ngx_uint_t                                 strict_volatile = 0;
+    ngx_uint_t                                 from_variable = 0;
 
     value = cf->args->elts;
 
@@ -1477,17 +1478,30 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             lcf->share_async_and_strict_early ? 1 : async;
 
     if (!async && !service) {
-        if (value[2].len > 3
-            && value[2].data[0] == '<'
-            && (value[2].data[1] == '!' || value[2].data[1] == '~'))
-        {
-            strict_early = 1;
-            strict_volatile = value[2].data[1] == '~' ? 1 : 0;
-            mcf->has_strict_early_vars = 1;
-            lcf->check_async_and_strict_early = 1;
-            lcf->share_async_and_strict_early =
-                    lcf->share_async_and_strict_early ? 1 :
-                    strict_volatile ? 0 : 1;
+        if (value[2].len > 3 && value[2].data[0] == '<') {
+            if (value[2].data[1] == '!' || value[2].data[1] == '~') {
+                strict_early = 1;
+                strict_volatile = value[2].data[1] == '~' ? 1 : 0;
+                mcf->has_strict_early_vars = 1;
+                lcf->check_async_and_strict_early = 1;
+                lcf->share_async_and_strict_early =
+                        lcf->share_async_and_strict_early ? 1 :
+                        strict_volatile ? 0 : 1;
+            } else if (value[2].data[1] == '<') {
+                if (n_args != 1) {
+                    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                        "transitional handlers accept exactly one argument");
+                    return NGX_CONF_ERROR;
+                }
+                if (value[3].len < 2 || value[3].data[0] != '$') {
+                    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                    "invalid variable name \"%V\"", &value[3]);
+                    return NGX_CONF_ERROR;
+                }
+                value[3].len--;
+                value[3].data++;
+                from_variable = 1;
+            }
             value[2].len -= 2;
             value[2].data += 2;
         } else if (value[2].len > 2 && value[2].data[0] == '!') {
@@ -1533,17 +1547,27 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             return NGX_CONF_ERROR;
         }
     }
+
+    /* FIXME: not needed if from_variable */
     if (ngx_array_init(&code_var_data->args, cf->pool, n_size,
                        sizeof(ngx_http_complex_value_t)) != NGX_OK)
     {
         return NGX_CONF_ERROR;
     }
 
+    code_var_data->arg_index = NGX_ERROR;
     code_var_data->strict = strict;
     code_var_data->strict_early = strict_early;
     code_var_data->strict_volatile = strict_volatile;
     code_var_data->handler = NGX_ERROR;
     code_var_data->async = async;
+
+    if (from_variable) {
+        code_var_data->arg_index = ngx_http_get_variable_index(cf, &value[3]);
+        if (code_var_data->arg_index == NGX_ERROR) {
+            return NGX_CONF_ERROR;
+        }
+    }
 
     async = async ? 1 : service;
 
@@ -1717,6 +1741,7 @@ add_variable:
 
     code_var_data->index = v_idx;
 
+    /* FIXME: not needed if from_variable */
     if (ngx_array_push_n(&code_var_data->args, n_size) == NULL) {
         return NGX_CONF_ERROR;
     }
@@ -1727,7 +1752,7 @@ add_variable:
         for (i = 0; i < n_args; i++) {
             args[i].value = value[3 + i];
         }
-    } else {
+    } else if (!from_variable) {
         ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
         ccv.cf = cf;
 

@@ -243,6 +243,7 @@ typedef struct {
 
 typedef struct {
     ngx_int_t                                  index;
+    ngx_int_t                                  arg_index;
     ngx_int_t                                  handler;
     ngx_array_t                                args;
     ngx_uint_t                                 async:1;
