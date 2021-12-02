@@ -181,6 +181,7 @@ typedef struct {
     ngx_uint_t                                 has_async_handlers:1;
     ngx_uint_t                                 has_strict_vars:1;
     ngx_uint_t                                 has_strict_early_vars:1;
+    ngx_uint_t                                 has_haskell_handlers:1;
     ngx_uint_t                                 request_var_name_done:1;
 } ngx_http_haskell_main_conf_t;
 
@@ -386,6 +387,8 @@ typedef struct ngx_http_haskell_service_code_var_data_s
 
 
 char *ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+char *ngx_http_haskell_var_configure(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 
 
 extern const ngx_str_t ngx_http_haskell_module_handler_prefix;

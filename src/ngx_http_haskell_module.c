@@ -62,8 +62,6 @@ static char *ngx_http_haskell_service_update_hook(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf);
 static char *ngx_http_haskell_service_hooks_zone(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf);
-static char *ngx_http_haskell_var_configure(ngx_conf_t *cf, ngx_command_t *cmd,
-    void *conf);
 static char *ngx_http_haskell_service_var_in_shm(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf);
 static char *ngx_http_haskell_request_variable_name(ngx_conf_t *cf,
@@ -341,7 +339,7 @@ ngx_http_haskell_init(ngx_conf_t *cf)
         }
     }
 
-    if (!mcf->code_loaded) {
+    if (!mcf->code_loaded && mcf->has_haskell_handlers) {
         return NGX_OK;
     }
 
@@ -734,12 +732,8 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
     }
 
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
-    if (mcf == NULL || !mcf->code_loaded) {
+    if (mcf == NULL) {
         return NGX_OK;
-    }
-
-    if (mcf->module_failed) {
-        return NGX_ERROR;
     }
 
     cmcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_core_module);
@@ -770,6 +764,14 @@ ngx_http_haskell_init_worker(ngx_cycle_t *cycle)
             ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
                           "variable \"%V\" was not declared", &vars[i].name);
         }
+    }
+
+    if (!mcf->code_loaded) {
+        return NGX_OK;
+    }
+
+    if (mcf->module_failed) {
+        return NGX_ERROR;
     }
 
     vars = mcf->var_empty_on_error.elts;
@@ -1440,6 +1442,7 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_uint_t                                *v_idx_ptr;
     ngx_http_get_variable_pt                   get_handler;
     ngx_uint_t                                 async, rb, service, service_cb;
+    ngx_uint_t                                 bang_handler;
     ngx_uint_t                                 strict = 0, strict_early = 0;
     ngx_uint_t                                 strict_volatile = 0;
     ngx_uint_t                                 from_variable = 0;
@@ -1455,11 +1458,6 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     mcf = service ? conf :
             ngx_http_conf_get_module_main_conf(cf, ngx_http_haskell_module);
-
-    if (!mcf->code_loaded) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "haskell code was not loaded");
-        return NGX_CONF_ERROR;
-    }
 
     if ((!service && cf->args->nelts < 4) || cf->args->nelts < 3) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "too few arguments");
@@ -1571,6 +1569,13 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     async = async ? 1 : service;
 
+    bang_handler = !async && value[1].len == 1 && value[1].data[0] == '!';
+
+    if (!mcf->code_loaded && !bang_handler) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "haskell code was not loaded");
+        return NGX_CONF_ERROR;
+    }
+
     if (async
         && (mcf->compile_mode == ngx_http_haskell_compile_mode_vanilla
             || mcf->compile_mode == ngx_http_haskell_compile_mode_debug))
@@ -1582,13 +1587,15 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    if (!async && value[1].len == 1 && value[1].data[0] == '!') {
+    if (bang_handler) {
         if (n_args != 1) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "bang handler accepts exactly one argument");
             return NGX_CONF_ERROR;
         }
         goto add_variable;
+    } else {
+        mcf->has_haskell_handlers = 1;
     }
 
     if (ngx_http_haskell_make_handler_name(cf->pool, &value[1], &handler_name)
@@ -2152,7 +2159,7 @@ ngx_http_haskell_service_hooks_zone(ngx_conf_t *cf, ngx_command_t *cmd,
 }
 
 
-static char *
+char *
 ngx_http_haskell_var_configure(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_haskell_main_conf_t            *mcf = conf;

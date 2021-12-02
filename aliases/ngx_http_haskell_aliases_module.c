@@ -16,6 +16,8 @@ static char *ngx_http_haskell_aliases_lazy_set(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf);
 static char *ngx_http_haskell_aliases_var_alias(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf);
+static char *ngx_http_haskell_aliases_var_configure(ngx_conf_t *cf,
+    ngx_command_t *cmd, void *conf);
 
 
 static ngx_command_t  ngx_http_haskell_aliases_module_commands[] = {
@@ -36,6 +38,18 @@ static ngx_command_t  ngx_http_haskell_aliases_module_commands[] = {
       NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE2,
       ngx_http_haskell_aliases_var_alias,
       NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      NULL },
+    { ngx_string("var_nocacheable"),
+      NGX_HTTP_MAIN_CONF|NGX_CONF_1MORE,
+      ngx_http_haskell_aliases_var_configure,
+      NGX_HTTP_MAIN_CONF_OFFSET,
+      0,
+      NULL },
+    { ngx_string("var_nohash"),
+      NGX_HTTP_MAIN_CONF|NGX_CONF_1MORE,
+      ngx_http_haskell_aliases_var_configure,
+      NGX_HTTP_MAIN_CONF_OFFSET,
       0,
       NULL },
 
@@ -180,5 +194,33 @@ ngx_http_haskell_aliases_var_alias(ngx_conf_t *cf, ngx_command_t *cmd,
 {
     return ngx_http_haskell_aliases_set(cf, cmd, conf,
                                 ngx_http_haskell_aliases_set_mode_var_alias);
+}
+
+
+static char *
+ngx_http_haskell_aliases_var_configure(ngx_conf_t *cf, ngx_command_t *cmd,
+                                       void *conf)
+{
+    ngx_str_t                       *value;
+    size_t                           directive_len;
+    u_char                          *directive_data;
+    ngx_http_haskell_main_conf_t    *hmcf;
+
+    value = cf->args->elts;
+
+    directive_len = value[0].len + 8;
+    directive_data = ngx_pnalloc(cf->pool, directive_len);
+    if (directive_data == NULL) {
+        return NGX_CONF_ERROR;
+    }
+    ngx_memcpy(directive_data, (u_char *) "haskell_", 8);
+    ngx_memcpy(directive_data + 8, value[0].data, value[0].len);
+
+    value[0].len = directive_len;
+    value[0].data = directive_data;
+
+    hmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_haskell_module);
+
+    return ngx_http_haskell_var_configure(cf, NULL, hmcf);
 }
 
