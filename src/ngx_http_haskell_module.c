@@ -339,7 +339,7 @@ ngx_http_haskell_init(ngx_conf_t *cf)
         }
     }
 
-    if (!mcf->code_loaded && !mcf->has_bang_handler) {
+    if (!mcf->code_loaded && !mcf->check_bang_handler) {
         return NGX_OK;
     }
 
@@ -1593,7 +1593,9 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                                "bang handler accepts exactly one argument");
             return NGX_CONF_ERROR;
         }
-        mcf->has_bang_handler = 1;
+        if (!mcf->check_bang_handler && (strict_early || strict)) {
+            mcf->check_bang_handler = 1;
+        }
         goto add_variable;
     }
 

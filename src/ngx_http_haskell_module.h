@@ -181,7 +181,7 @@ typedef struct {
     ngx_uint_t                                 has_async_handlers:1;
     ngx_uint_t                                 has_strict_vars:1;
     ngx_uint_t                                 has_strict_early_vars:1;
-    ngx_uint_t                                 has_bang_handler:1;
+    ngx_uint_t                                 check_bang_handler:1;
     ngx_uint_t                                 request_var_name_done:1;
 } ngx_http_haskell_main_conf_t;
 
