@@ -9,8 +9,8 @@ the following table.
 | `cache_set $cached_arg_a $arg_a;`        | `haskell_run ! <!$cached_arg_a $arg_a;`        |
 | `lazy_set $lazy_arg_a $arg_a;`           | `haskell_run ! $lazy_arg_a $arg_a;`            |
 | `var_alias $alias_dodgy_var $dodgy@var;` | `haskell_run ! <<$alias_dodgy_var $dodgy@var;` |
-| `var_nocacheable ... ;`                  | `haskell_var_nocacheable ... ;`                |
-| `var_nohash ... ;`                       | `haskell_var_nohash ... ;`                     |
+| `var_nocacheable $var_a $var_b;`         | `haskell_var_nocacheable $var_a $var_b;`       |
+| `var_nohash $var_a $var_b;`              | `haskell_var_nohash $var_a $var_b;`            |
 
 The reason for using *cache_set* and *lazy_set* is inability of directive *set*
 from the standard Nginx *rewrite module* of setting and caching variables right
