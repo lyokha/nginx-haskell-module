@@ -10,7 +10,7 @@ the following table.
 | `lazy_set $lazy_arg_a $arg_a;`           | `haskell_run ! $lazy_arg_a $arg_a;`            |
 | `var_alias $alias_dodgy_var $dodgy@var;` | `haskell_run ! <<$alias_dodgy_var $dodgy@var;` |
 | `var_nocacheable $var_a $var_b;`         | `haskell_var_nocacheable $var_a $var_b;`       |
-| `var_nohash $var_a $var_b;`              | `haskell_var_nohash $var_a $var_b;`            |
+| `var_nohash $var_a $var_b $cached_*;`    | `haskell_var_nohash $var_a $var_b $cached_*;`  |
 
 The reason for using *cache_set* and *lazy_set* is inability of directive *set*
 from the standard Nginx *rewrite module* of setting and caching variables right
@@ -19,7 +19,7 @@ creates aliases for variables whose names contain unexpected characters (say,
 *@* or *-*) and thus fail to be parsed as variables in *complex value*
 expressions.
 
-All directives from this module do not require loading a Haskell library.
+No directive from this module requires loading a Haskell library.
 
 ##### Build
 
