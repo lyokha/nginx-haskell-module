@@ -5,26 +5,50 @@ PATCHELF=patchelf
 HSLIB=
 DIR=
 TARGET_DIR=
+ARCHIVE=
 DEF_DIR=.hslibs
 PATCH_ONLY=
 
 usage()
 {
-    echo "Usage: $(basename "$0") [-d dir | -p] [-t target_dir] hslib"
+    echo "Usage: $(basename "$0") [-d dir [-a ar] | -p] [-t target_dir] hslib"
     echo "  'dir' is a directory where dependent libraries will be"
     echo "      collected (default is $DEF_DIR)"
     echo "  'target_dir' is a directory where dependent libraries will be"
-    echo "      installed (no default, can be omitted)"
+    echo "      installed (no default, 'hslib' will not be patched if omitted)"
+    echo "  'ar' is a the base name of the archive to contain 'hslib' and"
+    echo "      'dir' (no default, the archive will not be created if omitted)"
     echo "  if -p (patch-only) is specified then dependent libraries will"
-    echo "      not be collected"
+    echo "      not be collected nor archived"
+    echo "  special value '-' for 'dir', 'target_dir', and 'ar' resets them"
+    echo "      (with -d- being equivalent to -p)"
 }
 
 while [ "$1" ]
 do
     case $1 in
         -h|-help|--help)    usage ; exit 0 ;;
-        -d)                 shift ; DIR=$1 ;;
-        -t)                 shift ; TARGET_DIR=$1 ;;
+        -d*)                OPTVAL=$(echo "$1" | cut -c3-)
+                            if [ -n "$OPTVAL" ]
+                            then
+                                DIR=$OPTVAL
+                            else
+                                shift ; DIR=$1
+                            fi ;;
+        -t*)                OPTVAL=$(echo "$1" | cut -c3-)
+                            if [ -n "$OPTVAL" ]
+                            then
+                                TARGET_DIR=$OPTVAL
+                            else
+                                shift ; TARGET_DIR=$1
+                            fi ;;
+        -a*)                OPTVAL=$(echo "$1" | cut -c3-)
+                            if [ -n "$OPTVAL" ]
+                            then
+                                ARCHIVE=$OPTVAL
+                            else
+                                shift ; ARCHIVE=$1
+                            fi ;;
         -p)                 PATCH_ONLY=1 ;;
         -*)                 usage ; exit 1 ;;
         *)                  if [ -n "$HSLIB" ]
@@ -44,6 +68,10 @@ then
     echo "File $HSLIB does not exist or not a regular file!"
     exit 1
 fi
+
+[ "$DIR" = - ] && PATCH_ONLY=1
+[ "$TARGET_DIR" = - ] && TARGET_DIR=
+[ "$ARCHIVE" = - ] && ARCHIVE=
 
 if [ -z "$PATCH_ONLY" ]
 then
@@ -77,5 +105,12 @@ then
         $PATCHELF --set-rpath "$TARGET_DIR:$RPATH" "$HSLIB"
     fi
     $PATCHELF --print-rpath "$HSLIB"
+fi
+
+if [ -z "$PATCH_ONLY" ] && [ -n "$ARCHIVE" ]
+then
+    echo
+    echo "---> Archiving artifacts"
+    tar czvf "$ARCHIVE".tar.gz "$HSLIB" "$DIR"
 fi
 
