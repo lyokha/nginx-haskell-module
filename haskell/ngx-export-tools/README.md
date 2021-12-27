@@ -1,5 +1,7 @@
 #### Module *NgxExport.Tools*
 
+[![Hackage](https://img.shields.io/hackage/v/ngx-export-tools.svg?label=hackage%20%7C%20ngx-export-tools)](https://hackage.haskell.org/package/ngx-export-tools)
+
 ##### Configure and build
 
 ```ShellSession
