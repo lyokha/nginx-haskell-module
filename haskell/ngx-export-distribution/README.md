@@ -73,7 +73,7 @@ Configuring ngx-distribution-test-0.1.0.0...
 ```
 
 ```ShellSession
-$ cabal v1-build --ghc-options="ngx_distribution_test.hs -o ngx_distribution_test.so"
+$ cabal v1-build --ghc-options="ngx_distribution_test.hs -o ngx_distribution_test.so -lHSrts_thr-ghc$(ghc --numeric-version)"
 [1 of 1] Compiling NgxDistributionTest ( ngx_distribution_test.hs, ngx_distribution_test.o )
 Linking ngx_distribution_test.so ...
 ---> Collecting libraries
@@ -92,7 +92,25 @@ Linking ngx_distribution_test.so ...
 
 ---> Patching ngx_distribution_test.so
 /var/lib/nginx/x86_64-linux-ghc-8.10.5:/home/lyokha/.cabal/lib/x86_64-linux-ghc-8.10.5:/usr/lib64:/usr/lib64/ghc-8.10.5/rts
+
+---> Archiving artifacts
+ngx_distribution_test.so
+x86_64-linux-ghc-8.10.5/
+x86_64-linux-ghc-8.10.5/libHSasync-2.2.4-ENjuIeC23kaKyMVDRYThP3-ghc8.10.5.so
+x86_64-linux-ghc-8.10.5/libHSsplitmix-0.1.0.4-HVTAcdRNxuE9ndjT7sldq9-ghc8.10.5.so
+x86_64-linux-ghc-8.10.5/libHSth-abstraction-0.4.3.0-5HX1AugCZKLKm3ZYKErCAM-ghc8.10.5.so
+x86_64-linux-ghc-8.10.5/libHSrts_thr-ghc8.10.5.so
+
+   ...
+
+x86_64-linux-ghc-8.10.5/libHSbifunctors-5.5.11-2fVsEc2ZlypEgv2Pi5nRwa-ghc8.10.5.so
+x86_64-linux-ghc-8.10.5/libHSstrict-0.4.0.1-Bs4t4Fhsgeo8grcWS7WJTy-ghc8.10.5.so
+x86_64-linux-ghc-8.10.5/libHSdlist-1.0-GVPedlNIGcrCE31hGMMV1G-ghc8.10.5.so
 ```
+
+Notice that in *ghc 8.10.6* and newer, option
+*-lHSrts_thr-ghc&dollar;(ghc --numeric-version)* is not needed as it gets
+effectively replaced with ghc option *-flink-rts*.
 
 Now the current working directory contains new files
 *ngx_distribution_test.so* and *ngx-distribution-test-0.1.0.0.tar.gz* and a
@@ -100,8 +118,22 @@ new directory *x86_64-linux-ghc-8.10.5*. The tar-file contains the patched
 shared library and the directory with dependent libraries: it is ready for
 installation in directory */var/lib/nginx* at the target system.
 
-With this building approach, the following list of drawbacks must be taken
-into account.
+For building custom artifacts, options of *hslibdeps* must be accessed
+directly. For this, command *runhaskell Setup.hs build* can be used instead
+of *cabal v1-build*. Let's change the names of the directory with dependent
+libraries and the tar-file to *deps/* and *deps.tar.gz* respectively, and
+also define the *rpath* directory without using option *--prefix*.
+
+```ShellSession
+$ cabal v1-configure --prefix=/var/lib/nginx
+```
+
+```ShellSession
+$ runhaskell Setup.hs build --ghc-options="ngx_distribution_test.hs -o ngx_distribution_test.so -lHSrts_thr-ghc$(ghc --numeric-version)" --hslibdeps-options="-t/var/lib/nginx/deps -ddeps -adeps"
+```
+
+With the building approaches shown above, the following list of drawbacks
+must be taken into account.
 
 - Utility *hslibdeps* collects only libraries prefixed with *libHS*,
 - command *cabal v1-clean* only deletes directory *dist*, it does not delete

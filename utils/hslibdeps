@@ -11,7 +11,7 @@ PATCH_ONLY=
 
 usage()
 {
-    echo "Usage: $(basename "$0") [-d dir [-a ar] | -p] [-t target_dir] hslib"
+    echo "Usage: $(basename "$0") [-d dir -a ar | -p] [-t target_dir] hslib"
     echo "  'dir' is a directory where dependent libraries will be"
     echo "      collected (default is $DEF_DIR)"
     echo "  'target_dir' is a directory where dependent libraries will be"

@@ -1,3 +1,9 @@
+### 0.3.1.0
+
+- Use option *-flink-rts* only with GHC supporting this (GHC *8.10.6* and
+  newer).
+- Added docs on how to use options of *hdlibdeps* directly.
+
 ### 0.3.0.0
 
 - GHC option *-flink-rts* was added to the list of default GHC options.

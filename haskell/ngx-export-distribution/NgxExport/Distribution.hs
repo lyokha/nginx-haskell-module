@@ -1,4 +1,4 @@
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE CPP, TupleSections #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -113,7 +113,7 @@ import Data.Maybe
 -- > Linking ./dist/setup/setup ...
 -- > Configuring ngx-distribution-test-0.1.0.0...
 --
--- > $ cabal v1-build --ghc-options="ngx_distribution_test.hs -o ngx_distribution_test.so"
+-- > $ cabal v1-build --ghc-options="ngx_distribution_test.hs -o ngx_distribution_test.so -lHSrts_thr-ghc$(ghc --numeric-version)"
 -- > [1 of 1] Compiling NgxDistributionTest ( ngx_distribution_test.hs, ngx_distribution_test.o )
 -- > Linking ngx_distribution_test.so ...
 -- > ---> Collecting libraries
@@ -132,6 +132,24 @@ import Data.Maybe
 -- >
 -- > ---> Patching ngx_distribution_test.so
 -- > /var/lib/nginx/x86_64-linux-ghc-8.10.5:/home/lyokha/.cabal/lib/x86_64-linux-ghc-8.10.5:/usr/lib64:/usr/lib64/ghc-8.10.5/rts
+-- >
+-- > ---> Archiving artifacts
+-- > ngx_distribution_test.so
+-- > x86_64-linux-ghc-8.10.5/
+-- > x86_64-linux-ghc-8.10.5/libHSasync-2.2.4-ENjuIeC23kaKyMVDRYThP3-ghc8.10.5.so
+-- > x86_64-linux-ghc-8.10.5/libHSsplitmix-0.1.0.4-HVTAcdRNxuE9ndjT7sldq9-ghc8.10.5.so
+-- > x86_64-linux-ghc-8.10.5/libHSth-abstraction-0.4.3.0-5HX1AugCZKLKm3ZYKErCAM-ghc8.10.5.so
+-- > x86_64-linux-ghc-8.10.5/libHSrts_thr-ghc8.10.5.so
+-- >
+-- >    ...
+-- >
+-- > x86_64-linux-ghc-8.10.5/libHSbifunctors-5.5.11-2fVsEc2ZlypEgv2Pi5nRwa-ghc8.10.5.so
+-- > x86_64-linux-ghc-8.10.5/libHSstrict-0.4.0.1-Bs4t4Fhsgeo8grcWS7WJTy-ghc8.10.5.so
+-- > x86_64-linux-ghc-8.10.5/libHSdlist-1.0-GVPedlNIGcrCE31hGMMV1G-ghc8.10.5.so
+--
+-- Notice that in /ghc 8.10.6/ and newer, option
+-- /-lHSrts_thr-ghc$(ghc --numeric-version)/ is not needed as it gets
+-- effectively replaced with ghc option /-flink-rts/.
 --
 -- Now the current working directory contains new files
 -- /ngx_distribution_test.so/ and /ngx-distribution-test-0.1.0.0.tar.gz/ and a
@@ -139,8 +157,18 @@ import Data.Maybe
 -- shared library and the directory with dependent libraries: it is ready for
 -- installation in directory /\/var\/lib\/nginx/ at the target system.
 --
--- With this building approach, the following list of drawbacks must be taken
--- into account.
+-- For building custom artifacts, options of /hslibdeps/ must be accessed
+-- directly. For this, command /runhaskell Setup.hs build/ can be used instead
+-- of /cabal v1-build/. Let's change the names of the directory with dependent
+-- libraries and the tar-file to /deps\// and /deps.tar.gz/ respectively, and
+-- also define the /rpath/ directory without using option /--prefix/.
+--
+-- > $ cabal v1-configure
+--
+-- > $ runhaskell Setup.hs build --ghc-options="ngx_distribution_test.hs -o ngx_distribution_test.so -lHSrts_thr-ghc$(ghc --numeric-version)" --hslibdeps-options="-t/var/lib/nginx/deps -ddeps -adeps"
+--
+-- With the building approaches shown above, the following list of drawbacks
+-- must be taken into account.
 --
 -- - Utility /hslibdeps/ collects only libraries prefixed with /libHS/,
 -- - command /cabal v1-clean/ only deletes directory /dist/, it does not delete
@@ -158,7 +186,7 @@ patchelf = simpleProgram "patchelf"
 --
 -- Runs /ghc/ compiler with the following arguments.
 --
--- - /-dynamic/, /-shared/, /-fPIC/, /-flink-rts/,
+-- - /-dynamic/, /-shared/, /-fPIC/, /-flink-rts/ (in /ghc 8.10.6/ and newer),
 -- - all arguments listed in /ghc-options/ in the Cabal file,
 -- - all arguments passed in option /--ghc-options/ from command-line,
 -- - if arguments do not contain /-o path/ so far, then /$pkg.hs/, /-o $pkg.so/.
@@ -199,12 +227,15 @@ buildSharedLib verbosity desc lbi flags = do
         let extraSourceFile = head extraGhcOptions
         extraSourceFileExists <- doesFileExist extraSourceFile
         unless extraSourceFileExists $ ioError $ userError $
-            "File " ++ extraSourceFile ++ " does not exist,\
-            \ you may want to specify input and output files in --ghc-options"
+            "File " ++ extraSourceFile ++ " does not exist, " ++
+            "you may want to specify input and output files in --ghc-options"
     ghcP <- fst <$> requireProgram verbosity ghcProgram (withPrograms lbi)
     let ghcR = programInvocation ghcP $
-            ["-dynamic", "-shared", "-fPIC", "-flink-rts"] ++
-                map snd configGhcOptions ++ extraGhcOptions
+#if MIN_TOOL_VERSION_ghc(8,10,6)
+            "-flink-rts" :
+#endif
+                ["-dynamic", "-shared", "-fPIC"] ++
+                    map snd configGhcOptions ++ extraGhcOptions
     runProgramInvocation verbosity ghcR
     return lib'
 
@@ -212,13 +243,13 @@ buildSharedLib verbosity desc lbi flags = do
 --
 -- Performs the following steps.
 --
--- - Adds the value of /prefix/ to the list of /rpath/ in the shared library,
--- - collects all dependent Haskell libraries in a directory whose name forms
+-- - Collects all dependent Haskell libraries in a directory whose name forms
 --   as /arch-os-compiler/,
+-- - adds the value of /prefix/ to the list of /rpath/ in the shared library,
 -- - archives the shared library and the directory with the collected dependent
 --   libraries in a /tar.gz/ file.
 --
--- The initial 2 steps are performed by utility
+-- All steps are performed by utility
 -- <https://github.com/lyokha/nginx-haskell-module/blob/master/utils/hslibdeps hslibdeps>.
 -- It collects all libraries with prefix /libHS/ from the list returned by
 -- command /ldd/ applied to the shared library.
@@ -233,14 +264,11 @@ patchAndCollectDependentLibs verbosity lib desc lbi = do
         dirArg = "-d" : [dir]
         rpathArg = maybe [] (("-t" :) . pure . (</> dir) . fromPathTemplate) $
             flagToMaybe $ prefix $ configInstallDirs $ configFlags lbi
-        plbi = withPrograms lbi
-    hslibdepsP <- fst <$> requireProgram verbosity hslibdeps plbi
-    let hslibdepsR = programInvocation hslibdepsP $ lib : rpathArg ++ dirArg
+        archiveArg = "-a" : [prettyShow $ package desc]
+    hslibdepsP <- fst <$> requireProgram verbosity hslibdeps (withPrograms lbi)
+    let hslibdepsR = programInvocation hslibdepsP $
+            lib : rpathArg ++ dirArg ++ archiveArg
     runProgramInvocation verbosity hslibdepsR
-    tarP <- fst <$> requireProgram verbosity tarProgram plbi
-    let tar = addExtension (prettyShow $ package desc) "tar.gz"
-        tarR = programInvocation tarP ["czf", tar, lib, dir]
-    runProgramInvocation verbosity tarR
 
 -- | Build hooks.
 --
