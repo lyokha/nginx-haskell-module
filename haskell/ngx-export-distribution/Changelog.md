@@ -2,7 +2,8 @@
 
 - Use option *-flink-rts* only with GHC supporting this (GHC *8.10.6* and
   newer).
-- Added docs on how to use options of *hdlibdeps* directly.
+- Archive artifacts using the new option *-a* of *hslibdeps*.
+- Added docs on how to use options of *hslibdeps* directly.
 
 ### 0.3.0.0
 
