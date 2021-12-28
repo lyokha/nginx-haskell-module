@@ -208,7 +208,11 @@ import Data.Maybe
 --
 -- This should build library /ngx_distribution_test.so/ and link it against
 -- Haskell libraries found in the global package db and
--- /$HOME\/.cabal\/store\/ghc-$(ghc --numeric-version)\/package.db/.
+-- /$HOME\/.cabal\/store\/ghc-$(ghc --numeric-version)\/package.db/. Notice
+-- that in this approach library /ngx_distribution_test.so/ gets linked against
+-- the library from /ngx-export-distribution/ and its dependencies which makes
+-- the overall number and the size of dependent libraries bigger than in the
+-- previous two approaches.
 --
 -- With all building approaches shown above, the following list of drawbacks
 -- must be taken into account.

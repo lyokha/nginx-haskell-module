@@ -178,6 +178,10 @@ $ runhaskell Setup.hs build --ghc-options="ngx_distribution_test.hs -o ngx_distr
 This should build library *ngx_distribution_test.so* and link it against
 Haskell libraries found in the global package db and
 *&dollar;HOME/.cabal/store/ghc-&dollar;(ghc --numeric-version)/package.db*.
+Notice that in this approach library *ngx_distribution_test.so* gets linked
+against the library from *ngx-export-distribution* and its dependencies which
+makes the overall number and the size of dependent libraries bigger than in the
+previous two approaches.
 
 With all building approaches shown above, the following list of drawbacks
 must be taken into account.
