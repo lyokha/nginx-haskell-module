@@ -154,7 +154,11 @@ build dependencies and put them in a package environment in the current
 working directory.
 
 ```ShellSession
-$ cabal v2-install --lib --only-dependencies ngx-export-distribution --package-env .
+$ cabal v2-install --lib --only-dependencies --package-env .
+```
+
+```ShellSession
+$ cabal v2-install --lib ngx-export-distribution --package-env .
 ```
 
 ```ShellSession

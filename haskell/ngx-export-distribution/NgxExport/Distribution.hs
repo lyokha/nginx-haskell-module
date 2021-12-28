@@ -193,7 +193,9 @@ import Data.Maybe
 -- build dependencies and put them in a package environment in the current
 -- working directory.
 --
--- > $ cabal v2-install --lib --only-dependencies ngx-export-distribution --package-env .
+-- > $ cabal v2-install --lib --only-dependencies --package-env .
+--
+-- > $ cabal v2-install --lib ngx-export-distribution --package-env .
 --
 -- > $ runhaskell Setup.hs configure --package-db=clear --package-db=global --package-db=$HOME/.cabal/store/ghc-$(ghc --numeric-version)/package.db --prefix=/var/lib/nginx
 --
