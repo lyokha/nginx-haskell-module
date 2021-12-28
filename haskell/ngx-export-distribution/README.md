@@ -69,6 +69,8 @@ configuration step (which will be interpreted as the prefix part of the
 *rpath* by utility *hslibdeps*) and explicit ghc option *-o* at the build
 step which is as well used by *hslibdeps* as the name of the target library.
 
+###### Building with cabal v1-commands
+
 Let's build the example with commands *cabal v1-configure* and
 *cabal v1-build*.
 
@@ -126,6 +128,8 @@ new directory *x86_64-linux-ghc-8.10.5*. The tar-file contains the patched
 shared library and the directory with dependent libraries: it is ready for
 installation in directory */var/lib/nginx* at the target system.
 
+###### Building with Setup.hs commands
+
 For building custom artifacts, options of *hslibdeps* must be accessed
 directly. For this, commands *runhaskell Setup.hs configure / build* can be
 used instead of *cabal v1-configure / v1-build*. Let's change the names of
@@ -140,6 +144,8 @@ $ runhaskell Setup.hs configure --user
 ```ShellSession
 $ runhaskell Setup.hs build --ghc-options="ngx_distribution_test.hs -o ngx_distribution_test.so -lHSrts_thr-ghc$(ghc --numeric-version)" --hslibdeps-options="-t/var/lib/nginx/deps -ddeps -adeps"
 ```
+
+###### Building dependencies with cabal v2-build
 
 Nowadays, Cabal recommends building packages using *Nix-style local builds*.
 This means that dependent packages do not get installed in places known to
