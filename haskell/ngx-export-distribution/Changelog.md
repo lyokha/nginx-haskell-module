@@ -1,3 +1,7 @@
+### 0.3.2.0
+
+- Added docs on building with dependencies installed by *cabal v2-build*.
+
 ### 0.3.1.0
 
 - Use option *-flink-rts* only with GHC supporting this (GHC *8.10.6* and

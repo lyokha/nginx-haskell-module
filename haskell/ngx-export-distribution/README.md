@@ -45,7 +45,13 @@ library
                           , aeson
 
   ghc-options:             -Wall -O2 -no-keep-hi-files -no-keep-o-files
+                           -package=ngx-export -package=aeson
 ```
+
+In this example, module *NgxDistributionTest* is not exposed because names
+of the package and the source file do not match. This is the reason why
+dependent packages *ngx-export* and *aeson* (others are system-wide) should
+be listed in *ghc-options* inside *-package* options.
 
 ###### File *Setup.hs*
 
@@ -64,7 +70,7 @@ configuration step (which will be interpreted as the prefix part of the
 step which is as well used by *hslibdeps* as the name of the target library.
 
 Let's build the example with commands *cabal v1-configure* and
-*cabal v1-build* (the *v2-* commands should probably work as well).
+*cabal v1-build*.
 
 ```ShellSession
 $ cabal v1-configure --prefix=/var/lib/nginx
@@ -121,25 +127,54 @@ shared library and the directory with dependent libraries: it is ready for
 installation in directory */var/lib/nginx* at the target system.
 
 For building custom artifacts, options of *hslibdeps* must be accessed
-directly. For this, command *runhaskell Setup.hs build* can be used instead
-of *cabal v1-build*. Let's change the names of the directory with dependent
-libraries and the tar-file to *deps/* and *deps.tar.gz* respectively, and
-also define the *rpath* directory without using option *--prefix*.
+directly. For this, commands *runhaskell Setup.hs configure / build* can be
+used instead of *cabal v1-configure / v1-build*. Let's change the names of
+the directory with dependent libraries and the tar-file to *deps/* and
+*deps.tar.gz* respectively, and also define the *rpath* directory without
+using option *--prefix*.
 
 ```ShellSession
-$ cabal v1-configure --prefix=/var/lib/nginx
+$ runhaskell Setup.hs configure --user
 ```
 
 ```ShellSession
 $ runhaskell Setup.hs build --ghc-options="ngx_distribution_test.hs -o ngx_distribution_test.so -lHSrts_thr-ghc$(ghc --numeric-version)" --hslibdeps-options="-t/var/lib/nginx/deps -ddeps -adeps"
 ```
 
-With the building approaches shown above, the following list of drawbacks
+Nowadays, Cabal recommends building packages using *Nix-style local builds*.
+This means that dependent packages do not get installed in places known to
+GHC. However, they can be built inside GHC *package environments*. Let's
+build dependencies and put them in a package environment in the current
+working directory.
+
+```ShellSession
+$ cabal v2-install --lib --only-dependencies ngx-export-distribution --package-env .
+```
+
+```ShellSession
+$ runhaskell Setup.hs configure --package-db=clear --package-db=global --package-db=$HOME/.cabal/store/ghc-$(ghc --numeric-version)/package.db --prefix=/var/lib/nginx
+```
+
+Directory
+*&dollar;HOME/.cabal/store/ghc-&dollar;(ghc --numeric-version)/package.db*
+contains a GHC *package db* with all packages built by *cabal v2-build*, it
+gets also listed in file *.ghc.environment.x86_64-linux-8.10.5* which has
+been created by the former command.
+
+```ShellSession
+$ runhaskell Setup.hs build --ghc-options="ngx_distribution_test.hs -o ngx_distribution_test.so -lHSrts_thr-ghc$(ghc --numeric-version)"
+```
+
+This should build library *ngx_distribution_test.so* and link it against
+Haskell libraries found in the global package db and
+*&dollar;HOME/.cabal/store/ghc-&dollar;(ghc --numeric-version)/package.db*.
+
+With all building approaches shown above, the following list of drawbacks
 must be taken into account.
 
 - Utility *hslibdeps* collects only libraries prefixed with *libHS*,
-- command *cabal v1-clean* only deletes directory *dist*, it does not delete
-  build artifacts in the current working directory,
+- clean commands such as *cabal v1-clean* do not delete build artifacts in
+  the current working directory,
 - behavior of Cabal commands other than *configure*, *build* and *clean* is
   not well defined.
 
