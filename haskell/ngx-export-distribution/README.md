@@ -45,13 +45,15 @@ library
                           , aeson
 
   ghc-options:             -Wall -O2 -no-keep-hi-files -no-keep-o-files
-                           -package=ngx-export -package=aeson
+                           -package=base
+                           -package=ngx-export
+                           -package=bytestring
+                           -package=aeson
 ```
 
-In this example, module *NgxDistributionTest* is not exposed because names
-of the package and the source file do not match. This is the reason why
-dependent packages *ngx-export* and *aeson* (others are system-wide) should
-be listed in *ghc-options* inside *-package* options.
+All packages listed in *build-depends* get also wrapped inside options
+*-package* in *ghc-options*: this is important for building them with
+*cabal v2-build* inside GHC *package environments*.
 
 ###### File *Setup.hs*
 
@@ -162,26 +164,32 @@ $ cabal v2-install --lib ngx-export-distribution --package-env .
 ```
 
 ```ShellSession
-$ runhaskell Setup.hs configure --package-db=clear --package-db=global --package-db=$HOME/.cabal/store/ghc-$(ghc --numeric-version)/package.db --prefix=/var/lib/nginx
+$ sed -i 's/\(^package-id \)/--\1/' .ghc.environment.x86_64-linux-8.10.5
+```
+
+This *sed* command comments out all lines that start with word *package-id*
+in file *.ghc.environment.x86_64-linux-8.10.5* which has been created by the
+former commands. This prevents the target library from linking against
+libraries listed in those lines thus making the overall number and the size
+of dependent libraries as small as possible. If this command breaks the
+following steps, some of the commented lines can be selectively uncommented.
+
+```ShellSession
+$ runhaskell --ghc-arg=-package=base --ghc-arg=-package=ngx-export-distribution Setup.hs configure --package-db=clear --package-db=global --package-db=$HOME/.cabal/store/ghc-$(ghc --numeric-version)/package.db --prefix=/var/lib/nginx
 ```
 
 Directory
 *&dollar;HOME/.cabal/store/ghc-&dollar;(ghc --numeric-version)/package.db*
 contains a GHC *package db* with all packages built by *cabal v2-build*, it
-gets also listed in file *.ghc.environment.x86_64-linux-8.10.5* which has
-been created by the former command.
+gets also listed in file *.ghc.environment.x86_64-linux-8.10.5*.
 
 ```ShellSession
-$ runhaskell Setup.hs build --ghc-options="ngx_distribution_test.hs -o ngx_distribution_test.so -lHSrts_thr-ghc$(ghc --numeric-version)"
+$ runhaskell --ghc-arg=-package=base --ghc-arg=-package=ngx-export-distribution Setup.hs build --ghc-options="ngx_distribution_test.hs -o ngx_distribution_test.so -lHSrts_thr-ghc$(ghc --numeric-version)"
 ```
 
 This should build library *ngx_distribution_test.so* and link it against
 Haskell libraries found in the global package db and
 *&dollar;HOME/.cabal/store/ghc-&dollar;(ghc --numeric-version)/package.db*.
-Notice that in this approach library *ngx_distribution_test.so* gets linked
-against the library from *ngx-export-distribution* and its dependencies which
-makes the overall number and the size of dependent libraries bigger than in the
-previous two approaches.
 
 With all building approaches shown above, the following list of drawbacks
 must be taken into account.
