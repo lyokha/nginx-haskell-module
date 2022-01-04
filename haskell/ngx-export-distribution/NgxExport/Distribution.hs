@@ -296,9 +296,10 @@ buildSharedLib verbosity desc lbi flags = do
 --
 -- Performs the following steps.
 --
--- - Collects all dependent Haskell libraries in a directory whose name forms
---   as /arch-os-compiler/ (or that overridden in option /--hslibdeps-options/),
--- - adds the value of /prefix/ (or that overridden in option
+-- - Collects all dependent Haskell libraries in a directory with the name equal
+--   to the value of /$abi/ which normally expands to /$arch-$os-$compiler/ (or
+--   with that overridden in option /--hslibdeps-options/),
+-- - adds value /$prefix\/$abi/ (or that overridden in option
 --   /--hslibdeps-options/) in the beginning of the list of /rpath/ in the
 --   shared library,
 -- - archives the shared library and the directory with the collected dependent
