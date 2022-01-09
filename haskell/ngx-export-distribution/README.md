@@ -52,8 +52,8 @@ library
 ```
 
 All packages listed in *build-depends* get also wrapped inside options
-*-package* in *ghc-options*: this is important for building them with
-*cabal v2-build* inside GHC *package environments*.
+*-package* in *ghc-options*: this is important when building them with
+*cabal v2-build* and then using inside GHC *package environments*.
 
 ###### File *Setup.hs*
 
