@@ -16,11 +16,11 @@
  * =============================================================================
  */
 
-#include <dlfcn.h>
-#include <ghcversion.h>
-
 #include "ngx_http_haskell_module.h"
 #include "ngx_http_haskell_load.h"
+
+#include <dlfcn.h>
+#include <ghcversion.h>
 
 
 static const ngx_str_t  haskell_module_user_runtime_prefix =
