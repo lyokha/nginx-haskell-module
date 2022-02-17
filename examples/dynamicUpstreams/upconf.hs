@@ -30,6 +30,8 @@ import           Data.Maybe
 import           Data.Aeson
 import           Safe
 
+--import NgxExport.Healthcheck ()
+
 type Url = String           -- normally must start with /
 type Destination = String   -- IP address or domain name
 

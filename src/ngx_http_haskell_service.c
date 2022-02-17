@@ -844,8 +844,8 @@ ngx_http_haskell_service_hook_event(ngx_event_t *ev)
 
         NGX_HTTP_HASKELL_SHM_RLOCK
 
-        var_data = &shm_vars[hev->hook->service_hook_index].data.result.data;
-        if (shm_vars[service_code_var->shm_index].data.result.data.len == 0) {
+        var_data = &shm_vars[service_code_var->shm_index].data.result.data;
+        if (var_data->len == 0) {
             NGX_HTTP_HASKELL_SHM_UNLOCK
             goto run_handler;
         }
