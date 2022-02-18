@@ -1,5 +1,5 @@
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE ViewPatterns, NumDecimals, ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell, ScopedTypeVariables #-}
+{-# LANGUAGE ViewPatterns, NumDecimals, OverloadedStrings, RecordWildCards #-}
 
 -- ghc -O2 -dynamic -shared -fPIC -lHSrts_thr-ghc$(ghc --numeric-version) \
 --   upconf.hs -o /var/lib/nginx/upconf.so -fforce-recomp
@@ -49,7 +49,29 @@ data TimeInterval = Hr Int
                   | MinSec (Int, Int)
                   deriving (Read)
 
-type CollectedData = Map Destination [Destination]
+data ServerData = ServerData { sAddr        :: Destination
+                             , sWeight      :: Maybe Int
+                             , sMaxFails    :: Maybe Int
+                             , sFailTimeout :: Maybe Int
+                             } deriving (Show, Eq)
+
+instance FromJSON ServerData where
+    parseJSON = withObject "server_options" $ \o -> do
+        sAddr        <- o .:  "addr"
+        sWeight      <- o .:? "weight"
+        sMaxFails    <- o .:? "max_fails"
+        sFailTimeout <- o .:? "fail_timeout"
+        return ServerData {..}
+
+instance ToJSON ServerData where
+    toJSON ServerData {..} =
+        object $ catMaybes [ pure $ "addr"   .=      sAddr
+                           , ("weight"       .=) <$> sWeight
+                           , ("max_fails"    .=) <$> sMaxFails
+                           , ("fail_timeout" .=) <$> sFailTimeout
+                           ]
+
+type CollectedData = Map Destination [ServerData]
 
 collectedData :: IORef CollectedData
 collectedData = unsafePerformIO $ newIORef M.empty

@@ -469,11 +469,11 @@ ngx_http_upconf_get_shm_zone(ngx_http_request_t *r, ngx_str_t *upstream)
 static ngx_int_t
 ngx_http_upconf_update(ngx_http_request_t *r, ngx_int_t idx, ngx_uint_t init)
 {
-    ngx_int_t                      i, j;
+    ngx_int_t                      i, j, k, l, acc;
     ngx_http_variable_value_t     *var;
     jsmn_parser                    jparse;
     jsmntok_t                     *jtok;
-    int                            jrc, jsz, sz;
+    int                            jrc, jsz, sz, szs;
 
     var = ngx_http_get_indexed_variable(r, idx);
 
@@ -485,7 +485,7 @@ ngx_http_upconf_update(ngx_http_request_t *r, ngx_int_t idx, ngx_uint_t init)
 
     jrc = jsmn_parse(&jparse, (char *) var->data, var->len, NULL, 0);
     if (jrc < 0) {
-        ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "JSON parse error: %d", jrc);
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
@@ -493,7 +493,7 @@ ngx_http_upconf_update(ngx_http_request_t *r, ngx_int_t idx, ngx_uint_t init)
     jsz = jrc;
     jtok = ngx_palloc(r->pool, sizeof(jsmntok_t) * jsz);
     if (jtok == NULL) {
-        ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "failed to allocate memory to parse JSON data");
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
@@ -501,9 +501,23 @@ ngx_http_upconf_update(ngx_http_request_t *r, ngx_int_t idx, ngx_uint_t init)
     jsmn_init(&jparse);
 
     jrc = jsmn_parse(&jparse, (char *) var->data, var->len, jtok, jsz);
-    if (jrc < 0|| jtok[0].type != JSMN_OBJECT) {
-        ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
+    if (jrc < 0) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "JSON parse error: %d", jrc);
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
+#if 0
+    for (i = 0; i < jsz; i++) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "JTOK: %d, %d", jtok[i].type, jtok[i].size);
+    }
+#endif
+
+    if (jtok[0].type != JSMN_OBJECT) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "unexpected structure of JSON data: "
+                      "the whole data is not an object");
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
@@ -512,41 +526,68 @@ ngx_http_upconf_update(ngx_http_request_t *r, ngx_int_t idx, ngx_uint_t init)
         if (i >= jsz) {
             break;
         }
+
         if (jtok[i].type != JSMN_STRING) {
-            ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
-                    "unexpected structure of JSON data: key is not a string");
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "unexpected structure of JSON data: "
+                          "key is not a string");
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
         if (i + 1 >= jsz || jtok[i + 1].type != JSMN_ARRAY) {
-            ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
-                    "unexpected structure of JSON data: value is not an array");
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "unexpected structure of JSON data: "
+                          "server list is not an array");
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
         sz = jtok[i + 1].size;
         if (sz == 0) {
-            ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
-                    "an array with zero size, ignored");
+            ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0,
+                          "unexpected structure of JSON data: "
+                          "server list is empty, ignored");
             i += 2;
             continue;
         }
-        if (i + 1 + sz >= jsz) {
-            ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
-                    "unexpected structure of JSON data: too many elements "
-                    "in array");
-            return NGX_HTTP_INTERNAL_SERVER_ERROR;
-        }
-        for (j = i + 2; j < i + 2 + sz; j++) {
-            if (jtok[j].type != JSMN_STRING) {
-                ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
-                    "unexpected structure of JSON data: there are elements "
-                    "in array of not string type");
+
+        acc = 0;
+        for (k = 0; k < sz; k++) {
+            if (jtok[acc + i + 2].type != JSMN_OBJECT) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "unexpected structure of JSON data: "
+                              "server data is not an object");
                 return NGX_HTTP_INTERNAL_SERVER_ERROR;
             }
+            szs = jtok[acc + i + 2].size;
+            ++acc;
+            if (szs == 0) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "unexpected structure of JSON data: "
+                              "server data is empty");
+                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            }
+            for (l = 0, j = acc + i + 2; l < szs; l++, j += 2, acc += 2) {
+                if (jtok[j].type != JSMN_STRING) {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "unexpected structure of JSON data: "
+                                  "key is not a string");
+                    return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                }
+                if (jtok[j + 1].type != JSMN_STRING
+                    && jtok[j + 1].type != JSMN_PRIMITIVE)
+                {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "unexpected structure of JSON data: "
+                                  "server option is neither a string nor "
+                                  "a primitive, %d", jtok[j + 1].type);
+                    return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                }
+            }
         }
+
         if (ngx_http_upconf_update_shm_zone(r, var, jtok, i) != NGX_OK) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
-        i += 2 + sz;
+
+        i += 2 + acc;
     }
 
     return NGX_OK;
@@ -558,7 +599,8 @@ ngx_http_upconf_update_shm_zone(ngx_http_request_t *r,
                                 ngx_http_variable_value_t *var,
                                 jsmntok_t *jtok, ngx_int_t idx)
 {
-    ngx_int_t                            i, j, size;
+    ngx_int_t                            i, j, k, l, acc, total_weight = 0;
+    ngx_int_t                            size, size_s;
     ngx_slab_pool_t                     *shpool;
     ngx_http_upstream_rr_peer_t         *peer, *existing, *prev, *next;
     ngx_http_upstream_rr_peer_t         *new = NULL;
@@ -569,12 +611,23 @@ ngx_http_upconf_update_shm_zone(ngx_http_request_t *r,
     socklen_t                            socklen;
     ngx_array_t                          shm_cleanup_data;
     ngx_http_upconf_shm_cleanup_data_t  *shm_cleanup_data_elts;
-    ngx_str_t                            zone_name, server_name;
+    ngx_str_t                            zone_name;
+    ngx_str_t                            field, field_value = ngx_null_string;
+    ngx_str_t                            server_name = ngx_null_string;
+    ngx_int_t                            weight, max_fails, fail_timeout;
+    ngx_uint_t                           weighted = 0;
     ngx_int_t                            rc = NGX_OK;
 
     zone_name.len = jtok[idx].end - jtok[idx].start;
     zone_name.data = &var->data[jtok[idx].start];
     size = jtok[idx + 1].size;
+
+    if (size == 0) {
+        ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0,
+                      "unexpected structure of JSON data: "
+                      "server list is empty, ignored");
+        return NGX_OK;
+    }
 
     uscf = ngx_http_upconf_get_shm_zone(r, &zone_name);
 
@@ -605,10 +658,99 @@ ngx_http_upconf_update_shm_zone(ngx_http_request_t *r,
     peers = uscf->peer.data;
     prev = NULL;
 
-    for (i = 0, j = idx + 2; i < size; i++, j++) {
+    for (i = 0, j = idx + 2; i < size; i++) {
         existing = NULL;
-        server_name.len = jtok[j].end - jtok[j].start;
-        server_name.data = &var->data[jtok[j].start];
+        size_s = jtok[j].size;
+        weight = 1;
+        max_fails = 1;
+        fail_timeout = 10;
+
+        acc = 0;
+        for (l = 0, k = j + 1; l < size_s; l++, k += 2, acc += 2) {
+            if (jtok[k].type != JSMN_STRING) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "unexpected structure of JSON data: "
+                              "key is not a string");
+                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            }
+            field.len = jtok[k].end - jtok[k].start;
+            field.data = &var->data[jtok[k].start];
+            if (field.len == 4 && ngx_strncmp(field.data, "addr", 4) == 0) {
+                if (jtok[k + 1].type != JSMN_STRING) {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "unexpected structure of JSON data: "
+                                  "server address is not a string");
+                    return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                }
+                server_name.len = jtok[k + 1].end - jtok[k + 1].start;
+                server_name.data = &var->data[jtok[k + 1].start];
+            } else if (field.len == 6
+                       && ngx_strncmp(field.data, "weight", 6) == 0)
+            {
+                if (jtok[k + 1].type != JSMN_PRIMITIVE) {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "unexpected structure of JSON data: "
+                                  "weight is not a primitive");
+                    return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                }
+                field_value.len = jtok[k + 1].end - jtok[k + 1].start;
+                field_value.data = &var->data[jtok[k + 1].start];
+                weight = ngx_atoi(field_value.data, field_value.len);
+                if (weight == NGX_ERROR) {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "unexpected structure of JSON data: "
+                                  "weight is not a number");
+                    return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                }
+                weighted = 1;
+            } else if (field.len == 9
+                       && ngx_strncmp(field.data, "max_fails", 9) == 0)
+            {
+                if (jtok[k + 1].type != JSMN_PRIMITIVE) {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "unexpected structure of JSON data: "
+                                  "weight is not a primitive");
+                    return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                }
+                field_value.len = jtok[k + 1].end - jtok[k + 1].start;
+                field_value.data = &var->data[jtok[k + 1].start];
+                max_fails = ngx_atoi(field_value.data, field_value.len);
+                if (max_fails == NGX_ERROR) {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "unexpected structure of JSON data: "
+                                  "max_fails is not a number");
+                    return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                }
+            } else if (field.len == 12
+                       && ngx_strncmp(field.data, "fail_timeout", 12) == 0)
+            {
+                if (jtok[k + 1].type != JSMN_PRIMITIVE) {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "unexpected structure of JSON data: "
+                                  "weight is not a primitive");
+                    return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                }
+                field_value.len = jtok[k + 1].end - jtok[k + 1].start;
+                field_value.data = &var->data[jtok[k + 1].start];
+                fail_timeout = ngx_atoi(field_value.data, field_value.len);
+                if (fail_timeout == NGX_ERROR) {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "unexpected structure of JSON data: "
+                                  "fail_timeout is not a number");
+                    return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                }
+            }
+        }
+        j += 1 + acc;
+
+        total_weight += weight;
+
+        if (server_name.len == 0) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "unexpected structure of JSON data: "
+                          "server address was not found");
+            continue;
+        }
 
         for (peer = peers->peer; peer != NULL; peer = peer->next) {
             if (server_name.len == peer->name.len
@@ -674,11 +816,11 @@ ngx_http_upconf_update_shm_zone(ngx_http_request_t *r,
         peer->server = u.url;
         peer->sockaddr = sockaddr;
         peer->socklen = socklen;
-        peer->weight = 1;
-        peer->effective_weight = 1;
+        peer->weight = weight;
+        peer->effective_weight = weight;
         peer->current_weight = 0;
-        peer->max_fails = 1;
-        peer->fail_timeout = 10;
+        peer->max_fails = max_fails;
+        peer->fail_timeout = fail_timeout;
 
         if (existing) {
             peer->conns = existing->conns;
@@ -725,9 +867,9 @@ ngx_http_upconf_update_shm_zone(ngx_http_request_t *r,
 
     peers->peer = new;
     peers->number = size;
-    peers->total_weight = size;
+    peers->total_weight = total_weight;
     peers->single = size == 1 ? 1 : 0;
-    peers->weighted = 0;
+    peers->weighted = weighted;
 
     if (uscf->peer.init_upstream == ngx_http_upconf_init_chash
         && ngx_http_upconf_init_chash_common(r->connection->log, uscf, 1)
