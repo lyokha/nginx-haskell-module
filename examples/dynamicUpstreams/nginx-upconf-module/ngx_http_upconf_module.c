@@ -745,6 +745,10 @@ ngx_http_upconf_update_shm_zone(ngx_http_request_t *r,
                                   "fail_timeout is not a number");
                     goto error_cleanup;
                 }
+            } else {
+                ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0,
+                              "unexpected structure of JSON data: "
+                              "unknown field \"%V\", ignored", &field);
             }
             acc += 2;
             k += 2;
@@ -758,7 +762,7 @@ ngx_http_upconf_update_shm_zone(ngx_http_request_t *r,
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                           "unexpected structure of JSON data: "
                           "server address was not found");
-            continue;
+            goto error_cleanup;
         }
 
         for (peer = peers->peer; peer != NULL; peer = peer->next) {
@@ -794,7 +798,6 @@ ngx_http_upconf_update_shm_zone(ngx_http_request_t *r,
             }
             sockaddr = u.addrs[0].sockaddr;
             socklen = u.addrs[0].socklen;
-            shm_cleanup_data_elts[i].sockaddr = sockaddr;
         } else {
             sockaddr = ngx_slab_alloc_locked(shpool, sizeof(struct sockaddr));
             if (sockaddr == NULL) {
@@ -804,8 +807,8 @@ ngx_http_upconf_update_shm_zone(ngx_http_request_t *r,
             }
             *sockaddr = *existing->sockaddr;
             socklen = existing->socklen;
-            shm_cleanup_data_elts[i].sockaddr = sockaddr;
         }
+        shm_cleanup_data_elts[i].sockaddr = sockaddr;
 
         peer = ngx_slab_calloc_locked(shpool,
                                       sizeof(ngx_http_upstream_rr_peer_t));
