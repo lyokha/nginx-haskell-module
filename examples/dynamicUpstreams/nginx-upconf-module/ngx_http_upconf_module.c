@@ -46,11 +46,12 @@ typedef struct {
     ngx_int_t                     index;
     ngx_shm_zone_t               *shm_zone;
     ngx_uint_t                    checked;
-} ngx_http_upconf_checker_data_t;   
+} ngx_http_upconf_checker_data_t;
 
 
 typedef struct {
     u_char                       *url;
+    struct sockaddr              *sockaddr;
     ngx_http_upstream_rr_peer_t  *peer;
 } ngx_http_upconf_shm_cleanup_data_t;
 
@@ -509,8 +510,8 @@ ngx_http_upconf_update(ngx_http_request_t *r, ngx_int_t idx, ngx_uint_t init)
 
 #if 0
     for (i = 0; i < jsz; i++) {
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                          "JTOK: %d, %d", jtok[i].type, jtok[i].size);
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "JTOK: %d, %d", jtok[i].type, jtok[i].size);
     }
 #endif
 
@@ -557,14 +558,16 @@ ngx_http_upconf_update(ngx_http_request_t *r, ngx_int_t idx, ngx_uint_t init)
                 return NGX_HTTP_INTERNAL_SERVER_ERROR;
             }
             szs = jtok[acc + i + 2].size;
-            ++acc;
             if (szs == 0) {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                               "unexpected structure of JSON data: "
                               "server data is empty");
                 return NGX_HTTP_INTERNAL_SERVER_ERROR;
             }
-            for (l = 0, j = acc + i + 2; l < szs; l++, j += 2, acc += 2) {
+
+            ++acc;
+            j = acc + i + 2;
+            for (l = 0; l < szs; l++) {
                 if (jtok[j].type != JSMN_STRING) {
                     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                                   "unexpected structure of JSON data: "
@@ -580,6 +583,8 @@ ngx_http_upconf_update(ngx_http_request_t *r, ngx_int_t idx, ngx_uint_t init)
                                   "a primitive, %d", jtok[j + 1].type);
                     return NGX_HTTP_INTERNAL_SERVER_ERROR;
                 }
+                acc += 2;
+                j += 2;
             }
         }
 
@@ -599,8 +604,7 @@ ngx_http_upconf_update_shm_zone(ngx_http_request_t *r,
                                 ngx_http_variable_value_t *var,
                                 jsmntok_t *jtok, ngx_int_t idx)
 {
-    ngx_int_t                            i, j, k, l, acc, total_weight = 0;
-    ngx_int_t                            size, size_s;
+    ngx_int_t                            i, j, k, l, acc;
     ngx_slab_pool_t                     *shpool;
     ngx_http_upstream_rr_peer_t         *peer, *existing, *prev, *next;
     ngx_http_upstream_rr_peer_t         *new = NULL;
@@ -615,8 +619,8 @@ ngx_http_upconf_update_shm_zone(ngx_http_request_t *r,
     ngx_str_t                            field, field_value = ngx_null_string;
     ngx_str_t                            server_name = ngx_null_string;
     ngx_int_t                            weight, max_fails, fail_timeout;
+    ngx_int_t                            size, size_s, total_weight = 0;
     ngx_uint_t                           weighted = 0;
-    ngx_int_t                            rc = NGX_OK;
 
     zone_name.len = jtok[idx].end - jtok[idx].start;
     zone_name.data = &var->data[jtok[idx].start];
@@ -658,7 +662,8 @@ ngx_http_upconf_update_shm_zone(ngx_http_request_t *r,
     peers = uscf->peer.data;
     prev = NULL;
 
-    for (i = 0, j = idx + 2; i < size; i++) {
+    j = idx + 2;
+    for (i = 0; i < size; i++) {
         existing = NULL;
         size_s = jtok[j].size;
         weight = 1;
@@ -666,7 +671,8 @@ ngx_http_upconf_update_shm_zone(ngx_http_request_t *r,
         fail_timeout = 10;
 
         acc = 0;
-        for (l = 0, k = j + 1; l < size_s; l++, k += 2, acc += 2) {
+        k = j + 1;
+        for (l = 0; l < size_s; l++) {
             if (jtok[k].type != JSMN_STRING) {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                               "unexpected structure of JSON data: "
@@ -740,7 +746,10 @@ ngx_http_upconf_update_shm_zone(ngx_http_request_t *r,
                     return NGX_HTTP_INTERNAL_SERVER_ERROR;
                 }
             }
+            acc += 2;
+            k += 2;
         }
+
         j += 1 + acc;
 
         total_weight += weight;
@@ -767,10 +776,10 @@ ngx_http_upconf_update_shm_zone(ngx_http_request_t *r,
         if (u.url.data == NULL) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                           "failed to allocate memory for url data");
-            rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
             goto error_cleanup;
         }
         shm_cleanup_data_elts[i].url = u.url.data;
+
         ngx_memcpy(u.url.data, server_name.data, server_name.len);
         u.url.len = server_name.len;
         u.default_port = 80;
@@ -781,8 +790,6 @@ ngx_http_upconf_update_shm_zone(ngx_http_request_t *r,
                     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                                   "%s in upstream \"%V\"", u.err, &u.url);
                 }
-                ngx_slab_free_locked(shpool, u.url.data);
-                rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
                 goto error_cleanup;
             }
             sockaddr = u.addrs[0].sockaddr;
@@ -792,9 +799,9 @@ ngx_http_upconf_update_shm_zone(ngx_http_request_t *r,
             if (sockaddr == NULL) {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                               "failed to allocate memory for sockaddr");
-                rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
                 goto error_cleanup;
             }
+            shm_cleanup_data_elts[i].sockaddr = sockaddr;
             *sockaddr = *existing->sockaddr;
             socklen = existing->socklen;
         }
@@ -804,10 +811,6 @@ ngx_http_upconf_update_shm_zone(ngx_http_request_t *r,
         if (peer == NULL) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                           "failed to allocate memory for a new peer");
-            if (existing) {
-                ngx_slab_free_locked(shpool, u.url.data);
-            }
-            rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
             goto error_cleanup;
         }
         shm_cleanup_data_elts[i].peer = peer;
@@ -889,6 +892,9 @@ error_cleanup:
         if (shm_cleanup_data_elts[i].url != NULL) {
             ngx_slab_free_locked(shpool, shm_cleanup_data_elts[i].url);
         }
+        if (shm_cleanup_data_elts[i].sockaddr != NULL) {
+            ngx_slab_free_locked(shpool, shm_cleanup_data_elts[i].sockaddr);
+        }
         if (shm_cleanup_data_elts[i].peer != NULL) {
             ngx_slab_free_locked(shpool, shm_cleanup_data_elts[i].peer);
         }
@@ -896,7 +902,7 @@ error_cleanup:
 
     ngx_shmtx_unlock(&shpool->mutex);
 
-    return rc;
+    return NGX_HTTP_INTERNAL_SERVER_ERROR;
 }
 
 

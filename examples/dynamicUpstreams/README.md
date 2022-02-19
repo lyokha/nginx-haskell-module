@@ -1,27 +1,28 @@
 There is a good [*Nginx module for dynamic
 upstreams*](http://github.com/cubicdaiya/ngx_dynamic_upstream). It provides API
 for dynamic changes of servers and their parameters in static server groups aka
-upstreams. *Nginx Plus* has similar functionality. Imagine that we want alike
-feature, however the server discovery must be run actively by Nginx itself: it
-can poll a data provider synchronously using timeouts or be subscribed to
-updates asynchronously. In this example the first synchronous approach is used.
+upstreams. *Nginx Plus* has similar functionality. Imagine that we want a
+similar feature, however the server discovery must be run actively by Nginx: it
+could poll a data provider synchronously using timeouts or be subscribed to
+updates asynchronously. In this example, the first synchronous approach will be
+used.
 
 Let the data provider respond on a request from our service with a *JSON* object
-with upstreams containing plain lists of their servers. Plain lists of servers
-means that we won't need to set specific weights and other parameters of the
-servers. Below is an example of the *JSON* response.
+with upstreams containing lists of their servers with optional parameters
+including *weight*, *max_fails*, and *file_timeout*. Below is an example of such
+a response.
 
 ```json
 {
   "utest":
-     ["127.0.0.1:8020"
-     ,"127.0.0.1:8030"
-     ,"127.0.0.1:8040"
+     [{"addr": "127.0.0.1:8020"}
+     ,{"addr": "127.0.0.1:8030"}
+     ,{"addr": "127.0.0.1:8040", "weight": 2}
      ],
   "utest_hash":
-     ["127.0.0.1:8020"
-     ,"127.0.0.1:8030"
-     ,"127.0.0.1:8040"
+     [{"addr": "127.0.0.1:8020" ,"max_fails": 2, "fail_timeout": 60}
+     ,{"addr": "127.0.0.1:8030"}
+     ,{"addr": "127.0.0.1:8040"}
      ]
 }
 ```
@@ -40,7 +41,7 @@ provides two directives.
   dynamic upstream module but gets data from a variable.
 
 - *upconf_hash* ``$var`` ``consistent`` &mdash; Allows using *hash* value for
-  defining the target server. Allowed on the *upstream* configuration level.
+  searching the target server. Allowed on the *upstream* configuration level.
 
 As soon as *upconf* must parse a *JSON* object, the module requires an external
 library [*jsmn*](http://github.com/zserge/jsmn) for that. The *hash*
