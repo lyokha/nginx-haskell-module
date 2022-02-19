@@ -677,7 +677,7 @@ ngx_http_upconf_update_shm_zone(ngx_http_request_t *r,
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                               "unexpected structure of JSON data: "
                               "key is not a string");
-                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                goto error_cleanup;
             }
             field.len = jtok[k].end - jtok[k].start;
             field.data = &var->data[jtok[k].start];
@@ -686,7 +686,7 @@ ngx_http_upconf_update_shm_zone(ngx_http_request_t *r,
                     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                                   "unexpected structure of JSON data: "
                                   "server address is not a string");
-                    return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                    goto error_cleanup;
                 }
                 server_name.len = jtok[k + 1].end - jtok[k + 1].start;
                 server_name.data = &var->data[jtok[k + 1].start];
@@ -697,7 +697,7 @@ ngx_http_upconf_update_shm_zone(ngx_http_request_t *r,
                     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                                   "unexpected structure of JSON data: "
                                   "weight is not a primitive");
-                    return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                    goto error_cleanup;
                 }
                 field_value.len = jtok[k + 1].end - jtok[k + 1].start;
                 field_value.data = &var->data[jtok[k + 1].start];
@@ -706,7 +706,7 @@ ngx_http_upconf_update_shm_zone(ngx_http_request_t *r,
                     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                                   "unexpected structure of JSON data: "
                                   "weight is not a number");
-                    return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                    goto error_cleanup;
                 }
                 weighted = 1;
             } else if (field.len == 9
@@ -716,7 +716,7 @@ ngx_http_upconf_update_shm_zone(ngx_http_request_t *r,
                     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                                   "unexpected structure of JSON data: "
                                   "weight is not a primitive");
-                    return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                    goto error_cleanup;
                 }
                 field_value.len = jtok[k + 1].end - jtok[k + 1].start;
                 field_value.data = &var->data[jtok[k + 1].start];
@@ -725,7 +725,7 @@ ngx_http_upconf_update_shm_zone(ngx_http_request_t *r,
                     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                                   "unexpected structure of JSON data: "
                                   "max_fails is not a number");
-                    return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                    goto error_cleanup;
                 }
             } else if (field.len == 12
                        && ngx_strncmp(field.data, "fail_timeout", 12) == 0)
@@ -734,7 +734,7 @@ ngx_http_upconf_update_shm_zone(ngx_http_request_t *r,
                     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                                   "unexpected structure of JSON data: "
                                   "weight is not a primitive");
-                    return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                    goto error_cleanup;
                 }
                 field_value.len = jtok[k + 1].end - jtok[k + 1].start;
                 field_value.data = &var->data[jtok[k + 1].start];
@@ -743,7 +743,7 @@ ngx_http_upconf_update_shm_zone(ngx_http_request_t *r,
                     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                                   "unexpected structure of JSON data: "
                                   "fail_timeout is not a number");
-                    return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                    goto error_cleanup;
                 }
             }
             acc += 2;
@@ -794,6 +794,7 @@ ngx_http_upconf_update_shm_zone(ngx_http_request_t *r,
             }
             sockaddr = u.addrs[0].sockaddr;
             socklen = u.addrs[0].socklen;
+            shm_cleanup_data_elts[i].sockaddr = sockaddr;
         } else {
             sockaddr = ngx_slab_alloc_locked(shpool, sizeof(struct sockaddr));
             if (sockaddr == NULL) {
@@ -801,9 +802,9 @@ ngx_http_upconf_update_shm_zone(ngx_http_request_t *r,
                               "failed to allocate memory for sockaddr");
                 goto error_cleanup;
             }
-            shm_cleanup_data_elts[i].sockaddr = sockaddr;
             *sockaddr = *existing->sockaddr;
             socklen = existing->socklen;
+            shm_cleanup_data_elts[i].sockaddr = sockaddr;
         }
 
         peer = ngx_slab_calloc_locked(shpool,
