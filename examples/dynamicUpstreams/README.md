@@ -63,6 +63,8 @@ Run some *curl* tests.
 
 ```ShellSession
 $ curl 'http://localhost:8010/'
+[30890] In 8040
+$ curl 'http://localhost:8010/'
 [30890] In 8020
 $ curl 'http://localhost:8010/'
 [30890] In 8030
