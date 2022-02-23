@@ -89,3 +89,31 @@ corresponding *backends* instance of Nginx,
 wait at most *20 sec* (the value is configured in *nginx-upconf.conf*) and run
 *curl* tests again to check if the new values have been set.
 
+The *upconf* module does not support *backup* settings in the list of server
+options. However, data providers such as *DNS* *SRV* records may provide several
+layers of backup servers (say, via *priority* fields). It would be nice to use
+such a great feature. And this is really possible with the *upstrands* from
+[*Nginx combined upstreams
+module*](http://github.com/lyokha/nginx-combined-upstreams-module). The
+*upstrands* can be seen as upstreams with multiple backup layers. For the sake
+of our example, let upstream *utest* be the primary layer of servers while
+upstream *utest_hash* be the backup layer. Then the upstrand (say, *utest*) can
+be declared as
+
+```nginx
+    upstrand utest {
+        upstream utest;
+        upstream utest_hash;
+        order per_request;
+        next_upstream_statuses error timeout 5xx;
+        next_upstream_timeout 60s;
+    }
+```
+
+The upstrand's layers of upstreams can be transparently accessed in directive
+*proxy_pass* via the dedicated variable.
+
+```nginx
+            proxy_pass http://$upstrand_utest;
+```
+
