@@ -14,11 +14,11 @@ jobs:
         nginx: ['']
         experimental: [false]
         include:
-          - ghc: 9.2.1
+          - ghc: 9.2.2
             cabal: 3.6.2.0
             nginx: ''
             experimental: false
-          - ghc: 9.2.1
+          - ghc: 9.2.2
             cabal: 3.6.2.0
             nginx: head
             experimental: true
@@ -69,6 +69,8 @@ jobs:
           GHCVER: ${{ matrix.ghc }}
           NGXVER: ${{ matrix.nginx }}
           CABALVER: ${{ matrix.cabal }}
+          JSMN_REV: 25647e692c7906b96ffd2b05ca54c097948e879c
+          UPCONF_MODULE_PATH=examples/dynamicUpstreams/nginx-upconf-module
         run: |
           set -e
           cabal --version
@@ -92,6 +94,8 @@ jobs:
                   wget http://nginx.org/download/nginx-${NGXVER}.tar.gz &&
                       tar xzvf nginx-${NGXVER}.tar.gz
               fi
+              wget -P $UPCONF_MODULE_PATH \
+                  https://raw.githubusercontent.com/zserge/jsmn/$JSMN_REV/jsmn.h
               git clone https://github.com/openresty/echo-nginx-module.git
               cabal v1-install cpphs regex-pcre-builtin aeson bytestring safe
               cd -
@@ -117,7 +121,9 @@ jobs:
               else
                   NGX_CONFIGURE=./configure
               fi
-              $NGX_CONFIGURE --add-module=.. --add-module=../echo-nginx-module
+              $NGX_CONFIGURE --add-module=.. \
+                             --add-module=../$UPCONF_MODULE_PATH \
+                             --add-module=../echo-nginx-module
               make -j2
               export PATH=$(pwd)/objs:$PATH
               cd -

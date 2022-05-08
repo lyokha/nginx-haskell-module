@@ -1257,7 +1257,7 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (mcf->code_loaded) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "only one haskell source code block is allowed");
+                    "only one directive haskell compile / load is allowed");
         return NGX_CONF_ERROR;
     }
 
