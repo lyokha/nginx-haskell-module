@@ -70,7 +70,7 @@ jobs:
           NGXVER: ${{ matrix.nginx }}
           CABALVER: ${{ matrix.cabal }}
           JSMN_REV: 25647e692c7906b96ffd2b05ca54c097948e879c
-          UPCONF_MODULE_PATH=examples/dynamicUpstreams/nginx-upconf-module
+          UPCONF_MODULE_PATH: examples/dynamicUpstreams/nginx-upconf-module
         run: |
           set -e
           cabal --version
