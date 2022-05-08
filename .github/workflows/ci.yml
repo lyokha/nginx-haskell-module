@@ -94,7 +94,7 @@ jobs:
                   wget http://nginx.org/download/nginx-${NGXVER}.tar.gz &&
                       tar xzvf nginx-${NGXVER}.tar.gz
               fi
-              wget -P $UPCONF_MODULE_PATH \
+              sudo wget -P /usr/include \
                   https://raw.githubusercontent.com/zserge/jsmn/$JSMN_REV/jsmn.h
               git clone https://github.com/openresty/echo-nginx-module.git
               cabal v1-install cpphs regex-pcre-builtin aeson bytestring safe
