@@ -1,6 +1,8 @@
 #### Basic docker image
 
 This docker image contains Nginx built with *nginx-haskell-module*,
+[*aliases module*](../aliases/),
+[*nginx-upconf-module*](../examples/dynamicUpstreams/),
 [*nginx-custom-counters-module*](https://github.com/lyokha/nginx-custom-counters-module),
 [*nginx-combined-upstream-module*](https://github.com/lyokha/nginx-combined-upstreams-module),
 [*echo-nginx-module*](https://github.com/openresty/echo-nginx-module), and
