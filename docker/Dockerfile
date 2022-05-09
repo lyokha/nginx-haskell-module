@@ -7,9 +7,6 @@ ENV CABAL_UPDATE_DIR=/cabal-update
 
 RUN dnf install -y gcc xz pcre-devel zlib-devel procps-ng           && \
     dnf install -y ghc$GHC_VERSION ghc$GHC_VERSION-compiler-default && \
-    dnf install -y ghc$GHC_VERSION-template-haskell-devel           && \
-    dnf install -y ghc$GHC_VERSION-time-devel                       && \
-    dnf install -y ghc$GHC_VERSION-stm-devel                        && \
     dnf clean all                                                   && \
     rm -rf /var/cache/dnf
 
