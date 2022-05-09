@@ -122,6 +122,7 @@ jobs:
                   NGX_CONFIGURE=./configure
               fi
               $NGX_CONFIGURE --add-module=.. \
+                             --add-module=../aliases \
                              --add-module=../$UPCONF_MODULE_PATH \
                              --add-module=../echo-nginx-module
               make -j2
