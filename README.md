@@ -8,6 +8,7 @@
 [![Hackage](https://img.shields.io/hackage/v/ngx-export-tools.svg?label=hackage%20%7C%20ngx-export-tools)](https://hackage.haskell.org/package/ngx-export-tools)
 [![Docker](https://img.shields.io/docker/v/lyokha/nginx-haskell-module/latest?label=docker&style=flat)](https://hub.docker.com/repository/docker/lyokha/nginx-haskell-module)
 [![Read the Docs](https://readthedocs.org/projects/nginx-haskell-module/badge/?version=latest)](https://nginx-haskell-module.readthedocs.io/en/latest/)
+[![Doc](https://img.shields.io/badge/pdf-yet_another_doc_with_examples-786D5F.svg)](https://nbviewer.jupyter.org/github/lyokha/nginx-haskell-module/blob/master/docs/yet-another-doc-with-examples/nginx-haskell-module-yadwe.pdf)
 
 This Nginx module allows compiling and running Haskell source code found in a
 configuration file or an existing shared library. It allows for writing in
@@ -15,8 +16,6 @@ Haskell synchronous variable handlers, asynchronous tasks, services (i.e.
 asynchronous tasks that are not bound to requests), shared services (i.e.
 services that work exclusively on a single Nginx worker process all the time),
 content handlers and POST request handlers.
-
-See also: [![Doc](https://img.shields.io/badge/pdf-yet_another_doc_with_examples-786D5F.svg)](https://nbviewer.jupyter.org/github/lyokha/nginx-haskell-module/blob/master/docs/yet-another-doc-with-examples/nginx-haskell-module-yadwe.pdf)
 
 Table of contents
 -----------------
