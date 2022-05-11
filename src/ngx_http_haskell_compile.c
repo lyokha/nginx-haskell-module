@@ -25,8 +25,6 @@ static const ngx_str_t  haskell_compile_cmd =
 ngx_string("ghc -O2 -dynamic -shared -fPIC -o ");
 static const ngx_str_t  template_haskell_option =
 ngx_string(" -XTemplateHaskell");
-static const ngx_str_t  ghc_rtslib_path =
-ngx_string(" -L$(ghc --print-libdir)/rts");
 static const ngx_str_t  ghc_rtslib_vanilla =
 ngx_string(" -lHSrts-ghc$(ghc --numeric-version)");
 static const ngx_str_t  ghc_rtslib_thr =
@@ -152,7 +150,7 @@ ngx_http_haskell_compile(ngx_conf_t *cf, void *conf, ngx_str_t source_name)
         th_len = template_haskell_option.len;
     }
     full_len = compile_cmd_len + mcf->lib_path.len + source_name.len +
-            ghc_rtslib_path.len + rtslib.len + extra_len + th_len + 2;
+            rtslib.len + extra_len + th_len + 2;
 
     compile_cmd = ngx_pnalloc(cf->pool, full_len);
     if (compile_cmd == NULL) {
@@ -164,9 +162,6 @@ ngx_http_haskell_compile(ngx_conf_t *cf, void *conf, ngx_str_t source_name)
     ngx_memcpy(compile_cmd + compile_cmd_len,
                mcf->lib_path.data, mcf->lib_path.len);
     passed_len = compile_cmd_len + mcf->lib_path.len;
-    ngx_memcpy(compile_cmd + passed_len,
-               ghc_rtslib_path.data, ghc_rtslib_path.len);
-    passed_len += ghc_rtslib_path.len;
     ngx_memcpy(compile_cmd + passed_len,
                rtslib.data, rtslib.len);
     passed_len += rtslib.len;
