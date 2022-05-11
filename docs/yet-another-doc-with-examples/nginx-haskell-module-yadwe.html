@@ -105,7 +105,7 @@
 
 <p>In this module we declared three synchronous handlers: <em>toUpper</em>, <em>reverse</em>, and <em>isInList</em>. Handler <em>reverse</em> exports existing and well-known Haskell function <em>reverse</em> which reverses lists. Let’s compile <em>test.hs</em> and move the library to a directory, from where we will load this.</p>
 <pre style="overflow-x: auto; border-style: none none none solid; border-color: #6DF; border-width: 10px; padding: 5px 10px">
-<span style="color: #005FAF;">ghc -O2 -dynamic -shared -fPIC -L$(ghc --print-libdir)/rts -lHSrts-ghc$(ghc --numeric-version) test.hs -o test.so</span>
+<span style="color: #005FAF;">ghc -O2 -dynamic -shared -fPIC -lHSrts-ghc$(ghc --numeric-version) test.hs -o test.so</span>
 <span style="color: #808080;">[1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )</span>
 <span style="color: #808080;">Linking test.so ...</span>
 <span style="color: #005FAF;">cp test.so /var/lib/nginx/</span>
@@ -276,7 +276,7 @@
 
 <p>This code must be linked with <em>threaded</em> Haskell RTS this time!</p>
 <pre style="overflow-x: auto; border-style: none none none solid; border-color: #6DF; border-width: 10px; padding: 5px 10px">
-<span style="color: #005FAF;">ghc -O2 -dynamic -shared -fPIC -L$(ghc --print-libdir)/rts -lHSrts_thr-ghc$(ghc --numeric-version) test.hs -o test.so</span>
+<span style="color: #005FAF;">ghc -O2 -dynamic -shared -fPIC -lHSrts_thr-ghc$(ghc --numeric-version) test.hs -o test.so</span>
 <span style="color: #808080;">[1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )</span>
 <span style="color: #808080;">Linking test.so ...</span>
 <span style="color: #005FAF;">cp test.so /var/lib/nginx/</span>
@@ -397,7 +397,7 @@
 
 <p>We are going to run instances of <em>convertToPng</em> on multiple CPU cores, and therefore it’s better now to compile this with option <em>-feager-blackholing</em>.</p>
 <pre style="overflow-x: auto; border-style: none none none solid; border-color: #6DF; border-width: 10px; padding: 5px 10px">
-<span style="color: #005FAF;">ghc -O2 -feager-blackholing -dynamic -shared -fPIC -L$(ghc --print-libdir)/rts -lHSrts_thr-ghc$(ghc --numeric-version) test.hs -o test.so</span>
+<span style="color: #005FAF;">ghc -O2 -feager-blackholing -dynamic -shared -fPIC -lHSrts_thr-ghc$(ghc --numeric-version) test.hs -o test.so</span>
 <span style="color: #808080;">[1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )</span>
 <span style="color: #808080;">Linking test.so ...</span>
 <span style="color: #005FAF;">cp test.so /var/lib/nginx/</span>
@@ -953,7 +953,7 @@
 
 <p>Handler <em>testCPlugin</em> runs function <em>ngx_http_haskell_test_c_plugin()</em> from the C plugin and returns <em>Success!</em> or <em>Failure!</em> in cases when the C function returns <em>NGX_OK</em> or <em>NGX_ERROR</em> respectively. When compiled with <em>ghc</em>, this code has to be linked with <em>test_c_plugin.o</em>.</p>
 <pre style="overflow-x: auto; border-style: none none none solid; border-color: #6DF; border-width: 10px; padding: 5px 10px">
-<span style="color: #005FAF;">ghc -O2 -dynamic -shared -fPIC -L$(ghc --print-libdir)/rts -lHSrts_thr-ghc$(ghc --numeric-version) test_c_plugin.o test.hs -o test.so</span>
+<span style="color: #005FAF;">ghc -O2 -dynamic -shared -fPIC -lHSrts_thr-ghc$(ghc --numeric-version) test_c_plugin.o test.hs -o test.so</span>
 <span style="color: #808080;">[1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )</span>
 <span style="color: #808080;">Linking test.so ...</span>
 <span style="color: #005FAF;">cp test.so /var/lib/nginx/</span>

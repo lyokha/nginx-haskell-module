@@ -16,7 +16,7 @@ __DATA__
                 -ignore-package regex-pcre
                 -XFlexibleInstances -XMagicHash -XTupleSections;
 
-    haskell compile threaded standalone /tmp/ngx_haskell.hs '
+    haskell compile standalone /tmp/ngx_haskell.hs '
 
 import qualified Data.Char as C
 import           Text.Regex.PCRE

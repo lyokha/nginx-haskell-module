@@ -81,7 +81,7 @@ In this module we declared three synchronous handlers: *toUpper*, *reverse*, and
 
 .. code-block:: console
 
-   $ ghc -O2 -dynamic -shared -fPIC -L$(ghc --print-libdir)/rts -lHSrts-ghc$(ghc --numeric-version) test.hs -o test.so
+   $ ghc -O2 -dynamic -shared -fPIC -lHSrts-ghc$(ghc --numeric-version) test.hs -o test.so
    [1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )
    Linking test.so ...
    $ cp test.so /var/lib/nginx/
@@ -271,7 +271,7 @@ This code must be linked with *threaded* Haskell RTS this time!
 
 .. code-block:: console
 
-   $ ghc -O2 -dynamic -shared -fPIC -L$(ghc --print-libdir)/rts -lHSrts_thr-ghc$(ghc --numeric-version) test.hs -o test.so
+   $ ghc -O2 -dynamic -shared -fPIC -lHSrts_thr-ghc$(ghc --numeric-version) test.hs -o test.so
    [1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )
    Linking test.so ...
    $ cp test.so /var/lib/nginx/
@@ -410,7 +410,7 @@ We are going to run instances of *convertToPng* on multiple CPU cores, and there
 
 .. code-block:: console
 
-   $ ghc -O2 -feager-blackholing -dynamic -shared -fPIC -L$(ghc --print-libdir)/rts -lHSrts_thr-ghc$(ghc --numeric-version) test.hs -o test.so
+   $ ghc -O2 -feager-blackholing -dynamic -shared -fPIC -lHSrts_thr-ghc$(ghc --numeric-version) test.hs -o test.so
    [1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )
    Linking test.so ...
    $ cp test.so /var/lib/nginx/
@@ -1136,10 +1136,14 @@ returns *NGX_OK* or *NGX_ERROR* respectively. When compiled with *ghc*, this cod
 
 .. code-block:: console
 
-   $ ghc -O2 -dynamic -shared -fPIC -L$(ghc --print-libdir)/rts -lHSrts_thr-ghc$(ghc --numeric-version) test_c_plugin.o test.hs -o test.so
+   $ ghc -O2 -dynamic -shared -fPIC -lHSrts_thr-ghc$(ghc --numeric-version) test_c_plugin.o test.hs -o test.so
    [1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )
    Linking test.so ...
    $ cp test.so /var/lib/nginx/
+
+.. raw:: latex
+
+   \pagebreak
 
 **File test.conf** (*additions*)
 

@@ -1471,7 +1471,7 @@ code has to be linked with *test_c_plugin.o*.
 
 
 ```ShellSession
-$ ghc -O2 -dynamic -shared -fPIC -L$(ghc --print-libdir)/rts -lHSrts_thr-ghc$(ghc --numeric-version) test_c_plugin.o test.hs -o test.so
+$ ghc -O2 -dynamic -shared -fPIC -lHSrts_thr-ghc$(ghc --numeric-version) test_c_plugin.o test.hs -o test.so
 [1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )
 Linking test.so ...
 ```

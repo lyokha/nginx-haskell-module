@@ -1,8 +1,8 @@
 project = u'nginx-haskell-module'
 author = u'Alexey Radkov'
-copyright = u'2015-2021, Alexey Radkov'
+copyright = u'2015-2022, Alexey Radkov'
 
-version = '2.9.1'
+version = '2.9.6'
 
 html_title = u'Nginx Haskell module'
 html_logo = 'images/nginx-haskell-module-120.png'
