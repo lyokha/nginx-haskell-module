@@ -5,7 +5,7 @@
  *
  *    Description:  Haskell async handlers
  *
- *        Version:  2.0
+ *        Version:  3.0
  *        Created:  05.02.2018 14:49:55
  *       Revision:  none
  *       Compiler:  gcc

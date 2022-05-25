@@ -5,7 +5,7 @@
  *
  *    Description:  Nginx module for binding Haskell code in conf files
  *
- *        Version:  2.0
+ *        Version:  3.0
  *        Created:  23.12.2015 12:53:00
  *
  *         Author:  Alexey Radkov (), 
@@ -1612,12 +1612,12 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (with_r_ptr) {
         if (service) {
-            ngx_conf_log_error(NGX_LOG_ERR, cf, 0,
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                         "service handlers do not accept request pointers");
             return NGX_CONF_ERROR;
         }
         if (from_variable) {
-            ngx_conf_log_error(NGX_LOG_ERR, cf, 0,
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                         "transitional handlers do not accept request pointers");
             return NGX_CONF_ERROR;
         }
@@ -2129,7 +2129,7 @@ ngx_http_haskell_service_update_hook(ngx_conf_t *cf, ngx_command_t *cmd,
     }
 
     if (with_r_ptr) {
-        ngx_conf_log_error(NGX_LOG_ERR, cf, 0,
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                         "service update hooks do not accept request pointers");
         return NGX_CONF_ERROR;
     }

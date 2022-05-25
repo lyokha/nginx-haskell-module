@@ -5,7 +5,7 @@
  *
  *    Description:  Haskell content handlers
  *
- *        Version:  2.0
+ *        Version:  3.0
  *        Created:  05.02.2018 16:46:41
  *       Revision:  none
  *       Compiler:  gcc

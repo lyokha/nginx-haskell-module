@@ -5,7 +5,7 @@
  *
  *    Description:  Standalone Haskell header and footer
  *
- *        Version:  2.0
+ *        Version:  3.0
  *        Created:  05.02.2018 12:18:56
  *       Revision:  none
  *       Compiler:  gcc

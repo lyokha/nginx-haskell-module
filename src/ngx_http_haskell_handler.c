@@ -5,7 +5,7 @@
  *
  *    Description:  Haskell synchronous handlers
  *
- *        Version:  2.0
+ *        Version:  3.0
  *        Created:  05.02.2018 16:39:06
  *       Revision:  none
  *       Compiler:  gcc
