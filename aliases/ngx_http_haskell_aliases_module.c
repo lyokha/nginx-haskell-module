@@ -95,7 +95,7 @@ ngx_http_haskell_aliases_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf,
     ngx_str_t                       *value;
     ngx_conf_t                       cf_haskell_run;
     ngx_array_t                      cf_haskell_run_args;
-    ngx_str_t                       *directive, *handler, *var, *referred_var;
+    ngx_str_t                       *directive, *handler, *var, *expr;
     ngx_http_haskell_loc_conf_t     *hlcf;
 
     value = cf->args->elts;
@@ -154,12 +154,12 @@ ngx_http_haskell_aliases_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf,
         return NGX_CONF_ERROR;
     }
 
-    referred_var = ngx_array_push(&cf_haskell_run_args);
-    if (referred_var == NULL) {
+    expr = ngx_array_push(&cf_haskell_run_args);
+    if (expr == NULL) {
         return NGX_CONF_ERROR;
     }
 
-    *referred_var = value[2];
+    *expr = value[2];
 
     cf_haskell_run = *cf;
     cf_haskell_run.args = &cf_haskell_run_args;

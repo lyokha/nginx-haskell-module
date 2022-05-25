@@ -1283,9 +1283,12 @@ Test C plugin returned Success!
 
 The header *X-Powered-By* is in the response!
 
-Notice that the value of *\_r\_ptr* has a binary representation, and therefore
-must not be used in textual contexts such as Haskell *data* declarations and
-JSON objects.
+Notice that the value of *\_r\_ptr* has a binary representation and therefore
+must not be used in textual contexts such as Haskell *data* declarations or JSON
+objects. It makes sense to put *\_r\_ptr* in the beginning of the handler's
+argument as it must be easy to extract it from the rest of the argument later.
+This can be achieved explicitly, e.g. *&dollar;{\_r\_ptr}my data*, or by adding
+suffix *(r)* at the end of the handler's name.
 
 ## C plugins in service update hooks
 

@@ -239,6 +239,7 @@ typedef struct {
     ngx_uint_t                                 unsafe:1;
     ngx_uint_t                                 async:1;
     ngx_uint_t                                 service_hook:1;
+    ngx_uint_t                                 with_r_ptr:1;
 } ngx_http_haskell_handler_t;
 
 

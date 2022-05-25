@@ -91,7 +91,7 @@ static ngx_int_t ngx_http_haskell_shm_lock_init(ngx_cycle_t *cycle,
 static ngx_int_t ngx_http_haskell_request_ptr_var_handler(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_haskell_make_handler_name(ngx_pool_t *pool,
-    ngx_str_t *from, ngx_str_t *handler_name);
+    ngx_str_t *from, ngx_str_t *handler_name, ngx_uint_t *with_r_ptr);
 static ngx_inline ngx_uint_t ngx_http_haskell_has_async_tasks(
     ngx_http_haskell_main_conf_t *mcf);
 
@@ -1441,8 +1441,10 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_int_t                                  v_idx;
     ngx_uint_t                                *v_idx_ptr;
     ngx_http_get_variable_pt                   get_handler;
+    ngx_str_t                                 *expr;
     ngx_uint_t                                 async, rb, service, service_cb;
     ngx_uint_t                                 bang_handler;
+    ngx_uint_t                                 with_r_ptr = 0;
     ngx_uint_t                                 strict = 0, strict_early = 0;
     ngx_uint_t                                 strict_volatile = 0;
     ngx_uint_t                                 from_variable = 0;
@@ -1599,13 +1601,27 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         goto add_variable;
     }
 
-    if (ngx_http_haskell_make_handler_name(cf->pool, &value[1], &handler_name)
-        != NGX_OK)
+    if (ngx_http_haskell_make_handler_name(
+                    cf->pool, &value[1], &handler_name, &with_r_ptr) != NGX_OK)
     {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "failed to make handler name from \"%V\"",
                            &value[1]);
         return NGX_CONF_ERROR;
+    }
+
+    if (with_r_ptr) {
+        if (service) {
+            ngx_conf_log_error(NGX_LOG_ERR, cf, 0,
+                        "service handlers do not accept request pointers");
+            return NGX_CONF_ERROR;
+        }
+        if (from_variable) {
+            ngx_conf_log_error(NGX_LOG_ERR, cf, 0,
+                        "transitional handlers do not accept request pointers");
+            return NGX_CONF_ERROR;
+        }
+        value[1].len -= 3;
     }
 
     handlers = mcf->handlers.elts;
@@ -1650,6 +1666,15 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                                    "mismatch", &value[1]);
                 return NGX_CONF_ERROR;
             }
+#if 0
+            if (handlers[i].with_r_ptr != with_r_ptr) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "haskell handler \"%V\" was already "
+                                   "declared with different r_ptr attribute",
+                                   &value[1]);
+                return NGX_CONF_ERROR;
+            }
+#endif
             code_var_data->handler = i;
             break;
         }
@@ -1671,6 +1696,10 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 (rb ? ngx_http_haskell_handler_role_async_variable_rb :
                  (async ? ngx_http_haskell_handler_role_async_variable :
                   ngx_http_haskell_handler_role_variable));
+        handler->unsafe = 0;
+        handler->async = 0;
+        handler->service_hook = 0;
+        handler->with_r_ptr = with_r_ptr;
 
         handlers = mcf->handlers.elts;
         code_var_data->handler = mcf->handlers.nelts - 1;
@@ -1765,7 +1794,29 @@ add_variable:
         ccv.cf = cf;
 
         for (i = 0; i < n_args; i++) {
-            ccv.value = &value[3 + i];
+            if (with_r_ptr && i == 0) {
+                expr = ngx_palloc(cf->pool, sizeof(ngx_str_t));
+                if (expr == NULL) {
+                    return NGX_CONF_ERROR;
+                }
+                expr->len = mcf->request_var_name.len + 3 + value[3].len;
+                expr->data = ngx_pnalloc(cf->pool, expr->len);
+                if (expr->data == NULL) {
+                    return NGX_CONF_ERROR;
+                }
+                expr->data[0] = '$';
+                expr->data[1] = '{';
+                ngx_memcpy(expr->data + 2,
+                           mcf->request_var_name.data,
+                           mcf->request_var_name.len);
+                expr->data[2 + mcf->request_var_name.len] = '}';
+                ngx_memcpy(expr->data + 2 + mcf->request_var_name.len + 1,
+                           value[3].data,
+                           value[3].len);
+                ccv.value = expr;
+            } else {
+                ccv.value = &value[3 + i];
+            }
             ccv.complex_value = &args[i];
 
             if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
@@ -1791,6 +1842,10 @@ ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_core_loc_conf_t          *clcf;
     ngx_http_haskell_service_hook_t   *hook;
     ngx_int_t                          v_idx;
+    ngx_str_t                         *expr;
+    ngx_uint_t                         has_arg;
+    ngx_uint_t                         arg_len = 0;
+    ngx_uint_t                         with_r_ptr = 0;
     ngx_uint_t                         n_last = 2;
     ngx_uint_t                         unsafe = 0, async = 0, async_rb = 0;
     ngx_uint_t                         service_hook = 0;
@@ -1838,13 +1893,17 @@ ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     mcf->has_async_handlers = mcf->has_async_handlers ? 1 : async;
 
-    if (ngx_http_haskell_make_handler_name(cf->pool, &value[1], &handler_name)
-        != NGX_OK)
+    if (ngx_http_haskell_make_handler_name(
+                    cf->pool, &value[1], &handler_name, &with_r_ptr) != NGX_OK)
     {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "failed to make handler name from \"%V\"",
                            &value[1]);
         return NGX_CONF_ERROR;
+    }
+
+    if (with_r_ptr) {
+        value[1].len -= 3;
     }
 
     lcf->content_handler = ngx_pcalloc(cf->pool,
@@ -1903,6 +1962,15 @@ ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 }
                 return NGX_CONF_ERROR;
             }
+#if 0
+            if (handlers[i].with_r_ptr != with_r_ptr) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "haskell handler \"%V\" was already "
+                                   "declared with different r_ptr attribute",
+                                   &value[1]);
+                return NGX_CONF_ERROR;
+            }
+#endif
             lcf->content_handler->handler = i;
             break;
         }
@@ -1929,6 +1997,7 @@ ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         handler->unsafe = unsafe;
         handler->async = async;
         handler->service_hook = service_hook;
+        handler->with_r_ptr = with_r_ptr;
 
         handlers = mcf->handlers.elts;
         lcf->content_handler->handler = mcf->handlers.nelts - 1;
@@ -1966,8 +2035,14 @@ ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         n_last = 3;
     }
 
-    if (cf->args->nelts == n_last + 1) {
+    has_arg = cf->args->nelts == n_last + 1 ? 1 : 0;
+
+    if (has_arg || with_r_ptr) {
         ngx_http_compile_complex_value_t  ccv;
+
+        if (has_arg) {
+            arg_len = value[n_last].len;
+        }
 
         lcf->content_handler->args = ngx_pcalloc(cf->pool,
                                             sizeof(ngx_http_complex_value_t));
@@ -1979,7 +2054,32 @@ ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
         ccv.cf = cf;
 
-        ccv.value = &value[n_last];
+        if (with_r_ptr) {
+            expr = ngx_palloc(cf->pool, sizeof(ngx_str_t));
+            if (expr == NULL) {
+                return NGX_CONF_ERROR;
+            }
+            expr->len = mcf->request_var_name.len + 3 + arg_len;
+            expr->data = ngx_pnalloc(cf->pool, expr->len);
+            if (expr->data == NULL) {
+                return NGX_CONF_ERROR;
+            }
+            expr->data[0] = '$';
+            expr->data[1] = '{';
+            ngx_memcpy(expr->data + 2,
+                       mcf->request_var_name.data,
+                       mcf->request_var_name.len);
+            expr->data[2 + mcf->request_var_name.len] = '}';
+            if (arg_len > 0) {
+                ngx_memcpy(expr->data + 2 + mcf->request_var_name.len + 1,
+                           value[n_last].data,
+                           value[n_last].len);
+            }
+            ccv.value = expr;
+        } else {
+            /* this is safe because at this point has_arg must be 1 */
+            ccv.value = &value[n_last];
+        }
         ccv.complex_value = lcf->content_handler->args;
 
         if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
@@ -2009,6 +2109,7 @@ ngx_http_haskell_service_update_hook(ngx_conf_t *cf, ngx_command_t *cmd,
     ngx_http_haskell_service_hook_t   *service_hooks, *hook;
     ngx_int_t                          handler_idx = NGX_ERROR;
     ngx_int_t                          v_idx;
+    ngx_uint_t                         with_r_ptr = 0;
 
     if (!mcf->code_loaded) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -2018,12 +2119,18 @@ ngx_http_haskell_service_update_hook(ngx_conf_t *cf, ngx_command_t *cmd,
 
     value = cf->args->elts;
 
-    if (ngx_http_haskell_make_handler_name(cf->pool, &value[1], &handler_name)
-        != NGX_OK)
+    if (ngx_http_haskell_make_handler_name(
+                    cf->pool, &value[1], &handler_name, &with_r_ptr) != NGX_OK)
     {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "failed to make handler name from \"%V\"",
                            &value[1]);
+        return NGX_CONF_ERROR;
+    }
+
+    if (with_r_ptr) {
+        ngx_conf_log_error(NGX_LOG_ERR, cf, 0,
+                        "service update hooks do not accept request pointers");
         return NGX_CONF_ERROR;
     }
 
@@ -2064,6 +2171,7 @@ ngx_http_haskell_service_update_hook(ngx_conf_t *cf, ngx_command_t *cmd,
         handler->unsafe = 0;
         handler->async = 0;
         handler->service_hook = 1;
+        handler->with_r_ptr = 0;
 
         handlers = mcf->handlers.elts;
         handler_idx = mcf->handlers.nelts - 1;
@@ -2439,9 +2547,21 @@ ngx_http_haskell_request_ptr_var_handler(ngx_http_request_t *r,
 
 static ngx_int_t
 ngx_http_haskell_make_handler_name(ngx_pool_t *pool, ngx_str_t *from,
-                                   ngx_str_t *handler_name)
+                                   ngx_str_t *handler_name,
+                                   ngx_uint_t *with_r_ptr)
 {
-    handler_name->len = from->len + ngx_http_haskell_module_handler_prefix.len;
+    ngx_uint_t  from_len = from->len;
+
+    *with_r_ptr = 0;
+
+    if (from_len > 3
+        && ngx_strncmp(from->data + (from_len - 3), "(r)", 3) == 0)
+    {
+        *with_r_ptr = 1;
+        from_len -= 3;
+    }
+
+    handler_name->len = from_len + ngx_http_haskell_module_handler_prefix.len;
     handler_name->data = ngx_pnalloc(pool, handler_name->len + 1);
 
     if (handler_name->data == NULL) {
@@ -2452,7 +2572,7 @@ ngx_http_haskell_make_handler_name(ngx_pool_t *pool, ngx_str_t *from,
                ngx_http_haskell_module_handler_prefix.data,
                ngx_http_haskell_module_handler_prefix.len);
     ngx_memcpy(handler_name->data + ngx_http_haskell_module_handler_prefix.len,
-               from->data, from->len);
+               from->data, from_len);
     handler_name->data[handler_name->len] = '\0';
 
     return NGX_OK;

@@ -1500,9 +1500,12 @@ X-Powered-By: Nginx Haskell module
 Test C plugin returned Success!
 ```
 
-Notice that the value of ``$_r_ptr`` has a binary representation, and therefore
-must not be used in textual contexts such as Haskell *data* declarations and
-JSON objects.
+Notice that the value of ``$_r_ptr`` has a binary representation and therefore
+must not be used in textual contexts such as Haskell *data* declarations or JSON
+objects. It makes sense to put ``$_r_ptr`` in the beginning of the handler's
+argument as it must be easy to extract it from the rest of the argument later.
+This can be achieved explicitly, e.g. ``${_r_ptr}my data``, or by adding suffix
+``(r)`` at the end of the handler's name.
 
 Reloading of haskell code and static content
 --------------------------------------------

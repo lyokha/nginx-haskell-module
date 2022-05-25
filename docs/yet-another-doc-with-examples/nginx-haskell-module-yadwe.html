@@ -982,7 +982,7 @@
 </pre>
 
 <p>The header <em>X-Powered-By</em> is in the response!</p>
-<p>Notice that the value of <em>_r_ptr</em> has a binary representation, and therefore must not be used in textual contexts such as Haskell <em>data</em> declarations and JSON objects.</p>
+<p>Notice that the value of <em>_r_ptr</em> has a binary representation and therefore must not be used in textual contexts such as Haskell <em>data</em> declarations or JSON objects. It makes sense to put <em>_r_ptr</em> in the beginning of the handler’s argument as it must be easy to extract it from the rest of the argument later. This can be achieved explicitly, e.g. <em>${_r_ptr}my data</em>, or by adding suffix <em>(r)</em> at the end of the handler’s name.</p>
 <h2 id="c-plugins-in-service-update-hooks">C plugins in service update hooks</h2>
 <p>Service update hooks can be used to replace service <em>update callbacks</em>. Indeed, being run <em>synchronously</em> from an event handler, a service hook could safely call a C function which would acquire related to Nginx context from Nginx global variables such as <em>ngx_cycle</em> for doing a variety of low level actions.</p>
 <p>Below is a table of functions exported from the Haskell module that return opaque pointers to Nginx global variables for using them in C plugins.</p>

@@ -22,6 +22,10 @@ jobs:
             cabal: 3.6.2.0
             nginx: head
             experimental: true
+          - ghc: 9.2.2
+            cabal: 3.6.2.0
+            nginx: 1.22.0
+            experimental: false
           - ghc: 9.0.2
             cabal: 3.4.0.0
             nginx: ''
@@ -30,10 +34,6 @@ jobs:
             cabal: 3.4.0.0
             nginx: head
             experimental: true
-          - ghc: 9.0.2
-            cabal: 3.4.0.0
-            nginx: 1.18.0
-            experimental: false
           - ghc: 9.0.2
             cabal: 3.4.0.0
             nginx: 1.20.2
