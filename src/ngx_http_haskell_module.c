@@ -1441,7 +1441,7 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_int_t                                  v_idx;
     ngx_uint_t                                *v_idx_ptr;
     ngx_http_get_variable_pt                   get_handler;
-    ngx_str_t                                 *expr;
+    ngx_str_t                                  expr;
     ngx_uint_t                                 async, rb, service, service_cb;
     ngx_uint_t                                 bang_handler;
     ngx_uint_t                                 with_r_ptr = 0;
@@ -1795,25 +1795,21 @@ add_variable:
 
         for (i = 0; i < n_args; i++) {
             if (with_r_ptr && i == 0) {
-                expr = ngx_palloc(cf->pool, sizeof(ngx_str_t));
-                if (expr == NULL) {
+                expr.len = mcf->request_var_name.len + 3 + value[3].len;
+                expr.data = ngx_pnalloc(cf->pool, expr.len);
+                if (expr.data == NULL) {
                     return NGX_CONF_ERROR;
                 }
-                expr->len = mcf->request_var_name.len + 3 + value[3].len;
-                expr->data = ngx_pnalloc(cf->pool, expr->len);
-                if (expr->data == NULL) {
-                    return NGX_CONF_ERROR;
-                }
-                expr->data[0] = '$';
-                expr->data[1] = '{';
-                ngx_memcpy(expr->data + 2,
+                expr.data[0] = '$';
+                expr.data[1] = '{';
+                ngx_memcpy(expr.data + 2,
                            mcf->request_var_name.data,
                            mcf->request_var_name.len);
-                expr->data[2 + mcf->request_var_name.len] = '}';
-                ngx_memcpy(expr->data + 2 + mcf->request_var_name.len + 1,
+                expr.data[2 + mcf->request_var_name.len] = '}';
+                ngx_memcpy(expr.data + 2 + mcf->request_var_name.len + 1,
                            value[3].data,
                            value[3].len);
-                ccv.value = expr;
+                ccv.value = &expr;
             } else {
                 ccv.value = &value[3 + i];
             }
@@ -1842,7 +1838,7 @@ ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_core_loc_conf_t          *clcf;
     ngx_http_haskell_service_hook_t   *hook;
     ngx_int_t                          v_idx;
-    ngx_str_t                         *expr;
+    ngx_str_t                          expr;
     ngx_uint_t                         has_arg;
     ngx_uint_t                         arg_len = 0;
     ngx_uint_t                         with_r_ptr = 0;
@@ -2055,27 +2051,23 @@ ngx_http_haskell_content(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         ccv.cf = cf;
 
         if (with_r_ptr) {
-            expr = ngx_palloc(cf->pool, sizeof(ngx_str_t));
-            if (expr == NULL) {
+            expr.len = mcf->request_var_name.len + 3 + arg_len;
+            expr.data = ngx_pnalloc(cf->pool, expr.len);
+            if (expr.data == NULL) {
                 return NGX_CONF_ERROR;
             }
-            expr->len = mcf->request_var_name.len + 3 + arg_len;
-            expr->data = ngx_pnalloc(cf->pool, expr->len);
-            if (expr->data == NULL) {
-                return NGX_CONF_ERROR;
-            }
-            expr->data[0] = '$';
-            expr->data[1] = '{';
-            ngx_memcpy(expr->data + 2,
+            expr.data[0] = '$';
+            expr.data[1] = '{';
+            ngx_memcpy(expr.data + 2,
                        mcf->request_var_name.data,
                        mcf->request_var_name.len);
-            expr->data[2 + mcf->request_var_name.len] = '}';
+            expr.data[2 + mcf->request_var_name.len] = '}';
             if (arg_len > 0) {
-                ngx_memcpy(expr->data + 2 + mcf->request_var_name.len + 1,
+                ngx_memcpy(expr.data + 2 + mcf->request_var_name.len + 1,
                            value[n_last].data,
                            value[n_last].len);
             }
-            ccv.value = expr;
+            ccv.value = &expr;
         } else {
             /* this is safe because at this point has_arg must be 1 */
             ccv.value = &value[n_last];
