@@ -87,6 +87,7 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
     ngx_http_complex_value_t            *args;
     ngx_int_t                            arg_index;
     ngx_str_t                            arg1, arg2, *argn = NULL;
+    ngx_uint_t                           n_argn = 1;
     char                                *res = NULL;
     ngx_str_t                           *res_yy = NULL, buf_yy;
     HsStablePtr                          locked_bytestring = NULL;
@@ -186,10 +187,10 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
         break;
     case ngx_http_haskell_handler_type_s_ls:
     case ngx_http_haskell_handler_type_b_ls:
-        argn = ngx_palloc(r->pool,
-                          sizeof(ngx_str_t) *
-                              (arg_index == NGX_ERROR ?
-                               code_vars[found_idx].args.nelts : 1));
+        if (arg_index == NGX_ERROR) {
+            n_argn = code_vars[found_idx].args.nelts;
+        }
+        argn = ngx_palloc(r->pool, sizeof(ngx_str_t) * n_argn);
         if (argn == NULL) {
             return NGX_ERROR;
         }
@@ -201,7 +202,7 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
             argn[0].len = value->len;
             argn[0].data = value->data;
         } else {
-            for (i = 0; i < code_vars[found_idx].args.nelts; i++) {
+            for (i = 0; i < n_argn; i++) {
                 if (ngx_http_complex_value(r, &args[i], &argn[i]) != NGX_OK) {
                     return NGX_ERROR;
                 }
@@ -226,7 +227,7 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
     case ngx_http_haskell_handler_type_s_ls:
         err = ((ngx_http_haskell_handler_s_ls)
                handlers[code_vars[found_idx].handler].self)
-                    (argn, code_vars[found_idx].args.nelts, &res, &len);
+                    (argn, n_argn, &res, &len);
         break;
     case ngx_http_haskell_handler_type_b_s:
         err = ((ngx_http_haskell_handler_b_s)
@@ -241,7 +242,7 @@ ngx_http_haskell_run_handler(ngx_http_request_t *r,
     case ngx_http_haskell_handler_type_b_ls:
         err = ((ngx_http_haskell_handler_b_ls)
                handlers[code_vars[found_idx].handler].self)
-                    (argn, code_vars[found_idx].args.nelts, &res, &len);
+                    (argn, n_argn, &res, &len);
         break;
     case ngx_http_haskell_handler_type_y_y:
         err = ((ngx_http_haskell_handler_y_y)

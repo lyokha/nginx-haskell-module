@@ -1548,26 +1548,26 @@ ngx_http_haskell_run(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
     }
 
-    /* FIXME: not needed if from_variable */
-    if (ngx_array_init(&code_var_data->args, cf->pool, n_size,
-                       sizeof(ngx_http_complex_value_t)) != NGX_OK)
-    {
-        return NGX_CONF_ERROR;
-    }
-
-    code_var_data->arg_index = NGX_ERROR;
-    code_var_data->strict = strict;
-    code_var_data->strict_early = strict_early;
-    code_var_data->strict_volatile = strict_volatile;
-    code_var_data->handler = NGX_ERROR;
-    code_var_data->async = async;
-
     if (from_variable) {
         code_var_data->arg_index = ngx_http_get_variable_index(cf, &value[3]);
         if (code_var_data->arg_index == NGX_ERROR) {
             return NGX_CONF_ERROR;
         }
+        ngx_memzero(&code_var_data->args, sizeof(ngx_array_t));
+    } else {
+        if (ngx_array_init(&code_var_data->args, cf->pool, n_size,
+                           sizeof(ngx_http_complex_value_t)) != NGX_OK)
+        {
+            return NGX_CONF_ERROR;
+        }
+        code_var_data->arg_index = NGX_ERROR;
     }
+
+    code_var_data->strict = strict;
+    code_var_data->strict_early = strict_early;
+    code_var_data->strict_volatile = strict_volatile;
+    code_var_data->handler = NGX_ERROR;
+    code_var_data->async = async;
 
     async = async ? 1 : service;
 
