@@ -1778,8 +1778,9 @@ add_variable:
 
     code_var_data->index = v_idx;
 
-    /* FIXME: not needed if from_variable */
-    if (ngx_array_push_n(&code_var_data->args, n_size) == NULL) {
+    if (!from_variable
+        && ngx_array_push_n(&code_var_data->args, n_size) == NULL)
+    {
         return NGX_CONF_ERROR;
     }
     args = code_var_data->args.elts;

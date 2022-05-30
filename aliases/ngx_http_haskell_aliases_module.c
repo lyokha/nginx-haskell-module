@@ -202,22 +202,24 @@ ngx_http_haskell_aliases_var_configure(ngx_conf_t *cf, ngx_command_t *cmd,
                                        void *conf)
 {
     ngx_str_t                       *value;
-    size_t                           directive_len;
-    u_char                          *directive_data;
     ngx_http_haskell_main_conf_t    *hmcf;
 
     value = cf->args->elts;
 
-    directive_len = value[0].len + 8;
-    directive_data = ngx_pnalloc(cf->pool, directive_len);
-    if (directive_data == NULL) {
+    if (value[0].len == 15
+        && ngx_strncmp(value[0].data, "var_nocacheable", 15) == 0)
+    {
+        ngx_str_set(&value[0], "haskell_var_nocacheable");
+    } else if (value[0].len == 10
+        && ngx_strncmp(value[0].data, "var_nohash", 10) == 0)
+    {
+        ngx_str_set(&value[0], "haskell_var_nohash");
+    } else {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "failed to configure an alias for directive \"%V\"",
+                           &value[0]);
         return NGX_CONF_ERROR;
     }
-    ngx_memcpy(directive_data, (u_char *) "haskell_", 8);
-    ngx_memcpy(directive_data + 8, value[0].data, value[0].len);
-
-    value[0].len = directive_len;
-    value[0].data = directive_data;
 
     hmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_haskell_module);
 
