@@ -7,9 +7,15 @@ typedef enum {
     ngx_http_haskell_aliases_set_mode_var_alias
 } ngx_http_haskell_aliases_set_mode_e;
 
+typedef enum {
+    ngx_http_haskell_aliases_var_configure_nocacheable,
+    ngx_http_haskell_aliases_var_configure_nohash
+} ngx_http_haskell_aliases_var_configure_e;
+
 
 static char *ngx_http_haskell_aliases_set(ngx_conf_t *cf,
-    ngx_command_t *cmd, void *conf, ngx_http_haskell_aliases_set_mode_e mode);
+    ngx_command_t *cmd, void *conf,
+    ngx_http_haskell_aliases_set_mode_e mode);
 static char *ngx_http_haskell_aliases_cache_set(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf);
 static char *ngx_http_haskell_aliases_lazy_set(ngx_conf_t *cf,
@@ -17,6 +23,11 @@ static char *ngx_http_haskell_aliases_lazy_set(ngx_conf_t *cf,
 static char *ngx_http_haskell_aliases_var_alias(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf);
 static char *ngx_http_haskell_aliases_var_configure(ngx_conf_t *cf,
+    ngx_command_t *cmd, void *conf,
+    ngx_http_haskell_aliases_var_configure_e mode);
+static char *ngx_http_haskell_aliases_var_nocacheable(ngx_conf_t *cf,
+    ngx_command_t *cmd, void *conf);
+static char *ngx_http_haskell_aliases_var_nohash(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf);
 
 
@@ -42,13 +53,13 @@ static ngx_command_t  ngx_http_haskell_aliases_module_commands[] = {
       NULL },
     { ngx_string("var_nocacheable"),
       NGX_HTTP_MAIN_CONF|NGX_CONF_1MORE,
-      ngx_http_haskell_aliases_var_configure,
+      ngx_http_haskell_aliases_var_nocacheable,
       NGX_HTTP_MAIN_CONF_OFFSET,
       0,
       NULL },
     { ngx_string("var_nohash"),
       NGX_HTTP_MAIN_CONF|NGX_CONF_1MORE,
-      ngx_http_haskell_aliases_var_configure,
+      ngx_http_haskell_aliases_var_nohash,
       NGX_HTTP_MAIN_CONF_OFFSET,
       0,
       NULL },
@@ -199,30 +210,44 @@ ngx_http_haskell_aliases_var_alias(ngx_conf_t *cf, ngx_command_t *cmd,
 
 static char *
 ngx_http_haskell_aliases_var_configure(ngx_conf_t *cf, ngx_command_t *cmd,
-                                       void *conf)
+                    void *conf, ngx_http_haskell_aliases_var_configure_e mode)
 {
     ngx_str_t                       *value;
     ngx_http_haskell_main_conf_t    *hmcf;
 
     value = cf->args->elts;
 
-    if (value[0].len == 15
-        && ngx_strncmp(value[0].data, "var_nocacheable", 15) == 0)
-    {
+    switch (mode) {
+    case ngx_http_haskell_aliases_var_configure_nocacheable:
         ngx_str_set(&value[0], "haskell_var_nocacheable");
-    } else if (value[0].len == 10
-        && ngx_strncmp(value[0].data, "var_nohash", 10) == 0)
-    {
+        break;
+    case ngx_http_haskell_aliases_var_configure_nohash:
         ngx_str_set(&value[0], "haskell_var_nohash");
-    } else {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "failed to configure an alias for directive \"%V\"",
-                           &value[0]);
+        break;
+    default:
         return NGX_CONF_ERROR;
     }
 
     hmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_haskell_module);
 
     return ngx_http_haskell_var_configure(cf, NULL, hmcf);
+}
+
+
+static char *
+ngx_http_haskell_aliases_var_nocacheable(ngx_conf_t *cf, ngx_command_t *cmd,
+                                         void *conf)
+{
+    return ngx_http_haskell_aliases_var_configure(cf, cmd, conf,
+                            ngx_http_haskell_aliases_var_configure_nocacheable);
+}
+
+
+static char *
+ngx_http_haskell_aliases_var_nohash(ngx_conf_t *cf, ngx_command_t *cmd,
+                                    void *conf)
+{
+    return ngx_http_haskell_aliases_var_configure(cf, cmd, conf,
+                            ngx_http_haskell_aliases_var_configure_nohash);
 }
 
