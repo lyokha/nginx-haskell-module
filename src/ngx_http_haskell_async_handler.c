@@ -149,18 +149,19 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
                         }
                         ctx = &wctx->ctx;
                         ctx->initialized = 1;
-                        if (ngx_array_init(
+                        ngx_http_set_ctx(r, ctx, ngx_http_haskell_module);
+                    }
+                    if (ctx->strict_volatile_vars.nalloc == 0
+                        && ngx_array_init(
                             &ctx->strict_volatile_vars, r->pool, 1,
                             sizeof(ngx_http_haskell_volatile_var_handle_data_t))
-                            != NGX_OK)
-                        {
-                            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                                          "failed to create strict volatile "
-                                          "variable data array, "
-                                          "declining phase handler");
-                            return NGX_DECLINED;
-                        }
-                        ngx_http_set_ctx(r, ctx, ngx_http_haskell_module);
+                        != NGX_OK)
+                    {
+                        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                      "failed to create strict volatile "
+                                      "variable data array, "
+                                      "declining phase handler");
+                        return NGX_DECLINED;
                     }
                     strict_volatile_var = NULL;
                     strict_volatile_vars = ctx->strict_volatile_vars.elts;
