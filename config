@@ -32,33 +32,22 @@ then
     NGX_HASKELL_MODULE_LIBDL="$NGX_LIBDL"
 fi
 
-if test -z "$GHC_PROGRAM"
+if test -z "$GHC_PKG_PROGRAM"
 then
-    ngx_ghc_program=ghc
+    ghc_pkg_program=ghc-pkg
 else
-    ngx_ghc_program="$GHC_PROGRAM"
+    ghc_pkg_program="$GHC_PKG_PROGRAM"
 fi
 
-if ! command -v "$ngx_ghc_program" > /dev/null 2>&1
+if ! command -v "$ghc_pkg_program" > /dev/null 2>&1
 then
-    echo "$0: error: unable to find ghc executable!"
+    echo "$0: error: unable to find ghc-pkg executable!"
     echo "   Check that GHC is installed "`
-        `"or specify environment variable GHC_PROGRAM"
+        `"or specify environment variable GHC_PKG_PROGRAM"
     exit 1
 fi
 
-ngx_ghc_include_path="$($ngx_ghc_program --print-libdir)/include"
-if test ! -e "$ngx_ghc_include_path"
-then
-    # GHC built with Hadrian may put include/ path at one level upper,
-    # see https://gitlab.haskell.org/ghc/ghc/-/issues/21609
-    ngx_ghc_include_path="$($ngx_ghc_program --print-libdir)/../include"
-    if test ! -e "$ngx_ghc_include_path"
-    then
-        echo "$0: error: unable to find GHC include/ path!"
-        exit 1
-    fi
-fi
+ghc_include_path="$($ghc_pkg_program field rts include-dirs --simple-output)"
 
 if test -n "$ngx_module_link"
 then
@@ -66,7 +55,7 @@ then
     ngx_module_name=$ngx_addon_name
     ngx_module_deps="$NGX_HTTP_HASKELL_MODULE_DEPS"
     ngx_module_srcs="$NGX_HTTP_HASKELL_MODULE_SRCS"
-    ngx_module_incs="$ngx_ghc_include_path"
+    ngx_module_incs="$ghc_include_path"
     ngx_module_libs="$NGX_HASKELL_MODULE_LIBDL"
 
     . auto/module
@@ -94,7 +83,7 @@ else
     HTTP_MODULES="$HTTP_MODULES $ngx_addon_name"
     NGX_ADDON_DEPS="$NGX_ADDON_DEPS $NGX_HTTP_HASKELL_MODULE_DEPS"
     NGX_ADDON_SRCS="$NGX_ADDON_SRCS $NGX_HTTP_HASKELL_MODULE_SRCS"
-    CFLAGS="$CFLAGS -I$ngx_ghc_include_path"
+    CFLAGS="$CFLAGS -I$ghc_include_path"
     CORE_LIBS="$CORE_LIBS $NGX_HASKELL_MODULE_LIBDL"
 fi
 
