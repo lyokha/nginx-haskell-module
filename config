@@ -32,16 +32,16 @@ then
     NGX_HASKELL_MODULE_LIBDL="$NGX_LIBDL"
 fi
 
-if test -z "$GHC_PKG_PROGRAM"
+ghc_pkg_program=ghc-pkg
+
+if test -n "$GHC_PKG_PROGRAM"
 then
-    ghc_pkg_program=ghc-pkg
-else
     ghc_pkg_program="$GHC_PKG_PROGRAM"
 fi
 
-if ! command -v "$ghc_pkg_program" > /dev/null 2>&1
+if ! command -v "$ghc_pkg_program" >/dev/null 2>&1
 then
-    echo "$0: error: unable to find ghc-pkg executable!"
+    echo "$0: error: unable to find ghc-pkg program!"
     echo "   Check that GHC is installed "`
         `"or specify environment variable GHC_PKG_PROGRAM"
     exit 1
