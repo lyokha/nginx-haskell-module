@@ -47,7 +47,8 @@ then
     exit 1
 fi
 
-ghc_include_path="$($ghc_pkg_program field rts include-dirs --simple-output)"
+ghc_include_path="$($ghc_pkg_program field rts include-dirs --simple-output |
+                    tr ',' ' ')"
 
 if test -n "$ngx_module_link"
 then

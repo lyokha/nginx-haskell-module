@@ -1,14 +1,31 @@
+#!/bin/sh
+
 # generate compile_flags.txt for clangd by running this as
 #
 #   NGX_HOME=/path/to/nginx_sources . compile_flags.stub > compile_flags.txt
 #
 
-echo -I$NGX_HOME/src/core
-echo -I$NGX_HOME/src/http
-echo -I$NGX_HOME/src/http/modules
-echo -I$NGX_HOME/src/event
-echo -I$NGX_HOME/src/event/modules
-echo -I$NGX_HOME/src/os/unix
-echo -I$NGX_HOME/objs
-echo -I$(ghc --print-libdir)/include
+ghc_pkg_program=ghc-pkg
+
+if test -n "$GHC_PKG_PROGRAM"
+then
+    ghc_pkg_program="$GHC_PKG_PROGRAM"
+fi
+
+if ! command -v "$ghc_pkg_program" >/dev/null 2>&1
+then
+    echo "error: unable to find ghc-pkg program!" >&2
+    echo "   Check that GHC is installed "`
+        `"or specify environment variable GHC_PKG_PROGRAM" >&2
+else
+    echo -I"$NGX_HOME/src/core"
+    echo -I"$NGX_HOME/src/http"
+    echo -I"$NGX_HOME/src/http/modules"
+    echo -I"$NGX_HOME/src/event"
+    echo -I"$NGX_HOME/src/event/modules"
+    echo -I"$NGX_HOME/src/os/unix"
+    echo -I"$NGX_HOME/objs"
+    echo -I"$($ghc_pkg_program field rts include-dirs --simple-output)" |
+            sed 's/,/ -I/g'
+fi
 
