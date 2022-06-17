@@ -1374,24 +1374,11 @@ regarded strictly as experimental!
 Let's write a plugin that will insert into the request HTTP headers a header
 *X-Powered-By*.
 
-C header file *test_c_plugin.h*.
-
-```c
-#ifndef NGX_HTTP_HASKELL_TEST_C_PLUGIN_H
-#define NGX_HTTP_HASKELL_TEST_C_PLUGIN_H
-
-#include <ngx_core.h>
-#include <ngx_http.h>
-
-ngx_int_t ngx_http_haskell_test_c_plugin(ngx_http_request_t *r);
-
-#endif
-```
-
 C source file *test_c_plugin.c*.
 
 ```c
-#include "test_c_plugin.h"
+#include <ngx_core.h>
+#include <ngx_http.h>
 
 static const ngx_str_t haskell_module = ngx_string("Nginx Haskell module");
 
@@ -1439,7 +1426,7 @@ import           Foreign.Ptr
 
 -- ...
 
-foreign import ccall unsafe "test_c_plugin.h ngx_http_haskell_test_c_plugin"
+foreign import ccall unsafe "ngx_http_haskell_test_c_plugin"
     test_c_plugin :: Ptr () -> IO CIntPtr;
 
 toRequestPtr :: ByteString -> Ptr ()

@@ -120,7 +120,6 @@ ARG NGINX_VERSION
 
 COPY data/test.conf /opt/nginx/conf/nginx.conf
 COPY data/test.hs /build/test.hs
-COPY data/test_c_plugin.h /build/test_c_plugin.h
 COPY data/test_c_plugin.c /build/test_c_plugin.c
 
 RUN cd /build                                   && \

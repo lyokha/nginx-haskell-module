@@ -1043,25 +1043,12 @@ An example
 
 Let’s write a plugin that will add an HTTP header to the response.
 
-**File test_c_plugin.h**
-
-.. code-block:: c
-
-   #ifndef NGX_HTTP_HASKELL_TEST_C_PLUGIN_H
-   #define NGX_HTTP_HASKELL_TEST_C_PLUGIN_H
-
-   #include <ngx_core.h>
-   #include <ngx_http.h>
-
-   ngx_int_t ngx_http_haskell_test_c_plugin(ngx_http_request_t *r);
-
-   #endif
-
 **File test_c_plugin.c**
 
 .. code-block:: c
 
-   #include "test_c_plugin.h"
+   #include <ngx_core.h>
+   #include <ngx_http.h>
 
    static const ngx_str_t haskell_module = ngx_string("Nginx Haskell module");
 
@@ -1099,6 +1086,10 @@ Here we are going to mimic the Nginx build process.
 
 Now we have an object file *test_c_plugin.o* to link with the Haskell code. Below is the Haskell code itself.
 
+.. raw:: latex
+
+   \pagebreak
+
 **File test.hs** (*additions*)
 
 .. code-block:: haskell
@@ -1109,7 +1100,7 @@ Now we have an object file *test_c_plugin.o* to link with the Haskell code. Belo
 
    -- ...
 
-   foreign import ccall unsafe "test_c_plugin.h ngx_http_haskell_test_c_plugin"
+   foreign import ccall unsafe "ngx_http_haskell_test_c_plugin"
        test_c_plugin :: Ptr () -> IO CIntPtr
 
    toRequestPtr :: ByteString -> Ptr ()
@@ -1236,6 +1227,10 @@ There is no way to catch exceptions in *pure* handlers. However they can arise f
 
 Fortunately, all exceptions, synchronous and asynchronous, are caught on top of the module’s Haskell code. If a handler does not catch an exception itself, the
 exception gets caught higher and logged by Nginx. However, using exception handlers in Haskell handlers, when it’s possible, should be preferred.
+
+.. raw:: latex
+
+   \pagebreak
 
 Summary table of all Nginx directives of the module
 ===================================================
@@ -1529,7 +1524,7 @@ File *test.hs*
        return $ L.fromChunks ["getUrlService set links ", linksList]
    ngxExportServiceHook 'grepHttpbinLinksHook
 
-   foreign import ccall unsafe "test_c_plugin.h ngx_http_haskell_test_c_plugin"
+   foreign import ccall unsafe "ngx_http_haskell_test_c_plugin"
        test_c_plugin :: Ptr () -> IO CIntPtr
 
    toRequestPtr :: ByteString -> Ptr ()
@@ -1674,9 +1669,9 @@ File *test.conf*
 
 .. raw:: html
 
-   <!--\appendixpagenumbering[TEST_C_PLUGIN.H]-->
+   <!--\appendixpagenumbering[TEST_C_PLUGIN.C]-->
 
-File *test_c_plugin.h*
+File *test_c_plugin.c*
 ----------------------
 
 .. code-block:: c
@@ -1693,26 +1688,8 @@ File *test_c_plugin.h*
     *          -I $NGX_HOME/objs test_c_plugin.c
     */
 
-   #ifndef NGX_HTTP_HASKELL_TEST_C_PLUGIN_H
-   #define NGX_HTTP_HASKELL_TEST_C_PLUGIN_H
-
    #include <ngx_core.h>
    #include <ngx_http.h>
-
-   ngx_int_t ngx_http_haskell_test_c_plugin(ngx_http_request_t *r);
-
-   #endif
-
-.. raw:: html
-
-   <!--\appendixpagenumbering[TEST_C_PLUGIN.C]-->
-
-File *test_c_plugin.c*
-----------------------
-
-.. code-block:: c
-
-   #include "test_c_plugin.h"
 
    static const ngx_str_t haskell_module = ngx_string("Nginx Haskell module");
 

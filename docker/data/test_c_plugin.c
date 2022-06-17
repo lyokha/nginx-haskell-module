@@ -1,4 +1,17 @@
-#include "test_c_plugin.h"
+/* Compile:
+ *      NGX_HOME=/path/to/nginx_sources
+ *      gcc -fPIC -c -o test_c_plugin.o \
+ *          -I $NGX_HOME/src/core \
+ *          -I $NGX_HOME/src/http \
+ *          -I $NGX_HOME/src/http/modules \
+ *          -I $NGX_HOME/src/event \
+ *          -I $NGX_HOME/src/event/modules \
+ *          -I $NGX_HOME/src/os/unix \
+ *          -I $NGX_HOME/objs test_c_plugin.c
+ */
+
+#include <ngx_core.h>
+#include <ngx_http.h>
 
 static const ngx_str_t haskell_module = ngx_string("Nginx Haskell module");
 

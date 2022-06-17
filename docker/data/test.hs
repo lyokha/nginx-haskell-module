@@ -159,7 +159,7 @@ grepHttpbinLinksHook v = do
     return $ L.fromChunks ["getUrlService set links ", linksList]
 ngxExportServiceHook 'grepHttpbinLinksHook
 
-foreign import ccall unsafe "test_c_plugin.h ngx_http_haskell_test_c_plugin"
+foreign import ccall unsafe "ngx_http_haskell_test_c_plugin"
     test_c_plugin :: Ptr () -> IO CIntPtr
 
 toRequestPtr :: ByteString -> Ptr ()
