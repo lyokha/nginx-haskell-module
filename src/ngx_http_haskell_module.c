@@ -95,7 +95,6 @@ static ngx_int_t ngx_http_haskell_make_handler_name(ngx_pool_t *pool,
 static ngx_inline ngx_uint_t ngx_http_haskell_has_async_tasks(
     ngx_http_haskell_main_conf_t *mcf);
 
-static u_char  haskell_module_r_ptr0[sizeof(uintptr_t) / sizeof(u_char)];
 static ngx_uint_t  haskell_module_global_aux_cnt;
 
 
@@ -1410,7 +1409,8 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
     }
 
-    v = ngx_http_add_variable(cf, &mcf->request_var_name, 0);
+    v = ngx_http_add_variable(cf, &mcf->request_var_name,
+                              NGX_HTTP_VAR_NOCACHEABLE);
     if (v == NULL) {
         return NGX_CONF_ERROR;
     }
@@ -2514,22 +2514,16 @@ ngx_http_haskell_request_ptr_var_handler(ngx_http_request_t *r,
                                          ngx_http_variable_value_t *v,
                                          uintptr_t data)
 {
-    uintptr_t  r_ptr = (uintptr_t) r;
-    ngx_str_t  res;
+    ngx_http_log_ctx_t  *ctx;
+    uintptr_t            r_ptr;
 
-    res.len = sizeof(uintptr_t);
-    res.data = ngx_pnalloc(r->pool, res.len);
-    if (res.data == NULL) {
-        res.data = haskell_module_r_ptr0;
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "failed to allocate storage for request pointer, "
-                      "a null pointer will be serialized instead");
-    } else {
-        ngx_memcpy(res.data, (u_char *) &r_ptr, res.len);
-    }
+    ctx = r->connection->log->data;
+    r_ptr = (uintptr_t) &ctx->request;
 
-    v->len = res.len;
-    v->data = res.data;
+    v->len = sizeof(uintptr_t);
+    /* BEWARE: using long-lived storage &ctx->request instead of simply &r
+     * as long as r is a short-lived stack variable */
+    v->data = (u_char *) r_ptr;
     v->valid = 1;
     v->no_cacheable = 0;
     v->not_found = 0;

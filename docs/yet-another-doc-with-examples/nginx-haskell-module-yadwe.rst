@@ -1070,10 +1070,6 @@ Let’s write a plugin that will add an HTTP header to the response.
    {
        ngx_table_elt_t  *x_powered_by;
 
-       if (r == NULL) {
-           return NGX_ERROR;
-       }
-
        x_powered_by = ngx_list_push(&r->headers_out.headers);
 
        if (!x_powered_by) {
@@ -1088,10 +1084,6 @@ Let’s write a plugin that will add an HTTP header to the response.
 
        return NGX_OK;
    }
-
-Notice that the request object *r* gets checked in function *ngx_http_haskell_test_c_plugin()* against the *NULL* value. Normally in an Nginx C code this check
-is redundant, however in our plugin this is important because serialization of the request object may fail, and in this case the Nginx module will serialize a
-null pointer.
 
 Let’s compile the C code. For this we need a directory where Nginx sources were sometime compiled. Let’s refer to it in an environment variable *NGX_HOME*.
 
@@ -1140,10 +1132,6 @@ returns *NGX_OK* or *NGX_ERROR* respectively. When compiled with *ghc*, this cod
    [1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )
    Linking test.so ...
    $ cp test.so /var/lib/nginx/
-
-.. raw:: latex
-
-   \pagebreak
 
 **File test.conf** (*additions*)
 
@@ -1732,10 +1720,6 @@ File *test_c_plugin.c*
    ngx_http_haskell_test_c_plugin(ngx_http_request_t *r)
    {
        ngx_table_elt_t  *x_powered_by;
-
-       if (r == NULL) {
-           return NGX_ERROR;
-       }
 
        x_powered_by = ngx_list_push(&r->headers_out.headers);
 

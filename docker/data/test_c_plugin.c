@@ -7,10 +7,6 @@ ngx_http_haskell_test_c_plugin(ngx_http_request_t *r)
 {
     ngx_table_elt_t  *x_powered_by;
 
-    if (r == NULL) {
-        return NGX_ERROR;
-    }
-
     x_powered_by = ngx_list_push(&r->headers_out.headers);
 
     if (!x_powered_by) {

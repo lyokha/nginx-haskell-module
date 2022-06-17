@@ -1400,10 +1400,6 @@ ngx_http_haskell_test_c_plugin(ngx_http_request_t *r)
 {
     ngx_table_elt_t  *x_powered_by;
 
-    if (r == NULL) {
-        return NGX_ERROR;
-    }
-
     x_powered_by = ngx_list_push(&r->headers_out.headers);
 
     if (!x_powered_by) {
@@ -1419,12 +1415,6 @@ ngx_http_haskell_test_c_plugin(ngx_http_request_t *r)
     return NGX_OK;
 }
 ```
-
-Notice that the request object *r* gets checked in function
-*ngx_http_haskell_test_c_plugin()* against *NULL* value. Normally in an Nginx C
-code this check is redundant, however in our plugin this is important because
-serialization of the request object may fail, and in this case the Nginx module
-will serialize a null pointer.
 
 Let's compile the C code. For this we need a directory where Nginx sources were
 sometime compiled. Let's refer to it in an environment variable *NGX_HOME*.

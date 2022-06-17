@@ -896,10 +896,6 @@
 <span style="color: #870087;">{</span>
 <span style="color: #000000;">    ngx_table_elt_t  </span><span style="color: #005FAF;">*</span><span style="color: #000000;">x_powered_by</span><span style="color: #870087;">;</span>
 
-    <span style="color: #005FAF;">if</span> <span style="color: #870087;">(</span><span style="color: #000000;">r </span><span style="color: #005FAF;">==</span> <span style="color: #AF5F00;">NULL</span><span style="color: #870087;">)</span> <span style="color: #870087;">{</span>
-        <span style="color: #005FAF;">return</span><span style="color: #000000;"> NGX_ERROR</span><span style="color: #870087;">;</span>
-    <span style="color: #870087;">}</span>
-
 <span style="color: #000000;">    x_powered_by </span><span style="color: #005FAF;">=</span> <span style="color: #008700;">ngx_list_push</span><span style="color: #870087;">(</span><span style="color: #005FAF;">&amp;</span><span style="color: #000000;">r</span><span style="color: #005FAF;">-&gt;</span><span style="color: #000000;">headers_out</span><span style="color: #005FAF;">.</span><span style="color: #000000;">headers</span><span style="color: #870087;">);</span>
 
     <span style="color: #005FAF;">if</span> <span style="color: #870087;">(</span><span style="color: #005FAF;">!</span><span style="color: #000000;">x_powered_by</span><span style="color: #870087;">)</span> <span style="color: #870087;">{</span>
@@ -916,7 +912,6 @@
 <span style="color: #870087;">}</span>
 </pre>
 
-<p>Notice that the request object <em>r</em> gets checked in function <em>ngx_http_haskell_test_c_plugin()</em> against the <em>NULL</em> value. Normally in an Nginx C code this check is redundant, however in our plugin this is important because serialization of the request object may fail, and in this case the Nginx module will serialize a null pointer.</p>
 <p>Let’s compile the C code. For this we need a directory where Nginx sources were sometime compiled. Let’s refer to it in an environment variable <em>NGX_HOME</em>.</p>
 <pre style="overflow-x: auto; border-style: none none none solid; border-color: #6DF; border-width: 10px; padding: 5px 10px">
 <span style="color: #005FAF;">NGX_HOME=/path/to/nginx_sources</span>
@@ -1533,10 +1528,6 @@
 <span style="color: #008700;">ngx_http_haskell_test_c_plugin</span><span style="color: #870087;">(</span><span style="color: #000000;">ngx_http_request_t </span><span style="color: #005FAF;">*</span><span style="color: #000000;">r</span><span style="color: #870087;">)</span>
 <span style="color: #870087;">{</span>
 <span style="color: #000000;">    ngx_table_elt_t  </span><span style="color: #005FAF;">*</span><span style="color: #000000;">x_powered_by</span><span style="color: #870087;">;</span>
-
-    <span style="color: #005FAF;">if</span> <span style="color: #870087;">(</span><span style="color: #000000;">r </span><span style="color: #005FAF;">==</span> <span style="color: #AF5F00;">NULL</span><span style="color: #870087;">)</span> <span style="color: #870087;">{</span>
-        <span style="color: #005FAF;">return</span><span style="color: #000000;"> NGX_ERROR</span><span style="color: #870087;">;</span>
-    <span style="color: #870087;">}</span>
 
 <span style="color: #000000;">    x_powered_by </span><span style="color: #005FAF;">=</span> <span style="color: #008700;">ngx_list_push</span><span style="color: #870087;">(</span><span style="color: #005FAF;">&amp;</span><span style="color: #000000;">r</span><span style="color: #005FAF;">-&gt;</span><span style="color: #000000;">headers_out</span><span style="color: #005FAF;">.</span><span style="color: #000000;">headers</span><span style="color: #870087;">);</span>
 
