@@ -1409,8 +1409,7 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
     }
 
-    v = ngx_http_add_variable(cf, &mcf->request_var_name,
-                              NGX_HTTP_VAR_NOCACHEABLE);
+    v = ngx_http_add_variable(cf, &mcf->request_var_name, 0);
     if (v == NULL) {
         return NGX_CONF_ERROR;
     }
@@ -2522,7 +2521,9 @@ ngx_http_haskell_request_ptr_var_handler(ngx_http_request_t *r,
 
     v->len = sizeof(uintptr_t);
     /* BEWARE: using long-lived storage &ctx->request instead of simply &r
-     * as long as r is a short-lived stack variable */
+     * as long as r is a short-lived stack variable; no less important is that
+     * this also ensures that we always access main request data: using cached
+     * subrequest data would be dangerous! */
     v->data = (u_char *) r_ptr;
     v->valid = 1;
     v->no_cacheable = 0;
