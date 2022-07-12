@@ -1806,9 +1806,11 @@ add_variable:
                            mcf->request_var_name.data,
                            mcf->request_var_name.len);
                 expr.data[2 + mcf->request_var_name.len] = '}';
-                ngx_memcpy(expr.data + 2 + mcf->request_var_name.len + 1,
-                           value[3].data,
-                           value[3].len);
+                if (value[3].len > 0) {
+                    ngx_memcpy(expr.data + 2 + mcf->request_var_name.len + 1,
+                               value[3].data,
+                               value[3].len);
+                }
                 ccv.value = &expr;
             } else {
                 ccv.value = &value[3 + i];
