@@ -126,11 +126,10 @@ jobs:
                              --add-module=../$UPCONF_MODULE_PATH \
                              --add-module=../echo-nginx-module
               make -j2
-              export PATH=$(pwd)/objs:$PATH
+              export PATH="$(pwd)/objs:$PATH"
               cd -
               cd test
-              set +e
-              export PATH=~/.cabal/bin:$PATH
+              export PATH="$HOME/.cabal/bin:$PATH"
               prove -r t-travis
           else
               cd -
