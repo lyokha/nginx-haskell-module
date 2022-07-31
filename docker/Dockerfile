@@ -37,15 +37,15 @@ RUN cabal v1-update                                               && \
             sed "s/\s*\([^;]\+\)\s*;\?\s*/--constraint='\1' /g")" && \
     eval "cabal v1-install ngx-export-tools-extra \
             $cabal_constraints"                                   && \
-    curl -L 'https://github.com/lyokha/nginx-healthcheck-plugin/archive/1.2.tar.gz' \
+    curl -L 'https://github.com/lyokha/nginx-healthcheck-plugin/archive/1.4.tar.gz' \
             -o nginx-healthcheck-plugin.tar.gz                    && \
     tar xvf nginx-healthcheck-plugin.tar.gz                       && \
-    curl -L 'https://github.com/lyokha/nginx-log-plugin/archive/1.3.1.tar.gz' \
+    curl -L 'https://github.com/lyokha/nginx-log-plugin/archive/1.4.tar.gz' \
             -o nginx-log-plugin.tar.gz                            && \
     tar xvf nginx-log-plugin.tar.gz                               && \
-    cd nginx-healthcheck-plugin-1.2                               && \
+    cd nginx-healthcheck-plugin-1.4                               && \
     eval "cabal v1-install $cabal_constraints"                    && \
-    cd ../nginx-log-plugin-1.3.1                                  && \
+    cd ../nginx-log-plugin-1.4                                    && \
     eval "cabal v1-install $cabal_constraints"                    && \
     cd ..                                                         && \
     rm -f nginx-healthcheck-plugin.tar.gz nginx-log-plugin.tar.gz && \
@@ -63,8 +63,8 @@ ARG NGINX_VERSION
 
 COPY --from=cabal-install /cabal /cabal
 COPY --from=cabal-install /root/.ghc /root/.ghc
-COPY --from=cabal-install /nginx-healthcheck-plugin-1.2 /nginx-healthcheck-plugin-1.2
-COPY --from=cabal-install /nginx-log-plugin-1.3.1 /nginx-log-plugin-1.3.1
+COPY --from=cabal-install /nginx-healthcheck-plugin-1.4 /nginx-healthcheck-plugin-1.4
+COPY --from=cabal-install /nginx-log-plugin-1.4 /nginx-log-plugin-1.4
 
 RUN curl -L 'https://github.com/openresty/echo-nginx-module/archive/v0.62.tar.gz' \
             -o echo-nginx-module.tar.gz                && \
@@ -75,26 +75,26 @@ RUN curl -L 'https://github.com/openresty/echo-nginx-module/archive/v0.62.tar.gz
     curl -L 'https://github.com/lyokha/nginx-combined-upstreams-module/archive/2.1.tar.gz' \
             -o nginx-combined-upstreams-module.tar.gz  && \
     tar xvf nginx-combined-upstreams-module.tar.gz     && \
-    curl -L 'https://github.com/lyokha/nginx-haskell-module/archive/3.1.0.tar.gz' \
+    curl -L 'https://github.com/lyokha/nginx-haskell-module/archive/3.1.1.tar.gz' \
             -o nginx-haskell-module.tar.gz             && \
     tar xvf nginx-haskell-module.tar.gz                && \
     curl -L "https://nginx.org/download/nginx-$NGINX_VERSION.tar.gz" \
             -o nginx.tar.gz                            && \
     tar xvf nginx.tar.gz                               && \
     cd nginx-"$NGINX_VERSION"                          && \
-    NGX_HTTP_CUSTOM_COUNTERS_PERSISTENCY=yes                       \
-            ./configure --prefix=/opt/nginx                        \
-            --user=nginx --group=nginx                             \
-            --with-http_stub_status_module                         \
-            --add-module=../echo-nginx-module-0.62                 \
-            --add-module=../nginx-custom-counters-module-4.4       \
-            --add-module=../nginx-combined-upstreams-module-2.1    \
-            --add-module=../nginx-haskell-module-3.1.0             \
-            --add-module=../nginx-haskell-module-3.1.0/aliases     \
-            --add-module=../nginx-haskell-module-3.1.0/examples/dynamicUpstreams/nginx-upconf-module \
-            --add-dynamic-module=/nginx-healthcheck-plugin-1.2     \
-            --add-dynamic-module=/nginx-log-plugin-1.3.1           \
-            --add-dynamic-module=/nginx-log-plugin-1.3.1/module && \
+    NGX_HTTP_CUSTOM_COUNTERS_PERSISTENCY=yes                     \
+            ./configure --prefix=/opt/nginx                      \
+            --user=nginx --group=nginx                           \
+            --with-http_stub_status_module                       \
+            --add-module=../echo-nginx-module-0.62               \
+            --add-module=../nginx-custom-counters-module-4.4     \
+            --add-module=../nginx-combined-upstreams-module-2.1  \
+            --add-module=../nginx-haskell-module-3.1.1           \
+            --add-module=../nginx-haskell-module-3.1.1/aliases   \
+            --add-module=../nginx-haskell-module-3.1.1/examples/dynamicUpstreams/nginx-upconf-module \
+            --add-dynamic-module=/nginx-healthcheck-plugin-1.4   \
+            --add-dynamic-module=/nginx-log-plugin-1.4           \
+            --add-dynamic-module=/nginx-log-plugin-1.4/module && \
     make                                               && \
     make install                                       && \
     cp objs/ngx_healthcheck_plugin.so \
@@ -109,8 +109,8 @@ RUN curl -L 'https://github.com/openresty/echo-nginx-module/archive/v0.62.tar.gz
             nginx-custom-counters-module-4.4                       \
             nginx-combined-upstreams-module.tar.gz                 \
             nginx-combined-upstreams-module-2.1                    \
-            nginx-haskell-module.tar.gz nginx-haskell-module-3.1.0 \
-            nginx-healthcheck-plugin-1.2 nginx-log-plugin-1.3.1    \
+            nginx-haskell-module.tar.gz nginx-haskell-module-3.1.1 \
+            nginx-healthcheck-plugin-1.4 nginx-log-plugin-1.4      \
             nginx.tar.gz
 
 
