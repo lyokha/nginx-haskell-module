@@ -1,8 +1,8 @@
-Haskell modules on Hackage
+List of batteries included
 ==========================
 
-A list of links to packages and docs with examples for Haskell modules on
-Hackage.
+Haskell modules with docs and examples on Hackage
+-------------------------------------------------
 
 * Package `ngx-export <https://hackage.haskell.org/package/ngx-export>`__
 
@@ -20,4 +20,15 @@ Hackage.
     * Module `NgxExport.Tools.Prometheus <https://hackage.haskell.org/package/ngx-export-tools-extra/docs/NgxExport-Tools-Prometheus.html>`__
     * Module `NgxExport.Tools.ServiceHookAdaptor <https://hackage.haskell.org/package/ngx-export-tools-extra/docs/NgxExport-Tools-ServiceHookAdaptor.html>`__
     * Module `NgxExport.Tools.Subrequest <https://hackage.haskell.org/package/ngx-export-tools-extra/docs/NgxExport-Tools-Subrequest.html>`__
+
+* Package `ngx-export-distribution <https://hackage.haskell.org/package/ngx-export-distribution>`__
+
+    * Module `NgxExport.Distribution <https://hackage.haskell.org/package/ngx-export-distribution/docs/NgxExport-Distribution.html>`__
+
+Haskell modules implemented as C plugins
+----------------------------------------
+
+* Package `ngx-export-healthcheck <https://github.com/lyokha/nginx-healthcheck-plugin>`__
+
+* Package `ngx-export-log <https://github.com/lyokha/nginx-log-plugin>`__
 
