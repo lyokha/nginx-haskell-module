@@ -1,4 +1,4 @@
-### Module *NgxExport*
+#### Module *NgxExport*
 
 [![Hackage](https://img.shields.io/hackage/v/ngx-export.svg?label=hackage%20%7C%20ngx-export&logo=haskell&logoColor=%239580D1)](https://hackage.haskell.org/package/ngx-export)
 
