@@ -1,4 +1,4 @@
-#### Tests with prove
+#### Automatic tests with prove
 
 Run automatic tests in directory *t/* using command *prove* from Perl module
 *Test::Harness*. Tests require additionally Perl module *Test::Nginx::Socket*.
