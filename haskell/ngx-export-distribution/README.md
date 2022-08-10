@@ -1,6 +1,6 @@
-#### Module *NgxExport.Distribution*
+### Module *NgxExport.Distribution*
 
-[![Hackage](https://img.shields.io/hackage/v/ngx-export-distribution.svg?label=hackage%20%7C%20ngx-export-distribution)](https://hackage.haskell.org/package/ngx-export-distribution)
+[![Hackage](https://img.shields.io/hackage/v/ngx-export-distribution.svg?label=hackage%20%7C%20ngx-export-distribution&logo=haskell&logoColor=%239580D1)](https://hackage.haskell.org/package/ngx-export-distribution)
 
 This module allows for building simple shared libraries with Cabal.
 
