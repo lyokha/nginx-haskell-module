@@ -1582,7 +1582,7 @@ In the *modular* approach, assuming that we have haskell source code in file
 *ngx_haskell.hs*, *ghc* command-line should look as follows.
 
 ```ShellSession
-$ ghc -O2 -dynamic -shared -fPIC -lHSrts_thr_debug-ghc$(ghc --numeric-version) ngx_haskell.hs -o /tmp/ngx_haskell.so -fforce-recomp -eventlog
+$ ghc -O2 -dynamic -shared -fPIC -flink-rts -threaded -debug ngx_haskell.hs -o /tmp/ngx_haskell.so -fforce-recomp -eventlog
 ```
 
 The *RTS* *-l* option must be set in the same way as in the *standalone*

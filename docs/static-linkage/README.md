@@ -11,9 +11,9 @@ without compilation flag *-fPIC* on vast majority of modern platforms, notably
 on *GNU/Linux x86_64*.
 
 Here I want to show how to build haskell code from
-[test/tsung/nginx-static.conf](test/tsung/nginx-static.conf) into an independent
-all-in-one shared library on *Fedora 23 x86_64* with *ghc 7.10.2* installed from
-a [copr
+[test/tsung/nginx-static.conf](../../test/tsung/nginx-static.conf) into an
+independent all-in-one shared library on *Fedora 23 x86_64* with *ghc 7.10.2*
+installed from a [copr
 repository](http://copr.fedorainfracloud.org/coprs/petersen/ghc-7.10.2/).
 
 First of all, building of such a library is only possible from command-line as
