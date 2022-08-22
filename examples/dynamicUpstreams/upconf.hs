@@ -1,12 +1,11 @@
 {-# LANGUAGE TemplateHaskell, ScopedTypeVariables #-}
 {-# LANGUAGE ViewPatterns, NumDecimals, OverloadedStrings, RecordWildCards #-}
 
--- ghc -O2 -dynamic -shared -fPIC -lHSrts_thr-ghc$(ghc --numeric-version) \
+-- ghc -O2 -dynamic -shared -fPIC -flink-rts -threaded \
 --   upconf.hs -o /var/lib/nginx/upconf.so -fforce-recomp
 --
 -- for making eventlog:
--- ghc -O2 -dynamic -shared -fPIC \
---   -lHSrts_thr_debug-ghc$(ghc --numeric-version) \
+-- ghc -O2 -dynamic -shared -fPIC -flink-rts -threaded -debug \
 --   upconf.hs -o /var/lib/nginx/upconf.so -fforce-recomp -eventlog
 --
 -- and put in nginx.conf lines (first in main clause, second in http clause)

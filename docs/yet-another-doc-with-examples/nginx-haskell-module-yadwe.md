@@ -43,11 +43,11 @@ bytestring*. The last handler from the table is *impure* or *effectful*, and it
 returns a *lazy bytestring* wrapped in *IO Monad*.
 
 There are two kinds of exporters which differ only in their implementations.
-The first kind --- *camel-cased* exporters --- is implemented by means of
-*Template Haskell*, the other kind --- exporters in braces, as they are shown in
-the table --- is implemented using *CPP macros*. Both of them provide *FFI*
-declarations for functions they export, but the camel-cased exporters are
-available only from a separate Haskell module
+The first kind &mdash; *camel-cased* exporters &mdash; is implemented by means
+of *Template Haskell*, the other kind &mdash; exporters in braces, as they are
+shown in the table &mdash; is implemented using *CPP macros*. Both of them
+provide *FFI* declarations for functions they export, but the camel-cased
+exporters are available only from a separate Haskell module
 [*ngx-export*](http://hackage.haskell.org/package/ngx-export), which can be
 downloaded and installed by *cabal*, whereas the CPP exporters are implemented
 inside the *nginx-haskell-module* in so-called *standalone* approach, where
@@ -88,11 +88,14 @@ In this module we declared three synchronous handlers: *toUpper*, *reverse*, and
 a directory, from where we will load this.
 
 ``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
-||| ghc -O2 -dynamic -shared -fPIC -lHSrts-ghc$(ghc --numeric-version) test.hs -o test.so
+||| ghc -O2 -dynamic -shared -fPIC -flink-rts test.hs -o test.so
 [1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )
 Linking test.so ...
 ||| cp test.so /var/lib/nginx/
 ```
+
+Note that in *ghc* older than *8.10.6*, option *-flink-rts* must be replaced
+with option *-lHSrts-ghc&dollar;(ghc &dash;&dash;numeric-version)*.
 
 **File test.conf**
 
@@ -297,11 +300,14 @@ ngxExportAsyncIOYY 'delay
 This code must be linked with *threaded* Haskell RTS this time!
 
 ``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
-||| ghc -O2 -dynamic -shared -fPIC -lHSrts_thr-ghc$(ghc --numeric-version) test.hs -o test.so
+||| ghc -O2 -dynamic -shared -fPIC -flink-rts -threaded test.hs -o test.so
 [1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )
 Linking test.so ...
 ||| cp test.so /var/lib/nginx/
 ```
+
+Note that in *ghc* older than *8.10.6*, options *-flink-rts -threaded* must be
+replaced with option *-lHSrts_thr-ghc&dollar;(ghc &dash;&dash;numeric-version)*.
 
 Let's make location */timer*, where we will read how many seconds to wait in
 POST field *timer*, and then wait them until returning the response.
@@ -366,8 +372,8 @@ location: handler *getUrl* will run before redirection, but variable
 location.
 
 The task starts from the content handler asynchronously, and the lazy
-bytestring --- the contents --- gets used in the task as is, with all of its
-originally computed chunks.
+bytestring &mdash; the contents &mdash; gets used in the task as is, with all of
+its originally computed chunks.
 
 ## Examples (including online image converter)
 
@@ -400,8 +406,6 @@ ngxExportAsyncHandler 'delayContent
 
 For the *content type* we used a static string *"text/plain"#* that ends with a
 *magic hash* merely to avoid any dynamic memory allocations.
-
-\pagebreak
 
 **File test.conf** (*additions*)
 
@@ -445,7 +449,7 @@ We are going to run instances of *convertToPng* on multiple CPU cores, and
 therefore it's better now to compile this with option *-feager-blackholing*.
 
 ``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
-||| ghc -O2 -feager-blackholing -dynamic -shared -fPIC -lHSrts_thr-ghc$(ghc --numeric-version) test.hs -o test.so
+||| ghc -O2 -feager-blackholing -dynamic -shared -fPIC -flink-rts -threaded test.hs -o test.so
 [1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )
 Linking test.so ...
 ||| cp test.so /var/lib/nginx/
@@ -521,12 +525,12 @@ configuration level.
     haskell_run_service getUrlService $hs_service_httpbin "http://httpbin.org";
 ```
 
-The first argument is, as ever, the name of a Haskell handler, the second --- a
-variable where the service result will be put, and the third argument is data
-passed to the handler *getUrlService* in its first parameter. Notice that the
-third argument cannot contain variables because variable handlers in Nginx are
-only available in a request context, hence this argument may only be a static
-string.
+The first argument is, as ever, the name of a Haskell handler, the second
+&mdash; a variable where the service result will be put, and the third argument
+is data passed to the handler *getUrlService* in its first parameter. Notice
+that the third argument cannot contain variables because variable handlers in
+Nginx are only available in a request context, hence this argument may only be a
+static string.
 
 Asynchronous services are bound to the Nginx event loop in the same way as
 asynchronous tasks. When a service finishes its computation, it pokes data into
@@ -635,10 +639,10 @@ clause),
 ```
 
 makes service *getUrlService*, that stores its result in variable
-*hs_service_httpbin*, shared. The first argument of the directive --- *httpbin*
---- is an identifier of a shared memory segment, *512k* is its maximum size,
-*/tmp* is a directory where *file locks* will be put (see below), and
-*\$hs_service_httpbin* is the service variable.
+*hs_service_httpbin*, shared. The first argument of the directive &mdash;
+*httpbin* &mdash; is an identifier of a shared memory segment, *512k* is its
+maximum size, */tmp* is a directory where *file locks* will be put (see below),
+and *&dollar;hs_service_httpbin* is the service variable.
 
 Shared services are called *shared* not only because they store results in
 shared memory, but also because at any moment of the Nginx master lifetime there
@@ -723,15 +727,15 @@ ngxExportIOYY 'sortLinks
 
 Here *gHttpbinLinks* is the global state, *grepHttpbinLinks* is a handler for
 update variable *\_upd\_\_hs_service_httpbin*, almost all the time it does
-nothing --- just returns an empty string, but when the update variable becomes
-not empty, it updates the global state and returns an empty string again. Notice
-that the original bytestring is copied with *B.copy* before its parts get
-collected as matches and put in the global state. This is an important step
-because the original bytestring's lifetime does not extend beyond the current
-request whereas the global state may last much longer! Sometimes copying is not
-necessary, for example when the bytestring gets deserialized into an object
-in-place. Handler *sortLinks* is parameterized by data identifier: when the
-identifier is equal to *httpbin*, it reads the global state and returns it
+nothing &mdash; just returns an empty string, but when the update variable
+becomes not empty, it updates the global state and returns an empty string
+again. Notice that the original bytestring is copied with *B.copy* before its
+parts get collected as matches and put in the global state. This is an important
+step because the original bytestring's lifetime does not extend beyond the
+current request whereas the global state may last much longer! Sometimes copying
+is not necessary, for example when the bytestring gets deserialized into an
+object in-place. Handler *sortLinks* is parameterized by data identifier: when
+the identifier is equal to *httpbin*, it reads the global state and returns it
 sorted, otherwise it returns an empty string.
 
 **File test.conf** (*additions*)
@@ -751,7 +755,7 @@ sorted, otherwise it returns an empty string.
 We have to pass variable *\_upd\_links\_* in *sortLinks* because this will
 trigger update in the worker by *grepHttpbinLinks*, otherwise update won't run:
 remember that Nginx directives are lazy? On the other hand, *\_upd\_links\_* is
-always empty and won't mess up with the rest of the argument --- value
+always empty and won't mess up with the rest of the argument &mdash; value
 *httpbin*.
 
 Run curl tests.
@@ -1228,7 +1232,7 @@ returns *NGX_OK* or *NGX_ERROR* respectively. When compiled with *ghc*, this
 code has to be linked with *test_c_plugin.o*.
 
 ``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
-||| ghc -O2 -dynamic -shared -fPIC -lHSrts_thr-ghc$(ghc --numeric-version) test_c_plugin.o test.hs -o test.so
+||| ghc -O2 -dynamic -shared -fPIC -flink-rts -threaded test_c_plugin.o test.hs -o test.so
 [1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )
 Linking test.so ...
 ||| cp test.so /var/lib/nginx/

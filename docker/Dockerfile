@@ -132,9 +132,8 @@ RUN cd /build                                   && \
             -I "$NGX_HOME/src/event/modules" \
             -I "$NGX_HOME/src/os/unix"       \
             -I "$NGX_HOME/objs" test_c_plugin.c && \
-    ghc -Wall -O2 -dynamic -shared -fPIC              \
-            -lHSrts_thr-ghc"$(ghc --numeric-version)" \
-            -lngx_healthcheck_plugin -lngx_log_plugin \
+    ghc -Wall -O2 -dynamic -shared -fPIC -flink-rts -threaded \
+            -lngx_healthcheck_plugin -lngx_log_plugin         \
             test_c_plugin.o test.hs -o test.so  && \
     mv test.so /var/lib/nginx                   && \
     cd ..                                       && \

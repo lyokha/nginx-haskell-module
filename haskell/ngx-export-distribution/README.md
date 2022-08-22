@@ -85,7 +85,7 @@ Configuring ngx-distribution-test-0.1.0.0...
 ```
 
 ```ShellSession
-$ cabal v1-build --ghc-options="ngx_distribution_test.hs -o ngx_distribution_test.so -lHSrts_thr-ghc$(ghc --numeric-version)"
+$ cabal v1-build --ghc-options="ngx_distribution_test.hs -o ngx_distribution_test.so -threaded"
 [1 of 1] Compiling NgxDistributionTest ( ngx_distribution_test.hs, ngx_distribution_test.o )
 Linking ngx_distribution_test.so ...
 ---> Collecting libraries
@@ -120,9 +120,10 @@ x86_64-linux-ghc-8.10.5/libHSstrict-0.4.0.1-Bs4t4Fhsgeo8grcWS7WJTy-ghc8.10.5.so
 x86_64-linux-ghc-8.10.5/libHSdlist-1.0-GVPedlNIGcrCE31hGMMV1G-ghc8.10.5.so
 ```
 
-Notice that in *ghc 8.10.6* and newer, option
-*-lHSrts_thr-ghc&dollar;(ghc --numeric-version)* is not needed as it gets
-effectively replaced with ghc option *-flink-rts*.
+Note that in ghc older than *8.10.6*, option *-threaded* must be replaced
+with option *-lHSrts_thr-ghc&dollar;(ghc --numeric-version)* because ghc option
+*-flink-rts* which is passed by the module internally has first appeared in
+the mentioned release.
 
 Now the current working directory contains new files
 *ngx_distribution_test.so* and *ngx-distribution-test-0.1.0.0.tar.gz* and a
@@ -144,7 +145,7 @@ $ runhaskell Setup.hs configure --user
 ```
 
 ```ShellSession
-$ runhaskell Setup.hs build --ghc-options="ngx_distribution_test.hs -o ngx_distribution_test.so -lHSrts_thr-ghc$(ghc --numeric-version)" --hslibdeps-options="-t/var/lib/nginx/deps -ddeps -adeps"
+$ runhaskell Setup.hs build --ghc-options="ngx_distribution_test.hs -o ngx_distribution_test.so -threaded" --hslibdeps-options="-t/var/lib/nginx/deps -ddeps -adeps"
 ```
 
 ###### Building dependencies with cabal v2-build
@@ -184,7 +185,7 @@ contains a GHC *package db* with all packages built by *cabal v2-build*, it
 gets also listed in file *.ghc.environment.x86_64-linux-8.10.5*.
 
 ```ShellSession
-$ runhaskell --ghc-arg=-package=base --ghc-arg=-package=ngx-export-distribution Setup.hs build --ghc-options="ngx_distribution_test.hs -o ngx_distribution_test.so -lHSrts_thr-ghc$(ghc --numeric-version)"
+$ runhaskell --ghc-arg=-package=base --ghc-arg=-package=ngx-export-distribution Setup.hs build --ghc-options="ngx_distribution_test.hs -o ngx_distribution_test.so -threaded"
 ```
 
 This should build library *ngx_distribution_test.so* and link it against

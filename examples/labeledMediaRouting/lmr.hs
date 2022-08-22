@@ -1,12 +1,11 @@
 {-# LANGUAGE TemplateHaskell, DeriveGeneric, ScopedTypeVariables #-}
 {-# LANGUAGE ViewPatterns, PatternSynonyms, TupleSections, NumDecimals #-}
 
--- ghc -O2 -dynamic -shared -fPIC -lHSrts_thr-ghc$(ghc --numeric-version) \
+-- ghc -O2 -dynamic -shared -fPIC -flink-rts -threaded \
 --   lmr.hs -o /var/lib/nginx/lmr.so -fforce-recomp
 --
 -- for making eventlog:
--- ghc -O2 -dynamic -shared -fPIC \
---   -lHSrts_thr_debug-ghc$(ghc --numeric-version) \
+-- ghc -O2 -dynamic -shared -fPIC -flink-rts -threaded -debug \
 --   lmr.hs -o /var/lib/nginx/lmr.so -fforce-recomp -eventlog
 --
 -- and put in nginx.conf lines (first in main clause, second in http clause)

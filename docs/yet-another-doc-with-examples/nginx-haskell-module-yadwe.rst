@@ -81,10 +81,12 @@ In this module we declared three synchronous handlers: *toUpper*, *reverse*, and
 
 .. code-block:: console
 
-   $ ghc -O2 -dynamic -shared -fPIC -lHSrts-ghc$(ghc --numeric-version) test.hs -o test.so
+   $ ghc -O2 -dynamic -shared -fPIC -flink-rts test.hs -o test.so
    [1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )
    Linking test.so ...
    $ cp test.so /var/lib/nginx/
+
+Note that in *ghc* older than *8.10.6*, option *-flink-rts* must be replaced with option *-lHSrts-ghc$(ghc ‐‐numeric-version)*.
 
 **File test.conf**
 
@@ -271,10 +273,12 @@ This code must be linked with *threaded* Haskell RTS this time!
 
 .. code-block:: console
 
-   $ ghc -O2 -dynamic -shared -fPIC -lHSrts_thr-ghc$(ghc --numeric-version) test.hs -o test.so
+   $ ghc -O2 -dynamic -shared -fPIC -flink-rts -threaded test.hs -o test.so
    [1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )
    Linking test.so ...
    $ cp test.so /var/lib/nginx/
+
+Note that in *ghc* older than *8.10.6*, options *-flink-rts -threaded* must be replaced with option *-lHSrts_thr-ghc$(ghc ‐‐numeric-version)*.
 
 Let’s make location */timer*, where we will read how many seconds to wait in POST field *timer*, and then wait them until returning the response.
 
@@ -365,10 +369,6 @@ Let’s rewrite our *timer* example using *haskell_async_content*.
 
 For the *content type* we used a static string *“text/plain”#* that ends with a *magic hash* merely to avoid any dynamic memory allocations.
 
-.. raw:: latex
-
-   \pagebreak
-
 **File test.conf** (*additions*)
 
 .. code-block:: nginx
@@ -410,7 +410,7 @@ We are going to run instances of *convertToPng* on multiple CPU cores, and there
 
 .. code-block:: console
 
-   $ ghc -O2 -feager-blackholing -dynamic -shared -fPIC -lHSrts_thr-ghc$(ghc --numeric-version) test.hs -o test.so
+   $ ghc -O2 -feager-blackholing -dynamic -shared -fPIC -flink-rts -threaded test.hs -o test.so
    [1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )
    Linking test.so ...
    $ cp test.so /var/lib/nginx/
@@ -1119,7 +1119,7 @@ returns *NGX_OK* or *NGX_ERROR* respectively. When compiled with *ghc*, this cod
 
 .. code-block:: console
 
-   $ ghc -O2 -dynamic -shared -fPIC -lHSrts_thr-ghc$(ghc --numeric-version) test_c_plugin.o test.hs -o test.so
+   $ ghc -O2 -dynamic -shared -fPIC -flink-rts -threaded test_c_plugin.o test.hs -o test.so
    [1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )
    Linking test.so ...
    $ cp test.so /var/lib/nginx/

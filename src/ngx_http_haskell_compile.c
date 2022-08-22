@@ -20,11 +20,16 @@
 #include "ngx_http_haskell_compile.h"
 #include "ngx_http_haskell_standalone.h"
 
+#include <ghcversion.h>
+
+
+#if defined(__GLASGOW_HASKELL__)
 
 static const ngx_str_t  haskell_compile_cmd =
 ngx_string("ghc -O2 -dynamic -shared -fPIC -o ");
 static const ngx_str_t  template_haskell_option =
 ngx_string(" -XTemplateHaskell");
+#if __GLASGOW_HASKELL__ < 900
 static const ngx_str_t  ghc_rtslib_vanilla =
 ngx_string(" -lHSrts-ghc$(ghc --numeric-version)");
 static const ngx_str_t  ghc_rtslib_thr =
@@ -33,6 +38,16 @@ static const ngx_str_t  ghc_rtslib_debug =
 ngx_string(" -lHSrts_debug-ghc$(ghc --numeric-version)");
 static const ngx_str_t  ghc_rtslib_thr_debug =
 ngx_string(" -lHSrts_thr_debug-ghc$(ghc --numeric-version)");
+#else
+static const ngx_str_t  ghc_rtslib_vanilla =
+ngx_string(" -flink-rts");
+static const ngx_str_t  ghc_rtslib_thr =
+ngx_string(" -flink-rts -threaded");
+static const ngx_str_t  ghc_rtslib_debug =
+ngx_string(" -flink-rts -debug");
+static const ngx_str_t  ghc_rtslib_thr_debug =
+ngx_string(" -flink-rts -threaded -debug");
+#endif
 
 
 char *
@@ -188,4 +203,26 @@ ngx_http_haskell_compile(ngx_conf_t *cf, void *conf, ngx_str_t source_name)
 
     return NGX_CONF_OK;
 }
+
+#else
+
+char *
+ngx_http_haskell_write_code(ngx_conf_t *cf, void *conf, ngx_str_t source_name,
+                            ngx_str_t *fragments, ngx_int_t n_fragments)
+{
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+            "compilation of haskell source code is only supported with ghc");
+    return NGX_CONF_ERROR;
+}
+
+
+char *
+ngx_http_haskell_compile(ngx_conf_t *cf, void *conf, ngx_str_t source_name)
+{
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+            "compilation of haskell source code is only supported with ghc");
+    return NGX_CONF_ERROR;
+}
+
+#endif
 

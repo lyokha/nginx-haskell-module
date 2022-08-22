@@ -25,9 +25,17 @@
 (yet another doc with examples)</h1>
 </header>
 <h1 id="why-bother">Why bother?</h1>
-<p>The <a href="https://github.com/lyokha/nginx-haskell-module"><em>nginx-haskell-module</em></a> allows for running in Nginx written in Haskell synchronous and asynchronous tasks, request body handlers, per-worker and shared services, and content handlers.</p>
+<p>The <a
+href="https://github.com/lyokha/nginx-haskell-module"><em>nginx-haskell-module</em></a>
+allows for running in Nginx written in Haskell synchronous and
+asynchronous tasks, request body handlers, per-worker and shared
+services, and content handlers.</p>
 <h1 id="synchronous-tasks">Synchronous tasks</h1>
-<p>Synchronous tasks are mostly <em>pure</em> Haskell functions of various types. To make them available in Nginx configuration files, they must be exported with special declarations named <em>exporters</em>. Below is a table of <em>type/exporter</em> correspondence for all available synchronous handlers.</p>
+<p>Synchronous tasks are mostly <em>pure</em> Haskell functions of
+various types. To make them available in Nginx configuration files, they
+must be exported with special declarations named <em>exporters</em>.
+Below is a table of <em>type/exporter</em> correspondence for all
+available synchronous handlers.</p>
 <table>
 <colgroup>
 <col style="width: 50%" />
@@ -42,46 +50,77 @@
 <tbody>
 <tr class="odd">
 <td style="text-align: left;"><code>String -&gt; String</code></td>
-<td style="text-align: left;"><code>ngxExportSS</code> (<code>NGX_EXPORT_S_S</code>)</td>
+<td style="text-align: left;"><code>ngxExportSS</code>
+(<code>NGX_EXPORT_S_S</code>)</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;"><code>String -&gt; String -&gt; String</code></td>
-<td style="text-align: left;"><code>ngxExportSSS</code> (<code>NGX_EXPORT_S_SS</code>)</td>
+<td
+style="text-align: left;"><code>String -&gt; String -&gt; String</code></td>
+<td style="text-align: left;"><code>ngxExportSSS</code>
+(<code>NGX_EXPORT_S_SS</code>)</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><code>String -&gt; Bool</code></td>
-<td style="text-align: left;"><code>ngxExportBS</code> (<code>NGX_EXPORT_B_S</code>)</td>
+<td style="text-align: left;"><code>ngxExportBS</code>
+(<code>NGX_EXPORT_B_S</code>)</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;"><code>String -&gt; String -&gt; Bool</code></td>
-<td style="text-align: left;"><code>ngxExportBSS</code> (<code>NGX_EXPORT_B_SS</code>)</td>
+<td
+style="text-align: left;"><code>String -&gt; String -&gt; Bool</code></td>
+<td style="text-align: left;"><code>ngxExportBSS</code>
+(<code>NGX_EXPORT_B_SS</code>)</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><code>[String] -&gt; String</code></td>
-<td style="text-align: left;"><code>ngxExportSLS</code> (<code>NGX_EXPORT_S_LS</code>)</td>
+<td style="text-align: left;"><code>ngxExportSLS</code>
+(<code>NGX_EXPORT_S_LS</code>)</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><code>[String] -&gt; Bool</code></td>
-<td style="text-align: left;"><code>ngxExportBLS</code> (<code>NGX_EXPORT_B_LS</code>)</td>
+<td style="text-align: left;"><code>ngxExportBLS</code>
+(<code>NGX_EXPORT_B_LS</code>)</td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;"><code>ByteString -&gt; L.ByteString</code></td>
-<td style="text-align: left;"><code>ngxExportYY</code> (<code>NGX_EXPORT_Y_Y</code>)</td>
+<td
+style="text-align: left;"><code>ByteString -&gt; L.ByteString</code></td>
+<td style="text-align: left;"><code>ngxExportYY</code>
+(<code>NGX_EXPORT_Y_Y</code>)</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><code>ByteString -&gt; Bool</code></td>
-<td style="text-align: left;"><code>ngxExportBY</code> (<code>NGX_EXPORT_B_Y</code>)</td>
+<td style="text-align: left;"><code>ngxExportBY</code>
+(<code>NGX_EXPORT_B_Y</code>)</td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;"><code>ByteString -&gt; IO L.ByteString</code></td>
-<td style="text-align: left;"><code>ngxExportIOYY</code> (<code>NGX_EXPORT_IOY_Y</code>)</td>
+<td
+style="text-align: left;"><code>ByteString -&gt; IO L.ByteString</code></td>
+<td style="text-align: left;"><code>ngxExportIOYY</code>
+(<code>NGX_EXPORT_IOY_Y</code>)</td>
 </tr>
 </tbody>
 </table>
-<p>All synchronous handlers may accept <em>strings</em> (one or two), a <em>list of strings</em>, or a <em>strict bytestring</em>, and return a <em>string</em>, a <em>boolean</em> or a <em>lazy bytestring</em>. The last handler from the table is <em>impure</em> or <em>effectful</em>, and it returns a <em>lazy bytestring</em> wrapped in <em>IO Monad</em>.</p>
-<p>There are two kinds of exporters which differ only in their implementations. The first kind — <em>camel-cased</em> exporters — is implemented by means of <em>Template Haskell</em>, the other kind — exporters in braces, as they are shown in the table — is implemented using <em>CPP macros</em>. Both of them provide <em>FFI</em> declarations for functions they export, but the camel-cased exporters are available only from a separate Haskell module <a href="http://hackage.haskell.org/package/ngx-export"><em>ngx-export</em></a>, which can be downloaded and installed by <em>cabal</em>, whereas the CPP exporters are implemented inside the <em>nginx-haskell-module</em> in so-called <em>standalone</em> approach, where custom Haskell declarations get wrapped inside common Haskell code.</p>
+<p>All synchronous handlers may accept <em>strings</em> (one or two), a
+<em>list of strings</em>, or a <em>strict bytestring</em>, and return a
+<em>string</em>, a <em>boolean</em> or a <em>lazy bytestring</em>. The
+last handler from the table is <em>impure</em> or <em>effectful</em>,
+and it returns a <em>lazy bytestring</em> wrapped in <em>IO
+Monad</em>.</p>
+<p>There are two kinds of exporters which differ only in their
+implementations. The first kind — <em>camel-cased</em> exporters — is
+implemented by means of <em>Template Haskell</em>, the other kind —
+exporters in braces, as they are shown in the table — is implemented
+using <em>CPP macros</em>. Both of them provide <em>FFI</em>
+declarations for functions they export, but the camel-cased exporters
+are available only from a separate Haskell module <a
+href="http://hackage.haskell.org/package/ngx-export"><em>ngx-export</em></a>,
+which can be downloaded and installed by <em>cabal</em>, whereas the CPP
+exporters are implemented inside the <em>nginx-haskell-module</em> in
+so-called <em>standalone</em> approach, where custom Haskell
+declarations get wrapped inside common Haskell code.</p>
 <h2 id="examples">Examples</h2>
-<p>In all examples in this section and later we will use <em>modular</em> approach with <em>camel-cased</em> exporters and separate compilation of Haskell code.</p>
+<p>In all examples in this section and later we will use
+<em>modular</em> approach with <em>camel-cased</em> exporters and
+separate compilation of Haskell code.</p>
 <p><strong>File test.hs</strong></p>
 <pre style="overflow-x: auto; background: #FFE">
 <span style="color: #870087;">{-# LANGUAGE TemplateHaskell #-}</span>
@@ -103,14 +142,21 @@
 <span style="color: #008787;">ngxExportBLS</span><span style="color: #000000;"> '</span><span style="color: #000000;">isInList</span>
 </pre>
 
-<p>In this module we declared three synchronous handlers: <em>toUpper</em>, <em>reverse</em>, and <em>isInList</em>. Handler <em>reverse</em> exports existing and well-known Haskell function <em>reverse</em> which reverses lists. Let’s compile <em>test.hs</em> and move the library to a directory, from where we will load this.</p>
+<p>In this module we declared three synchronous handlers:
+<em>toUpper</em>, <em>reverse</em>, and <em>isInList</em>. Handler
+<em>reverse</em> exports existing and well-known Haskell function
+<em>reverse</em> which reverses lists. Let’s compile <em>test.hs</em>
+and move the library to a directory, from where we will load this.</p>
 <pre style="overflow-x: auto; border-style: none none none solid; border-color: #6DF; border-width: 10px; padding: 5px 10px">
-<span style="color: #005FAF;">ghc -O2 -dynamic -shared -fPIC -lHSrts-ghc$(ghc --numeric-version) test.hs -o test.so</span>
+<span style="color: #005FAF;">ghc -O2 -dynamic -shared -fPIC -flink-rts test.hs -o test.so</span>
 <span style="color: #808080;">[1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )</span>
 <span style="color: #808080;">Linking test.so ...</span>
 <span style="color: #005FAF;">cp test.so /var/lib/nginx/</span>
 </pre>
 
+<p>Note that in <em>ghc</em> older than <em>8.10.6</em>, option
+<em>-flink-rts</em> must be replaced with option <em>-lHSrts-ghc$(ghc
+‐‐numeric-version)</em>.</p>
 <p><strong>File test.conf</strong></p>
 <pre style="overflow-x: auto; background: #FFE">
 <span style="color: #008700;">user</span><span style="color: #000000;">                    nginx;</span>
@@ -142,7 +188,15 @@
 <span style="color: #000000;">}</span>
 </pre>
 
-<p>Library <em>test.so</em> gets loaded by Nginx directive <em>haskell load</em>. All synchronous handlers run from directive <em>haskell_run</em>. The first argument of the directive is a name of a Haskell handler exported from the loaded library <em>test.so</em>, the second argument is an Nginx variable where the handler will put the result of its computation, the rest arguments are passed to the Haskell handler as parameters. Directive <em>haskell_run</em> has <em>lazy</em> semantics in the sense that it runs its handler only when the result is needed in a content handler or rewrite directives.</p>
+<p>Library <em>test.so</em> gets loaded by Nginx directive <em>haskell
+load</em>. All synchronous handlers run from directive
+<em>haskell_run</em>. The first argument of the directive is a name of a
+Haskell handler exported from the loaded library <em>test.so</em>, the
+second argument is an Nginx variable where the handler will put the
+result of its computation, the rest arguments are passed to the Haskell
+handler as parameters. Directive <em>haskell_run</em> has <em>lazy</em>
+semantics in the sense that it runs its handler only when the result is
+needed in a content handler or rewrite directives.</p>
 <p>Let’s test the configuration with <em>curl</em>.</p>
 <pre style="overflow-x: auto; border-style: none none none solid; border-color: #6DF; border-width: 10px; padding: 5px 10px">
 <span style="color: #005FAF;">curl 'http://127.0.0.1:8010/?u=hello&amp;r=world&amp;a=1&amp;b=10&amp;c=1'</span>
@@ -152,7 +206,8 @@
 </pre>
 
 <h1 id="synchronous-content-handlers">Synchronous content handlers</h1>
-<p>There are three types of exporters for synchronous content handlers.</p>
+<p>There are three types of exporters for synchronous content
+handlers.</p>
 <table>
 <colgroup>
 <col style="width: 55%" />
@@ -166,30 +221,56 @@
 </thead>
 <tbody>
 <tr class="odd">
-<td style="text-align: left;"><code>ByteString -&gt; ContentHandlerResult</code></td>
-<td style="text-align: left;"><code>ngxExportHandler</code> (<code>NGX_EXPORT_HANDLER</code>)</td>
+<td
+style="text-align: left;"><code>ByteString -&gt; ContentHandlerResult</code></td>
+<td style="text-align: left;"><code>ngxExportHandler</code>
+(<code>NGX_EXPORT_HANDLER</code>)</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;"><code>ByteString -&gt; L.ByteString</code></td>
-<td style="text-align: left;"><code>ngxExportDefHandler</code> (<code>NGX_EXPORT_DEF_HANDLER</code>)</td>
+<td
+style="text-align: left;"><code>ByteString -&gt; L.ByteString</code></td>
+<td style="text-align: left;"><code>ngxExportDefHandler</code>
+(<code>NGX_EXPORT_DEF_HANDLER</code>)</td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;"><code>ByteString -&gt; UnsafeContentHandlerResult</code></td>
-<td style="text-align: left;"><code>ngxExportUnsafeHandler</code> (<code>NGX_EXPORT_UNSAFE_HANDLER</code>)</td>
+<td
+style="text-align: left;"><code>ByteString -&gt; UnsafeContentHandlerResult</code></td>
+<td style="text-align: left;"><code>ngxExportUnsafeHandler</code>
+(<code>NGX_EXPORT_UNSAFE_HANDLER</code>)</td>
 </tr>
 </tbody>
 </table>
-<p>Types <em>ContentHandlerResult</em> and <em>UnsafeContentHandlerResult</em> are declared as type synonyms in module <em>NgxExport</em>.</p>
+<p>Types <em>ContentHandlerResult</em> and
+<em>UnsafeContentHandlerResult</em> are declared as type synonyms in
+module <em>NgxExport</em>.</p>
 <pre style="overflow-x: auto; background: #FFE">
 <span style="color: #005F87;">type</span> <span style="color: #005F87;">ContentHandlerResult</span> <span style="color: #005FAF;">=</span> <span style="color: #870087;">(</span><span style="color: #005F87;">L</span><span style="color: #005FAF;">.</span><span style="color: #005F87;">ByteString</span><span style="color: #870087;">,</span> <span style="color: #005F87;">ByteString</span><span style="color: #870087;">,</span> <span style="color: #005F87;">Int</span><span style="color: #870087;">,</span> <span style="color: #005F87;">HTTPHeaders</span><span style="color: #870087;">)</span>
 <span style="color: #005F87;">type</span> <span style="color: #005F87;">UnsafeContentHandlerResult</span> <span style="color: #005FAF;">=</span> <span style="color: #870087;">(</span><span style="color: #005F87;">ByteString</span><span style="color: #870087;">,</span> <span style="color: #005F87;">ByteString</span><span style="color: #870087;">,</span> <span style="color: #005F87;">Int</span><span style="color: #870087;">)</span>
 <span style="color: #005F87;">type</span> <span style="color: #005F87;">HTTPHeaders</span> <span style="color: #005FAF;">=</span> <span style="color: #870087;">[(</span><span style="color: #005F87;">ByteString</span><span style="color: #870087;">,</span> <span style="color: #005F87;">ByteString</span><span style="color: #870087;">)]</span>
 </pre>
 
-<p>All content handlers are <em>pure</em> Haskell functions, as well as the most of other synchronous handlers. The <em>normal</em> content handler returns a <em>4-tuple</em> <em>(response-body, content-type, HTTP-status, response-headers)</em>. The response body consists of a number of chunks packed in a <em>lazy bytestring</em>, the content type is a <em>strict bytestring</em> such as <em>text/html</em>. The <em>default</em> handler defaults the content type to <em>text/plain</em> and the HTTP status to <em>200</em>, thus returning only chunks of the response body. The <em>unsafe</em> handler returns a <em>3-tuple</em> with a single-chunked response body, the content type and the status, but the both bytestring parameters are supposed to be taken from static data, which must not be cleaned up after request termination.</p>
-<p><em>Normal</em> and <em>default</em> content handlers can be declared with two directives: <em>haskell_content</em> and <em>haskell_static_content</em>. The second directive runs its handler only once, when the first request comes, and returns the same response on further requests. The <em>unsafe</em> handler is declared with directive <em>haskell_unsafe_content</em>.</p>
+<p>All content handlers are <em>pure</em> Haskell functions, as well as
+the most of other synchronous handlers. The <em>normal</em> content
+handler returns a <em>4-tuple</em> <em>(response-body, content-type,
+HTTP-status, response-headers)</em>. The response body consists of a
+number of chunks packed in a <em>lazy bytestring</em>, the content type
+is a <em>strict bytestring</em> such as <em>text/html</em>. The
+<em>default</em> handler defaults the content type to
+<em>text/plain</em> and the HTTP status to <em>200</em>, thus returning
+only chunks of the response body. The <em>unsafe</em> handler returns a
+<em>3-tuple</em> with a single-chunked response body, the content type
+and the status, but the both bytestring parameters are supposed to be
+taken from static data, which must not be cleaned up after request
+termination.</p>
+<p><em>Normal</em> and <em>default</em> content handlers can be declared
+with two directives: <em>haskell_content</em> and
+<em>haskell_static_content</em>. The second directive runs its handler
+only once, when the first request comes, and returns the same response
+on further requests. The <em>unsafe</em> handler is declared with
+directive <em>haskell_unsafe_content</em>.</p>
 <h2 id="an-example">An example</h2>
-<p>Let’s replace Nginx directive <em>echo</em> with our own default content handler <em>echo</em>. Add in <em>test.hs</em>,</p>
+<p>Let’s replace Nginx directive <em>echo</em> with our own default
+content handler <em>echo</em>. Add in <em>test.hs</em>,</p>
 <pre style="overflow-x: auto; background: #FFE">
 <span style="color: #008787;">import</span>           <span style="color: #000000;">Data.ByteString</span> <span style="color: #000000;">(</span><span style="color: #005F87;">ByteString</span><span style="color: #000000;">)</span>
 <span style="color: #008787;">import</span> <span style="color: #008787;">qualified</span> <span style="color: #000000;">Data.ByteString.Lazy</span> <span style="color: #008787;">as</span> <span style="color: #000000;">L</span>
@@ -201,7 +282,8 @@
 <span style="color: #008787;">ngxExportDefHandler</span><span style="color: #000000;"> '</span><span style="color: #000000;">echo</span>
 </pre>
 
-<p>compile it and put <em>test.so</em> into <em>/var/lib/nginx/</em>. Add new location <em>/ch</em> into <em>test.conf</em>,</p>
+<p>compile it and put <em>test.so</em> into <em>/var/lib/nginx/</em>.
+Add new location <em>/ch</em> into <em>test.conf</em>,</p>
 <pre style="overflow-x: auto; background: #FFE">
         <span style="color: #005FAF;">location</span><span style="color: #000000;"> /ch {</span>
 <span style="color: #000000;">            haskell_run toUpper </span><span style="color: #008700;">$hs_upper</span> <span style="color: #008700;">$arg_u</span><span style="color: #000000;">;</span>
@@ -223,8 +305,11 @@
 <span style="color: #808080;">needle `isInList` [needle, in, stack] = 1</span>
 </pre>
 
-<h1 id="asynchronous-tasks-and-request-body-handlers">Asynchronous tasks and request body handlers</h1>
-<p>There are two types of Haskell handlers for per-request asynchronous tasks: an asynchronous handler and an asynchronous request body handler.</p>
+<h1 id="asynchronous-tasks-and-request-body-handlers">Asynchronous tasks
+and request body handlers</h1>
+<p>There are two types of Haskell handlers for per-request asynchronous
+tasks: an asynchronous handler and an asynchronous request body
+handler.</p>
 <table>
 <colgroup>
 <col style="width: 56%" />
@@ -238,20 +323,51 @@
 </thead>
 <tbody>
 <tr class="odd">
-<td style="text-align: left;"><code>ByteString -&gt; IO L.ByteString</code></td>
-<td style="text-align: left;"><code>ngxExportAsyncIOYY</code> (<code>NGX_EXPORT_ASYNC_IOY_Y</code>)</td>
+<td
+style="text-align: left;"><code>ByteString -&gt; IO L.ByteString</code></td>
+<td style="text-align: left;"><code>ngxExportAsyncIOYY</code>
+(<code>NGX_EXPORT_ASYNC_IOY_Y</code>)</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;"><code>L.ByteString -&gt; ByteString -&gt; IO L.ByteString</code></td>
-<td style="text-align: left;"><code>ngxExportAsyncOnReqBody</code> (<code>NGX_EXPORT_ASYNC_ON_REQ_BODY</code>)</td>
+<td
+style="text-align: left;"><code>L.ByteString -&gt; ByteString -&gt; IO L.ByteString</code></td>
+<td style="text-align: left;"><code>ngxExportAsyncOnReqBody</code>
+(<code>NGX_EXPORT_ASYNC_ON_REQ_BODY</code>)</td>
 </tr>
 </tbody>
 </table>
-<p>Normal asynchronous handler accepts a strict bytestring and returns a lazy bytestring. Its type exactly corresponds to that of the handlers exported with <em>ngxExportIOYY</em>. Request body handler additionally accepts request body chunks in its first parameter.</p>
-<p>Unlike synchronous handlers, asynchronous per-request handlers are <em>eager</em>. This means that they will always run when declared in a location, no matter whether their results are going to be used in the response and rewrite directives, or not. The asynchronous handlers run in an early <em>rewrite phase</em> (before rewrite directives), and in a late rewrite phase (after rewrite directives, if in the final location there are more asynchronous tasks declared). It is possible to declare many asynchronous tasks in a single location: in this case they are spawned one by one in order of their declarations, which lets using results of early tasks in inputs of later tasks. This ordering rule extends naturally beyond hierarchical levels: tasks declared in <em>server</em> clause run before tasks from <em>location</em> clauses, while tasks from <em>location-if</em> clauses run latest.</p>
-<p>Asynchronous tasks are bound to the Nginx event loop by means of <em>eventfd</em> (or POSIX <em>pipes</em> if eventfd was not available on the platform when Nginx was being compiled). When the rewrite phase handler of this module spawns an asynchronous task, it opens an eventfd, then registers it in the event loop, and passes it to the Haskell handler. As soon as the Haskell handler finishes the task and pokes the result into buffers, it writes into the eventfd, thus informing the Nginx part that the task has finished. Then Nginx gets back to the module’s rewrite phase handler, and it spawns the next asynchronous task, or returns (when there are no more tasks left), moving request processing to the next stage.</p>
+<p>Normal asynchronous handler accepts a strict bytestring and returns a
+lazy bytestring. Its type exactly corresponds to that of the handlers
+exported with <em>ngxExportIOYY</em>. Request body handler additionally
+accepts request body chunks in its first parameter.</p>
+<p>Unlike synchronous handlers, asynchronous per-request handlers are
+<em>eager</em>. This means that they will always run when declared in a
+location, no matter whether their results are going to be used in the
+response and rewrite directives, or not. The asynchronous handlers run
+in an early <em>rewrite phase</em> (before rewrite directives), and in a
+late rewrite phase (after rewrite directives, if in the final location
+there are more asynchronous tasks declared). It is possible to declare
+many asynchronous tasks in a single location: in this case they are
+spawned one by one in order of their declarations, which lets using
+results of early tasks in inputs of later tasks. This ordering rule
+extends naturally beyond hierarchical levels: tasks declared in
+<em>server</em> clause run before tasks from <em>location</em> clauses,
+while tasks from <em>location-if</em> clauses run latest.</p>
+<p>Asynchronous tasks are bound to the Nginx event loop by means of
+<em>eventfd</em> (or POSIX <em>pipes</em> if eventfd was not available
+on the platform when Nginx was being compiled). When the rewrite phase
+handler of this module spawns an asynchronous task, it opens an eventfd,
+then registers it in the event loop, and passes it to the Haskell
+handler. As soon as the Haskell handler finishes the task and pokes the
+result into buffers, it writes into the eventfd, thus informing the
+Nginx part that the task has finished. Then Nginx gets back to the
+module’s rewrite phase handler, and it spawns the next asynchronous
+task, or returns (when there are no more tasks left), moving request
+processing to the next stage.</p>
 <h2 id="an-example-1">An example</h2>
-<p>Let’s add two asynchronous handlers into <em>test.hs</em>: one for extracting a field from POST data, and the other for delaying response for a given number of seconds.</p>
+<p>Let’s add two asynchronous handlers into <em>test.hs</em>: one for
+extracting a field from POST data, and the other for delaying response
+for a given number of seconds.</p>
 <p><strong>File test.hs</strong> (<em>additions</em>)</p>
 <pre style="overflow-x: auto; background: #FFE">
 <span style="color: #008787;">import</span> <span style="color: #008787;">qualified</span> <span style="color: #000000;">Data.ByteString.Char8</span> <span style="color: #008787;">as</span> <span style="color: #000000;">C8</span>
@@ -274,15 +390,21 @@
 <span style="color: #008787;">ngxExportAsyncIOYY</span><span style="color: #000000;"> '</span><span style="color: #000000;">delay</span>
 </pre>
 
-<p>This code must be linked with <em>threaded</em> Haskell RTS this time!</p>
+<p>This code must be linked with <em>threaded</em> Haskell RTS this
+time!</p>
 <pre style="overflow-x: auto; border-style: none none none solid; border-color: #6DF; border-width: 10px; padding: 5px 10px">
-<span style="color: #005FAF;">ghc -O2 -dynamic -shared -fPIC -lHSrts_thr-ghc$(ghc --numeric-version) test.hs -o test.so</span>
+<span style="color: #005FAF;">ghc -O2 -dynamic -shared -fPIC -flink-rts -threaded test.hs -o test.so</span>
 <span style="color: #808080;">[1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )</span>
 <span style="color: #808080;">Linking test.so ...</span>
 <span style="color: #005FAF;">cp test.so /var/lib/nginx/</span>
 </pre>
 
-<p>Let’s make location <em>/timer</em>, where we will read how many seconds to wait in POST field <em>timer</em>, and then wait them until returning the response.</p>
+<p>Note that in <em>ghc</em> older than <em>8.10.6</em>, options
+<em>-flink-rts -threaded</em> must be replaced with option
+<em>-lHSrts_thr-ghc$(ghc ‐‐numeric-version)</em>.</p>
+<p>Let’s make location <em>/timer</em>, where we will read how many
+seconds to wait in POST field <em>timer</em>, and then wait them until
+returning the response.</p>
 <p><strong>File test.conf</strong> (<em>additions</em>)</p>
 <pre style="overflow-x: auto; background: #FFE">
         <span style="color: #005FAF;">location</span><span style="color: #000000;"> /timer {</span>
@@ -300,8 +422,13 @@
 <span style="color: #808080;">Waited 0 sec</span>
 </pre>
 
-<h1 id="asynchronous-content-handlers">Asynchronous content handlers</h1>
-<p>There are two types of <em>impure</em> content handlers that allow for effectful code. One of them corresponds to that of the <em>normal</em> content handler, except the result is wrapped in <em>IO Monad</em>. The other accepts request body chunks in its first argument like the handler exported with <em>ngxExportAsyncOnReqBody</em>.</p>
+<h1 id="asynchronous-content-handlers">Asynchronous content
+handlers</h1>
+<p>There are two types of <em>impure</em> content handlers that allow
+for effectful code. One of them corresponds to that of the
+<em>normal</em> content handler, except the result is wrapped in <em>IO
+Monad</em>. The other accepts request body chunks in its first argument
+like the handler exported with <em>ngxExportAsyncOnReqBody</em>.</p>
 <table>
 <colgroup>
 <col style="width: 53%" />
@@ -315,17 +442,27 @@
 </thead>
 <tbody>
 <tr class="odd">
-<td style="text-align: left;"><code>ByteString -&gt; IO ContentHandlerResult</code></td>
-<td style="text-align: left;"><code>ngxExportAsyncHandler</code> (<code>NGX_EXPORT_ASYNC_HANDLER</code>)</td>
+<td
+style="text-align: left;"><code>ByteString -&gt; IO ContentHandlerResult</code></td>
+<td style="text-align: left;"><code>ngxExportAsyncHandler</code>
+(<code>NGX_EXPORT_ASYNC_HANDLER</code>)</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;"><code>L.ByteString -&gt; ByteString -&gt; IO ContentHandlerResult</code></td>
-<td style="text-align: left;"><code>ngxExportAsyncHandlerOnReqBody</code> (<code>NGX_EXPORT_ASYNC_HANDLER_ON_REQ_BODY</code>)</td>
+<td
+style="text-align: left;"><code>L.ByteString -&gt; ByteString -&gt; IO ContentHandlerResult</code></td>
+<td
+style="text-align: left;"><code>ngxExportAsyncHandlerOnReqBody</code>
+(<code>NGX_EXPORT_ASYNC_HANDLER_ON_REQ_BODY</code>)</td>
 </tr>
 </tbody>
 </table>
-<p>The first handler is declared with directive <em>haskell_async_content</em>, the handler that accepts request body chunks is declared with directive <em>haskell_async_content_on_request_body</em>.</p>
-<p>It’s easy to emulate effects in a synchronous content handler by combining the latter with an asynchronous task like in the following example.</p>
+<p>The first handler is declared with directive
+<em>haskell_async_content</em>, the handler that accepts request body
+chunks is declared with directive
+<em>haskell_async_content_on_request_body</em>.</p>
+<p>It’s easy to emulate effects in a synchronous content handler by
+combining the latter with an asynchronous task like in the following
+example.</p>
 <pre style="overflow-x: auto; background: #FFE">
         <span style="color: #005FAF;">location</span><span style="color: #000000;"> /async_content {</span>
 <span style="color: #000000;">            haskell_run_async getUrl </span><span style="color: #008700;">$hs_async_httpbin</span> <span style="color: #AF5F00;">&quot;http://httpbin.org&quot;</span><span style="color: #000000;">;</span>
@@ -333,10 +470,24 @@
 <span style="color: #000000;">        }</span>
 </pre>
 
-<p>Here <em>getUrl</em> is an asynchronous Haskell handler that returns content of an HTTP page. This approach has at least two deficiencies related to performance and memory usage. The content may be huge and chunked, and its chunks could be naturally reused in the content handler. But they won’t, because here they get collected by directive <em>haskell_run_async</em> into a single chunk, and then passed to the content handler <em>echo</em>. The other problem deals with <em>eagerness</em> of asynchronous tasks. Imagine that we put in the location a rewrite to another location: handler <em>getUrl</em> will run before redirection, but variable <em>hs_async_httpbin</em> will never be used because we’ll get out from the current location.</p>
-<p>The task starts from the content handler asynchronously, and the lazy bytestring — the contents — gets used in the task as is, with all of its originally computed chunks.</p>
-<h2 id="examples-including-online-image-converter">Examples (including online image converter)</h2>
-<p>Let’s rewrite our <em>timer</em> example using <em>haskell_async_content</em>.</p>
+<p>Here <em>getUrl</em> is an asynchronous Haskell handler that returns
+content of an HTTP page. This approach has at least two deficiencies
+related to performance and memory usage. The content may be huge and
+chunked, and its chunks could be naturally reused in the content
+handler. But they won’t, because here they get collected by directive
+<em>haskell_run_async</em> into a single chunk, and then passed to the
+content handler <em>echo</em>. The other problem deals with
+<em>eagerness</em> of asynchronous tasks. Imagine that we put in the
+location a rewrite to another location: handler <em>getUrl</em> will run
+before redirection, but variable <em>hs_async_httpbin</em> will never be
+used because we’ll get out from the current location.</p>
+<p>The task starts from the content handler asynchronously, and the lazy
+bytestring — the contents — gets used in the task as is, with all of its
+originally computed chunks.</p>
+<h2 id="examples-including-online-image-converter">Examples (including
+online image converter)</h2>
+<p>Let’s rewrite our <em>timer</em> example using
+<em>haskell_async_content</em>.</p>
 <p><strong>File test.hs</strong> (<em>additions</em>)</p>
 <pre style="overflow-x: auto; background: #FFE">
 <span style="color: #870087;">{-# LANGUAGE TupleSections #-}</span>
@@ -361,7 +512,9 @@
 <span style="color: #008787;">ngxExportAsyncHandler</span><span style="color: #000000;"> '</span><span style="color: #000000;">delayContent</span>
 </pre>
 
-<p>For the <em>content type</em> we used a static string <em>“text/plain”#</em> that ends with a <em>magic hash</em> merely to avoid any dynamic memory allocations.</p>
+<p>For the <em>content type</em> we used a static string
+<em>“text/plain”#</em> that ends with a <em>magic hash</em> merely to
+avoid any dynamic memory allocations.</p>
 <p><strong>File test.conf</strong> (<em>additions</em>)</p>
 <pre style="overflow-x: auto; background: #FFE">
         <span style="color: #005FAF;">location</span><span style="color: #000000;"> /timer/ch {</span>
@@ -378,7 +531,9 @@
 <span style="color: #808080;">Waited 0 sec</span>
 </pre>
 
-<p>In the next example we will create an <em>online image converter</em> to convert images of various formats into PNG using Haskell library <em>JuicyPixels</em>.</p>
+<p>In the next example we will create an <em>online image converter</em>
+to convert images of various formats into PNG using Haskell library
+<em>JuicyPixels</em>.</p>
 <p><strong>File test.hs</strong> (<em>additions</em>)</p>
 <pre style="overflow-x: auto; background: #FFE">
 <span style="color: #008787;">import</span>           <span style="color: #000000;">Codec.Picture</span>
@@ -395,9 +550,11 @@
 <span style="color: #008787;">ngxExportAsyncHandlerOnReqBody</span><span style="color: #000000;"> '</span><span style="color: #000000;">convertToPng</span>
 </pre>
 
-<p>We are going to run instances of <em>convertToPng</em> on multiple CPU cores, and therefore it’s better now to compile this with option <em>-feager-blackholing</em>.</p>
+<p>We are going to run instances of <em>convertToPng</em> on multiple
+CPU cores, and therefore it’s better now to compile this with option
+<em>-feager-blackholing</em>.</p>
 <pre style="overflow-x: auto; border-style: none none none solid; border-color: #6DF; border-width: 10px; padding: 5px 10px">
-<span style="color: #005FAF;">ghc -O2 -feager-blackholing -dynamic -shared -fPIC -lHSrts_thr-ghc$(ghc --numeric-version) test.hs -o test.so</span>
+<span style="color: #005FAF;">ghc -O2 -feager-blackholing -dynamic -shared -fPIC -flink-rts -threaded test.hs -o test.so</span>
 <span style="color: #808080;">[1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )</span>
 <span style="color: #808080;">Linking test.so ...</span>
 <span style="color: #005FAF;">cp test.so /var/lib/nginx/</span>
@@ -419,15 +576,37 @@
 <span style="color: #000000;">        }</span>
 </pre>
 
-<p>Directive <em>haskell rts_options</em> declares that we are going to use 4 CPU cores (<em>-N4</em>) for image conversion tasks: this is a good choice on a quad-core processor when high CPU utilization is expected. For dealing with huge images, we also increased Haskell GC allocation area up to <em>32Mb</em> (<em>-A32m</em>) to possibly minimize frequency of GC calls. We also forcibly switched to sequential GC (<em>-qg</em>), which is quite appropriate in our intrinsically single-threaded handler <em>convertToPng</em>. Directives <em>limit_conn_zone</em> and <em>limit_conn</em> must effectively limit number of simultaneously processed client requests to the number of CPU cores (<em>4</em>) in order to protect the CPU from overloading.</p>
-<p>In location <em>/convert/topng</em>, directive <em>client_max_body_size</em> declares that all requests whose bodies exceed <em>20Mb</em> will be rejected. Directive <em>haskell_request_body_read_temp_file on</em> makes the Haskell part able to read huge request bodies that have been buffered in a temporary file by Nginx. Notice that we do not pass any value into directive <em>haskell_async_content_on_request_body</em>, therefore its second argument is simply omitted.</p>
-<p>For running tests, an original file, say <em>sample.tif</em>, must be prepared. We will pipe command <em>display</em> from <em>ImageMagick</em> to the output of curl for more fun.</p>
+<p>Directive <em>haskell rts_options</em> declares that we are going to
+use 4 CPU cores (<em>-N4</em>) for image conversion tasks: this is a
+good choice on a quad-core processor when high CPU utilization is
+expected. For dealing with huge images, we also increased Haskell GC
+allocation area up to <em>32Mb</em> (<em>-A32m</em>) to possibly
+minimize frequency of GC calls. We also forcibly switched to sequential
+GC (<em>-qg</em>), which is quite appropriate in our intrinsically
+single-threaded handler <em>convertToPng</em>. Directives
+<em>limit_conn_zone</em> and <em>limit_conn</em> must effectively limit
+number of simultaneously processed client requests to the number of CPU
+cores (<em>4</em>) in order to protect the CPU from overloading.</p>
+<p>In location <em>/convert/topng</em>, directive
+<em>client_max_body_size</em> declares that all requests whose bodies
+exceed <em>20Mb</em> will be rejected. Directive
+<em>haskell_request_body_read_temp_file on</em> makes the Haskell part
+able to read huge request bodies that have been buffered in a temporary
+file by Nginx. Notice that we do not pass any value into directive
+<em>haskell_async_content_on_request_body</em>, therefore its second
+argument is simply omitted.</p>
+<p>For running tests, an original file, say <em>sample.tif</em>, must be
+prepared. We will pipe command <em>display</em> from
+<em>ImageMagick</em> to the output of curl for more fun.</p>
 <pre style="overflow-x: auto; border-style: none none none solid; border-color: #6DF; border-width: 10px; padding: 5px 10px">
 <span style="color: #005FAF;">curl --data-binary @sample.tif 'http://127.0.0.1:8010/convert/topng' | display</span>
 </pre>
 
 <h1 id="asynchronous-services">Asynchronous services</h1>
-<p>Asynchronous tasks run in a request context, whereas asynchronous services run in a worker context. They start when the module gets initialized in a worker, and stop when a worker terminates. They are useful for gathering rarely changed data shared in many requests.</p>
+<p>Asynchronous tasks run in a request context, whereas asynchronous
+services run in a worker context. They start when the module gets
+initialized in a worker, and stop when a worker terminates. They are
+useful for gathering rarely changed data shared in many requests.</p>
 <p>There is only one type of asynchronous services exporters.</p>
 <table>
 <colgroup>
@@ -442,21 +621,44 @@
 </thead>
 <tbody>
 <tr class="odd">
-<td style="text-align: left;"><code>ByteString -&gt; Bool -&gt; IO L.ByteString</code></td>
-<td style="text-align: left;"><code>ngxExportServiceIOYY</code> (<code>NGX_EXPORT_SERVICE_IOY_Y</code>)</td>
+<td
+style="text-align: left;"><code>ByteString -&gt; Bool -&gt; IO L.ByteString</code></td>
+<td style="text-align: left;"><code>ngxExportServiceIOYY</code>
+(<code>NGX_EXPORT_SERVICE_IOY_Y</code>)</td>
 </tr>
 </tbody>
 </table>
-<p>It accepts a strict bytestring and a boolean value, and returns a lazy bytestring (chunks of data). If the boolean argument is <em>True</em> then this service has never been called before in this worker process: this can be used to initialize some global data needed by the service on the first call.</p>
-<p>Services are declared with Nginx directive <em>haskell_run_service</em>. As far as they are not bound to requests, the directive is only available on the <em>http</em> configuration level.</p>
+<p>It accepts a strict bytestring and a boolean value, and returns a
+lazy bytestring (chunks of data). If the boolean argument is
+<em>True</em> then this service has never been called before in this
+worker process: this can be used to initialize some global data needed
+by the service on the first call.</p>
+<p>Services are declared with Nginx directive
+<em>haskell_run_service</em>. As far as they are not bound to requests,
+the directive is only available on the <em>http</em> configuration
+level.</p>
 <pre style="overflow-x: auto; background: #FFE">
 <span style="color: #000000;">    haskell_run_service getUrlService </span><span style="color: #008700;">$hs_service_httpbin</span> <span style="color: #AF5F00;">&quot;http://httpbin.org&quot;</span><span style="color: #000000;">;</span>
 </pre>
 
-<p>The first argument is, as ever, the name of a Haskell handler, the second — a variable where the service result will be put, and the third argument is data passed to the handler <em>getUrlService</em> in its first parameter. Notice that the third argument cannot contain variables because variable handlers in Nginx are only available in a request context, hence this argument may only be a static string.</p>
-<p>Asynchronous services are bound to the Nginx event loop in the same way as asynchronous tasks. When a service finishes its computation, it pokes data into buffers and writes into eventfd (or a pipe’s write end). Then the event handler immediately restarts the service with the boolean argument equal to <em>False</em>. This is responsibility of the author of a service handler to avoid dry runs and make sure that it is called not so often in a row. For example, if a service polls periodically, then it must delay for this time itself like in the following example.</p>
+<p>The first argument is, as ever, the name of a Haskell handler, the
+second — a variable where the service result will be put, and the third
+argument is data passed to the handler <em>getUrlService</em> in its
+first parameter. Notice that the third argument cannot contain variables
+because variable handlers in Nginx are only available in a request
+context, hence this argument may only be a static string.</p>
+<p>Asynchronous services are bound to the Nginx event loop in the same
+way as asynchronous tasks. When a service finishes its computation, it
+pokes data into buffers and writes into eventfd (or a pipe’s write end).
+Then the event handler immediately restarts the service with the boolean
+argument equal to <em>False</em>. This is responsibility of the author
+of a service handler to avoid dry runs and make sure that it is called
+not so often in a row. For example, if a service polls periodically,
+then it must delay for this time itself like in the following
+example.</p>
 <h2 id="an-example-2">An example</h2>
-<p>Let’s retrieve content of a specific URL, say <em>httpbin.org</em>, in background. Data will update every 20 seconds.</p>
+<p>Let’s retrieve content of a specific URL, say <em>httpbin.org</em>,
+in background. Data will update every 20 seconds.</p>
 <p><strong>File test.hs</strong> (<em>additions</em>)</p>
 <pre style="overflow-x: auto; background: #FFE">
 <span style="color: #008787;">import</span>           <span style="color: #000000;">Network.HTTP.Client</span>
@@ -485,7 +687,16 @@
 <span style="color: #008787;">ngxExportServiceIOYY</span><span style="color: #000000;"> '</span><span style="color: #000000;">getUrlService</span>
 </pre>
 
-<p>The <em>httpManager</em> defines a global state, not to say a <em>variable</em>: this is an asynchronous HTTP client implemented in module <em>Network.HTTP.Client</em>. Pragma <em>NOINLINE</em> ensures that all functions will refer to the same client object, i.e. it will nowhere be inlined. Functions <em>getUrl</em> and <em>catchHttpException</em> are used in our service handler <em>getUrlService</em>. The handler waits 20 seconds on every run except the first, and then runs the HTTP client. All HTTP exceptions are caught by <em>catchHttpException</em>, others hit the handler on top of the custom Haskell code and get logged by Nginx.</p>
+<p>The <em>httpManager</em> defines a global state, not to say a
+<em>variable</em>: this is an asynchronous HTTP client implemented in
+module <em>Network.HTTP.Client</em>. Pragma <em>NOINLINE</em> ensures
+that all functions will refer to the same client object, i.e. it will
+nowhere be inlined. Functions <em>getUrl</em> and
+<em>catchHttpException</em> are used in our service handler
+<em>getUrlService</em>. The handler waits 20 seconds on every run except
+the first, and then runs the HTTP client. All HTTP exceptions are caught
+by <em>catchHttpException</em>, others hit the handler on top of the
+custom Haskell code and get logged by Nginx.</p>
 <p><strong>File test.conf</strong> (<em>additions</em>)</p>
 <pre style="overflow-x: auto; background: #FFE">
 <span style="color: #000000;">    haskell_run_service getUrlService </span><span style="color: #008700;">$hs_service_httpbin</span> <span style="color: #AF5F00;">&quot;http://httpbin.org&quot;</span><span style="color: #000000;">;</span>
@@ -510,26 +721,78 @@
 <span style="color: #808080;">...</span>
 </pre>
 
-<p>This must run really fast because it shows data that has already been retrieved by the service, requests do not trigger any network activity with <em>httpbin.org</em> by themselves!</p>
+<p>This must run really fast because it shows data that has already been
+retrieved by the service, requests do not trigger any network activity
+with <em>httpbin.org</em> by themselves!</p>
 <h2 id="termination-of-a-service">Termination of a service</h2>
-<p>Services are killed on a worker’s exit with an asynchronous exception <em>WorkerProcessIsExiting</em>. Then the worker waits <em>synchronously</em> until all of its services’ threads exit, and calls <em>hs_exit()</em>. This scenario has two important implications.</p>
+<p>Services are killed on a worker’s exit with an asynchronous exception
+<em>WorkerProcessIsExiting</em>. Then the worker waits
+<em>synchronously</em> until all of its services’ threads exit, and
+calls <em>hs_exit()</em>. This scenario has two important
+implications.</p>
 <ol type="1">
-<li>The Haskell service handler may catch <em>WorkerProcessIsExiting</em> on exit and make persistency actions such as writing files if they are needed.</li>
-<li><em>Unsafe</em> <em>blocking</em> FFI calls must be avoided in service handlers as they may hang the Nginx worker, and it won’t exit. Using <em>interruptible</em> FFI fixes this problem.</li>
+<li>The Haskell service handler may catch
+<em>WorkerProcessIsExiting</em> on exit and make persistency actions
+such as writing files if they are needed.</li>
+<li><em>Unsafe</em> <em>blocking</em> FFI calls must be avoided in
+service handlers as they may hang the Nginx worker, and it won’t exit.
+Using <em>interruptible</em> FFI fixes this problem.</li>
 </ol>
 <h1 id="shared-services">Shared services</h1>
-<p>An asynchronous service may store its result in shared memory accessible from all worker processes. This is achieved with directive <em>haskell_service_var_in_shm</em>. For example, the following declaration (in <em>http</em> clause),</p>
+<p>An asynchronous service may store its result in shared memory
+accessible from all worker processes. This is achieved with directive
+<em>haskell_service_var_in_shm</em>. For example, the following
+declaration (in <em>http</em> clause),</p>
 <pre style="overflow-x: auto; background: #FFE">
 <span style="color: #000000;">    haskell_service_var_in_shm httpbin 512k /tmp </span><span style="color: #008700;">$hs_service_httpbin</span><span style="color: #000000;">;</span>
 </pre>
 
-<p>makes service <em>getUrlService</em>, that stores its result in variable <em>hs_service_httpbin</em>, shared. The first argument of the directive — <em>httpbin</em> — is an identifier of a shared memory segment, <em>512k</em> is its maximum size, <em>/tmp</em> is a directory where <em>file locks</em> will be put (see below), and <em>$hs_service_httpbin</em> is the service variable.</p>
-<p>Shared services are called <em>shared</em> not only because they store results in shared memory, but also because at any moment of the Nginx master lifetime there is only one worker that runs a specific service. When workers start, they race to acquire a <em>file lock</em> for a service, and if a worker wins the race, it holds the lock until it exits or dies. Other workers’ services of the same type wait until the lock is freed. The locks are implemented via POSIX <em>advisory</em> file locks, and so require a directory where they will be put. The directory must be <em>writable</em> to worker processes, and <em>/tmp</em> seems to be a good choice in general.</p>
+<p>makes service <em>getUrlService</em>, that stores its result in
+variable <em>hs_service_httpbin</em>, shared. The first argument of the
+directive — <em>httpbin</em> — is an identifier of a shared memory
+segment, <em>512k</em> is its maximum size, <em>/tmp</em> is a directory
+where <em>file locks</em> will be put (see below), and
+<em>$hs_service_httpbin</em> is the service variable.</p>
+<p>Shared services are called <em>shared</em> not only because they
+store results in shared memory, but also because at any moment of the
+Nginx master lifetime there is only one worker that runs a specific
+service. When workers start, they race to acquire a <em>file lock</em>
+for a service, and if a worker wins the race, it holds the lock until it
+exits or dies. Other workers’ services of the same type wait until the
+lock is freed. The locks are implemented via POSIX <em>advisory</em>
+file locks, and so require a directory where they will be put. The
+directory must be <em>writable</em> to worker processes, and
+<em>/tmp</em> seems to be a good choice in general.</p>
 <h2 id="update-variables">Update variables</h2>
-<p>The active shared service puts the value of the shared variable in a shared memory, services on other workers wait and do nothing else. Requests may come to any worker (with active or inactive services), fortunately the service result is shared and they can return it as is. But what if the result must be somehow interpreted by Haskell handlers before returning it in the response? Could the handlers just peek into the shared memory and do what they want with the shared data? Unfortunately, not: the shared memory is accessible for reading and writing only from the Nginx part!</p>
-<p>Does it mean that we have only one option to let the Haskell part update its global state unavailable in inactive workers: passing values of shared variables into the Haskell part on every request? This would be extremely inefficient. Update variables is a trick to avoid this. They evaluate to the corresponding service variable’s value only when it changes in the shared memory since the last check in the current worker, and to an empty string otherwise. Every service variable has its own update variable counterpart whose name is built from the service variable’s name prefixed by <em>_upd__</em>.</p>
+<p>The active shared service puts the value of the shared variable in a
+shared memory, services on other workers wait and do nothing else.
+Requests may come to any worker (with active or inactive services),
+fortunately the service result is shared and they can return it as is.
+But what if the result must be somehow interpreted by Haskell handlers
+before returning it in the response? Could the handlers just peek into
+the shared memory and do what they want with the shared data?
+Unfortunately, not: the shared memory is accessible for reading and
+writing only from the Nginx part!</p>
+<p>Does it mean that we have only one option to let the Haskell part
+update its global state unavailable in inactive workers: passing values
+of shared variables into the Haskell part on every request? This would
+be extremely inefficient. Update variables is a trick to avoid this.
+They evaluate to the corresponding service variable’s value only when it
+changes in the shared memory since the last check in the current worker,
+and to an empty string otherwise. Every service variable has its own
+update variable counterpart whose name is built from the service
+variable’s name prefixed by <em>_upd__</em>.</p>
 <h3 id="an-example-3">An example</h3>
-<p>Let’s extend our example with loading a page in background. We are still going to load <em>httpbin.org</em>, but this time let’s assume that we have another task, say extracting all links from the page and showing them in the response sorted. For that we could add a Haskell handler, say <em>sortLinks</em>, and pass to it all the page content on every request. But the page may appear huge, let’s extract all the links from it and put them into a global state using update variable <em>_upd__hs_service_httpbin</em>. In this case function <em>sortLinks</em> must be impure, as it must be able to read from the global state.</p>
+<p>Let’s extend our example with loading a page in background. We are
+still going to load <em>httpbin.org</em>, but this time let’s assume
+that we have another task, say extracting all links from the page and
+showing them in the response sorted. For that we could add a Haskell
+handler, say <em>sortLinks</em>, and pass to it all the page content on
+every request. But the page may appear huge, let’s extract all the links
+from it and put them into a global state using update variable
+<em>_upd__hs_service_httpbin</em>. In this case function
+<em>sortLinks</em> must be impure, as it must be able to read from the
+global state.</p>
 <p><strong>File test.hs</strong> (<em>additions</em>)</p>
 <pre style="overflow-x: auto; background: #FFE">
 <span style="color: #870087;">{-# LANGUAGE OverloadedStrings #-}</span>
@@ -570,7 +833,20 @@
 <span style="color: #008787;">ngxExportIOYY</span><span style="color: #000000;"> '</span><span style="color: #000000;">sortLinks</span>
 </pre>
 
-<p>Here <em>gHttpbinLinks</em> is the global state, <em>grepHttpbinLinks</em> is a handler for update variable <em>_upd__hs_service_httpbin</em>, almost all the time it does nothing — just returns an empty string, but when the update variable becomes not empty, it updates the global state and returns an empty string again. Notice that the original bytestring is copied with <em>B.copy</em> before its parts get collected as matches and put in the global state. This is an important step because the original bytestring’s lifetime does not extend beyond the current request whereas the global state may last much longer! Sometimes copying is not necessary, for example when the bytestring gets deserialized into an object in-place. Handler <em>sortLinks</em> is parameterized by data identifier: when the identifier is equal to <em>httpbin</em>, it reads the global state and returns it sorted, otherwise it returns an empty string.</p>
+<p>Here <em>gHttpbinLinks</em> is the global state,
+<em>grepHttpbinLinks</em> is a handler for update variable
+<em>_upd__hs_service_httpbin</em>, almost all the time it does nothing —
+just returns an empty string, but when the update variable becomes not
+empty, it updates the global state and returns an empty string again.
+Notice that the original bytestring is copied with <em>B.copy</em>
+before its parts get collected as matches and put in the global state.
+This is an important step because the original bytestring’s lifetime
+does not extend beyond the current request whereas the global state may
+last much longer! Sometimes copying is not necessary, for example when
+the bytestring gets deserialized into an object in-place. Handler
+<em>sortLinks</em> is parameterized by data identifier: when the
+identifier is equal to <em>httpbin</em>, it reads the global state and
+returns it sorted, otherwise it returns an empty string.</p>
 <p><strong>File test.conf</strong> (<em>additions</em>)</p>
 <pre style="overflow-x: auto; background: #FFE">
 <span style="color: #000000;">    haskell_service_var_in_shm httpbin 512k /tmp </span><span style="color: #008700;">$hs_service_httpbin</span><span style="color: #000000;">;</span>
@@ -584,7 +860,12 @@
 <span style="color: #000000;">        }</span>
 </pre>
 
-<p>We have to pass variable <em>_upd_links_</em> in <em>sortLinks</em> because this will trigger update in the worker by <em>grepHttpbinLinks</em>, otherwise update won’t run: remember that Nginx directives are lazy? On the other hand, <em>_upd_links_</em> is always empty and won’t mess up with the rest of the argument — value <em>httpbin</em>.</p>
+<p>We have to pass variable <em>_upd_links_</em> in <em>sortLinks</em>
+because this will trigger update in the worker by
+<em>grepHttpbinLinks</em>, otherwise update won’t run: remember that
+Nginx directives are lazy? On the other hand, <em>_upd_links_</em> is
+always empty and won’t mess up with the rest of the argument — value
+<em>httpbin</em>.</p>
 <p>Run curl tests.</p>
 <pre style="overflow-x: auto; border-style: none none none solid; border-color: #6DF; border-width: 10px; padding: 5px 10px">
 <span style="color: #005FAF;">curl 'http://127.0.0.1:8010/httpbin/sortlinks'</span>
@@ -599,9 +880,22 @@
 </pre>
 
 <h2 id="shm-stats-variables">Shm stats variables</h2>
-<p>Every service variable in shared memory has another associated variable that provides basic stats in format <em>timestamp | size | changes | failures | failed</em>, where <em>timestamp</em> is a number of seconds elapsed from the beginning of the <em>UNIX epoch</em> till the last change of the variable’s value, <em>size</em> is the size of the variable in bytes, <em>changes</em> is a number of changes, and <em>failures</em> is a number of memory allocation failures since the last Nginx reload, the value of flag <em>failed</em> (<em>0</em> or <em>1</em>) denotes if the last attempt of memory allocation from the shared memory pool for a new value of the variable has failed. The name of the shm stats variable is built from the service variable’s name with prefix <em>_shm__</em>.</p>
+<p>Every service variable in shared memory has another associated
+variable that provides basic stats in format <em>timestamp | size |
+changes | failures | failed</em>, where <em>timestamp</em> is a number
+of seconds elapsed from the beginning of the <em>UNIX epoch</em> till
+the last change of the variable’s value, <em>size</em> is the size of
+the variable in bytes, <em>changes</em> is a number of changes, and
+<em>failures</em> is a number of memory allocation failures since the
+last Nginx reload, the value of flag <em>failed</em> (<em>0</em> or
+<em>1</em>) denotes if the last attempt of memory allocation from the
+shared memory pool for a new value of the variable has failed. The name
+of the shm stats variable is built from the service variable’s name with
+prefix <em>_shm__</em>.</p>
 <h3 id="an-example-4">An example</h3>
-<p>Let’s add a location to show shm stats about our <em>httpbin</em> service. This time only configuration file <em>test.conf</em> is affected.</p>
+<p>Let’s add a location to show shm stats about our <em>httpbin</em>
+service. This time only configuration file <em>test.conf</em> is
+affected.</p>
 <p><strong>File test.conf</strong> (<em>additions</em>)</p>
 <pre style="overflow-x: auto; background: #FFE">
         <span style="color: #005FAF;">location</span><span style="color: #000000;"> /httpbin/shmstats {</span>
@@ -615,17 +909,36 @@
 <span style="color: #808080;">Httpbin service shm stats: 1516274639 | 13011 | 1 | 0 | 0</span>
 </pre>
 
-<p>From this output we can find that payload size of <em>httpbin.org</em> is <em>13011</em> bytes, the service variable was updated only once (less than 20 seconds elapsed from start of Nginx), and that there were no memory allocation failures.</p>
+<p>From this output we can find that payload size of
+<em>httpbin.org</em> is <em>13011</em> bytes, the service variable was
+updated only once (less than 20 seconds elapsed from start of Nginx),
+and that there were no memory allocation failures.</p>
 <h2 id="update-callbacks">Update callbacks</h2>
-<p>There is a special type of single-shot services called update callbacks. They are declared like</p>
+<p>There is a special type of single-shot services called update
+callbacks. They are declared like</p>
 <pre style="overflow-x: auto; background: #FFE">
 <span style="color: #000000;">    haskell_service_var_update_callback cbHttpbin </span><span style="color: #008700;">$hs_service_httpbin</span><span style="color: #000000;"> optional_value;</span>
 </pre>
 
-<p>Here <em>cbHttpbin</em> is a Haskell handler exported by <em>ngxExportServiceIOYY</em> as always. Variable <em>hs_service_httpbin</em> must be declared in directive <em>haskell_service_var_in_shm</em>. Argument <em>optional_value</em> is a string, it can be omitted, in which case handler <em>cbHttpbin</em> gets the value of service variable <em>hs_service_httpbin</em> as its first argument.</p>
-<p>Update callbacks do not return results. They run from a worker that holds the active service on every change of the service variable, and shall be supposedly used to integrate with other Nginx modules by signaling specific Nginx locations via an HTTP client.</p>
+<p>Here <em>cbHttpbin</em> is a Haskell handler exported by
+<em>ngxExportServiceIOYY</em> as always. Variable
+<em>hs_service_httpbin</em> must be declared in directive
+<em>haskell_service_var_in_shm</em>. Argument <em>optional_value</em> is
+a string, it can be omitted, in which case handler <em>cbHttpbin</em>
+gets the value of service variable <em>hs_service_httpbin</em> as its
+first argument.</p>
+<p>Update callbacks do not return results. They run from a worker that
+holds the active service on every change of the service variable, and
+shall be supposedly used to integrate with other Nginx modules by
+signaling specific Nginx locations via an HTTP client.</p>
 <h3 id="an-example-5">An example</h3>
-<p>Let’s count all changes of service variable <em>hs_service_httpbin</em> during Nginx lifetime (originally I supposed that its content won’t change after the first initialization because <em>httpbin.org</em> looks like a static page, but responses appeared to be able to vary from time to time). For this we will use counters from <a href="https://github.com/lyokha/nginx-custom-counters-module"><em>nginx-custom-counters-module</em></a>.</p>
+<p>Let’s count all changes of service variable
+<em>hs_service_httpbin</em> during Nginx lifetime (originally I supposed
+that its content won’t change after the first initialization because
+<em>httpbin.org</em> looks like a static page, but responses appeared to
+be able to vary from time to time). For this we will use counters from
+<a
+href="https://github.com/lyokha/nginx-custom-counters-module"><em>nginx-custom-counters-module</em></a>.</p>
 <p><strong>File test.hs</strong> (<em>additions</em>)</p>
 <pre style="overflow-x: auto; background: #FFE">
 <span style="color: #008700;">cbHttpbin</span> <span style="color: #005FAF;">::</span> <span style="color: #005F87;">ByteString</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">Bool</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">IO</span> <span style="color: #005F87;">L</span><span style="color: #005FAF;">.</span><span style="color: #005F87;">ByteString</span>
@@ -635,7 +948,10 @@
 <span style="color: #008787;">ngxExportServiceIOYY</span><span style="color: #000000;"> '</span><span style="color: #000000;">cbHttpbin</span>
 </pre>
 
-<p>Handler <em>cbHttpbin</em> is a simple HTTP client. On the first run it waits 5 seconds before sending request because the request is supposed to be destined to self, while Nginx workers may appear to be not ready to accept it.</p>
+<p>Handler <em>cbHttpbin</em> is a simple HTTP client. On the first run
+it waits 5 seconds before sending request because the request is
+supposed to be destined to self, while Nginx workers may appear to be
+not ready to accept it.</p>
 <p><strong>File test.conf</strong> (<em>additions</em>)</p>
 <pre style="overflow-x: auto; background: #FFE">
 <span style="color: #000000;">    haskell_service_var_update_callback cbHttpbin </span><span style="color: #008700;">$hs_service_httpbin</span>
@@ -666,7 +982,10 @@
 </pre>
 
 <h1 id="service-hooks">Service hooks</h1>
-<p>Service hooks allow for interaction with running services, both per-worker and shared. They are supposed to change global states that affect services behavior and can be thought of as service API handlers, thereto being run from dedicated Nginx locations.</p>
+<p>Service hooks allow for interaction with running services, both
+per-worker and shared. They are supposed to change global states that
+affect services behavior and can be thought of as service API handlers,
+thereto being run from dedicated Nginx locations.</p>
 <table>
 <colgroup>
 <col style="width: 46%" />
@@ -680,22 +999,39 @@
 </thead>
 <tbody>
 <tr class="odd">
-<td style="text-align: left;"><code>ByteString -&gt; IO L.ByteString</code></td>
-<td style="text-align: left;"><code>ngxExportServiceHook</code> (<code>NGX_EXPORT_SERVICE_HOOK</code>)</td>
+<td
+style="text-align: left;"><code>ByteString -&gt; IO L.ByteString</code></td>
+<td style="text-align: left;"><code>ngxExportServiceHook</code>
+(<code>NGX_EXPORT_SERVICE_HOOK</code>)</td>
 </tr>
 </tbody>
 </table>
-<p>Service hooks install a content handler when declared. In the following example,</p>
+<p>Service hooks install a content handler when declared. In the
+following example,</p>
 <pre style="overflow-x: auto; background: #FFE">
         <span style="color: #005FAF;">location</span><span style="color: #000000;"> /httpbin/url {</span>
 <span style="color: #000000;">            haskell_service_hook getUrlServiceHook </span><span style="color: #008700;">$hs_service_httpbin</span> <span style="color: #008700;">$arg_v</span><span style="color: #000000;">;</span>
 <span style="color: #000000;">        }</span>
 </pre>
 
-<p>location <em>/httpbin/url</em> derives the content handler which signals all workers via an event channel upon receiving a request. Then the event handlers in all workers run the hook (<em>getUrlServiceHook</em> in our case) <em>synchronously</em>, and finally send an asynchronous exception <em>ServiceHookInterrupt</em> to the service to which the service variable from the service hook declaration (<em>hs_service_httpbin</em>) corresponds. Being run synchronously, service hooks are expected to be fast, only writing data passed to them (the value of <em>arg_v</em> in our case) into a global state. In contrast to <em>update variables</em>, this data has a longer lifetime being freed in the Haskell part when the original bytestring gets garbage collected.</p>
+<p>location <em>/httpbin/url</em> derives the content handler which
+signals all workers via an event channel upon receiving a request. Then
+the event handlers in all workers run the hook
+(<em>getUrlServiceHook</em> in our case) <em>synchronously</em>, and
+finally send an asynchronous exception <em>ServiceHookInterrupt</em> to
+the service to which the service variable from the service hook
+declaration (<em>hs_service_httpbin</em>) corresponds. Being run
+synchronously, service hooks are expected to be fast, only writing data
+passed to them (the value of <em>arg_v</em> in our case) into a global
+state. In contrast to <em>update variables</em>, this data has a longer
+lifetime being freed in the Haskell part when the original bytestring
+gets garbage collected.</p>
 <h2 id="an-example-6">An example</h2>
-<p>Let’s make it able to change the URL for the <em>httpbin</em> service in runtime. For this we must enable <em>getUrlService</em> to read from a global state where the URL value will reside.</p>
-<p><strong>File test.hs</strong> (<em>additions, getUrlService reimplemented</em>)</p>
+<p>Let’s make it able to change the URL for the <em>httpbin</em> service
+in runtime. For this we must enable <em>getUrlService</em> to read from
+a global state where the URL value will reside.</p>
+<p><strong>File test.hs</strong> (<em>additions, getUrlService
+reimplemented</em>)</p>
 <pre style="overflow-x: auto; background: #FFE">
 <span style="color: #008787;">import</span>           <span style="color: #000000;">Data.Maybe</span>
 
@@ -730,7 +1066,10 @@
 <span style="color: #008787;">ngxExportServiceHook</span><span style="color: #000000;"> '</span><span style="color: #000000;">getUrlServiceHook</span>
 </pre>
 
-<p>Service hook <em>getUrlServiceHook</em> writes into two global states: <em>getUrlServiceLink</em> where the URL is stored, and <em>getUrlServiceLinkUpdated</em> which will signal service <em>getUrlService</em> that the URL has been updated.</p>
+<p>Service hook <em>getUrlServiceHook</em> writes into two global
+states: <em>getUrlServiceLink</em> where the URL is stored, and
+<em>getUrlServiceLinkUpdated</em> which will signal service
+<em>getUrlService</em> that the URL has been updated.</p>
 <p><strong>File test.conf</strong> (<em>additions</em>)</p>
 <pre style="overflow-x: auto; background: #FFE">
 <span style="color: #000000;">    haskell_service_hooks_zone hooks 32k;</span>
@@ -744,7 +1083,12 @@
 <span style="color: #000000;">        }</span>
 </pre>
 
-<p>Directive <em>haskell_service_hooks_zone</em> declares a shm zone where Nginx will temporarily store data for the hook (the value of <em>arg_v</em>). This directive is not mandatory: shm zone is not really needed when service hooks pass nothing. Location <em>/httpbin/url</em> is protected from unauthorized access with Nginx directives <em>allow</em> and <em>deny</em>.</p>
+<p>Directive <em>haskell_service_hooks_zone</em> declares a shm zone
+where Nginx will temporarily store data for the hook (the value of
+<em>arg_v</em>). This directive is not mandatory: shm zone is not really
+needed when service hooks pass nothing. Location <em>/httpbin/url</em>
+is protected from unauthorized access with Nginx directives
+<em>allow</em> and <em>deny</em>.</p>
 <p>Run curl tests.</p>
 <p>First let’s check that <em>httpbin.org</em> replies as expected.</p>
 <pre style="overflow-x: auto; border-style: none none none solid; border-color: #6DF; border-width: 10px; padding: 5px 10px">
@@ -782,7 +1126,11 @@
 <span style="color: #808080;">2018/02/13 16:12:33 [notice] 28797#0: an exception was caught while getting value of service variable &quot;hs_service_httpbin&quot;: &quot;Service was interrupted by a service hook&quot;, using old value</span>
 </pre>
 
-<p>All 4 workers were signaled, and the only <em>active</em> service (remember that <em>getUrlService</em> was made <em>shared</em>) was interrupted. Do not be deceived by <em>using old value</em>: the new URL will be read in by the service from the global state immediately after restart, and the service variable will be updated.</p>
+<p>All 4 workers were signaled, and the only <em>active</em> service
+(remember that <em>getUrlService</em> was made <em>shared</em>) was
+interrupted. Do not be deceived by <em>using old value</em>: the new URL
+will be read in by the service from the global state immediately after
+restart, and the service variable will be updated.</p>
 <p>Let’s see what we are getting now.</p>
 <pre style="overflow-x: auto; border-style: none none none solid; border-color: #6DF; border-width: 10px; padding: 5px 10px">
 <span style="color: #005FAF;">curl 'http://127.0.0.1:8010/httpbin'</span>
@@ -831,16 +1179,31 @@
 </pre>
 
 <h2 id="service-update-hooks">Service update hooks</h2>
-<p>This is a reimplementation of <em>update variables</em> for shared services by means of service hooks. Update hooks have a number of advantages over update variables.</p>
+<p>This is a reimplementation of <em>update variables</em> for shared
+services by means of service hooks. Update hooks have a number of
+advantages over update variables.</p>
 <ol type="1">
-<li>No need for obscure treatment of update variables in configuration files.</li>
-<li>No need for copying the original argument: its data is freed in the Haskell part.</li>
-<li>Nginx don’t need to access shared memory on every single request for checking if the service data has been altered.</li>
+<li>No need for obscure treatment of update variables in configuration
+files.</li>
+<li>No need for copying the original argument: its data is freed in the
+Haskell part.</li>
+<li>Nginx don’t need to access shared memory on every single request for
+checking if the service data has been altered.</li>
 </ol>
-<p>There is a subtle difference with update variables though. As soon as with update hooks new service variable data is propagated to worker processes asynchronously via an event channel, there always exists a very short transient period between the moments when the service variable gets altered in shared memory and the global state gets updated in a worker, during which events related to client requests may occur.</p>
-<p>An update hook is exported with exporter <em>ngxExportServiceHook</em>, and declared using directive <em>haskell_service_update_hook</em> on the <em>http</em> configuration level.</p>
+<p>There is a subtle difference with update variables though. As soon as
+with update hooks new service variable data is propagated to worker
+processes asynchronously via an event channel, there always exists a
+very short transient period between the moments when the service
+variable gets altered in shared memory and the global state gets updated
+in a worker, during which events related to client requests may
+occur.</p>
+<p>An update hook is exported with exporter
+<em>ngxExportServiceHook</em>, and declared using directive
+<em>haskell_service_update_hook</em> on the <em>http</em> configuration
+level.</p>
 <h3 id="an-example-7">An example</h3>
-<p>Let’s reimplement the example with update of service links using a service hook.</p>
+<p>Let’s reimplement the example with update of service links using a
+service hook.</p>
 <p><strong>File test.hs</strong> (<em>additions</em>)</p>
 <pre style="overflow-x: auto; background: #FFE">
 <span style="color: #008700;">grepHttpbinLinksHook</span> <span style="color: #005FAF;">::</span> <span style="color: #005F87;">ByteString</span> <span style="color: #005FAF;">-&gt;</span> <span style="color: #005F87;">IO</span> <span style="color: #005F87;">L</span><span style="color: #005FAF;">.</span><span style="color: #005F87;">ByteString</span>
@@ -867,11 +1230,30 @@
 <span style="color: #000000;">        }</span>
 </pre>
 
-<p>For testing this, watch the Nginx error log and change the URL of the service with requests to location <em>/httpbin/url</em> like in the previous example.</p>
-<h1 id="c-plugins-with-low-level-access-to-nginx-objects">C plugins with low level access to Nginx objects</h1>
-<p>Serialized pointer to the Nginx <em>request object</em> is accessible via a special variable <em>_r_ptr</em>. Haskell handlers have no benefit from this because they do not know how the request object is built. However they may run C code having been compiled with this knowledge. The low level access to the Nginx request object makes it possible to do things that are not feasible to do without this. As soon as a C plugin can do whatever a usual Nginx module can, using it from a Haskell handler must be very cautious. All synchronous and asynchronous Haskell handlers can access the Nginx request object and pass it to a C plugin. Using it in a C plugin which runs in asynchronous context has not been investigated and is probably dangerous in many aspects, with exception (probably) of read-only access. After all, an Nginx worker is a single-threaded process, and the standard Nginx tools and APIs were not designed for using in multi-threaded environments. As such, using C plugins in asynchronous Haskell handlers must be regarded strictly as experimental!</p>
+<p>For testing this, watch the Nginx error log and change the URL of the
+service with requests to location <em>/httpbin/url</em> like in the
+previous example.</p>
+<h1 id="c-plugins-with-low-level-access-to-nginx-objects">C plugins with
+low level access to Nginx objects</h1>
+<p>Serialized pointer to the Nginx <em>request object</em> is accessible
+via a special variable <em>_r_ptr</em>. Haskell handlers have no benefit
+from this because they do not know how the request object is built.
+However they may run C code having been compiled with this knowledge.
+The low level access to the Nginx request object makes it possible to do
+things that are not feasible to do without this. As soon as a C plugin
+can do whatever a usual Nginx module can, using it from a Haskell
+handler must be very cautious. All synchronous and asynchronous Haskell
+handlers can access the Nginx request object and pass it to a C plugin.
+Using it in a C plugin which runs in asynchronous context has not been
+investigated and is probably dangerous in many aspects, with exception
+(probably) of read-only access. After all, an Nginx worker is a
+single-threaded process, and the standard Nginx tools and APIs were not
+designed for using in multi-threaded environments. As such, using C
+plugins in asynchronous Haskell handlers must be regarded strictly as
+experimental!</p>
 <h2 id="an-example-8">An example</h2>
-<p>Let’s write a plugin that will add an HTTP header to the response.</p>
+<p>Let’s write a plugin that will add an HTTP header to the
+response.</p>
 <p><strong>File test_c_plugin.c</strong></p>
 <pre style="overflow-x: auto; background: #FFE">
 <span style="color: #008787;">#include </span><span style="color: #AF5F00;">&lt;ngx_core.h&gt;</span>
@@ -900,7 +1282,9 @@
 <span style="color: #870087;">}</span>
 </pre>
 
-<p>Let’s compile the C code. For this we need a directory where Nginx sources were sometime compiled. Let’s refer to it in an environment variable <em>NGX_HOME</em>.</p>
+<p>Let’s compile the C code. For this we need a directory where Nginx
+sources were sometime compiled. Let’s refer to it in an environment
+variable <em>NGX_HOME</em>.</p>
 <pre style="overflow-x: auto; border-style: none none none solid; border-color: #6DF; border-width: 10px; padding: 5px 10px">
 <span style="color: #005FAF;">NGX_HOME=/path/to/nginx_sources</span>
 </pre>
@@ -910,7 +1294,8 @@
 <span style="color: #005FAF;">gcc -O2 -fPIC -c -o test_c_plugin.o -I $NGX_HOME/src/core -I $NGX_HOME/src/http -I $NGX_HOME/src/http/modules -I $NGX_HOME/src/event -I $NGX_HOME/src/event/modules -I $NGX_HOME/src/os/unix -I $NGX_HOME/objs test_c_plugin.c</span>
 </pre>
 
-<p>Now we have an object file <em>test_c_plugin.o</em> to link with the Haskell code. Below is the Haskell code itself.</p>
+<p>Now we have an object file <em>test_c_plugin.o</em> to link with the
+Haskell code. Below is the Haskell code itself.</p>
 <p><strong>File test.hs</strong> (<em>additions</em>)</p>
 <pre style="overflow-x: auto; background: #FFE">
 <span style="color: #008787;">import</span>           <span style="color: #000000;">Data.Binary.Get</span>
@@ -934,9 +1319,14 @@
 <span style="color: #008787;">ngxExportIOYY</span><span style="color: #000000;"> '</span><span style="color: #000000;">testCPlugin</span>
 </pre>
 
-<p>Handler <em>testCPlugin</em> runs function <em>ngx_http_haskell_test_c_plugin()</em> from the C plugin and returns <em>Success!</em> or <em>Failure!</em> in cases when the C function returns <em>NGX_OK</em> or <em>NGX_ERROR</em> respectively. When compiled with <em>ghc</em>, this code has to be linked with <em>test_c_plugin.o</em>.</p>
+<p>Handler <em>testCPlugin</em> runs function
+<em>ngx_http_haskell_test_c_plugin()</em> from the C plugin and returns
+<em>Success!</em> or <em>Failure!</em> in cases when the C function
+returns <em>NGX_OK</em> or <em>NGX_ERROR</em> respectively. When
+compiled with <em>ghc</em>, this code has to be linked with
+<em>test_c_plugin.o</em>.</p>
 <pre style="overflow-x: auto; border-style: none none none solid; border-color: #6DF; border-width: 10px; padding: 5px 10px">
-<span style="color: #005FAF;">ghc -O2 -dynamic -shared -fPIC -lHSrts_thr-ghc$(ghc --numeric-version) test_c_plugin.o test.hs -o test.so</span>
+<span style="color: #005FAF;">ghc -O2 -dynamic -shared -fPIC -flink-rts -threaded test_c_plugin.o test.hs -o test.so</span>
 <span style="color: #808080;">[1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )</span>
 <span style="color: #808080;">Linking test.so ...</span>
 <span style="color: #005FAF;">cp test.so /var/lib/nginx/</span>
@@ -965,10 +1355,23 @@
 </pre>
 
 <p>The header <em>X-Powered-By</em> is in the response!</p>
-<p>Notice that the value of <em>_r_ptr</em> has a binary representation and therefore must not be used in textual contexts such as Haskell <em>data</em> declarations or JSON objects. It makes sense to put <em>_r_ptr</em> in the beginning of the handler’s argument as it must be easy to extract it from the rest of the argument later. This can be achieved explicitly, e.g. <em>${_r_ptr}my data</em>, or by adding suffix <em>(r)</em> at the end of the handler’s name.</p>
-<h2 id="c-plugins-in-service-update-hooks">C plugins in service update hooks</h2>
-<p>Service update hooks can be used to replace service <em>update callbacks</em>. Indeed, being run <em>synchronously</em> from an event handler, a service hook could safely call a C function which would acquire related to Nginx context from Nginx global variables such as <em>ngx_cycle</em> for doing a variety of low level actions.</p>
-<p>Below is a table of functions exported from the Haskell module that return opaque pointers to Nginx global variables for using them in C plugins.</p>
+<p>Notice that the value of <em>_r_ptr</em> has a binary representation
+and therefore must not be used in textual contexts such as Haskell
+<em>data</em> declarations or JSON objects. It makes sense to put
+<em>_r_ptr</em> in the beginning of the handler’s argument as it must be
+easy to extract it from the rest of the argument later. This can be
+achieved explicitly, e.g. <em>${_r_ptr}my data</em>, or by adding suffix
+<em>(r)</em> at the end of the handler’s name.</p>
+<h2 id="c-plugins-in-service-update-hooks">C plugins in service update
+hooks</h2>
+<p>Service update hooks can be used to replace service <em>update
+callbacks</em>. Indeed, being run <em>synchronously</em> from an event
+handler, a service hook could safely call a C function which would
+acquire related to Nginx context from Nginx global variables such as
+<em>ngx_cycle</em> for doing a variety of low level actions.</p>
+<p>Below is a table of functions exported from the Haskell module that
+return opaque pointers to Nginx global variables for using them in C
+plugins.</p>
 <table>
 <colgroup>
 <col style="width: 47%" />
@@ -983,38 +1386,102 @@
 <tbody>
 <tr class="odd">
 <td style="text-align: left;"><code>ngxCyclePtr</code></td>
-<td style="text-align: left;">value of argument <code>cycle</code> in the worker’s initialization function<br />
+<td style="text-align: left;">value of argument <code>cycle</code> in
+the worker’s initialization function<br />
 (of type <code>ngx_cycle_t *</code>)</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><code>ngxUpstreamMainConfPtr</code></td>
-<td style="text-align: left;">value of expression <code>ngx_http_cycle_get_module_main_conf(cycle, ngx_http_upstream_module)</code> in the worker’s initialization function<br />
+<td style="text-align: left;">value of expression
+<code>ngx_http_cycle_get_module_main_conf(cycle, ngx_http_upstream_module)</code>
+in the worker’s initialization function<br />
 (of type <code>ngx_http_upstream_main_conf_t *</code>)</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><code>ngxCachedTimePtr</code></td>
-<td style="text-align: left;"><em>address</em> of the Nginx global variable <code>ngx_cached_time</code><br />
+<td style="text-align: left;"><em>address</em> of the Nginx global
+variable <code>ngx_cached_time</code><br />
 (of type <code>volatile ngx_time_t **</code>)</td>
 </tr>
 </tbody>
 </table>
-<p>Notice that besides synchronous nature of service update hooks, there are other features that distinguish them from service update callbacks.</p>
+<p>Notice that besides synchronous nature of service update hooks, there
+are other features that distinguish them from service update
+callbacks.</p>
 <ol type="1">
-<li>As soon as running C plugins can be useful not only in shared services, but in normal per-worker services too, service update hooks are allowed in both the types.</li>
-<li>Unlike update callbacks, service hooks get triggered in all worker processes.</li>
-<li>Unlike update callbacks, service hooks get triggered even when the value of the service variable has not been actually changed.</li>
+<li>As soon as running C plugins can be useful not only in shared
+services, but in normal per-worker services too, service update hooks
+are allowed in both the types.</li>
+<li>Unlike update callbacks, service hooks get triggered in all worker
+processes.</li>
+<li>Unlike update callbacks, service hooks get triggered even when the
+value of the service variable has not been actually changed.</li>
 </ol>
 <h3 id="an-example-9">An example</h3>
-<p>See implementation of <a href="https://github.com/lyokha/nginx-healthcheck-plugin"><em>nginx-healthcheck-plugin</em></a>.</p>
-<h1 id="efficiency-of-data-exchange-between-nginx-and-haskell-handlers">Efficiency of data exchange between Nginx and Haskell handlers</h1>
-<p>Haskell handlers may accept strings (<code>String</code> or <code>[String]</code>) and <em>strict</em> bytestrings (<code>ByteString</code>), and return strings, <em>lazy</em> bytestrings and booleans. Input C-strings are marshaled into a <em>String</em> with <em>peekCStringLen</em> which has linear complexity <span class="math inline"><em>O</em>(<em>n</em>)</span>, output <em>Strings</em> are marshaled into C-strings with <em>newCStringLen</em> which is also <span class="math inline"><em>O</em>(<em>n</em>)</span>. The new C-strings get freed upon the request termination in the Nginx part.</p>
-<p>The bytestring counterparts are much faster. Both input and output are <span class="math inline"><em>O</em>(1)</span>, using <em>unsafePackCStringLen</em> and a Haskell <em>stable pointer</em> to lazy bytestring buffers created inside Haskell handlers. If an output lazy bytestring has more than one chunk, a new single-chunked C-string will be created in variable and service handlers, but not in content handlers because the former use the chunks directly when constructing contents. Holding a stable pointer to a bytestring’s chunks in the Nginx part ensures that they won’t be garbage collected until the pointer gets freed. Stable pointers get freed upon the request termination for variable and content handlers, and before the next service iteration for service handlers.</p>
-<p>Complex scenarios may require <em>typed exchange</em> between Haskell handlers and the Nginx part using <em>serialized</em> data types such as Haskell records. In this case <em>bytestring</em> flavors of the handlers would be the best choice. There are two well-known serialization mechanisms: <em>packing Show</em> / <em>unpacking Read</em> and <em>ToJSON</em> / <em>FromJSON</em> from Haskell package <em>aeson</em>. In practice, <em>Show</em> is basically faster than <em>ToJSON</em>, however in many cases <em>FromJSON</em> outperforms <em>Read</em>.</p>
-<p>A variable handler of a shared service makes a copy of the variable’s value because shared data can be altered by any worker at any moment, and there is no safe way to hold a reference to a shared data without locking. In contrast, a variable handler of a normal per-worker service shares a reference to the value with the service. Obviously, this is still not safe. Imagine that some request gets a reference to a service value from the variable handler, then lasts some time and later uses this reference again: the reference could probably be freed by this time because the service could have altered its data since the beginning of the request. This catastrophic scenario could have been avoided by using a copy of the service value in every request like in shared services, but this would unnecessarily hit performance, therefore requests share <em>counted references</em> to service values, and as soon as the count reaches <em>0</em>, the service value gets freed.</p>
-<h1 id="exceptions-in-haskell-handlers">Exceptions in Haskell handlers</h1>
-<p>There is no way to catch exceptions in <em>pure</em> handlers. However they can arise from using <em>partial</em> functions such as <em>head</em> and <em>tail</em>! Switching to their <em>total</em> counterparts from module <em>Safe</em> can mitigate this issue, but it is not possible to eliminate it completely.</p>
-<p>Fortunately, all exceptions, synchronous and asynchronous, are caught on top of the module’s Haskell code. If a handler does not catch an exception itself, the exception gets caught higher and logged by Nginx. However, using exception handlers in Haskell handlers, when it’s possible, should be preferred.</p>
-<h1 id="summary-table-of-all-nginx-directives-of-the-module">Summary table of all Nginx directives of the module</h1>
+<p>See implementation of <a
+href="https://github.com/lyokha/nginx-healthcheck-plugin"><em>nginx-healthcheck-plugin</em></a>.</p>
+<h1
+id="efficiency-of-data-exchange-between-nginx-and-haskell-handlers">Efficiency
+of data exchange between Nginx and Haskell handlers</h1>
+<p>Haskell handlers may accept strings (<code>String</code> or
+<code>[String]</code>) and <em>strict</em> bytestrings
+(<code>ByteString</code>), and return strings, <em>lazy</em> bytestrings
+and booleans. Input C-strings are marshaled into a <em>String</em> with
+<em>peekCStringLen</em> which has linear complexity <span
+class="math inline"><em>O</em>(<em>n</em>)</span>, output
+<em>Strings</em> are marshaled into C-strings with
+<em>newCStringLen</em> which is also <span
+class="math inline"><em>O</em>(<em>n</em>)</span>. The new C-strings get
+freed upon the request termination in the Nginx part.</p>
+<p>The bytestring counterparts are much faster. Both input and output
+are <span class="math inline"><em>O</em>(1)</span>, using
+<em>unsafePackCStringLen</em> and a Haskell <em>stable pointer</em> to
+lazy bytestring buffers created inside Haskell handlers. If an output
+lazy bytestring has more than one chunk, a new single-chunked C-string
+will be created in variable and service handlers, but not in content
+handlers because the former use the chunks directly when constructing
+contents. Holding a stable pointer to a bytestring’s chunks in the Nginx
+part ensures that they won’t be garbage collected until the pointer gets
+freed. Stable pointers get freed upon the request termination for
+variable and content handlers, and before the next service iteration for
+service handlers.</p>
+<p>Complex scenarios may require <em>typed exchange</em> between Haskell
+handlers and the Nginx part using <em>serialized</em> data types such as
+Haskell records. In this case <em>bytestring</em> flavors of the
+handlers would be the best choice. There are two well-known
+serialization mechanisms: <em>packing Show</em> / <em>unpacking
+Read</em> and <em>ToJSON</em> / <em>FromJSON</em> from Haskell package
+<em>aeson</em>. In practice, <em>Show</em> is basically faster than
+<em>ToJSON</em>, however in many cases <em>FromJSON</em> outperforms
+<em>Read</em>.</p>
+<p>A variable handler of a shared service makes a copy of the variable’s
+value because shared data can be altered by any worker at any moment,
+and there is no safe way to hold a reference to a shared data without
+locking. In contrast, a variable handler of a normal per-worker service
+shares a reference to the value with the service. Obviously, this is
+still not safe. Imagine that some request gets a reference to a service
+value from the variable handler, then lasts some time and later uses
+this reference again: the reference could probably be freed by this time
+because the service could have altered its data since the beginning of
+the request. This catastrophic scenario could have been avoided by using
+a copy of the service value in every request like in shared services,
+but this would unnecessarily hit performance, therefore requests share
+<em>counted references</em> to service values, and as soon as the count
+reaches <em>0</em>, the service value gets freed.</p>
+<h1 id="exceptions-in-haskell-handlers">Exceptions in Haskell
+handlers</h1>
+<p>There is no way to catch exceptions in <em>pure</em> handlers.
+However they can arise from using <em>partial</em> functions such as
+<em>head</em> and <em>tail</em>! Switching to their <em>total</em>
+counterparts from module <em>Safe</em> can mitigate this issue, but it
+is not possible to eliminate it completely.</p>
+<p>Fortunately, all exceptions, synchronous and asynchronous, are caught
+on top of the module’s Haskell code. If a handler does not catch an
+exception itself, the exception gets caught higher and logged by Nginx.
+However, using exception handlers in Haskell handlers, when it’s
+possible, should be preferred.</p>
+<h1 id="summary-table-of-all-nginx-directives-of-the-module">Summary
+table of all Nginx directives of the module</h1>
 <table>
 <colgroup>
 <col style="width: 48%" />
@@ -1032,7 +1499,10 @@
 <tr class="odd">
 <td style="text-align: left;"><code>haskell compile</code></td>
 <td style="text-align: left;"><code>http</code></td>
-<td style="text-align: left;">Compile Haskell code found in the last argument. Accepts arguments <em>threaded</em> (use <em>threaded</em> RTS library), <em>debug</em> (use <em>debug</em> RTS library), and <em>standalone</em> (use <em>standalone</em> approach).</td>
+<td style="text-align: left;">Compile Haskell code found in the last
+argument. Accepts arguments <em>threaded</em> (use <em>threaded</em> RTS
+library), <em>debug</em> (use <em>debug</em> RTS library), and
+<em>standalone</em> (use <em>standalone</em> approach).</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><code>haskell load</code></td>
@@ -1040,9 +1510,11 @@
 <td style="text-align: left;">Load the specified Haskell library.</td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;"><code>haskell ghc_extra_options</code></td>
+<td
+style="text-align: left;"><code>haskell ghc_extra_options</code></td>
 <td style="text-align: left;"><code>http</code></td>
-<td style="text-align: left;">Specify extra options for GHC when the library compiles.</td>
+<td style="text-align: left;">Specify extra options for GHC when the
+library compiles.</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><code>haskell rts_options</code></td>
@@ -1052,22 +1524,28 @@
 <tr class="odd">
 <td style="text-align: left;"><code>haskell program_options</code></td>
 <td style="text-align: left;"><code>http</code></td>
-<td style="text-align: left;">Specify program options. This is just another way for passing data into Haskell handlers.</td>
+<td style="text-align: left;">Specify program options. This is just
+another way for passing data into Haskell handlers.</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><code>haskell_run</code></td>
-<td style="text-align: left;"><code>server</code>, <code>location</code>, <code>location if</code></td>
+<td style="text-align: left;"><code>server</code>,
+<code>location</code>, <code>location if</code></td>
 <td style="text-align: left;">Run a synchronous Haskell task.</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><code>haskell_run_async</code></td>
-<td style="text-align: left;"><code>server</code>, <code>location</code>, <code>location if</code></td>
+<td style="text-align: left;"><code>server</code>,
+<code>location</code>, <code>location if</code></td>
 <td style="text-align: left;">Run an asynchronous Haskell task.</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;"><code>haskell_run_async_on_request_body</code></td>
-<td style="text-align: left;"><code>server</code>, <code>location</code>, <code>location if</code></td>
-<td style="text-align: left;">Run an asynchronous Haskell request body handler.</td>
+<td
+style="text-align: left;"><code>haskell_run_async_on_request_body</code></td>
+<td style="text-align: left;"><code>server</code>,
+<code>location</code>, <code>location if</code></td>
+<td style="text-align: left;">Run an asynchronous Haskell request body
+handler.</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><code>haskell_run_service</code></td>
@@ -1075,105 +1553,170 @@
 <td style="text-align: left;">Run a Haskell service.</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;"><code>haskell_service_var_update_callback</code></td>
+<td
+style="text-align: left;"><code>haskell_service_var_update_callback</code></td>
 <td style="text-align: left;"><code>http</code></td>
-<td style="text-align: left;">Run a callback on a service variable’s update.</td>
+<td style="text-align: left;">Run a callback on a service variable’s
+update.</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><code>haskell_content</code></td>
-<td style="text-align: left;"><code>location</code>, <code>location if</code></td>
+<td style="text-align: left;"><code>location</code>,
+<code>location if</code></td>
 <td style="text-align: left;">Declare a Haskell content handler.</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><code>haskell_static_content</code></td>
-<td style="text-align: left;"><code>location</code>, <code>location if</code></td>
-<td style="text-align: left;">Declare a static Haskell content handler.</td>
+<td style="text-align: left;"><code>location</code>,
+<code>location if</code></td>
+<td style="text-align: left;">Declare a static Haskell content
+handler.</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><code>haskell_unsafe_content</code></td>
-<td style="text-align: left;"><code>location</code>, <code>location if</code></td>
-<td style="text-align: left;">Declare an unsafe Haskell content handler.</td>
+<td style="text-align: left;"><code>location</code>,
+<code>location if</code></td>
+<td style="text-align: left;">Declare an unsafe Haskell content
+handler.</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><code>haskell_async_content</code></td>
-<td style="text-align: left;"><code>location</code>, <code>location if</code></td>
-<td style="text-align: left;">Declare an asynchronous Haskell content handler.</td>
+<td style="text-align: left;"><code>location</code>,
+<code>location if</code></td>
+<td style="text-align: left;">Declare an asynchronous Haskell content
+handler.</td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;"><code>haskell_async_content_on_request_body</code></td>
-<td style="text-align: left;"><code>location</code>, <code>location if</code></td>
-<td style="text-align: left;">Declare an asynchronous Haskell content handler with access to request body.</td>
+<td
+style="text-align: left;"><code>haskell_async_content_on_request_body</code></td>
+<td style="text-align: left;"><code>location</code>,
+<code>location if</code></td>
+<td style="text-align: left;">Declare an asynchronous Haskell content
+handler with access to request body.</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><code>haskell_service_hook</code></td>
-<td style="text-align: left;"><code>location</code>, <code>location if</code></td>
-<td style="text-align: left;">Declare a service hook and create a content handler for managing the corresponding service.</td>
+<td style="text-align: left;"><code>location</code>,
+<code>location if</code></td>
+<td style="text-align: left;">Declare a service hook and create a
+content handler for managing the corresponding service.</td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;"><code>haskell_service_update_hook</code></td>
+<td
+style="text-align: left;"><code>haskell_service_update_hook</code></td>
 <td style="text-align: left;"><code>http</code></td>
 <td style="text-align: left;">Declare a service update hook.</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;"><code>haskell_request_body_read_temp_file</code></td>
-<td style="text-align: left;"><code>server</code>, <code>location</code>, <code>location if</code></td>
-<td style="text-align: left;">This flag (<em>on</em> or <em>off</em>) makes asynchronous tasks and content handlers read buffered in a <em>temporary file</em> POST data. If not set, then buffered data is not read.</td>
+<td
+style="text-align: left;"><code>haskell_request_body_read_temp_file</code></td>
+<td style="text-align: left;"><code>server</code>,
+<code>location</code>, <code>location if</code></td>
+<td style="text-align: left;">This flag (<em>on</em> or <em>off</em>)
+makes asynchronous tasks and content handlers read buffered in a
+<em>temporary file</em> POST data. If not set, then buffered data is not
+read.</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><code>haskell_var_nocacheable</code></td>
 <td style="text-align: left;"><code>http</code></td>
-<td style="text-align: left;">All variables in the list become no cacheable and safe for using in ad-hoc iterations over <em>error_page</em> cycles. Applicable to variables of any <em>get handler</em>.</td>
+<td style="text-align: left;">All variables in the list become no
+cacheable and safe for using in ad-hoc iterations over
+<em>error_page</em> cycles. Applicable to variables of any <em>get
+handler</em>.</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><code>haskell_var_nohash</code></td>
 <td style="text-align: left;"><code>http</code></td>
-<td style="text-align: left;">Nginx won’t build hashes for variables in the list. Applicable to variables of any <em>get handler</em>.</td>
+<td style="text-align: left;">Nginx won’t build hashes for variables in
+the list. Applicable to variables of any <em>get handler</em>.</td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;"><code>haskell_var_compensate_uri_changes</code></td>
+<td
+style="text-align: left;"><code>haskell_var_compensate_uri_changes</code></td>
 <td style="text-align: left;"><code>http</code></td>
-<td style="text-align: left;">All variables in the list allow to cheat <em>error_page</em> when used in its redirections and make the cycle infinite.</td>
+<td style="text-align: left;">All variables in the list allow to cheat
+<em>error_page</em> when used in its redirections and make the cycle
+infinite.</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;"><code>haskell_var_empty_on_error</code></td>
+<td
+style="text-align: left;"><code>haskell_var_empty_on_error</code></td>
 <td style="text-align: left;"><code>http</code></td>
-<td style="text-align: left;">All variables in the list return empty values on errors while the errors are still being logged by Nginx. Applicable to effectful synchronous and asynchronous variable handlers.</td>
+<td style="text-align: left;">All variables in the list return empty
+values on errors while the errors are still being logged by Nginx.
+Applicable to effectful synchronous and asynchronous variable
+handlers.</td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;"><code>haskell_service_var_ignore_empty</code></td>
+<td
+style="text-align: left;"><code>haskell_service_var_ignore_empty</code></td>
 <td style="text-align: left;"><code>http</code></td>
-<td style="text-align: left;">All service variables in the list do not write the service result when its value is empty.</td>
+<td style="text-align: left;">All service variables in the list do not
+write the service result when its value is empty.</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;"><code>haskell_service_var_in_shm</code></td>
+<td
+style="text-align: left;"><code>haskell_service_var_in_shm</code></td>
 <td style="text-align: left;"><code>http</code></td>
-<td style="text-align: left;">All service variables in the list store the service result in a shared memory. Implicitly declares a shared service.</td>
+<td style="text-align: left;">All service variables in the list store
+the service result in a shared memory. Implicitly declares a shared
+service.</td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;"><code>haskell_service_hooks_zone</code></td>
+<td
+style="text-align: left;"><code>haskell_service_hooks_zone</code></td>
 <td style="text-align: left;"><code>http</code></td>
-<td style="text-align: left;">Declare shm zone for a temporary storage of service hooks data.</td>
+<td style="text-align: left;">Declare shm zone for a temporary storage
+of service hooks data.</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;"><code>haskell_request_variable_name</code></td>
+<td
+style="text-align: left;"><code>haskell_request_variable_name</code></td>
 <td style="text-align: left;"><code>http</code></td>
-<td style="text-align: left;">Change the name of the request variable if default value <em>_r_ptr</em> is already used.</td>
+<td style="text-align: left;">Change the name of the request variable if
+default value <em>_r_ptr</em> is already used.</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><code>single_listener</code></td>
 <td style="text-align: left;"><code>server</code></td>
-<td style="text-align: left;">Make the virtual server accept client requests only from a single worker process.</td>
+<td style="text-align: left;">Make the virtual server accept client
+requests only from a single worker process.</td>
 </tr>
 </tbody>
 </table>
 <h1 id="module-ngxexport.tools">Module NgxExport.Tools</h1>
-<p>Package <a href="http://hackage.haskell.org/package/ngx-export-tools"><em>ngx-export-tools</em></a> provides module <a href="http://hackage.haskell.org/package/ngx-export-tools/docs/NgxExport-Tools.html"><em>NgxExport.Tools</em></a> that exports various utility functions and data as well as specialized service exporters and adapters. As soon as the module is well documented, its features are only basically lined up below.</p>
+<p>Package <a
+href="http://hackage.haskell.org/package/ngx-export-tools"><em>ngx-export-tools</em></a>
+provides module <a
+href="http://hackage.haskell.org/package/ngx-export-tools/docs/NgxExport-Tools.html"><em>NgxExport.Tools</em></a>
+that exports various utility functions and data as well as specialized
+service exporters and adapters. As soon as the module is well
+documented, its features are only basically lined up below.</p>
 <ul>
-<li>Utility functions <em>terminateWorkerProcess</em> and <em>restartWorkerProcess</em> make it possible to terminate the worker process from within a Haskell service. Function <em>finalizeHTTPRequest</em> finalizes the current HTTP request from an asynchronous Haskell handler with the specified HTTP status and body. Function <em>ngxRequestPtr</em> unmarshals the value of Nginx variable <em>_r_ptr</em>. Function <em>ngxNow</em> returns the current time cached inside the Nginx core.</li>
-<li>Data <em>TimeInterval</em> and utility functions <em>toSec</em> and <em>threadDelaySec</em> can be used to specify time delays for services.</li>
-<li>A number of converters from custom types deriving or implementing instances of <em>Read</em> and <em>FromJSON</em> (<em>readFromBytestring</em> and friends).</li>
-<li>Special service exporters (<em>simple services</em>) combine various <em>sleeping</em> strategies and typing policies of services and can be used to avoid usual boilerplate code needed in the vanilla service exporters from module <em>NgxExport</em>.</li>
-<li>Special service adapters (<em>split services</em>) allow for distinguishing between <em>ignition</em> services (those that run when the service runs for the first time) and <em>deferred</em> services (those that run when the service runs for the second time and later).</li>
+<li>Utility functions <em>terminateWorkerProcess</em> and
+<em>restartWorkerProcess</em> make it possible to terminate the worker
+process from within a Haskell service. Function
+<em>finalizeHTTPRequest</em> finalizes the current HTTP request from an
+asynchronous Haskell handler with the specified HTTP status and body.
+Function <em>ngxRequestPtr</em> unmarshals the value of Nginx variable
+<em>_r_ptr</em>. Function <em>ngxNow</em> returns the current time
+cached inside the Nginx core.</li>
+<li>Data <em>TimeInterval</em> and utility functions <em>toSec</em> and
+<em>threadDelaySec</em> can be used to specify time delays for
+services.</li>
+<li>A number of converters from custom types deriving or implementing
+instances of <em>Read</em> and <em>FromJSON</em>
+(<em>readFromBytestring</em> and friends).</li>
+<li>Special service exporters (<em>simple services</em>) combine various
+<em>sleeping</em> strategies and typing policies of services and can be
+used to avoid usual boilerplate code needed in the vanilla service
+exporters from module <em>NgxExport</em>.</li>
+<li>Special service adapters (<em>split services</em>) allow for
+distinguishing between <em>ignition</em> services (those that run when
+the service runs for the first time) and <em>deferred</em> services
+(those that run when the service runs for the second time and
+later).</li>
 </ul>
 <h1 id="appendix">Appendix</h1>
 <!--\appendixpagenumbering[TEST.HS]-->
