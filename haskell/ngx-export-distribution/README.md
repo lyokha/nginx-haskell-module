@@ -123,7 +123,8 @@ x86_64-linux-ghc-8.10.5/libHSdlist-1.0-GVPedlNIGcrCE31hGMMV1G-ghc8.10.5.so
 Note that in ghc older than *8.10.6*, option *-threaded* must be replaced
 with option *-lHSrts_thr-ghc&dollar;(ghc --numeric-version)* because ghc option
 *-flink-rts* which is passed by the module internally has first appeared in
-the mentioned release.
+the said release. Note also that clause *ghc-options* in the Cabal file is a
+better place for such a generic option as *-threaded*.
 
 Now the current working directory contains new files
 *ngx_distribution_test.so* and *ngx-distribution-test-0.1.0.0.tar.gz* and a
