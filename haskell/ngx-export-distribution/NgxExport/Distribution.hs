@@ -200,7 +200,7 @@ import Data.Maybe
 --
 -- > $ cabal v2-install --lib ngx-export-distribution --package-env .
 --
--- > $ sed -i 's/\(^package-id \)/--\1/' .ghc.environment.x86_64-linux-8.10.5
+-- > $ sed -i 's/\(^package-id \)/--\1/' .ghc.environment.x86_64-linux-$(ghc --numeric-version)
 --
 -- This /sed/ command comments out all lines that start with word /package-id/
 -- in file /.ghc.environment.x86_64-linux-8.10.5/ which has been created by the
