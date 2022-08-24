@@ -25,18 +25,22 @@ static const ngx_str_t  haskell_compile_cmd =
 ngx_string("ghc -O2 -dynamic -shared -fPIC -o ");
 static const ngx_str_t  template_haskell_option =
 ngx_string(" -XTemplateHaskell");
-static const ngx_str_t  ghc_rtslib_vanilla =
-ngx_string(" -lHSrts-$(ghc-pkg field rts version --simple-output)"
-           "-ghc$(ghc --numeric-version)");
-static const ngx_str_t  ghc_rtslib_thr =
-ngx_string(" -lHSrts-$(ghc-pkg field rts version --simple-output)"
-           "_thr-ghc$(ghc --numeric-version)");
-static const ngx_str_t  ghc_rtslib_debug =
-ngx_string(" -lHSrts-$(ghc-pkg field rts version --simple-output)"
-           "_debug-ghc$(ghc --numeric-version)");
-static const ngx_str_t  ghc_rtslib_thr_debug =
-ngx_string(" -lHSrts-$(ghc-pkg field rts version --simple-output)"
-           "_thr_debug-ghc$(ghc --numeric-version)");
+static const ngx_str_t  ghc_rtslib_vanilla[2] = {
+    ngx_string(" -lHSrts-ghc$(ghc --numeric-version)"),
+    ngx_string(" -flink-rts")
+};
+static const ngx_str_t  ghc_rtslib_thr[2] = {
+    ngx_string(" -lHSrts_thr-ghc$(ghc --numeric-version)"),
+    ngx_string(" -flink-rts -threaded")
+};
+static const ngx_str_t  ghc_rtslib_debug[2] = {
+    ngx_string(" -lHSrts_debug-ghc$(ghc --numeric-version)"),
+    ngx_string(" -flink-rts -debug")
+};
+static const ngx_str_t  ghc_rtslib_thr_debug[2] = {
+    ngx_string(" -lHSrts_thr_debug-ghc$(ghc --numeric-version)"),
+    ngx_string(" -flink-rts -threaded -debug")
+};
 
 
 char *
@@ -119,26 +123,67 @@ ngx_http_haskell_compile(ngx_conf_t *cf, void *conf, ngx_str_t source_name)
 {
     ngx_http_haskell_main_conf_t  *mcf = conf;
 
+    size_t                         i;
+    ngx_int_t                      version, iface;
+    FILE                          *fp;
+    static const size_t            buf_size = 16;
+    char                           buf[buf_size];
     char                          *compile_cmd;
     ngx_str_t                      rtslib;
     ngx_uint_t                     extra_len = 0, th_len = 0;
     ngx_uint_t                     passed_len, full_len;
     ngx_uint_t                     compile_cmd_len;
 
+    fp = popen("ghc --numeric-version", "r");
+    if (fp == NULL) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "failed to open ghc program channel");
+        return NGX_CONF_ERROR;
+    }
+
+    if (fgets(buf, buf_size, fp) == NULL) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "failed to read ghc version");
+        if (pclose(fp) == -1) {
+            ngx_conf_log_error(NGX_LOG_ERR, cf, 0,
+                               "failed to close ghc program channel");
+        }
+        return NGX_CONF_ERROR;
+    }
+    if (pclose(fp) == -1) {
+        ngx_conf_log_error(NGX_LOG_ERR, cf, 0,
+                           "failed to close ghc program channel");
+    }
+
+    for (i = 0; i < buf_size; i++) {
+        if (buf[i] < '0' || buf[i] > '9') {
+            break;
+        }
+    }
+
+    version = ngx_atoi((u_char *) buf, i);
+    if (version == NGX_ERROR) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "failed to extract ghc major version");
+        return NGX_CONF_ERROR;
+    }
+
+    iface = version < 9 ? 0 : 1;
+
     compile_cmd_len = haskell_compile_cmd.len;
 
     switch (mcf->compile_mode) {
     case ngx_http_haskell_compile_mode_vanilla:
-        rtslib = ghc_rtslib_vanilla;
+        rtslib = ghc_rtslib_vanilla[iface];
         break;
     case ngx_http_haskell_compile_mode_threaded:
-        rtslib = ghc_rtslib_thr;
+        rtslib = ghc_rtslib_thr[iface];
         break;
     case ngx_http_haskell_compile_mode_debug:
-        rtslib = ghc_rtslib_debug;
+        rtslib = ghc_rtslib_debug[iface];
         break;
     case ngx_http_haskell_compile_mode_threaded_debug:
-        rtslib = ghc_rtslib_thr_debug;
+        rtslib = ghc_rtslib_thr_debug[iface];
         break;
     default:
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
