@@ -170,8 +170,6 @@ ngx_http_haskell_compile(ngx_conf_t *cf, void *conf, ngx_str_t source_name)
 
     iface = version < 9 ? 0 : 1;
 
-    compile_cmd_len = haskell_compile_cmd.len;
-
     switch (mcf->compile_mode) {
     case ngx_http_haskell_compile_mode_vanilla:
         rtslib = ghc_rtslib_vanilla[iface];
@@ -191,6 +189,8 @@ ngx_http_haskell_compile(ngx_conf_t *cf, void *conf, ngx_str_t source_name)
                            mcf->compile_mode);
         return NGX_CONF_ERROR;
     }
+
+    compile_cmd_len = haskell_compile_cmd.len;
 
     if (mcf->ghc_extra_options.len > 0) {
         extra_len = mcf->ghc_extra_options.len;
