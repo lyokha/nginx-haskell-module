@@ -53,7 +53,10 @@ library
 
 All packages listed in *build-depends* get also wrapped inside options
 *-package* in *ghc-options*: this is important when building them with
-*cabal v2-build* and then using inside GHC *package environments*.
+*cabal v2-build* and then using inside GHC *package environments*. However,
+this duplication can be avoided if there is a method to get the package list
+in the *ghc-options* programmatically. One of such methods is based on
+collecting the direct dependencies with utility *cabal-plan*.
 
 ###### File *Setup.hs*
 
@@ -198,12 +201,13 @@ Haskell libraries found in the global package db and
 We listed build dependencies in both *build-depends* and *ghc-options*
 clauses in the Cabal file to let ghc find dependencies built with
 *cabal v2-build* at the *configure* step. This approach is tedious and
-error-prone. Fortunately, there is package
+error-prone. Fortunately, there is utility
 [cabal-plan](https://hackage.haskell.org/package/cabal-plan) which is aimed
 to figure out dependencies of built packages. Particularly, with *cabal-plan*
 we can remove those *--package=...* lines from the *ghc-options* clause in
-the Cabal file and, instead, collect them programmatically in a shell
-variable that will be put inside the *configure* command.
+the Cabal file and, instead, collect the direct dependencies (additionally
+tagged with the version) programmatically in a shell variable that will be
+put inside the *configure* command.
 
 ```ShellSession
 $ DIRECT_DEPS=$(cabal-plan info --ascii | sed -n -e '0,/^CompNameLib$/d' -e '/^$/,$d' -e 's/^\s\+/--package=/p')

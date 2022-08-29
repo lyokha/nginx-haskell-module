@@ -18,8 +18,26 @@
 
 
 module NgxExport.Distribution (
-    -- * Usage and examples
-    -- $usage
+    -- * Building simple shared libraries
+    -- $building-shared-libraries
+
+    -- *** An example
+    -- $example
+
+    -- *** Building with cabal v1-commands
+    -- $cabal-v1
+
+    -- *** Building with Setup.hs commands
+    -- $setup-hs
+
+    -- *** Building dependencies with cabal v2-build
+    -- $deps-cabal-v2
+
+    -- *** Collecting direct dependencies with cabal-plan
+    -- $cabal-plan
+
+    -- *** Drawbacks
+    -- $drawbacks
 
     -- * Exported functions
                                buildSharedLib
@@ -46,11 +64,11 @@ import Control.Arrow
 import Control.Monad
 import Data.Maybe
 
--- $usage
+-- $building-shared-libraries
 --
 -- This module allows for building simple shared libraries with Cabal.
---
--- Below is a simple example.
+
+-- $example
 --
 -- ==== File /ngx_distribution_test.hs/
 -- @
@@ -89,15 +107,18 @@ import Data.Maybe
 --                           , aeson
 --
 --   ghc-options:             -Wall -O2 -no-keep-hi-files -no-keep-o-files
---                            -package=base
---                            -package=ngx-export
---                            -package=bytestring
---                            -package=aeson
+--                            /-package=base/
+--                            /-package=ngx-export/
+--                            /-package=bytestring/
+--                            /-package=aeson/
 -- @
 --
 -- All packages listed in /build-depends/ get also wrapped inside options
 -- /-package/ in /ghc-options/: this is important when building them with
--- /cabal v2-build/ and then using inside GHC /package environments/.
+-- /cabal v2-build/ and then using inside GHC /package environments/. However,
+-- this duplication can be avoided if there is a method to get the package list
+-- in the /ghc-options/ programmatically. One of such methods is based on
+-- collecting the direct dependencies with utility /cabal-plan/.
 --
 -- ==== File /Setup.hs/
 -- @
@@ -113,8 +134,8 @@ import Data.Maybe
 -- configuration step (which will be interpreted as the prefix part of the
 -- /rpath/ by utility /hslibdeps/) and explicit ghc option /-o/ at the build
 -- step which is as well used by /hslibdeps/ as the name of the target library.
---
--- ==== Building with cabal v1-commands
+
+-- $cabal-v1
 --
 -- Let's build the example with commands /cabal v1-configure/ and
 -- /cabal v1-build/.
@@ -175,8 +196,8 @@ import Data.Maybe
 -- new directory /x86_64-linux-ghc-8.10.5/. The tar-file contains the patched
 -- shared library and the directory with dependent libraries: it is ready for
 -- installation in directory /\/var\/lib\/nginx/ at the target system.
---
--- ==== Building with Setup.hs commands
+
+-- $setup-hs
 --
 -- For building custom artifacts, options of /hslibdeps/ must be accessed
 -- directly. For this, commands /runhaskell Setup.hs configure \/ build/ can be
@@ -188,8 +209,8 @@ import Data.Maybe
 -- > $ runhaskell Setup.hs configure --user
 --
 -- > $ runhaskell Setup.hs build --ghc-options="ngx_distribution_test.hs -o ngx_distribution_test.so -threaded" --hslibdeps-options="-t/var/lib/nginx/deps -ddeps -adeps"
---
--- ==== Building dependencies with cabal v2-build
+
+-- $deps-cabal-v2
 --
 -- Nowadays, Cabal recommends building packages using /Nix-style local builds/.
 -- This means that dependent packages do not get installed in places known to
@@ -221,23 +242,24 @@ import Data.Maybe
 -- This should build library /ngx_distribution_test.so/ and link it against
 -- Haskell libraries found in the global package db and
 -- /$HOME\/.cabal\/store\/ghc-$(ghc --numeric-version)\/package.db/.
---
--- ==== Collecting direct dependencies with cabal-plan
+
+-- $cabal-plan
 --
 -- We listed build dependencies in both /build-depends/ and /ghc-options/
 -- clauses in the Cabal file to let ghc find dependencies built with
 -- /cabal v2-build/ at the /configure/ step. This approach is tedious and
--- error-prone. Fortunately, there is package
+-- error-prone. Fortunately, there is utility
 -- [cabal-plan](https://hackage.haskell.org/package/cabal-plan) which is aimed
 -- to figure out dependencies of built packages. Particularly, with /cabal-plan/
 -- we can remove those /--package=.../ lines from the /ghc-options/ clause in
--- the Cabal file and, instead, collect them programmatically in a shell
--- variable that will be put inside the /configure/ command.
+-- the Cabal file and, instead, collect the direct dependencies (additionally
+-- tagged with the version) programmatically in a shell variable that will be
+-- put inside the /configure/ command.
 --
 -- > $ DIRECT_DEPS=$(cabal-plan info --ascii | sed -n -e '0,/^CompNameLib$/d' -e '/^$/,$d' -e 's/^\s\+/--package=/p')
 -- > $ runhaskell --ghc-arg=-package=base --ghc-arg=-package=ngx-export-distribution Setup.hs configure --package-db=clear --package-db=global --package-db="$HOME/.cabal/store/ghc-$(ghc --numeric-version)/package.db" $DIRECT_DEPS --prefix=/var/lib/nginx
---
--- ==== Drawbacks
+
+-- $drawbacks
 --
 -- With all the building approaches shown above, the following list of drawbacks
 -- must be taken into account.
