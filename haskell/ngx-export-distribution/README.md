@@ -193,7 +193,26 @@ This should build library *ngx_distribution_test.so* and link it against
 Haskell libraries found in the global package db and
 *&dollar;HOME/.cabal/store/ghc-&dollar;(ghc --numeric-version)/package.db*.
 
-With all building approaches shown above, the following list of drawbacks
+###### Collecting direct dependencies with cabal-plan
+
+We listed build dependencies in both *build-depends* and *ghc-options*
+clauses in the Cabal file to let ghc find dependencies built with
+*cabal v2-build* at the *configure* step. This approach is tedious and
+error-prone. Fortunately, there is package
+[cabal-plan](https://hackage.haskell.org/package/cabal-plan) which is aimed
+to figure out dependencies of built packages. Particularly, with *cabal-plan*
+we can remove those *--package=...* lines from the *ghc-options* clause in
+the Cabal file and, instead, collect them programmatically in a shell
+variable that will be put inside the *configure* command.
+
+```ShellSession
+$ DIRECT_DEPS=$(cabal-plan info --ascii | sed -n -e '0,/^CompNameLib$/d' -e '/^$/,$d' -e 's/^\s\+/--package=/p')
+$ runhaskell --ghc-arg=-package=base --ghc-arg=-package=ngx-export-distribution Setup.hs configure --package-db=clear --package-db=global --package-db="$HOME/.cabal/store/ghc-$(ghc --numeric-version)/package.db" $DIRECT_DEPS --prefix=/var/lib/nginx
+```
+
+###### Drawbacks
+
+With all the building approaches shown above, the following list of drawbacks
 must be taken into account.
 
 - Utility *hslibdeps* collects only libraries prefixed with *libHS*,
