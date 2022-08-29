@@ -251,10 +251,10 @@ import Data.Maybe
 -- error-prone. Fortunately, there is utility
 -- [cabal-plan](https://hackage.haskell.org/package/cabal-plan) which is aimed
 -- to figure out dependencies of built packages. Particularly, with /cabal-plan/
--- we can remove those /--package=.../ lines from the /ghc-options/ clause in
--- the Cabal file and, instead, collect the direct dependencies (additionally
--- tagged with the version) programmatically in a shell variable that will be
--- put inside the /configure/ command.
+-- we can remove those /-package=.../ lines from the /ghc-options/ clause in the
+-- Cabal file and, instead, collect the direct dependencies (additionally tagged
+-- with the version) programmatically in a shell variable that will be put
+-- inside the /configure/ command.
 --
 -- > $ DIRECT_DEPS=$(cabal-plan info --ascii | sed -n -e '0,/^CompNameLib$/d' -e '/^$/,$d' -e 's/^\s\+/--package=/p')
 -- > $ runhaskell --ghc-arg=-package=base --ghc-arg=-package=ngx-export-distribution Setup.hs configure --package-db=clear --package-db=global --package-db="$HOME/.cabal/store/ghc-$(ghc --numeric-version)/package.db" $DIRECT_DEPS --prefix=/var/lib/nginx
