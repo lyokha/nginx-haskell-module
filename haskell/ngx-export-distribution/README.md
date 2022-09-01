@@ -82,56 +82,63 @@ Let's build the example with commands *cabal v1-configure* and
 ```ShellSession
 $ cabal v1-configure --prefix=/var/lib/nginx
 Resolving dependencies...
-[1 of 1] Compiling Main             ( dist/setup/setup.hs, dist/setup/Main.o )
-Linking ./dist/setup/setup ...
+[1 of 2] Compiling Main             ( dist/setup/setup.hs, dist/setup/Main.o )
+[2 of 2] Linking ./dist/setup/setup ...
 Configuring ngx-distribution-test-0.1.0.0...
 ```
 
 ```ShellSession
 $ cabal v1-build --ghc-options="ngx_distribution_test.hs -o ngx_distribution_test.so -threaded"
-[1 of 1] Compiling NgxDistributionTest ( ngx_distribution_test.hs, ngx_distribution_test.o )
-Linking ngx_distribution_test.so ...
+[1 of 2] Compiling NgxDistributionTest ( ngx_distribution_test.hs, ngx_distribution_test.o )
+[2 of 2] Linking ngx_distribution_test.so ...
 ---> Collecting libraries
-'/usr/lib64/libHSrts-ghc8.10.5.so' -> 'x86_64-linux-ghc-8.10.5/libHSrts-ghc8.10.5.so'
-'/home/lyokha/.cabal/lib/x86_64-linux-ghc-8.10.5/libHSngx-export-1.7.5-JzTEmHewqdC9gGi6rzcAtt-ghc8.10.5.so' -> 'x86_64-linux-ghc-8.10.5/libHSngx-export-1.7.5-JzTEmHewqdC9gGi6rzcAtt-ghc8.10.5.so'
-'/home/lyokha/.cabal/lib/x86_64-linux-ghc-8.10.5/libHSmonad-loops-0.4.3-8Lx5Hn3pTtO62yOPdPW77x-ghc8.10.5.so' -> 'x86_64-linux-ghc-8.10.5/libHSmonad-loops-0.4.3-8Lx5Hn3pTtO62yOPdPW77x-ghc8.10.5.so'
-'/home/lyokha/.cabal/lib/x86_64-linux-ghc-8.10.5/libHSasync-2.2.4-ENjuIeC23kaKyMVDRYThP3-ghc8.10.5.so' -> 'x86_64-linux-ghc-8.10.5/libHSasync-2.2.4-ENjuIeC23kaKyMVDRYThP3-ghc8.10.5.so'
-'/usr/lib64/libHSstm-2.5.0.1-ghc8.10.5.so' -> 'x86_64-linux-ghc-8.10.5/libHSstm-2.5.0.1-ghc8.10.5.so'
-'/home/lyokha/.cabal/lib/x86_64-linux-ghc-8.10.5/libHSaeson-1.5.6.0-6XeGmWHoO3vJYEUW5PXPgC-ghc8.10.5.so' -> 'x86_64-linux-ghc-8.10.5/libHSaeson-1.5.6.0-6XeGmWHoO3vJYEUW5PXPgC-ghc8.10.5.so'
+'/home/lyokha/.cabal/lib/x86_64-linux-ghc-9.4.1/libHSngx-export-1.7.5-FkCfFIq2kiq6MpFtZt6Wso-ghc9.4.1.so' -> 'x86_64-linux-ghc-9.4.1/libHSngx-export-1.7.5-FkCfFIq2kiq6MpFtZt6Wso-ghc9.4.1.so'
+'/home/lyokha/.cabal/lib/x86_64-linux-ghc-9.4.1/libHSmonad-loops-0.4.3-5HNgusEuKV7E9KDl2xfIIb-ghc9.4.1.so' -> 'x86_64-linux-ghc-9.4.1/libHSmonad-loops-0.4.3-5HNgusEuKV7E9KDl2xfIIb-ghc9.4.1.so'
+'/home/lyokha/.cabal/lib/x86_64-linux-ghc-9.4.1/libHSasync-2.2.4-BHmUTH2SmtgLLoxIOXNoMc-ghc9.4.1.so' -> 'x86_64-linux-ghc-9.4.1/libHSasync-2.2.4-BHmUTH2SmtgLLoxIOXNoMc-ghc9.4.1.so'
+'/home/lyokha/.cabal/lib/x86_64-linux-ghc-9.4.1/libHSaeson-2.1.0.0-79sgaqQ0msAJaL6HuNRLaK-ghc9.4.1.so' -> 'x86_64-linux-ghc-9.4.1/libHSaeson-2.1.0.0-79sgaqQ0msAJaL6HuNRLaK-ghc9.4.1.so'
+'/home/lyokha/.cabal/lib/x86_64-linux-ghc-9.4.1/libHSwitherable-0.4.2-1AWCu2zvFImLTaoXk8CRkT-ghc9.4.1.so' -> 'x86_64-linux-ghc-9.4.1/libHSwitherable-0.4.2-1AWCu2zvFImLTaoXk8CRkT-ghc9.4.1.so'
+'/home/lyokha/.cabal/lib/x86_64-linux-ghc-9.4.1/libHSuuid-types-1.0.5-BduubbeXxFCF9me5IkbXLU-ghc9.4.1.so' -> 'x86_64-linux-ghc-9.4.1/libHSuuid-types-1.0.5-BduubbeXxFCF9me5IkbXLU-ghc9.4.1.so'
 
    ...
 
-'/usr/lib64/libHSbase-4.14.2.0-ghc8.10.5.so' -> 'x86_64-linux-ghc-8.10.5/libHSbase-4.14.2.0-ghc8.10.5.so'
-'/usr/lib64/libHSinteger-gmp-1.0.3.0-ghc8.10.5.so' -> 'x86_64-linux-ghc-8.10.5/libHSinteger-gmp-1.0.3.0-ghc8.10.5.so'
-'/usr/lib64/libHSghc-prim-0.6.1-ghc8.10.5.so' -> 'x86_64-linux-ghc-8.10.5/libHSghc-prim-0.6.1-ghc8.10.5.so'
+'/usr/lib64/ghc-9.4.1/lib/../lib/x86_64-linux-ghc-9.4.1/libHSghc-bignum-1.3-ghc9.4.1.so' -> 'x86_64-linux-ghc-9.4.1/libHSghc-bignum-1.3-ghc9.4.1.so'
+'/usr/lib64/ghc-9.4.1/lib/../lib/x86_64-linux-ghc-9.4.1/libHSghc-prim-0.9.0-ghc9.4.1.so' -> 'x86_64-linux-ghc-9.4.1/libHSghc-prim-0.9.0-ghc9.4.1.so'
+'/usr/lib64/ghc-9.4.1/lib/../lib/x86_64-linux-ghc-9.4.1/libHSrts-1.0.2_thr-ghc9.4.1.so' -> 'x86_64-linux-ghc-9.4.1/libHSrts-1.0.2_thr-ghc9.4.1.so'
 
 ---> Patching ngx_distribution_test.so
-/var/lib/nginx/x86_64-linux-ghc-8.10.5:/home/lyokha/.cabal/lib/x86_64-linux-ghc-8.10.5:/usr/lib64:/usr/lib64/ghc-8.10.5/rts
+/var/lib/nginx/x86_64-linux-ghc-9.4.1:/home/lyokha/.cabal/lib/x86_64-linux-ghc-9.4.1:/usr/lib64/ghc-9.4.1/lib/../lib/x86_64-linux-ghc-9.4.1
 
 ---> Archiving artifacts
 ngx_distribution_test.so
-x86_64-linux-ghc-8.10.5/
-x86_64-linux-ghc-8.10.5/libHSasync-2.2.4-ENjuIeC23kaKyMVDRYThP3-ghc8.10.5.so
-x86_64-linux-ghc-8.10.5/libHSsplitmix-0.1.0.4-HVTAcdRNxuE9ndjT7sldq9-ghc8.10.5.so
-x86_64-linux-ghc-8.10.5/libHSth-abstraction-0.4.3.0-5HX1AugCZKLKm3ZYKErCAM-ghc8.10.5.so
-x86_64-linux-ghc-8.10.5/libHSrts_thr-ghc8.10.5.so
+x86_64-linux-ghc-9.4.1/
+x86_64-linux-ghc-9.4.1/libHSrts-1.0.2_thr-ghc9.4.1.so
+x86_64-linux-ghc-9.4.1/libHSwitherable-0.4.2-1AWCu2zvFImLTaoXk8CRkT-ghc9.4.1.so
+x86_64-linux-ghc-9.4.1/libHSsplitmix-0.1.0.4-HUWpFUIlsWJ8kN1EGcaWa2-ghc9.4.1.so
+x86_64-linux-ghc-9.4.1/libHSscientific-0.3.7.0-C7AyvjqJeHGGsm9gk5kZlS-ghc9.4.1.so
 
    ...
 
-x86_64-linux-ghc-8.10.5/libHSbifunctors-5.5.11-2fVsEc2ZlypEgv2Pi5nRwa-ghc8.10.5.so
-x86_64-linux-ghc-8.10.5/libHSstrict-0.4.0.1-Bs4t4Fhsgeo8grcWS7WJTy-ghc8.10.5.so
-x86_64-linux-ghc-8.10.5/libHSdlist-1.0-GVPedlNIGcrCE31hGMMV1G-ghc8.10.5.so
+x86_64-linux-ghc-9.4.1/libHSunix-2.7.3-ghc9.4.1.so
+x86_64-linux-ghc-9.4.1/libHSpretty-1.1.3.6-ghc9.4.1.so
+x86_64-linux-ghc-9.4.1/libHSdeepseq-1.4.8.0-ghc9.4.1.so
 ```
 
-Note that in ghc older than *8.10.6*, option *-threaded* must be replaced
-with option *-lHSrts_thr-ghc&dollar;(ghc --numeric-version)* because ghc option
-*-flink-rts* which is passed by the module internally has first appeared in
-the said release. Note also that clause *ghc-options* in the Cabal file is a
-better place for such a generic option as *-threaded*.
+Notes about the value of *--ghc-options* in command *cabal v1-build*.
+
+- In ghc older than *8.10.6*, option *-threaded* must be replaced with option
+  *-lHSrts_thr-ghc&dollar;(ghc --numeric-version)* because ghc option
+  *-flink-rts* which is passed by the module internally has first appeared in
+  the said release,
+- clause *ghc-options* in the Cabal file is a better place for such a generic
+  option as *-threaded*.
+- if the base name of the source file (*__ngx_distribution_test__.hs*)
+  exactly matched the package name (*__ngx-distribution-test__*), then
+  options *ngx_distribution_test.hs -o ngx_distribution_test.so* could be
+  omitted.
 
 Now the current working directory contains new files
 *ngx_distribution_test.so* and *ngx-distribution-test-0.1.0.0.tar.gz* and a
-new directory *x86_64-linux-ghc-8.10.5*. The tar-file contains the patched
+new directory *x86_64-linux-ghc-9.4.1*. The tar-file contains the patched
 shared library and the directory with dependent libraries: it is ready for
 installation in directory */var/lib/nginx* at the target system.
 
@@ -173,28 +180,30 @@ $ sed -i 's/\(^package-id \)/--\1/' .ghc.environment.x86_64-linux-$(ghc --numeri
 ```
 
 This *sed* command comments out all lines that start with word *package-id*
-in file *.ghc.environment.x86_64-linux-8.10.5* which has been created by the
+in file *.ghc.environment.x86_64-linux-9.4.1* which has been created by the
 former commands. This prevents the target library from linking against
 libraries listed in those lines thus making the overall number and the size
 of dependent libraries as small as possible. If this command breaks the
 following steps, some of the commented lines can be selectively uncommented.
 
 ```ShellSession
-$ runhaskell --ghc-arg=-package=base --ghc-arg=-package=ngx-export-distribution Setup.hs configure --package-db=clear --package-db=global --package-db=$HOME/.cabal/store/ghc-$(ghc --numeric-version)/package.db --prefix=/var/lib/nginx
+$ ADD_CABAL_STORE=$(sed -n 's/^\(package-db\)\s\+/--\1=/p' .ghc.environment.x86_64-linux-$(ghc --numeric-version))
+$ runhaskell --ghc-arg=-package=base --ghc-arg=-package=ngx-export-distribution Setup.hs configure --package-db=clear --package-db=global $ADD_CABAL_STORE --prefix=/var/lib/nginx
 ```
 
-Directory
-*&dollar;HOME/.cabal/store/ghc-&dollar;(ghc --numeric-version)/package.db*
-contains a GHC *package db* with all packages built by *cabal v2-build*, it
-gets also listed in file *.ghc.environment.x86_64-linux-8.10.5*.
+Shell variable *&dollar;ADD_CABAL_STORE* wraps all *package-db* records found in
+the GHC environment file into the list of options suitable for passing to the
+*configure* command. Normally, this list shall contain a single directory
+*&dollar;HOME/.cabal/store/ghc-&dollar;(ghc --numeric-version)/package.db* with
+all packages ever built by *cabal v2-build*.
 
 ```ShellSession
 $ runhaskell --ghc-arg=-package=base --ghc-arg=-package=ngx-export-distribution Setup.hs build --ghc-options="ngx_distribution_test.hs -o ngx_distribution_test.so -threaded"
 ```
 
 This should build library *ngx_distribution_test.so* and link it against
-Haskell libraries found in the global package db and
-*&dollar;HOME/.cabal/store/ghc-&dollar;(ghc --numeric-version)/package.db*.
+Haskell libraries found in the global package db and the Cabal's global
+package store.
 
 ###### Collecting direct dependencies with cabal-plan
 
@@ -210,8 +219,8 @@ version as a bonus) programmatically in a shell variable that will be put
 inside the *configure* command.
 
 ```ShellSession
-$ DIRECT_DEPS=$(cabal-plan info --ascii | sed -n '/^CompNameLib$/,/^$/s/^\s\+/--package=/p')
-$ runhaskell --ghc-arg=-package=base --ghc-arg=-package=ngx-export-distribution Setup.hs configure --package-db=clear --package-db=global --package-db="$HOME/.cabal/store/ghc-$(ghc --numeric-version)/package.db" $DIRECT_DEPS --prefix=/var/lib/nginx
+$ ADD_DIRECT_DEPS=$(cabal-plan info --ascii | sed -n '/^CompNameLib$/,/^$/s/^\s\+/--package=/p')
+$ runhaskell --ghc-arg=-package=base --ghc-arg=-package=ngx-export-distribution Setup.hs configure --package-db=clear --package-db=global $ADD_CABAL_STORE $ADD_DIRECT_DEPS --prefix=/var/lib/nginx
 ```
 
 ###### Drawbacks
