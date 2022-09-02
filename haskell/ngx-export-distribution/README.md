@@ -127,14 +127,14 @@ Notes about the value of *--ghc-options* in command *cabal v1-build*.
 
 - In ghc older than *8.10.6*, option *-threaded* must be replaced with option
   *-lHSrts_thr-ghc&dollar;(ghc --numeric-version)* because ghc option
-  *-flink-rts* which is passed by the module internally has first appeared in
+  *-flink-rts*, which is passed by the module internally, has first appeared in
   the said release,
 - clause *ghc-options* in the Cabal file is a better place for such a generic
   option as *-threaded*.
-- if the base name of the source file (*__ngx_distribution_test__.hs*)
+- if the base name of the source file (*__ngx_distribution_test__.hs*) had
   exactly matched the package name (*__ngx-distribution-test__*), then
-  options *ngx_distribution_test.hs -o ngx_distribution_test.so* could be
-  omitted.
+  options *ngx_distribution_test.hs -o ngx_distribution_test.so* could have
+  been omitted.
 
 Now the current working directory contains new files
 *ngx_distribution_test.so* and *ngx-distribution-test-0.1.0.0.tar.gz* and a
