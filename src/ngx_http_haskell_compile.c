@@ -41,6 +41,7 @@ static const ngx_str_t  ghc_rtslib_thr_debug[2] = {
     ngx_string(" -lHSrts_thr_debug-ghc$(ghc --numeric-version)"),
     ngx_string(" -flink-rts -threaded -debug")
 };
+static const char* haskell_version_cmd = "ghc --numeric-version";
 
 
 char *
@@ -126,6 +127,7 @@ ngx_http_haskell_compile(ngx_conf_t *cf, void *conf, ngx_str_t source_name)
     size_t                         i;
     ngx_int_t                      version, iface;
     FILE                          *fp;
+    int                            exit_status;
     static const size_t            buf_size = 16;
     char                           buf[buf_size];
     char                          *compile_cmd;
@@ -134,25 +136,36 @@ ngx_http_haskell_compile(ngx_conf_t *cf, void *conf, ngx_str_t source_name)
     ngx_uint_t                     passed_len, full_len;
     ngx_uint_t                     compile_cmd_len;
 
-    fp = popen("ghc --numeric-version", "r");
+    fp = popen(haskell_version_cmd, "r");
     if (fp == NULL) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "failed to open ghc program channel");
+                           "failed to open process for "
+                           "command \"%s\"", haskell_version_cmd);
         return NGX_CONF_ERROR;
     }
 
     if (fgets(buf, buf_size, fp) == NULL) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "failed to read ghc version");
+                           "failed to read ghc version with "
+                           "command \"%s\"", haskell_version_cmd);
         if (pclose(fp) == -1) {
             ngx_conf_log_error(NGX_LOG_ERR, cf, 0,
-                               "failed to close ghc program channel");
+                               "failed to close process for "
+                               "command \"%s\"", haskell_version_cmd);
         }
         return NGX_CONF_ERROR;
     }
-    if (pclose(fp) == -1) {
+
+    exit_status = pclose(fp);
+    if (exit_status == -1) {
         ngx_conf_log_error(NGX_LOG_ERR, cf, 0,
-                           "failed to close ghc program channel");
+                           "failed to close process for "
+                           "command \"%s\"", haskell_version_cmd);
+    } else if (!WIFEXITED(exit_status) || WEXITSTATUS(exit_status) != 0) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "process for command \"%s\" exited abnormally",
+                           haskell_version_cmd);
+        return NGX_CONF_ERROR;
     }
 
     for (i = 0; i < buf_size; i++) {
@@ -164,7 +177,8 @@ ngx_http_haskell_compile(ngx_conf_t *cf, void *conf, ngx_str_t source_name)
     version = ngx_atoi((u_char *) buf, i);
     if (version == NGX_ERROR) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "failed to extract ghc major version");
+                           "failed to extract ghc major version with "
+                           "command \"%s\"", haskell_version_cmd);
         return NGX_CONF_ERROR;
     }
 
