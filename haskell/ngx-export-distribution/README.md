@@ -182,9 +182,10 @@ $ sed -i 's/\(^package-id \)/--\1/' .ghc.environment.x86_64-linux-$(ghc --numeri
 This *sed* command comments out all lines that start with word *package-id*
 in file *.ghc.environment.x86_64-linux-9.4.1* which has been created by the
 former commands. This prevents the target library from linking against
-libraries listed in those lines thus making the overall number and the size
-of dependent libraries as small as possible. If this command breaks the
-following steps, some of the commented lines can be selectively uncommented.
+libraries belonging to packages listed in those lines, thus making the
+overall number and the size of dependent libraries as small as possible. If
+this command breaks the following steps, some of the commented lines can be
+selectively uncommented.
 
 ```ShellSession
 $ ADD_CABAL_STORE=$(sed -n 's/^\(package-db\)\s\+/--\1=/p' .ghc.environment.x86_64-linux-$(ghc --numeric-version))
@@ -193,7 +194,7 @@ $ runhaskell --ghc-arg=-package=base --ghc-arg=-package=ngx-export-distribution 
 
 Shell variable *&dollar;ADD_CABAL_STORE* wraps all *package-db* records found in
 the GHC environment file into the list of options suitable for passing to the
-*configure* command. Normally, this list shall contain a single directory
+*configure* command. Normally, this list shall contain only one directory
 *&dollar;HOME/.cabal/store/ghc-&dollar;(ghc --numeric-version)/package.db* with
 all packages ever built by *cabal v2-build*.
 
