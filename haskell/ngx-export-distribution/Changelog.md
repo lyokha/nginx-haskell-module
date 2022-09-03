@@ -1,3 +1,7 @@
+### 0.3.2.3
+
+- Fixed docs on using *cabal-plan*.
+
 ### 0.3.2.0
 
 - Added docs on building with dependencies installed by *cabal v2-build*.

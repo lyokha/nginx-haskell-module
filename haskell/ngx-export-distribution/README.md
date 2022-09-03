@@ -4,7 +4,7 @@
 
 This module allows for building simple shared libraries with Cabal.
 
-Below is a simple example.
+###### An example
 
 ###### File *ngx_distribution_test.hs*
 
