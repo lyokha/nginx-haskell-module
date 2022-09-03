@@ -257,18 +257,42 @@ import Data.Maybe
 -- $cabal-plan
 --
 -- We listed build dependencies in both /build-depends/ and /ghc-options/
--- clauses in the Cabal file to let ghc find dependencies built with
--- /cabal v2-build/ at the /configure/ step. This approach is tedious and
--- error-prone. Fortunately, there is utility
--- [cabal-plan](https://hackage.haskell.org/package/cabal-plan) which is aimed
--- to figure out dependencies of built packages. Particularly, with /cabal-plan/
--- we can remove those /-package=.../ lines from the /ghc-options/ clause in the
--- Cabal file and, instead, collect the direct dependencies (tagged with the
--- version as a bonus) programmatically in a shell variable that will be put
--- inside the /configure/ command.
+-- clauses in the Cabal file to let Cabal find dependencies built with
+-- /cabal v2-build/ at the /configure/ step and expose them to ghc at the
+-- /build/ step. This approach is tedious and error-prone. Fortunately, there is
+-- utility [cabal-plan](https://hackage.haskell.org/package/cabal-plan) which is
+-- aimed to figure out dependencies of built packages. Particularly, with
+-- /cabal-plan/ we can remove those /-package=.../ lines from the /ghc-options/
+-- clause in the Cabal file and, instead, collect the direct dependencies
+-- programmatically and put them as /package-id/ records in the GHC environment
+-- file.
 --
--- > $ ADD_DIRECT_DEPS=$(cabal-plan info --ascii | sed -n '/^CompNameLib$/,/^$/s/^\s\+/--package=/p')
--- > $ runhaskell --ghc-arg=-package=base --ghc-arg=-package=ngx-export-distribution Setup.hs configure --package-db=clear --package-db=global $ADD_CABAL_STORE $ADD_DIRECT_DEPS --prefix=/var/lib/nginx
+-- The following bash script collects all direct dependencies reported by
+-- /cabal-plan/.
+--
+-- ==== File /cabal-plan-direct-deps.sh/
+-- > #!/usr/bin/env bash
+-- >
+-- > CABAL_PLAN=$(cabal-plan info --ascii)
+-- > UNIT_ID="^UnitId\s\+\""
+-- > while IFS= read -r pkg
+-- > do sed -n "/$UNIT_ID$pkg/s/$UNIT_ID\(.*\)\"\$/package-id \1/p" <<< "$CABAL_PLAN"
+-- > done < <(sed -n '/^CompNameLib$/,/^$/s/^\s\+//p' <<< "$CABAL_PLAN")
+-- > unset CABAL_PLAN UNIT_ID
+--
+-- After running this as
+--
+-- > $ . cabal-plan-direct-deps.sh >> .ghc.environment.x86_64-linux-$(ghc --numeric-version)
+--
+-- lines similar to
+--
+-- > package-id aeson-2.1.0.0-9b19e87ee2a82567866c50e13806427068fd4bcc78cedb01ecad7389791f6761
+-- > package-id base-4.17.0.0
+-- > package-id bytestring-0.11.3.1
+-- > package-id ngx-export-1.7.5-17b83e3ac354cc52614227ba662f8c23a8ddd4e08f2a1a02b0d6b51b2dd849ea
+--
+-- will appear at the end of file /.ghc.environment.x86_64-linux-9.4.1/. This
+-- shall expose the four dependent packages at the /build/ step.
 
 -- $drawbacks
 --
