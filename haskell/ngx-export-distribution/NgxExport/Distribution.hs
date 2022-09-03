@@ -284,7 +284,7 @@ import Data.Maybe
 --
 -- > $ . cabal-plan-direct-deps.sh >> .ghc.environment.x86_64-linux-$(ghc --numeric-version)
 --
--- lines similar to
+-- four lines looking similar to
 --
 -- > package-id aeson-2.1.0.0-9b19e87ee2a82567866c50e13806427068fd4bcc78cedb01ecad7389791f6761
 -- > package-id base-4.17.0.0
