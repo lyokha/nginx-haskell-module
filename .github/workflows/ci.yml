@@ -72,11 +72,11 @@ jobs:
           cabal --version
           echo "$(ghc --version) "`
               `"[$(ghc --print-project-git-commit-id 2>/dev/null || echo '?')]"
-          if echo "$CABALVER" | grep -q '^3\.6'
+          if echo "$CABALVER" | grep -q '^3\.[0-5]\.'
           then
-              cabal v2-update
-          else
               cabal v1-update
+          else
+              cabal v2-update
           fi
           cd haskell/ngx-export
           cabal v1-install --only-dependencies
