@@ -177,10 +177,6 @@ instance FromJSON a => FromByteString (ReadableAsJSON a) where
     type WrappedT (ReadableAsJSON a) = a
     fromByteString = const decodeStrict
 
-instance FromByteString ByteString where
-    type WrappedT ByteString = ByteString
-    fromByteString = const Just
-
 -- | Reads an object of a custom type implementing an instance of 'Read'
 --   from a 'ByteString'.
 --
