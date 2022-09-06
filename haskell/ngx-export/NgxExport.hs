@@ -9,10 +9,11 @@
 --
 -- Maintainer  :  alexey.radkov@gmail.com
 -- Stability   :  stable
--- Portability :  non-portable (requires POSIX)
+-- Portability :  non-portable (requires POSIX and Template Haskell)
 --
--- Export regular haskell functions for using in directives of
--- <http://github.com/lyokha/nginx-haskell-module nginx-haskell-module>.
+-- Nginx / Haskell interoperability layer and exporters of regular Haskell
+-- functions at Nginx level for using in configuration directives of
+-- <https://github.com/lyokha/nginx-haskell-module nginx-haskell-module>.
 --
 -----------------------------------------------------------------------------
 

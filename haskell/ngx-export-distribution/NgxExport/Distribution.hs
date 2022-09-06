@@ -12,7 +12,7 @@
 --
 -- Quick and dirty build of simple shared libraries and collecting
 -- dependencies. This was designed to build custom Haskell handlers for
--- <http://github.com/lyokha/nginx-haskell-module nginx-haskell-module>.
+-- <https://github.com/lyokha/nginx-haskell-module nginx-haskell-module>.
 --
 -----------------------------------------------------------------------------
 

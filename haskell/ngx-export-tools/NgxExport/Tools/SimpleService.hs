@@ -1,0 +1,391 @@
+{-# LANGUAGE TemplateHaskell #-}
+
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  NgxExport.Tools.SimpleService
+-- Copyright   :  (c) Alexey Radkov 2018-2022
+-- License     :  BSD-style
+--
+-- Maintainer  :  alexey.radkov@gmail.com
+-- Stability   :  stable
+-- Portability :  non-portable (requires Template Haskell)
+--
+-- This module implements a number of exporters for /simple services/. Here
+-- /simplicity/ means avoiding boilerplate code regarding to efficient reading
+-- of typed configurations and timed restarts of services. All simple services
+-- have type
+--
+-- @
+-- 'ByteString' -> 'Prelude.Bool' -> 'IO' 'L.ByteString'
+-- @
+--
+-- which corresponds to the type of usual services from module "NgxExport".
+--
+-- Below is a simple example.
+--
+-- ==== File /test_tools.hs/
+-- @
+-- {-\# LANGUAGE TemplateHaskell, DeriveGeneric, RecordWildCards \#-}
+--
+-- module TestTools where
+--
+-- import           NgxExport
+-- import           NgxExport.Tools
+--
+-- import           Data.ByteString (ByteString)
+-- import qualified Data.ByteString.Lazy as L
+-- import qualified Data.ByteString.Lazy.Char8 as C8L
+-- import           Data.Aeson
+-- import           Data.IORef
+-- import           Control.Monad
+-- import           GHC.Generics
+--
+-- test :: ByteString -> Bool -> IO L.ByteString
+-- __/test/__ = const . return . L.fromStrict
+-- 'ngxExportSimpleService' \'test $
+--     'PersistentService' $ Just $ 'Sec' 10
+--
+-- showAsLazyByteString :: Show a => a -> L.ByteString
+-- showAsLazyByteString = C8L.pack . show
+--
+-- testRead :: Show a => a -> IO L.ByteString
+-- testRead = return . showAsLazyByteString
+--
+-- testReadInt :: Int -> Bool -> IO L.ByteString
+-- __/testReadInt/__ = const . testRead
+-- 'ngxExportSimpleServiceTyped' \'testReadInt \'\'Int $
+--     'PersistentService' $ Just $ 'Sec' 10
+--
+-- newtype Conf = Conf Int deriving (Read, Show)
+--
+-- testReadConf :: Conf -> Bool -> IO L.ByteString
+-- __/testReadConf/__ = const . testRead
+-- 'ngxExportSimpleServiceTyped' \'testReadConf \'\'Conf $
+--     'PersistentService' $ Just $ 'Sec' 10
+--
+-- testConfStorage :: ByteString -> IO L.ByteString
+-- __/testConfStorage/__ = const $
+--     showAsLazyByteString \<$\> readIORef __/storage_Conf_/__testReadConf
+-- 'ngxExportIOYY' \'testConfStorage
+--
+-- data ConfWithDelay = ConfWithDelay { delay :: 'TimeInterval'
+--                                    , value :: Int
+--                                    } deriving (Read, Show)
+--
+-- testReadConfWithDelay :: ConfWithDelay -> Bool -> IO L.ByteString
+-- __/testReadConfWithDelay/__ c\@ConfWithDelay {..} fstRun = do
+--     unless fstRun $ 'threadDelaySec' $ 'toSec' delay
+--     testRead c
+-- 'ngxExportSimpleServiceTyped' \'testReadConfWithDelay \'\'ConfWithDelay $
+--     'PersistentService' Nothing
+--
+-- data ConfJSON = ConfJSONCon1 Int
+--               | ConfJSONCon2 deriving (Generic, Show)
+-- instance FromJSON ConfJSON
+--
+-- testReadConfJSON :: ConfJSON -> Bool -> IO L.ByteString
+-- __/testReadConfJSON/__ = 'NgxExport.Tools.SplitService.ignitionService' testRead
+-- 'ngxExportSimpleServiceTypedAsJSON' \'testReadConfJSON \'\'ConfJSON
+--     'SingleShotService'
+-- @
+--
+-- Here five simple services of various types are defined: /test/,
+-- /testReadInt/, /testReadConf/, /testReadConfWithDelay/, and
+-- /testReadConfJSON/. /Typed/ services hold 'IORef' /storages/ to save their
+-- configurations for faster access in future iterations. The name of a storage
+-- consists of the name of its type and the name of the service connected by an
+-- underscore and prefixed as a whole word with __/storage_/__.
+--
+-- As soon as all the services in the example merely echo their configurations
+-- into their service variables, they must sleep for a while between iterations.
+-- Sleeps are managed by strategies defined in type 'ServiceMode'. There are
+-- basically three sleeping strategies:
+--
+-- * Periodical sleeps (for example, @'PersistentService' $ Just $ 'Sec' 10@)
+-- * No sleeps between iterations (@'PersistentService' Nothing@)
+-- * /Single-shot/ services (@'SingleShotService'@)
+--
+-- In this toy example the most efficient sleeping strategy is a single-shot
+-- service because data is not altered during runtime. A single-shot service
+-- runs exactly two times during the lifetime of a worker process: the first
+-- run (when the second argument of the service, i.e. the /first-run/ flag, is
+-- /True/) is immediately followed by the second run (when the /first-run/ flag
+-- is /False/). On the second run the service handler is used as an exception
+-- handler when the service is shutting down after the 'WorkerProcessIsExiting'
+-- exception has been thrown. Accordingly, a single-shot handler can be used
+-- for allocation of some global resources (when the first-run flag is /True/),
+-- and cleaning them up (when the first-run flag is /False/).
+--
+-- Notice that service /testReadConfWithDelay/ manages time delays on its own,
+-- therefore it uses /no-sleeps/ strategy @'PersistentService' Nothing@.
+--
+-- ==== File /nginx.conf/
+-- @
+-- user                    nobody;
+-- worker_processes        2;
+--
+-- events {
+--     worker_connections  1024;
+-- }
+--
+-- http {
+--     default_type        application\/octet-stream;
+--     sendfile            on;
+--
+--     haskell load \/var\/lib\/nginx\/test_tools.so;
+--
+--     haskell_run_service __/simpleService_test/__
+--             $hs_test
+--             test;
+--
+--     haskell_run_service __/simpleService_testReadInt/__
+--             $hs_testReadInt
+--             5000000;
+--
+--     haskell_run_service __/simpleService_testReadConf/__
+--             $hs_testReadConf
+--             \'Conf 20\';
+--
+--     haskell_run_service __/simpleService_testReadConfWithDelay/__
+--             $hs_testReadConfWithDelay
+--             \'ConfWithDelay { delay = Sec 10, value = 12 }\';
+--
+--     haskell_run_service __/simpleService_testReadConfJSON/__
+--             $hs_testReadConfJSON
+--             \'{\"tag\":\"ConfJSONCon1\", \"contents\":56}\';
+--
+--     server {
+--         listen       8010;
+--         server_name  main;
+--         error_log    \/tmp\/nginx-test-haskell-error.log;
+--         access_log   \/tmp\/nginx-test-haskell-access.log;
+--
+--         location \/ {
+--             haskell_run __/testConfStorage/__ $hs_testConfStorage \'\';
+--
+--             echo \"Service variables:\";
+--             echo \"  hs_test: $hs_test\";
+--             echo \"  hs_testReadInt: $hs_testReadInt\";
+--             echo \"  hs_testReadConf: $hs_testReadConf\";
+--             echo \"  hs_testReadConfWithDelay: $hs_testReadConfWithDelay\";
+--             echo \"  hs_testReadConfJSON: $hs_testReadConfJSON\";
+--             echo \"Storages of service variables:\";
+--             echo \"  hs_testConfStorage: $hs_testConfStorage\";
+--         }
+--     }
+-- }
+-- @
+--
+-- Notice that Haskel handlers defined in /test_tools.hs/ are referred from
+-- the Nginx configuration file with prefix __/simpleService_/__.
+--
+-- ==== A simple test
+-- > $ curl 'http://localhost:8010/'
+-- > Service variables:
+-- >   hs_test: test
+-- >   hs_testReadInt: 5000000
+-- >   hs_testReadConf: Conf 20
+-- >   hs_testReadConfWithDelay: ConfWithDelay {delay = Sec 10, value = 12}
+-- >   hs_testReadConfJSON: ConfJSONCon1 56
+-- > Storages of service variables:
+-- >   hs_testConfStorage: Just (Conf 20)
+-----------------------------------------------------------------------------
+
+
+module NgxExport.Tools.SimpleService (ServiceMode (..)
+                                     ,ngxExportSimpleService
+                                     ,ngxExportSimpleServiceTyped
+                                     ,ngxExportSimpleServiceTypedAsJSON
+    -- | = Re-exported data constructors from /Foreign.C/
+    -- Re-exports are needed by exporters for marshalling in foreign calls.
+                                     ,Foreign.C.Types.CInt (..)
+                                     ,Foreign.C.Types.CUInt (..)
+                                     ) where
+
+import           NgxExport
+import           NgxExport.Tools.Read
+import           NgxExport.Tools.System
+import           NgxExport.Tools.TimeInterval
+
+import           Language.Haskell.TH
+import           Foreign.C.Types
+import           Data.ByteString (ByteString)
+import qualified Data.ByteString.Lazy as L
+import           Data.IORef
+import           Data.Maybe
+import           Control.Monad
+import           Control.Arrow
+import           Control.Exception
+import           System.IO.Unsafe (unsafePerformIO)
+
+-- | Defines a sleeping strategy.
+data ServiceMode
+    -- | Persistent service (with or without periodical sleeps)
+    = PersistentService (Maybe TimeInterval)
+    -- | Single-shot service
+    | SingleShotService
+
+ngxExportSimpleService' :: Name -> Maybe (Name, Bool) -> ServiceMode -> Q [Dec]
+ngxExportSimpleService' f c m = do
+    confBs <- newName "confBs_"
+    fstRun <- newName "fstRun_"
+    let nameF = nameBase f
+        nameSsf = mkName $ "simpleService_" ++ nameF
+        hasConf = isJust c
+        (sNameC, typeC, readConf, unreadableConfMsg) =
+            if hasConf
+                then let (tName, isJSON) = first nameBase $ fromJust c
+                     in (mkName $ "storage_" ++ tName ++ '_' : nameF
+                        -- FIXME: using base name of the type means that it is
+                        -- not possible to pass here qualified types from
+                        -- external modules. Using showName instead of nameBase
+                        -- won't help, as it adds static qualified names like
+                        -- GHC.Types.Int that can be unexpected in the context
+                        -- of the user's module scope, instead of adding the
+                        -- dynamic namespace (possibly not qualified) specified
+                        -- in the import clause of the user's module.
+                        ,conT $ mkName tName
+                        ,if isJSON
+                             then [|readFromByteStringAsJSON|]
+                             else [|readFromByteString|]
+                        ,"Configuration " ++ tName ++ " is not readable"
+                        )
+                else undefined
+        initConf =
+            let eConfBs = varE confBs
+            in if hasConf
+                   then let storage = varE sNameC
+                        in [|readIORef $(storage) >>=
+                                 maybe
+                                     (do
+                                          let conf_data__ =
+                                                  $(readConf) $(eConfBs)
+                                          when (isNothing conf_data__) $
+                                              terminateWorkerProcess
+                                                  unreadableConfMsg
+                                          writeIORef $(storage) conf_data__
+                                          return conf_data__
+                                     ) (return . Just)
+                           |]
+                   else [|return $ Just $(eConfBs)|]
+        (waitTime, runService) =
+            let eF = varE f
+                eFstRun = varE fstRun
+                runPersistentService = [|flip $(eF) $(eFstRun)|]
+            in case m of
+                   PersistentService (Just t) ->
+                       ([|const $ unless $(eFstRun) $ threadDelaySec $ toSec t|]
+                       ,runPersistentService
+                       )
+                   PersistentService Nothing ->
+                       ([|const $ return ()|]
+                       ,runPersistentService
+                       )
+                   SingleShotService ->
+                       ([|\conf_data__ -> unless $(eFstRun) $
+                              handle
+                                  (const $ void $ $(eF) conf_data__ False ::
+                                      WorkerProcessIsExiting -> IO ()
+                                  ) $ forever $ threadDelaySec $ toSec $ Hr 24
+                        |]
+                       ,[|\conf_data__ ->
+                              if $(eFstRun)
+                                  then $(eF) conf_data__ True
+                                  else return L.empty
+                        |]
+                       )
+    concat <$> sequence
+        [sequence $
+            (if hasConf
+                 then [sigD sNameC [t|IORef (Maybe $(typeC))|]
+                      ,funD sNameC
+                          [clause []
+                              (normalB [|unsafePerformIO $ newIORef Nothing|])
+                              []
+                          ]
+                      ,pragInlD sNameC NoInline FunLike AllPhases
+                      ]
+                 else []
+            )
+            ++
+            [sigD nameSsf [t|ByteString -> Bool -> IO L.ByteString|]
+            ,funD nameSsf
+                [clause [varP confBs, varP fstRun]
+                    (normalB [|do
+                                   conf_data_ <- fromJust <$> $(initConf)
+                                   $(waitTime) conf_data_
+                                   $(runService) conf_data_
+                             |]
+                    )
+                    []
+                ]
+            ]
+        ,ngxExportServiceIOYY nameSsf
+        ]
+
+-- | Exports a simple service of type
+--
+-- @
+-- 'ByteString' -> 'Prelude.Bool' -> 'IO' 'L.ByteString'
+-- @
+--
+-- with specified name and service mode.
+ngxExportSimpleService :: Name         -- ^ Name of the service
+                       -> ServiceMode  -- ^ Service mode
+                       -> Q [Dec]
+ngxExportSimpleService f =
+    ngxExportSimpleService' f Nothing
+
+-- | Exports a simple service of type
+--
+-- @
+-- 'Read' a => a -> 'Prelude.Bool' -> 'IO' 'L.ByteString'
+-- @
+--
+-- with specified name and service mode.
+--
+-- The service expects an object of a custom type implementing an instance of
+-- 'Read' at its first argument. For the sake of efficiency, this object gets
+-- deserialized into a global 'IORef' data storage on the first service run to
+-- be further accessed directly from this storage. The storage can be accessed
+-- from elsewhere by a name comprised of the name of the custom type and the
+-- name of the service connected by an underscore and prefixed as a whole word
+-- with __/storage_/__. The stored data is wrapped in 'Maybe' container.
+--
+-- When reading of the custom object fails on the first service run, the
+-- service terminates the worker process by calling 'terminateWorkerProcess'
+-- with a corresponding message.
+ngxExportSimpleServiceTyped :: Name         -- ^ Name of the service
+                            -> Name         -- ^ Name of the custom type
+                            -> ServiceMode  -- ^ Service mode
+                            -> Q [Dec]
+ngxExportSimpleServiceTyped f c =
+    ngxExportSimpleService' f $ Just (c, False)
+
+-- | Exports a simple service of type
+--
+-- @
+-- 'Data.Aeson.FromJSON' a => a -> 'Prelude.Bool' -> 'IO' 'L.ByteString'
+-- @
+--
+-- with specified name and service mode.
+--
+-- The service expects an object of a custom type implementing an instance of
+-- 'Data.Aeson.FromJSON' at its first argument. For the sake of efficiency, this
+-- object gets deserialized into a global 'IORef' data storage on the first
+-- service run to be further accessed directly from this storage. The storage
+-- can be accessed from elsewhere by a name comprised of the name of the custom
+-- type and the name of the service connected by an underscore and prefixed as a
+-- whole word with __/storage_/__. The stored data is wrapped in 'Maybe'
+-- container.
+--
+-- When reading of the custom object fails on the first service run, the
+-- service terminates the worker process by calling 'terminateWorkerProcess'
+-- with a corresponding message.
+ngxExportSimpleServiceTypedAsJSON :: Name         -- ^ Name of the service
+                                  -> Name         -- ^ Name of the custom type
+                                  -> ServiceMode  -- ^ Service mode
+                                  -> Q [Dec]
+ngxExportSimpleServiceTypedAsJSON f c =
+    ngxExportSimpleService' f $ Just (c, True)
+
