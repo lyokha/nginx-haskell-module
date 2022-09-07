@@ -8,13 +8,15 @@
 -- Stability   :  stable
 -- Portability :  non-portable (requires POSIX)
 --
--- Various functions to access low-level Nginx API, mostly wrappers around
--- corresponding functions and data from module "NgxExport".
---
 -----------------------------------------------------------------------------
 
 
-module NgxExport.Tools.System (terminateWorkerProcess
+module NgxExport.Tools.System (
+    -- * Various functions to access low-level Nginx API
+    -- $description
+
+    -- * Exported functions
+                               terminateWorkerProcess
                               ,restartWorkerProcess
                               ,finalizeHTTPRequest
                               ,workerProcessIsExiting
@@ -34,6 +36,11 @@ import           Data.Binary.Get
 import           Data.Maybe
 import           Control.Exception
 import           System.Posix.Types
+
+-- $description
+--
+-- Various functions to access low-level Nginx API, mostly wrappers around
+-- corresponding functions and data from module "NgxExport".
 
 -- | Terminates the Nginx worker process from a Haskell service.
 --

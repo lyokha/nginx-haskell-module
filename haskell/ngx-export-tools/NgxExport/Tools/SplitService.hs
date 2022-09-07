@@ -8,18 +8,25 @@
 -- Stability   :  stable
 -- Portability :  portable
 --
--- Split services split the whole service into two separate actions for the
--- first (/ignition/ service) and the following (/deferred/ service) runs.
---
 -----------------------------------------------------------------------------
 
 
-module NgxExport.Tools.SplitService (splitService
+module NgxExport.Tools.SplitService (
+    -- * Split services
+    -- $description
+
+    -- * Exported functions
+                                     splitService
                                     ,ignitionService
                                     ,deferredService
                                     ) where
 
 import qualified Data.ByteString.Lazy as L
+
+-- $description
+--
+-- Split services split the whole service into two separate actions for the
+-- first (/ignition/ service) and the following (/deferred/ service) runs.
 
 -- | Sets two different actions as ignition and deferred services.
 --

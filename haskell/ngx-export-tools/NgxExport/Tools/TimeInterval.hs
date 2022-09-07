@@ -10,13 +10,15 @@
 -- Stability   :  stable
 -- Portability :  portable
 --
--- A simple implementation of time intervals supposed for describing of low
--- resolution timeouts.
---
 -----------------------------------------------------------------------------
 
 
-module NgxExport.Tools.TimeInterval (TimeInterval (..)
+module NgxExport.Tools.TimeInterval (
+    -- * A simple implementation of time intervals
+    -- $description
+
+    -- * Exported data and functions
+                                     TimeInterval (..)
                                     ,toSec
                                     ,threadDelaySec
                                     ) where
@@ -27,6 +29,11 @@ import           Data.Function (on)
 import           Data.Ord (comparing)
 import           Control.Concurrent
 import           GHC.Generics
+
+-- $description
+--
+-- A simple implementation of time intervals supposed for describing low
+-- resolution timeouts.
 
 -- | Time intervals.
 data TimeInterval = Hr Int          -- ^ Hours

@@ -10,6 +10,35 @@
 -- Stability   :  stable
 -- Portability :  portable
 --
+-----------------------------------------------------------------------------
+
+
+module NgxExport.Tools.Read (
+    -- * Reading custom types from /ByteStrings/
+    -- $description
+
+    -- * Exported functions
+                             readFromByteString
+                            ,readFromByteStringAsJSON
+                            ,readFromByteStringWithRPtr
+                            ,readFromByteStringWithRPtrAsJSON
+                            ,skipRPtr
+                            ) where
+
+import           NgxExport.Tools.System
+
+import           Foreign.Ptr
+import           Foreign.Storable
+import qualified Data.ByteString as B
+import           Data.ByteString (ByteString)
+import qualified Data.ByteString.Char8 as C8
+import           Data.Aeson
+import           Data.Proxy
+import           Control.Arrow
+import           Safe
+
+-- $description
+--
 -- This module provides a number of functions to support /typed/ exchange
 -- between Nginx and Haskell handlers. Functions 'readFromByteString' and
 -- 'readFromByteStringAsJSON' expect serialized values of custom types deriving
@@ -140,27 +169,6 @@
 -- >   hs_testReadConfJSONHandlerBadInput: Nothing
 -- >   hs_testReadConfWithRPtrHandler: (0x00000000016fc790,Just (Conf 21))
 -- >   hs_testReadConfWithRPtrJSONHandler: (0x00000000016fc790,Just (ConfJSONCon1 4))
------------------------------------------------------------------------------
-
-
-module NgxExport.Tools.Read (readFromByteString
-                            ,readFromByteStringAsJSON
-                            ,readFromByteStringWithRPtr
-                            ,readFromByteStringWithRPtrAsJSON
-                            ,skipRPtr
-                            ) where
-
-import           NgxExport.Tools.System
-
-import           Foreign.Ptr
-import           Foreign.Storable
-import qualified Data.ByteString as B
-import           Data.ByteString (ByteString)
-import qualified Data.ByteString.Char8 as C8
-import           Data.Aeson
-import           Data.Proxy
-import           Control.Arrow
-import           Safe
 
 data Readable a
 data ReadableAsJSON a

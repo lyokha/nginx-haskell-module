@@ -10,6 +10,42 @@
 -- Stability   :  stable
 -- Portability :  non-portable (requires Template Haskell)
 --
+-----------------------------------------------------------------------------
+
+
+module NgxExport.Tools.SimpleService (
+    -- * Exporters of simple services
+    -- $description
+
+    -- * Exported data and functions
+                                      ServiceMode (..)
+                                     ,ngxExportSimpleService
+                                     ,ngxExportSimpleServiceTyped
+                                     ,ngxExportSimpleServiceTypedAsJSON
+    -- * Re-exported data constructors from /Foreign.C/
+    -- | Re-exports are needed by exporters for marshalling in foreign calls.
+                                     ,Foreign.C.Types.CInt (..)
+                                     ,Foreign.C.Types.CUInt (..)
+                                     ) where
+
+import           NgxExport
+import           NgxExport.Tools.Read
+import           NgxExport.Tools.System
+import           NgxExport.Tools.TimeInterval
+
+import           Language.Haskell.TH
+import           Foreign.C.Types
+import           Data.ByteString (ByteString)
+import qualified Data.ByteString.Lazy as L
+import           Data.IORef
+import           Data.Maybe
+import           Control.Monad
+import           Control.Arrow
+import           Control.Exception
+import           System.IO.Unsafe (unsafePerformIO)
+
+-- $description
+--
 -- This module implements a number of exporters for /simple services/. Here
 -- /simplicity/ means avoiding boilerplate code regarding to efficient reading
 -- of typed configurations and timed restarts of services. All simple services
@@ -189,34 +225,6 @@
 -- >   hs_testReadConfJSON: ConfJSONCon1 56
 -- > Storages of service variables:
 -- >   hs_testConfStorage: Just (Conf 20)
------------------------------------------------------------------------------
-
-
-module NgxExport.Tools.SimpleService (ServiceMode (..)
-                                     ,ngxExportSimpleService
-                                     ,ngxExportSimpleServiceTyped
-                                     ,ngxExportSimpleServiceTypedAsJSON
-    -- | = Re-exported data constructors from /Foreign.C/
-    -- Re-exports are needed by exporters for marshalling in foreign calls.
-                                     ,Foreign.C.Types.CInt (..)
-                                     ,Foreign.C.Types.CUInt (..)
-                                     ) where
-
-import           NgxExport
-import           NgxExport.Tools.Read
-import           NgxExport.Tools.System
-import           NgxExport.Tools.TimeInterval
-
-import           Language.Haskell.TH
-import           Foreign.C.Types
-import           Data.ByteString (ByteString)
-import qualified Data.ByteString.Lazy as L
-import           Data.IORef
-import           Data.Maybe
-import           Control.Monad
-import           Control.Arrow
-import           Control.Exception
-import           System.IO.Unsafe (unsafePerformIO)
 
 -- | Defines a sleeping strategy.
 data ServiceMode

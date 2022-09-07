@@ -15,15 +15,15 @@
 
 
 module NgxExport.Tools (
-    -- | ==== Reading custom types from /ByteStrings/
+    -- | === Reading custom types from /ByteStrings/
                         module NgxExport.Tools.Read
-    -- | ==== Exporters of simple services
+    -- | === Exporters of simple services
                        ,module NgxExport.Tools.SimpleService
-    -- | ==== Split services
+    -- | === Split services
                        ,module NgxExport.Tools.SplitService
-    -- | ==== Various functions to access low-level Nginx API
+    -- | === Various functions to access low-level Nginx API
                        ,module NgxExport.Tools.System
-    -- | ==== A simple implementation of time intervals
+    -- | === A simple implementation of time intervals
                        ,module NgxExport.Tools.TimeInterval
                        ) where
 
