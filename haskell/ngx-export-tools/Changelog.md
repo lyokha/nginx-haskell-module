@@ -1,3 +1,8 @@
+### 1.0
+
+- The whole package was split into five separate sub-modules.
+- Package stability tag was promoted to stable.
+
 ### 0.4.9.0
 
 - Exposed function *skipRPtr* which can be useful in many contexts.
