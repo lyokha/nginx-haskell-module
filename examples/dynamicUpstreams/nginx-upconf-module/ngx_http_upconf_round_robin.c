@@ -20,7 +20,7 @@
 typedef struct {
     ngx_http_upstream_rr_peer_data_t  *rrp;
     struct sockaddr                    sockaddr;
-} ngx_http_upconf_peer_data_t;
+} ngx_http_upconf_rr_peer_data_t;
 
 
 static ngx_int_t ngx_http_upconf_init_round_robin_peer(ngx_http_request_t *r,
@@ -29,15 +29,6 @@ static ngx_int_t ngx_http_upconf_get_round_robin_peer(ngx_peer_connection_t *pc,
     void *data);
 static ngx_http_upstream_rr_peer_t * ngx_http_upconf_get_peer(
     ngx_http_upstream_rr_peer_data_t *rrp);
-static void ngx_http_upconf_free_round_robin_peer(ngx_peer_connection_t *pc,
-    void *data, ngx_uint_t state);
-
-#if (NGX_HTTP_SSL)
-static ngx_int_t ngx_http_upconf_set_round_robin_peer_session(
-    ngx_peer_connection_t *pc, void *data);
-static void ngx_http_upconf_save_round_robin_peer_session(
-    ngx_peer_connection_t *pc, void *data);
-#endif
 
 
 ngx_int_t
@@ -58,15 +49,15 @@ static ngx_int_t
 ngx_http_upconf_init_round_robin_peer(ngx_http_request_t *r,
     ngx_http_upstream_srv_conf_t *us)
 {
-    ngx_uint_t                    rc;
-    ngx_http_upconf_peer_data_t  *peer_data;
+    ngx_uint_t                       rc;
+    ngx_http_upconf_rr_peer_data_t  *peer_data;
 
     rc = ngx_http_upstream_init_round_robin_peer(r, us);
     if (rc != NGX_OK) {
         return rc;
     }
 
-    peer_data = ngx_palloc(r->pool, sizeof(ngx_http_upconf_peer_data_t));
+    peer_data = ngx_palloc(r->pool, sizeof(ngx_http_upconf_rr_peer_data_t));
     if (peer_data == NULL) {
         return NGX_ERROR;
     }
@@ -90,7 +81,7 @@ ngx_http_upconf_init_round_robin_peer(ngx_http_request_t *r,
 static ngx_int_t
 ngx_http_upconf_get_round_robin_peer(ngx_peer_connection_t *pc, void *data)
 {
-    ngx_http_upconf_peer_data_t       *peer_data = data;
+    ngx_http_upconf_rr_peer_data_t    *peer_data = data;
     ngx_http_upstream_rr_peer_data_t  *rrp;
 
     ngx_int_t                      rc;
@@ -265,11 +256,11 @@ ngx_http_upconf_get_peer(ngx_http_upstream_rr_peer_data_t *rrp)
 }
 
 
-static void
+void
 ngx_http_upconf_free_round_robin_peer(ngx_peer_connection_t *pc, void *data,
     ngx_uint_t state)
 {
-    ngx_http_upconf_peer_data_t       *peer_data = data;
+    ngx_http_upconf_rr_peer_data_t    *peer_data = data;
     ngx_http_upstream_rr_peer_data_t  *rrp;
 
     time_t                         now;
@@ -354,11 +345,11 @@ ngx_http_upconf_free_round_robin_peer(ngx_peer_connection_t *pc, void *data,
 
 #if (NGX_HTTP_SSL)
 
-static ngx_int_t
+ngx_int_t
 ngx_http_upconf_set_round_robin_peer_session(ngx_peer_connection_t *pc,
     void *data)
 {
-    ngx_http_upconf_peer_data_t       *peer_data = data;
+    ngx_http_upconf_rr_peer_data_t    *peer_data = data;
     ngx_http_upstream_rr_peer_data_t  *rrp;
 
     rrp = peer_data->rrp;
@@ -367,11 +358,11 @@ ngx_http_upconf_set_round_robin_peer_session(ngx_peer_connection_t *pc,
 }
 
 
-static void
+void
 ngx_http_upconf_save_round_robin_peer_session(ngx_peer_connection_t *pc,
     void *data)
 {
-    ngx_http_upconf_peer_data_t       *peer_data = data;
+    ngx_http_upconf_rr_peer_data_t    *peer_data = data;
     ngx_http_upstream_rr_peer_data_t  *rrp;
 
     rrp = peer_data->rrp;
