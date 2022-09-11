@@ -40,13 +40,13 @@ provides three directives.
   configuration level. It corresponds to directive *dynamic_upstream* from the
   dynamic upstream module but gets data from a variable.
 
-- *upconf_round_robin* &mdash; This directive must be put inside upstreams with
-  round robin load balancing to be used with the *upconf*. Allowed at the
-  *upstream* configuration level.
+- *upconf_round_robin* &mdash; Installs safe callbacks for round robin load
+  balancing in dynamic upstreams. This directive is mandatory in upstreams
+  managed by *upconf*. Allowed at the *upstream* configuration level.
 
 - *upconf_hash* ``$var`` ``consistent`` &mdash; An alternative to
-  *upconf_round_robin*. Allows using *hash* value for searching the target
-  server. Allowed at the *upstream* configuration level.
+  *upconf_round_robin*. Expects an expression to calculate a *hash* value for
+  searching the target server. Allowed at the *upstream* configuration level.
 
 As soon as *upconf* must parse a *JSON* object, the module requires an external
 library [*jsmn*](http://github.com/zserge/jsmn) for that. The *hash*
