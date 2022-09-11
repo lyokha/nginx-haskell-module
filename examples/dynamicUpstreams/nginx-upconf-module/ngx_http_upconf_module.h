@@ -23,6 +23,7 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 
+#include "ngx_http_upconf_round_robin.h"
 #include "ngx_http_upconf_hash.h"
 
 

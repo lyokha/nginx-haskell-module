@@ -3,12 +3,14 @@ ngx_addon_name=ngx_http_upconf_module
 NGX_HTTP_UPCONF_MODULE_DEPS="$NGX_ADDON_DEPS                                \
                 $ngx_addon_dir/${ngx_addon_name}.h                          \
                 $ngx_addon_dir/ngx_inet_slab.h                              \
+                $ngx_addon_dir/ngx_http_upconf_round_robin.h                \
                 $ngx_addon_dir/ngx_http_upconf_hash.h                       \
                 "
 
 NGX_HTTP_UPCONF_MODULE_SRCS="                                               \
                 $ngx_addon_dir/${ngx_addon_name}.c                          \
                 $ngx_addon_dir/ngx_inet_slab.c                              \
+                $ngx_addon_dir/ngx_http_upconf_round_robin.c                \
                 $ngx_addon_dir/ngx_http_upconf_hash.c                       \
                 "
 

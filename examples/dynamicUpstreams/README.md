@@ -27,21 +27,26 @@ a response.
 }
 ```
 
-When a haskell service receives new data it must update its service variable and
-then call a *callback* function to make a request to a location with a special
-*upconf* handler that will read the variable and update all the affected
+When a haskell service receives new data, it must update its service variable
+and then call a *callback* function to make a request to a location with a
+special *upconf* handler that will read the variable and update all the affected
 upstreams with the new list of servers.
 
 The *upconf* module is mostly adopted from the *dynamic upstreams module* and
-provides two directives.
+provides three directives.
 
 - *upconf* ``$var`` &mdash; Installs a content handler to read value of the
-  ``$var`` and update the upstreams listed in it. Allowed on the *location*
+  ``$var`` and update the upstreams listed in it. Allowed at the *location*
   configuration level. It corresponds to directive *dynamic_upstream* from the
   dynamic upstream module but gets data from a variable.
 
-- *upconf_hash* ``$var`` ``consistent`` &mdash; Allows using *hash* value for
-  searching the target server. Allowed on the *upstream* configuration level.
+- *upconf_round_robin* &mdash; This directive must be put inside upstreams with
+  round robin load balancing to be used with the *upconf*. Allowed at the
+  *upstream* configuration level.
+
+- *upconf_hash* ``$var`` ``consistent`` &mdash; An alternative to
+  *upconf_round_robin*. Allows using *hash* value for searching the target
+  server. Allowed at the *upstream* configuration level.
 
 As soon as *upconf* must parse a *JSON* object, the module requires an external
 library [*jsmn*](http://github.com/zserge/jsmn) for that. The *hash*
@@ -51,7 +56,7 @@ special *checkers* for synchronization between worker processes.
 
 The main configuration resides in [nginx-upconf.conf](nginx-upconf.conf). File
 [nginx-upconf-backends.conf](nginx-upconf-backends.conf) contains the data
-provider emulator and the backends. To test how all this works, the main
+provider emulator and the backends. To test how this all works, the main
 configuration and the backends must be run in separate Nginx instances.
 
 ```ShellSession

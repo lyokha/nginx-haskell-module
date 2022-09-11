@@ -43,6 +43,11 @@ typedef struct {
 
 
 typedef struct {
+    ngx_uint_t                    checked;
+} ngx_http_upconf_ctx_t;
+
+
+typedef struct {
     ngx_array_t                   servers;
     ngx_int_t                     total_weight;
     ngx_uint_t                    weighted;
@@ -91,6 +96,8 @@ static ngx_int_t ngx_http_upconf_update_shm_zone(ngx_http_request_t *r,
     ngx_str_t *zone_name, ngx_http_upconf_upstream_data_t *upstream_data);
 static ngx_uint_t ngx_http_upconf_is_shpool_range(ngx_slab_pool_t *shpool,
     void *p);
+static char * ngx_http_upconf_round_robin(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 static char * ngx_http_upconf_hash(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static ngx_int_t ngx_http_upconf_hash_init_zone(ngx_shm_zone_t *shm_zone,
@@ -103,6 +110,12 @@ static ngx_command_t ngx_http_upconf_commands[] = {
       NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_http_upconf,
       NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      NULL },
+    { ngx_string("upconf_round_robin"),
+      NGX_HTTP_UPS_CONF|NGX_CONF_NOARGS,
+      ngx_http_upconf_round_robin,
+      NGX_HTTP_SRV_CONF_OFFSET,
       0,
       NULL },
     { ngx_string("upconf_hash"),
@@ -247,6 +260,9 @@ ngx_int_t ngx_http_upconf_access_phase_handler(ngx_http_request_t *r)
 {
     ngx_uint_t                       i;
     ngx_http_upconf_main_conf_t     *mcf;
+    ngx_http_upconf_loc_conf_t      *lcf;
+    ngx_http_core_loc_conf_t        *clcf;
+    ngx_http_upconf_ctx_t           *ctx;
     ngx_http_upconf_checker_data_t  *checker;
     ngx_slab_pool_t                 *shpool;
     ngx_uint_t                      *check;
@@ -254,6 +270,11 @@ ngx_int_t ngx_http_upconf_access_phase_handler(ngx_http_request_t *r)
 
     mcf = ngx_http_get_module_main_conf(r, ngx_http_upconf_module);
     checker = mcf->checkers.elts;
+
+    lcf = ngx_http_get_module_loc_conf(r, ngx_http_upconf_module);
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+    ctx = ngx_http_get_module_ctx(r, ngx_http_upconf_module);
 
     for (i = 0; i < mcf->checkers.nelts; i++) {
         if (checker[i].checked) {
@@ -274,19 +295,36 @@ ngx_int_t ngx_http_upconf_access_phase_handler(ngx_http_request_t *r)
         rc = ngx_http_upconf_update(r, checker[i].index, 1);
 
         if (rc == NGX_AGAIN) {
-            ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0,
-                          "data for upstream \"%V\" not initialized",
-                          &checker[i].shm_zone->shm.name);
+            if (clcf->handler != ngx_http_upconf_content_handler) {
+                ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0,
+                              "upconf variable \"%V\" not initialized",
+                              &checker[i].shm_zone->shm.name);
+            }
             ngx_shmtx_unlock(&shpool->mutex);
             continue;
         }
 
         if (rc != NGX_OK) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                          "failed to update data for upstream \"%V\"",
+                          "failed to update upconf variable \"%V\"",
                           &checker[i].shm_zone->shm.name);
             ngx_shmtx_unlock(&shpool->mutex);
             continue;
+        }
+
+        if (ctx == NULL) {
+            ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_upconf_ctx_t));
+            if (ctx == NULL) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "failed to create request context");
+                ngx_shmtx_unlock(&shpool->mutex);
+                continue;
+            }
+            ngx_http_set_ctx(r, ctx, ngx_http_upconf_module);
+        }
+
+        if (checker[i].index == lcf->index) {
+            ctx->checked = 1;
         }
 
         checker[i].checked = 1;
@@ -387,6 +425,7 @@ ngx_http_upconf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         checker->index = lcf->index;
         checker->shm_zone = shm_zone;
+        checker->checked = 0;
     }
 
     clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
@@ -400,6 +439,9 @@ static ngx_int_t
 ngx_http_upconf_content_handler(ngx_http_request_t *r)
 {
     ngx_http_upconf_loc_conf_t      *lcf;
+    ngx_http_core_main_conf_t       *cmcf;
+    ngx_http_variable_t             *cmvars;
+    ngx_http_upconf_ctx_t           *ctx;
     ngx_chain_t                     *out = NULL;
     ngx_buf_t                       *b;
     u_char                          *res;
@@ -413,9 +455,19 @@ ngx_http_upconf_content_handler(ngx_http_request_t *r)
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    rc = ngx_http_upconf_update(r, lcf->index, 0);
-    if (rc != NGX_OK) {
-        return rc;
+    cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
+    cmvars = cmcf->variables.elts;
+
+    ctx = ngx_http_get_module_ctx(r, ngx_http_upconf_module);
+
+    if (ctx == NULL || !ctx->checked) {
+        rc = ngx_http_upconf_update(r, lcf->index, 0);
+        if (rc != NGX_OK) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "failed to update upconf variable \"%V\"",
+                          &cmvars[lcf->index].name);
+            return rc;
+        }
     }
 
     r->headers_out.status = NGX_HTTP_OK;
@@ -472,7 +524,9 @@ ngx_http_upconf_get_shm_zone(ngx_http_request_t *r, ngx_str_t *upstream)
         if (uscf->shm_zone != NULL
             && uscf->shm_zone->shm.name.len == upstream->len
             && ngx_strncmp(uscf->shm_zone->shm.name.data,
-                           upstream->data, upstream->len) == 0)
+                           upstream->data, upstream->len) == 0
+            && (uscf->peer.init_upstream == ngx_http_upconf_init_round_robin
+                || uscf->peer.init_upstream == ngx_http_upconf_init_chash))
         {
             return uscf;
         }
@@ -731,6 +785,7 @@ ngx_http_upconf_update_shm_zone(ngx_http_request_t *r, ngx_str_t *zone_name,
                                 ngx_http_upconf_upstream_data_t *upstream_data)
 {
     ngx_uint_t                           i, size;
+    ngx_uint_t                           seqn = 0, seqn_done = 0;
     ngx_slab_pool_t                     *shpool;
     ngx_http_upstream_rr_peer_t         *peer, *existing, *prev, *next;
     ngx_http_upstream_rr_peer_t         *new = NULL;
@@ -749,7 +804,8 @@ ngx_http_upconf_update_shm_zone(ngx_http_request_t *r, ngx_str_t *zone_name,
 
     if (uscf == NULL) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "upstream \"%V\" not found or not in shm", zone_name);
+                      "upstream \"%V\" not found or not tagged as upconf",
+                      zone_name);
         return NGX_OK;
     }
 
@@ -780,6 +836,10 @@ ngx_http_upconf_update_shm_zone(ngx_http_request_t *r, ngx_str_t *zone_name,
         existing = NULL;
 
         for (peer = peers->peer; peer != NULL; peer = peer->next) {
+            if (!seqn_done) {
+                seqn = peer->max_conns;
+                seqn_done = 1;
+            }
             if (server_data[i].addr.len == peer->name.len
                 && ngx_strncmp(server_data[i].addr.data, peer->name.data,
                                peer->name.len) == 0)
@@ -858,6 +918,8 @@ ngx_http_upconf_update_shm_zone(ngx_http_request_t *r, ngx_str_t *zone_name,
         }
         prev = peer;
         if (i == 0) {
+            /* BEWARE: misusing peer->max_conns to hold seq number! */
+            peer->max_conns = seqn + 1;
             new = peer;
         }
     }
@@ -937,6 +999,50 @@ ngx_http_upconf_is_shpool_range(ngx_slab_pool_t *shpool, void *p)
 
 
 static char *
+ngx_http_upconf_round_robin(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_str_t                            *value;
+    ngx_http_upstream_srv_conf_t         *uscf;
+
+    value = cf->args->elts;
+
+    uscf = ngx_http_conf_get_module_srv_conf(cf, ngx_http_upstream_module);
+
+    if (uscf->shm_zone == NULL) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "directive \"%V\" must be defined after \"zone\"",
+                           &value[0]);
+        return NGX_CONF_ERROR;
+    }
+
+    if (uscf->host.len != uscf->shm_zone->shm.name.len
+        || ngx_strncmp(uscf->host.data, uscf->shm_zone->shm.name.data,
+                       uscf->host.len) != 0)
+    {
+        ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                           "names of upstream \"%V\" and zone \"%V\" differ, "
+                           "note that upconf finds upstreams by zone name!",
+                           &uscf->host, &uscf->shm_zone->shm.name);
+    }
+
+    if (uscf->peer.init_upstream) {
+        ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                           "load balancing method redefined");
+    }
+
+    uscf->flags = NGX_HTTP_UPSTREAM_CREATE
+                  |NGX_HTTP_UPSTREAM_WEIGHT
+                  |NGX_HTTP_UPSTREAM_MAX_FAILS
+                  |NGX_HTTP_UPSTREAM_FAIL_TIMEOUT
+                  |NGX_HTTP_UPSTREAM_DOWN;
+
+    uscf->peer.init_upstream = ngx_http_upconf_init_round_robin;
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
 ngx_http_upconf_hash(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_upconf_srv_conf_t           *scf = conf;
@@ -969,6 +1075,16 @@ ngx_http_upconf_hash(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                            "directive \"%V\" must be defined after \"zone\"",
                            &value[0]);
         return NGX_CONF_ERROR;
+    }
+
+    if (uscf->host.len != uscf->shm_zone->shm.name.len
+        || ngx_strncmp(uscf->host.data, uscf->shm_zone->shm.name.data,
+                       uscf->host.len) != 0)
+    {
+        ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                           "names of upstream \"%V\" and zone \"%V\" differ, "
+                           "note that upconf finds upstreams by zone name!",
+                           &uscf->host, &uscf->shm_zone->shm.name);
     }
 
     if (uscf->peer.init_upstream) {

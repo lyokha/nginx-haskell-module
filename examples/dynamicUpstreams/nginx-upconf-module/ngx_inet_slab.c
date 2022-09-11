@@ -3,6 +3,11 @@
  * nginx/src/core/ngx_inet.c
  */
 
+/*
+ * Copyright (C) Igor Sysoev
+ * Copyright (C) Nginx, Inc.
+ */
+
 
 #include <ngx_config.h>
 #include <ngx_core.h>
@@ -11,7 +16,8 @@
 static ngx_int_t ngx_parse_unix_domain_url(ngx_slab_pool_t *pool, ngx_url_t *u);
 static ngx_int_t ngx_parse_inet_url(ngx_slab_pool_t *pool, ngx_url_t *u);
 static ngx_int_t ngx_parse_inet6_url(ngx_slab_pool_t *pool, ngx_url_t *u);
-static ngx_int_t ngx_inet_resolve_host_slab(ngx_slab_pool_t *pool, ngx_url_t *u);
+static ngx_int_t ngx_inet_resolve_host_slab(ngx_slab_pool_t *pool,
+    ngx_url_t *u);
 
 
 ngx_int_t
