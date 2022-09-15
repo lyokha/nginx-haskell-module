@@ -16,7 +16,6 @@ module NgxHaskellUserRuntime where
 
 import           NgxExport
 import qualified Data.ByteString.Char8 as C8
-import qualified Data.ByteString.Lazy.Char8 as C8L
 import qualified Data.Map.Strict as M
 import           Data.Map.Strict (Map)
 import           Network.HTTP.Client
@@ -92,7 +91,7 @@ getUpstreams (C8.unpack -> conf) firstRun = do
     new <- catchBadResponse $ fromMaybe M.empty . decode <$> query url addr
     old <- readIORef collectedData
     if new == old
-        then return C8L.empty
+        then return ""
         else do
             writeIORef collectedData new
             return $ encode new
@@ -108,7 +107,7 @@ ngxExportServiceIOYY 'getUpstreams
 
 signalUpconf (C8.unpack -> conf) = const $ do
     let Upconf (url, addr) = readDef (Upconf ("", "")) conf
-    void $ handle (\(_ :: SomeException) -> return C8L.empty) $ query url addr
-    return C8L.empty
+    void $ handle (\(_ :: SomeException) -> return "") $ query url addr
+    return ""
 ngxExportServiceIOYY 'signalUpconf
 

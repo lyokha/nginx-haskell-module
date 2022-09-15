@@ -45,8 +45,9 @@ typedef struct {
 
 
 typedef struct {
-    /* the round robin data and sockaddr must be first */
+    /* the round robin data, number and sockaddr must be first */
     ngx_http_upstream_rr_peer_data_t    *rrp;
+    ngx_uint_t                           number;
     struct sockaddr                      sockaddr;
     ngx_http_upstream_hash_peer_data_t  *hp;
 } ngx_http_upconf_hash_peer_data_t;
@@ -487,13 +488,17 @@ ngx_http_upstream_init_chash_peer(ngx_http_request_t *r,
 
     hp = r->upstream->peer.data;
 
+    hp->get_rr_peer = ngx_http_upconf_get_round_robin_peer;
+
     peer_data = ngx_palloc(r->pool, sizeof(ngx_http_upconf_hash_peer_data_t));
     if (peer_data == NULL) {
         return NGX_ERROR;
     }
 
     peer_data->rrp = &hp->rrp;
+    peer_data->number = peer_data->rrp->peers->number;
     peer_data->hp = hp;
+
     r->upstream->peer.data = peer_data;
 
     r->upstream->peer.get = ngx_http_upstream_get_chash_peer;
@@ -581,6 +586,12 @@ ngx_http_upstream_get_chash_peer(ngx_peer_connection_t *pc, void *data)
     pc->name = peers->name;
 
     ngx_http_upstream_rr_peers_wlock(peers);
+
+    if (peers->number > peer_data->number && peers->number > 8) {
+        /* hp->rrp.tried storage capacity is not big enough for new servers! */
+        ngx_http_upstream_rr_peers_unlock(peers);
+        return NGX_BUSY;
+    }
 
     now = ngx_time();
     hcf = hp->conf;
