@@ -955,7 +955,9 @@ ngx_http_upconf_update_shm_zone(ngx_http_request_t *r, ngx_str_t *zone_name,
     peers->single = size == 1 ? 1 : 0;
     peers->weighted = upstream_data->weighted;
 
+#if nginx_version >= 1019006
     peers->tries = size;
+#endif
 
     if (uscf->peer.init_upstream == ngx_http_upconf_init_chash
         && ngx_http_upconf_init_chash_common(r->connection->log, uscf, 1)

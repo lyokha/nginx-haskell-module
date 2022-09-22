@@ -49,6 +49,7 @@ ngx_http_upconf_init_round_robin_peer(ngx_http_request_t *r,
     ngx_http_upstream_srv_conf_t *us)
 {
     ngx_uint_t                       rc;
+    ngx_uint_t                      *ptries;
     ngx_http_upconf_rr_peer_data_t  *peer_data;
     ngx_http_upstream_rr_peers_t    *peers;
 
@@ -69,10 +70,16 @@ ngx_http_upconf_init_round_robin_peer(ngx_http_request_t *r,
 
     peer_data->number = peer_data->rrp->peers->number;
 
+#if nginx_version < 1019006
+    ptries = &peers->number;
+#else
+    ptries = &peers->tries;
+#endif
+
     if (r->upstream->conf->next_upstream_tries
-        && peers->tries > r->upstream->conf->next_upstream_tries)
+        && *ptries > r->upstream->conf->next_upstream_tries)
     {
-        peers->tries = r->upstream->conf->next_upstream_tries;
+        *ptries = r->upstream->conf->next_upstream_tries;
     }
 
     ngx_http_upstream_rr_peers_unlock(peers);
