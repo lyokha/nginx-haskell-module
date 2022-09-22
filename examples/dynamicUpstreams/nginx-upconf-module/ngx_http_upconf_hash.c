@@ -40,7 +40,6 @@ typedef struct {
     ngx_uint_t                          rehash;
     uint32_t                            hash;
     ngx_event_get_peer_pt               get_rr_peer;
-    ngx_http_upstream_srv_conf_t       *us;
 } ngx_http_upstream_hash_peer_data_t;
 
 
@@ -496,7 +495,6 @@ ngx_http_upstream_init_chash_peer(ngx_http_request_t *r,
     }
 
     peer_data->rrp = &hp->rrp;
-    peer_data->number = peer_data->rrp->peers->number;
     peer_data->hp = hp;
 
     r->upstream->peer.data = peer_data;
@@ -540,16 +538,17 @@ ngx_http_upstream_init_chash_peer(ngx_http_request_t *r,
         }
 
         ngx_shmtx_unlock(&shpool->mutex);
-
-        if (update_points) {
-            ngx_http_upconf_init_chash_common(r->connection->log, us, 0);
-        }
     }
 
     ngx_http_upstream_rr_peers_rlock(hp->rrp.peers);
 
+    peer_data->number = peer_data->rrp->peers->number;
+
+    if (update_points) {
+        ngx_http_upconf_init_chash_common(r->connection->log, us, 0);
+    }
+
     hp->hash = ngx_http_upstream_find_chash_point(hcf->points, hash);
-    hp->us = us;
 
     ngx_http_upstream_rr_peers_unlock(hp->rrp.peers);
 
@@ -583,9 +582,9 @@ ngx_http_upstream_get_chash_peer(ngx_peer_connection_t *pc, void *data)
     hp = peer_data->hp;
     peers = hp->rrp.peers;
 
-    pc->name = peers->name;
-
     ngx_http_upstream_rr_peers_wlock(peers);
+
+    pc->name = peers->name;
 
     if (peers->number > peer_data->number && peers->number > 8) {
         /* hp->rrp.tried storage capacity is not big enough for new servers! */

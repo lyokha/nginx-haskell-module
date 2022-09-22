@@ -50,6 +50,7 @@ ngx_http_upconf_init_round_robin_peer(ngx_http_request_t *r,
 {
     ngx_uint_t                       rc;
     ngx_http_upconf_rr_peer_data_t  *peer_data;
+    ngx_http_upstream_rr_peers_t    *peers;
 
     rc = ngx_http_upstream_init_round_robin_peer(r, us);
     if (rc != NGX_OK) {
@@ -62,7 +63,19 @@ ngx_http_upconf_init_round_robin_peer(ngx_http_request_t *r,
     }
 
     peer_data->rrp = r->upstream->peer.data;
+    peers = peer_data->rrp->peers;
+
+    ngx_http_upstream_rr_peers_wlock(peers);
+
     peer_data->number = peer_data->rrp->peers->number;
+
+    if (r->upstream->conf->next_upstream_tries
+        && peers->tries > r->upstream->conf->next_upstream_tries)
+    {
+        peers->tries = r->upstream->conf->next_upstream_tries;
+    }
+
+    ngx_http_upstream_rr_peers_unlock(peers);
 
     r->upstream->peer.data = peer_data;
 
