@@ -825,9 +825,12 @@ ngx_http_upconf_update_shm_zone(ngx_http_request_t *r, ngx_str_t *zone_name,
 
     shpool = (ngx_slab_pool_t *) uscf->shm_zone->shm.addr;
 
+    peers = uscf->peer.data;
+
+    ngx_http_upstream_rr_peers_wlock(peers);
+
     ngx_shmtx_lock(&shpool->mutex);
 
-    peers = uscf->peer.data;
     prev = NULL;
 
     server_data = upstream_data->servers.elts;
@@ -969,6 +972,8 @@ ngx_http_upconf_update_shm_zone(ngx_http_request_t *r, ngx_str_t *zone_name,
 
     ngx_shmtx_unlock(&shpool->mutex);
 
+    ngx_http_upstream_rr_peers_unlock(peers);
+
     return NGX_OK;
 
 error_cleanup:
@@ -986,6 +991,8 @@ error_cleanup:
     }
 
     ngx_shmtx_unlock(&shpool->mutex);
+
+    ngx_http_upstream_rr_peers_unlock(peers);
 
     return NGX_HTTP_INTERNAL_SERVER_ERROR;
 }
