@@ -38,8 +38,8 @@ import           GHC.Generics
 -- | Time intervals.
 --
 -- Note that /Unset/ is a zero time interval which is equal to 0 seconds,
--- however it is expected to be used differently, for example to explicitly
--- express an intention to unset some timeout.
+-- however it is expected to be used differently. In particular, to explicitly
+-- express an intention to unset the timeout.
 data TimeInterval = Hr Int          -- ^ Hours
                   | Min Int         -- ^ Minutes
                   | Sec Int         -- ^ Seconds
