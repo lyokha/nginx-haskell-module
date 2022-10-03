@@ -36,12 +36,16 @@ import           GHC.Generics
 -- resolution timeouts.
 
 -- | Time intervals.
+--
+-- Note that /Unset/ is a zero time interval which is equal to 0 seconds,
+-- however it is expected to be used differently, for example to explicitly
+-- express an intention to unset some timeout.
 data TimeInterval = Hr Int          -- ^ Hours
                   | Min Int         -- ^ Minutes
                   | Sec Int         -- ^ Seconds
                   | HrMin Int Int   -- ^ Hours and minutes
                   | MinSec Int Int  -- ^ Minutes and seconds
-                  | Unset           -- ^ Zero time interval, equal to @Sec 0@
+                  | Unset           -- ^ Zero time interval
                   deriving (Generic, Lift, Read, Show)
 
 instance FromJSON TimeInterval
