@@ -18,6 +18,12 @@ then
     echo "   Check that GHC is installed "`
         `"or specify environment variable GHC_PKG_PROGRAM" >&2
 else
+    if test -z "$NGX_HOME"
+    then
+        echo "warning: environment variable NGX_HOME is not set!" >&2
+        echo "    This is only ok if Nginx sources "`
+            `"are located in the current directory" >&2
+    fi
     echo -I"$NGX_HOME/src/core"
     echo -I"$NGX_HOME/src/http"
     echo -I"$NGX_HOME/src/http/modules"
