@@ -19,8 +19,7 @@
 #ifndef NGX_HTTP_HASKELL_SERVICE_H
 #define NGX_HTTP_HASKELL_SERVICE_H
 
-#include <ngx_core.h>
-#include <ngx_http.h>
+#include "ngx_http_haskell_module.h"
 
 
 ngx_int_t ngx_http_haskell_init_services(ngx_cycle_t *cycle);
