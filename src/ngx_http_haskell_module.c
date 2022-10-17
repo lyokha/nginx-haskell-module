@@ -580,41 +580,44 @@ ngx_http_haskell_init_module(ngx_cycle_t *cycle)
 #endif
 
 #if (NGX_HTTP_HASKELL_MODULE_HAVE_SO_ATTACH_REUSEPORT_CBPF)
+
     ls = cycle->listening.elts;
 
     for (i = 0; i < cycle->listening.nelts; i++) {
         port = ls[i].servers;
 
-        if (ls[i].sockaddr->sa_family != AF_INET
 #if (NGX_HAVE_INET6)
-            && ls[i].sockaddr->sa_family != AF_INET6
-#endif
-            )
+        if (ls[i].sockaddr->sa_family != AF_INET
+            && ls[i].sockaddr->sa_family != AF_INET6)
         {
             continue;
         }
 
         addr = NULL;
 
-#if (NGX_HAVE_INET6)
         if (ls[i].sockaddr->sa_family == AF_INET6) {
             addr6 = port->addrs;
         } else {
-#endif
             addr = port->addrs;
-#if (NGX_HAVE_INET6)
         }
+#else
+        if (ls[i].sockaddr->sa_family != AF_INET) {
+            continue;
+        }
+
+        addr = port->addrs;
 #endif
 
         for (j = 0; j < port->naddrs; j++) {
+
 #if (NGX_HAVE_INET6)
             if (addr == NULL) {
                 addr_conf = &addr6[j].conf;
             } else {
-#endif
                 addr_conf = &addr[j].conf;
-#if (NGX_HAVE_INET6)
             }
+#else
+            addr_conf = &addr[j].conf;
 #endif
 
             if (addr_conf == NULL) {
@@ -643,6 +646,7 @@ ngx_http_haskell_init_module(ngx_cycle_t *cycle)
             }
         }
     }
+
 #endif
 
     ngx_http_haskell_cleanup_service_hook_fd(cycle);

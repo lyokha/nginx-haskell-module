@@ -21,13 +21,13 @@
 #include "ngx_http_haskell_util.h"
 
 #ifdef NGX_HTTP_HASKELL_SHM_USE_SHARED_RLOCK
-#define NGX_HTTP_HASKELL_SHM_WLOCK   ngx_http_haskell_wlock(mcf->shm_lock_fd);
-#define NGX_HTTP_HASKELL_SHM_RLOCK   ngx_http_haskell_rlock(mcf->shm_lock_fd);
-#define NGX_HTTP_HASKELL_SHM_UNLOCK  ngx_http_haskell_unlock(mcf->shm_lock_fd);
+#define NGX_HTTP_HASKELL_SHM_WLOCK()   ngx_http_haskell_wlock(mcf->shm_lock_fd)
+#define NGX_HTTP_HASKELL_SHM_RLOCK()   ngx_http_haskell_rlock(mcf->shm_lock_fd)
+#define NGX_HTTP_HASKELL_SHM_UNLOCK()  ngx_http_haskell_unlock(mcf->shm_lock_fd)
 #else
-#define NGX_HTTP_HASKELL_SHM_WLOCK   ngx_shmtx_lock(&shpool->mutex);
-#define NGX_HTTP_HASKELL_SHM_RLOCK   ngx_shmtx_lock(&shpool->mutex);
-#define NGX_HTTP_HASKELL_SHM_UNLOCK  ngx_shmtx_unlock(&shpool->mutex);
+#define NGX_HTTP_HASKELL_SHM_WLOCK()   ngx_shmtx_lock(&shpool->mutex)
+#define NGX_HTTP_HASKELL_SHM_RLOCK()   ngx_shmtx_lock(&shpool->mutex)
+#define NGX_HTTP_HASKELL_SHM_UNLOCK()  ngx_shmtx_unlock(&shpool->mutex)
 #endif
 
 static const CUInt  service_result_not_ready = 0x10000;
@@ -611,7 +611,7 @@ ngx_http_haskell_service_event(ngx_event_t *ev)
     shpool = (ngx_slab_pool_t *) mcf->shm_zone->shm.addr;
     shm_vars = shpool->data;
 
-    NGX_HTTP_HASKELL_SHM_WLOCK
+    NGX_HTTP_HASKELL_SHM_WLOCK();
 
     shm_vars[shm_index].stats.failed = 0;
 
@@ -692,7 +692,7 @@ ngx_http_haskell_service_event(ngx_event_t *ev)
 
 unlock_and_run_cb:
 
-    NGX_HTTP_HASKELL_SHM_UNLOCK
+    NGX_HTTP_HASKELL_SHM_UNLOCK();
 
     if (shm_var_updated) {
         var = &async_data->result.data;
@@ -842,11 +842,11 @@ ngx_http_haskell_service_hook_event(ngx_event_t *ev)
             return;
         }
 
-        NGX_HTTP_HASKELL_SHM_RLOCK
+        NGX_HTTP_HASKELL_SHM_RLOCK();
 
         var_data = &shm_vars[service_code_var->shm_index].data.result.data;
         if (var_data->len == 0) {
-            NGX_HTTP_HASKELL_SHM_UNLOCK
+            NGX_HTTP_HASKELL_SHM_UNLOCK();
             goto run_handler;
         }
 
@@ -856,7 +856,7 @@ ngx_http_haskell_service_hook_event(ngx_event_t *ev)
         arg.data = ngx_alloc(arg.len, cycle->log);
 
         if (arg.data == NULL) {
-            NGX_HTTP_HASKELL_SHM_UNLOCK
+            NGX_HTTP_HASKELL_SHM_UNLOCK();
             ngx_log_error(NGX_LOG_CRIT, cycle->log, 0,
                           "failed to allocate memory for service update "
                           "hook data");
@@ -865,7 +865,7 @@ ngx_http_haskell_service_hook_event(ngx_event_t *ev)
 
         ngx_memcpy(arg.data, var_data->data, arg.len);
 
-        NGX_HTTP_HASKELL_SHM_UNLOCK
+        NGX_HTTP_HASKELL_SHM_UNLOCK();
 
     } else {
         ngx_http_haskell_shm_service_hook_handle_t  *shm_vars;
@@ -1149,10 +1149,10 @@ ngx_http_haskell_run_service_handler(ngx_http_request_t *r,
         shpool = (ngx_slab_pool_t *) mcf->shm_zone->shm.addr;
         shm_vars = shpool->data;
 
-        NGX_HTTP_HASKELL_SHM_RLOCK
+        NGX_HTTP_HASKELL_SHM_RLOCK();
 
         if (shm_vars[shm_index].data.result.data.len == 0) {
-            NGX_HTTP_HASKELL_SHM_UNLOCK
+            NGX_HTTP_HASKELL_SHM_UNLOCK();
             goto update_var;
         }
 
@@ -1162,14 +1162,14 @@ ngx_http_haskell_run_service_handler(ngx_http_request_t *r,
         res.len = shm_vars[shm_index].data.result.data.len;
         res.data = ngx_pnalloc(r->pool, res.len);
         if (res.data == NULL) {
-            NGX_HTTP_HASKELL_SHM_UNLOCK
+            NGX_HTTP_HASKELL_SHM_UNLOCK();
             return NGX_ERROR;
         }
 
         ngx_memcpy(res.data, shm_vars[shm_index].data.result.data.data,
                    res.len);
 
-        NGX_HTTP_HASKELL_SHM_UNLOCK
+        NGX_HTTP_HASKELL_SHM_UNLOCK();
 
         goto update_var;
     }
@@ -1259,34 +1259,34 @@ ngx_http_haskell_shm_update_var_handler(ngx_http_request_t *r,
     shpool = (ngx_slab_pool_t *) mcf->shm_zone->shm.addr;
     shm_vars = shpool->data;
 
-    NGX_HTTP_HASKELL_SHM_RLOCK
+    NGX_HTTP_HASKELL_SHM_RLOCK();
 
     /* FIXME: there is an extremely rare hypothetical case when seqn in shm
      * wraps around after overflow while the local value of seqn did not change
      * during the whole wrapping cycle, and thus the variable will mistakenly
      * not be updated */
     if (shm_handle_data->seqn == shm_vars[shm_index].seqn) {
-        NGX_HTTP_HASKELL_SHM_UNLOCK
+        NGX_HTTP_HASKELL_SHM_UNLOCK();
         goto update_var;
     }
 
     shm_handle_data->seqn = shm_vars[shm_index].seqn;
 
     if (shm_vars[shm_index].data.result.data.len == 0) {
-        NGX_HTTP_HASKELL_SHM_UNLOCK
+        NGX_HTTP_HASKELL_SHM_UNLOCK();
         goto update_var;
     }
 
     res.len = shm_vars[shm_index].data.result.data.len;
     res.data = ngx_pnalloc(r->pool, res.len);
     if (res.data == NULL) {
-        NGX_HTTP_HASKELL_SHM_UNLOCK
+        NGX_HTTP_HASKELL_SHM_UNLOCK();
         return NGX_ERROR;
     }
 
     ngx_memcpy(res.data, shm_vars[shm_index].data.result.data.data, res.len);
 
-    NGX_HTTP_HASKELL_SHM_UNLOCK
+    NGX_HTTP_HASKELL_SHM_UNLOCK();
 
 update_var:
 
@@ -1339,11 +1339,11 @@ ngx_http_haskell_shm_stats_var_handler(ngx_http_request_t *r,
     shpool = (ngx_slab_pool_t *) mcf->shm_zone->shm.addr;
     shm_vars = shpool->data;
 
-    NGX_HTTP_HASKELL_SHM_RLOCK
+    NGX_HTTP_HASKELL_SHM_RLOCK();
 
     stats = shm_vars[shm_index].stats;
 
-    NGX_HTTP_HASKELL_SHM_UNLOCK
+    NGX_HTTP_HASKELL_SHM_UNLOCK();
 
     buf = ngx_pnalloc(r->pool, buf_size);
     if (buf == NULL) {
