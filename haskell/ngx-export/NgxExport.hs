@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell, ForeignFunctionInterface #-}
+{-# LANGUAGE CPP, TemplateHaskell, ForeignFunctionInterface #-}
 {-# LANGUAGE ViewPatterns, PatternSynonyms, TupleSections, LambdaCase #-}
 
 -----------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-{-# LANGUAGE ForeignFunctionInterface, InterruptibleFFI #-}
+{-# LANGUAGE CPP, ForeignFunctionInterface, InterruptibleFFI #-}
 
 module NgxExport.Internal.SafeFileLock (safeWaitToSetLock
                                        ,getBestLockImpl
