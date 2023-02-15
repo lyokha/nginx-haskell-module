@@ -275,19 +275,13 @@ typedef struct {
     ngx_array_t                                async_data;
     ngx_array_t                                request_body;
     ngx_array_t                                strict_volatile_vars;
+    ngx_array_t                                var_nocacheable_cache;
     ngx_http_haskell_content_handler_data_t   *content_handler_data;
     ngx_uint_t                                 request_body_read_cycle;
-    ngx_uint_t                                 initialized:1;
     ngx_uint_t                                 waiting_more_request_body:1;
     ngx_uint_t                                 read_request_body_error:1;
     ngx_uint_t                                 no_request_body:1;
 } ngx_http_haskell_ctx_t;
-
-
-typedef struct {
-    ngx_http_haskell_ctx_t                     ctx;
-    ngx_array_t                                var_nocacheable_cache;
-} ngx_http_haskell_wrap_ctx_t;
 
 
 typedef struct {

@@ -50,7 +50,6 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
     ngx_http_haskell_handler_t                   *handlers;
     ngx_http_haskell_code_var_data_t             *code_vars;
     ngx_http_haskell_ctx_t                       *ctx;
-    ngx_http_haskell_wrap_ctx_t                  *wctx;
     ngx_http_haskell_async_data_t                *async_data, *async_data_elts;
     ngx_http_haskell_var_handle_t                *var_nocacheable;
     ngx_http_haskell_var_cache_t                 *var_nocacheable_cache;
@@ -74,19 +73,17 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
     if (mcf->var_nocacheable.nelts > 0) {
         var_nocacheable = mcf->var_nocacheable.elts;
         if (ctx == NULL) {
-            wctx = ngx_pcalloc(r->pool, sizeof(ngx_http_haskell_wrap_ctx_t));
-            if (wctx == NULL) {
+            ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_haskell_ctx_t));
+            if (ctx == NULL) {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                               "failed to create request context, "
                               "declining phase handler");
                 return NGX_DECLINED;
             }
-            ctx = &wctx->ctx;
-            ctx->initialized = 1;
-            if (ngx_array_init(&wctx->var_nocacheable_cache, r->pool,
+            if (ngx_array_init(&ctx->var_nocacheable_cache, r->pool,
                                mcf->var_nocacheable.nelts,
                                sizeof(ngx_http_haskell_var_cache_t)) != NGX_OK
-                || ngx_array_push_n(&wctx->var_nocacheable_cache,
+                || ngx_array_push_n(&ctx->var_nocacheable_cache,
                                     mcf->var_nocacheable.nelts) == NULL)
             {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
@@ -94,20 +91,13 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
                               "declining phase handler");
                 return NGX_DECLINED;
             }
-            var_nocacheable_cache = wctx->var_nocacheable_cache.elts;
-            for (i = 0; i < wctx->var_nocacheable_cache.nelts; i++) {
+            var_nocacheable_cache = ctx->var_nocacheable_cache.elts;
+            for (i = 0; i < ctx->var_nocacheable_cache.nelts; i++) {
                 var_nocacheable_cache[i].index = var_nocacheable[i].index;
                 var_nocacheable_cache[i].checked = 0;
                 ngx_str_null(&var_nocacheable_cache[i].value);
             }
             ngx_http_set_ctx(r, ctx, ngx_http_haskell_module);
-        } else if (!ctx->initialized) {
-            wctx = (ngx_http_haskell_wrap_ctx_t *) ctx;
-            var_nocacheable_cache = wctx->var_nocacheable_cache.elts;
-            for (i = 0; i < wctx->var_nocacheable_cache.nelts; i++) {
-                var_nocacheable_cache[i].checked = 0;
-            }
-            ctx->initialized = 1;
         }
     }
 
@@ -139,16 +129,14 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
                 se_skip = 0;
                 if (code_vars[i].strict_volatile) {
                     if (ctx == NULL) {
-                        wctx = ngx_pcalloc(r->pool,
-                                           sizeof(ngx_http_haskell_wrap_ctx_t));
-                        if (wctx == NULL) {
+                        ctx = ngx_pcalloc(r->pool,
+                                          sizeof(ngx_http_haskell_ctx_t));
+                        if (ctx == NULL) {
                             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                                           "failed to create request context, "
                                           "declining phase handler");
                             return NGX_DECLINED;
                         }
-                        ctx = &wctx->ctx;
-                        ctx->initialized = 1;
                         ngx_http_set_ctx(r, ctx, ngx_http_haskell_module);
                     }
                     if (ctx->strict_volatile_vars.nalloc == 0
@@ -203,15 +191,13 @@ ngx_http_haskell_rewrite_phase_handler(ngx_http_request_t *r)
             continue;
         }
         if (ctx == NULL) {
-            wctx = ngx_pcalloc(r->pool, sizeof(ngx_http_haskell_wrap_ctx_t));
-            if (wctx == NULL) {
+            ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_haskell_ctx_t));
+            if (ctx == NULL) {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                               "failed to create request context, "
                               "declining phase handler");
                 return NGX_DECLINED;
             }
-            ctx = &wctx->ctx;
-            ctx->initialized = 1;
             ngx_http_set_ctx(r, ctx, ngx_http_haskell_module);
         }
         if (ctx->async_data.nalloc == 0
@@ -347,7 +333,6 @@ ngx_http_haskell_run_async_content_handler(ngx_http_request_t *r)
     ngx_http_haskell_loc_conf_t              *lcf;
     ngx_http_haskell_handler_t               *handlers;
     ngx_http_haskell_ctx_t                   *ctx;
-    ngx_http_haskell_wrap_ctx_t              *wctx;
     ngx_http_complex_value_t                 *args;
     ngx_str_t                                 arg = ngx_null_string;
     ngx_fd_t                                  fd[2];
@@ -383,15 +368,13 @@ ngx_http_haskell_run_async_content_handler(ngx_http_request_t *r)
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_haskell_module);
     if (ctx == NULL) {
-        wctx = ngx_pcalloc(r->pool, sizeof(ngx_http_haskell_wrap_ctx_t));
-        if (wctx == NULL) {
+        ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_haskell_ctx_t));
+        if (ctx == NULL) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                           "failed to create an async task for content handler, "
                           "declining async content handler");
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
-        ctx = &wctx->ctx;
-        ctx->initialized = 1;
         ngx_http_set_ctx(r, ctx, ngx_http_haskell_module);
     }
 
