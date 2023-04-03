@@ -61,7 +61,7 @@ then
 
     . auto/module
 
-    ngx_feature="haskell_module_attach_reuseport_cbpf"
+    ngx_feature="SO_ATTACH_REUSEPORT_CBPF availability in setsockopt()"
     ngx_feature_name="NGX_HTTP_HASKELL_MODULE_HAVE_SO_ATTACH_REUSEPORT_CBPF"
     ngx_feature_run=no
     ngx_feature_incs="#include <linux/filter.h>

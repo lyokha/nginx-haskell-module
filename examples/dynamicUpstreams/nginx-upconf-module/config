@@ -22,6 +22,26 @@ then
     ngx_module_srcs="$NGX_HTTP_UPCONF_MODULE_SRCS"
 
     . auto/module
+
+    ngx_feature="availability of JSMN header-only library"
+    ngx_feature_name="NGX_HTTP_UPCONF_MODULE_HAVE_JSMN"
+    ngx_feature_incs="#define JSMN_STATIC
+                      #include <jsmn.h>"
+    ngx_feature_path=
+    ngx_feature_libs=
+    ngx_feature_test="jsmn_parser jparse; jsmn_init(&jparse);"
+
+    . auto/feature
+
+    if [ $ngx_found = no ]; then
+        cat << END
+
+$0: jsmn header-only library (required by $ngx_addon_name)
+    cannot be found or fails to compile and run tests
+
+END
+        exit 1
+    fi
 else
     HTTP_MODULES="$HTTP_MODULES $ngx_addon_name"
     NGX_ADDON_DEPS="$NGX_ADDON_DEPS NGX_HTTP_UPCONF_MODULE_DEPS"
