@@ -143,10 +143,6 @@ typedef struct {
     void                                      *dl_handle;
     void                                     (*hs_init)(int *, char ***);
     void                                     (*hs_exit)(void);
-#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ < 702
-    void                                     (*hs_add_root)(void (*)(void));
-    void                                     (*init_HsModule)(void);
-#endif
     void                                     (*hs_free_stable_ptr)
                                                                 (HsStablePtr);
     void                                     (*terminate_async_task)

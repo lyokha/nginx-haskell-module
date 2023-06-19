@@ -20,7 +20,6 @@
 #include "ngx_http_haskell_load.h"
 
 #include <dlfcn.h>
-#include <ghcversion.h>
 
 
 static const ngx_str_t  haskell_module_user_runtime_prefix =
@@ -134,27 +133,6 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
                       dl_error);
         goto dlclose_and_exit;
     }
-
-#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ < 702
-    mcf->hs_add_root = (void (*)(void (*)(void))) dlsym(mcf->dl_handle,
-                                                        "hs_add_root");
-    dl_error = dlerror();
-    if (dl_error != NULL) {
-        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                      "failed to load function \"hs_add_root\": %s", dl_error);
-        goto dlclose_and_exit;
-    }
-
-    mcf->init_HsModule = (void (*)(void)) dlsym(mcf->dl_handle,
-                                            "__stginit_NgxHaskellUserRuntime");
-    dl_error = dlerror();
-    if (dl_error != NULL) {
-        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                      "failed to load function "
-                      "\"__stginit_NgxHaskellUserRuntime\": %s", dl_error);
-        goto dlclose_and_exit;
-    }
-#endif
 
     mcf->hs_free_stable_ptr = (void (*)(HsStablePtr)) dlsym(mcf->dl_handle,
                                                         "hs_free_stable_ptr");
@@ -301,10 +279,6 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
 
     mcf->hs_init(&argc, &argv);
     ngx_pfree(cycle->pool, argv);
-
-#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ < 702
-    mcf->hs_add_root(mcf->init_HsModule);
-#endif
 
 #if !(NGX_WIN32)
     if (sigaction(SIGQUIT, &sa, NULL) == -1) {
