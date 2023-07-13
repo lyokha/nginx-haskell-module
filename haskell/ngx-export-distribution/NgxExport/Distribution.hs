@@ -33,6 +33,8 @@ module NgxExport.Distribution (
     -- *** Building dependencies with cabal v2-build
     -- $deps-cabal-v2
 
+    -- | #cabal-plan#
+
     -- *** Collecting direct dependencies with cabal-plan
     -- $cabal-plan
 
@@ -192,7 +194,7 @@ import Data.Maybe
 --   which is passed by the module internally, has first appeared in the said
 --   release,
 -- - clause /ghc-options/ in the Cabal file is a better place for such a generic
---   option as /-threaded/.
+--   option as /-threaded/,
 -- - if the base name of the source file (/__ngx_distribution_test__.hs/) had
 --   exactly matched the package name (/__ngx-distribution-test__/), then
 --   options /ngx_distribution_test.hs -o ngx_distribution_test.so/ could have
@@ -253,7 +255,8 @@ import Data.Maybe
 --
 -- > $ . cabal-plan-direct-deps.sh >> .ghc.environment.x86_64-linux-$(ghc --numeric-version)
 --
--- See details about collecting direct dependencies in the next section.
+-- See details about collecting direct dependencies in the
+-- [next section](#cabal-plan).
 --
 -- > $ runhaskell --ghc-arg=-package=base --ghc-arg=-package=ngx-export-distribution Setup.hs build --ghc-options="ngx_distribution_test.hs -o ngx_distribution_test.so -threaded"
 --
