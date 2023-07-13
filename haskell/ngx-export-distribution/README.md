@@ -4,7 +4,7 @@
 
 This module allows for building simple shared libraries with Cabal.
 
-###### An example
+##### An example
 
 ###### File *ngx_distribution_test.hs*
 
@@ -74,7 +74,7 @@ configuration step (which will be interpreted as the prefix part of the
 *rpath* by utility *hslibdeps*) and explicit ghc option *-o* at the build
 step which is as well used by *hslibdeps* as the name of the target library.
 
-###### Building with cabal v1-commands
+##### Building with cabal v1-commands
 
 Let's build the example with commands *cabal v1-configure* and
 *cabal v1-build*.
@@ -149,7 +149,7 @@ new directory *x86_64-linux-ghc-9.4.1*. The tar-file contains the patched
 shared library and the directory with dependent libraries: it is ready for
 installation in directory */var/lib/nginx* at the target system.
 
-###### Building with Setup.hs commands
+##### Building with Setup.hs commands
 
 For building custom artifacts, options of *hslibdeps* must be accessed
 directly. For this, commands *runhaskell Setup.hs configure / build* can be
@@ -166,7 +166,7 @@ $ runhaskell Setup.hs configure --user
 $ runhaskell Setup.hs build --ghc-options="ngx_distribution_test.hs -o ngx_distribution_test.so -threaded" --hslibdeps-options="-t/var/lib/nginx/deps -ddeps -adeps"
 ```
 
-###### Building dependencies with cabal v2-build
+##### Building dependencies with cabal v2-build
 
 Nowadays, Cabal recommends building packages using *Nix-style local builds*.
 This means that dependent packages do not get installed in places known to
@@ -223,7 +223,7 @@ This should build library *ngx_distribution_test.so* and link it against
 Haskell libraries found in the global package db and the Cabal's global
 package store.
 
-###### Collecting direct dependencies with cabal-plan
+##### Collecting direct dependencies with cabal-plan
 
 We listed build dependencies in both *build-depends* and *ghc-options*
 clauses in the Cabal file to let Cabal find dependencies built with
@@ -270,7 +270,7 @@ package-id ngx-export-1.7.5-17b83e3ac354cc52614227ba662f8c23a8ddd4e08f2a1a02b0d6
 will appear at the end of file *.ghc.environment.x86_64-linux-9.4.1*. This
 shall expose the four dependent packages at the *build* step.
 
-###### Drawbacks
+##### Drawbacks
 
 With all the building approaches shown above, the following list of drawbacks
 must be taken into account.
