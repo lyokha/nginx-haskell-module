@@ -15,8 +15,4 @@ library
                           , aeson
 
   ghc-options:             -Wall -O2 -no-keep-hi-files -no-keep-o-files
-                           -package=base
-                           -package=ngx-export
-                           -package=bytestring
-                           -package=aeson
 
