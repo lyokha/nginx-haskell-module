@@ -80,6 +80,13 @@ Let's build the example with commands *cabal v1-configure* and
 *cabal v1-build*.
 
 ```ShellSession
+$ cabal v1-install --only-dependencies
+Resolving dependencies...
+All the requested packages are already installed:
+Use --reinstall if you want to reinstall anyway.
+```
+
+```ShellSession
 $ cabal v1-configure --prefix=/var/lib/nginx
 Resolving dependencies...
 [1 of 2] Compiling Main             ( dist/setup/setup.hs, dist/setup/Main.o )
@@ -197,6 +204,15 @@ the GHC environment file into the list of options suitable for passing to the
 *configure* command. Normally, this list shall contain only one directory
 *&dollar;HOME/.cabal/store/ghc-&dollar;(ghc --numeric-version)/package.db* with
 all packages ever built by *cabal v2-build*.
+
+If the direct dependencies were not listed in the Cabal file, they must be
+collected inside the GHC environment file.
+
+```ShellSession
+$ . cabal-plan-direct-deps.sh >> .ghc.environment.x86_64-linux-$(ghc --numeric-version)
+```
+
+See details about collecting direct dependencies in the next section.
 
 ```ShellSession
 $ runhaskell --ghc-arg=-package=base --ghc-arg=-package=ngx-export-distribution Setup.hs build --ghc-options="ngx_distribution_test.hs -o ngx_distribution_test.so -threaded"

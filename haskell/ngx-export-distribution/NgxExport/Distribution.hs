@@ -248,6 +248,13 @@ import Data.Maybe
 -- /$HOME\/.cabal\/store\/ghc-$(ghc --numeric-version)\/package.db/ with all
 -- packages ever built by /cabal v2-build/.
 --
+-- If the direct dependencies were not listed in the Cabal file, they must be
+-- collected inside the GHC environment file.
+--
+-- > $ . cabal-plan-direct-deps.sh >> .ghc.environment.x86_64-linux-$(ghc --numeric-version)
+--
+-- See details about collecting direct dependencies in the next section.
+--
 -- > $ runhaskell --ghc-arg=-package=base --ghc-arg=-package=ngx-export-distribution Setup.hs build --ghc-options="ngx_distribution_test.hs -o ngx_distribution_test.so -threaded"
 --
 -- This should build library /ngx_distribution_test.so/ and link it against
