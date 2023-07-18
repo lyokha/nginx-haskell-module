@@ -5,38 +5,44 @@ NAME := ngx_distribution_test
 PKGNAME := ngx-distribution-test
 PKGVER := 0.1.0.0
 
+PREFIX := /var/lib/nginx
+MACHINE := $(shell uname -m)
+KERNEL := $(shell uname -s | tr A-Z a-z)
+
+PKGDISTR := ngx-export-distribution
+
 SRC := $(NAME).hs
 LIB := $(NAME).so
 STUB := $(NAME)_stub.h
-TARBALL := $(PKGNAME)-$(PKGVER).tar.gz
+DISTR := $(PKGNAME)-$(PKGVER).tar.gz
 
 GHCVER := $(shell ghc --numeric-version)
-GHCENV := .ghc.environment.x86_64-linux-$(GHCVER)
-DEPLIBS := x86_64-linux-ghc-$(GHCVER)
+GHCENV := .ghc.environment.$(MACHINE)-$(KERNEL)-$(GHCVER)
+DEPLIBS := $(MACHINE)-$(KERNEL)-ghc-$(GHCVER)
 
-all: $(TARBALL)
+all: $(DISTR)
 
-$(TARBALL): $(SRC)
+$(DISTR): $(SRC)
 	cabal v2-install --lib --only-dependencies --package-env .
-	cabal v2-install --lib ngx-export-distribution --package-env .
+	cabal v2-install --lib $(PKGDISTR) --package-env .
 	sed -i 's/\(^package-id \)/--\1/' $(GHCENV)
 	runhaskell --ghc-arg=-package=base \
-		--ghc-arg=-package=ngx-export-distribution Setup.hs configure \
+		--ghc-arg=-package=$(PKGDISTR) Setup.hs configure \
 		--package-db=clear --package-db=global \
 		$$(sed -n 's/^\(package-db\)\s\+/--\1=/p' $(GHCENV)) \
-		--prefix=/var/lib/nginx
+		--prefix=$(PREFIX)
 	. ../cabal-plan-direct-deps.sh >> $(GHCENV)
 	runhaskell --ghc-arg=-package=base \
-		--ghc-arg=-package=ngx-export-distribution Setup.hs build \
+		--ghc-arg=-package=$(PKGDISTR) Setup.hs build \
 		--ghc-options="$(SRC) -o $(LIB) -threaded"
 
 .PHONY: clean
 
 clean:
-	-rm -rf dist dist-newstyle $(DEPLIBS)
-	-rm -f $(GHCENV) $(STUB)
-	-rm -f $(LIB)
+	rm -rf dist dist-newstyle $(DEPLIBS)
+	rm -f $(GHCENV) $(STUB)
+	rm -f $(LIB)
 
 clean-all: clean
-	-rm -f $(TARBALL)
+	rm -f $(DISTR)
 
