@@ -19,6 +19,8 @@ DISTR := $(PKGNAME)-$(PKGVER).tar.gz
 GHCVER := $(shell ghc --numeric-version)
 GHCENV := .ghc.environment.$(MACHINE)-$(KERNEL)-$(GHCVER)
 DEPLIBS := $(MACHINE)-$(KERNEL)-ghc-$(GHCVER)
+DISTDIR := dist
+DISTV2DIR := dist-newstyle
 
 all: $(DISTR)
 
@@ -39,7 +41,7 @@ $(DISTR): $(SRC)
 .PHONY: clean
 
 clean:
-	rm -rf dist dist-newstyle $(DEPLIBS)
+	rm -rf $(DISTDIR) $(DISTV2DIR) $(DEPLIBS)
 	rm -f $(GHCENV) $(STUB)
 	rm -f $(LIB)
 

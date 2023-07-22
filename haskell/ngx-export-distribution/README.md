@@ -2,7 +2,8 @@
 
 [![Hackage](https://img.shields.io/hackage/v/ngx-export-distribution.svg?label=hackage%20%7C%20ngx-export-distribution&logo=haskell&logoColor=%239580D1)](https://hackage.haskell.org/package/ngx-export-distribution)
 
-This module allows for building simple shared libraries with Cabal.
+This module allows for building regular shared libraries and collecting
+Haskell libraries they depend on with Cabal.
 
 ##### An example
 
@@ -45,18 +46,7 @@ library
                           , aeson
 
   ghc-options:             -Wall -O2 -no-keep-hi-files -no-keep-o-files
-                           -package=base
-                           -package=ngx-export
-                           -package=bytestring
-                           -package=aeson
 ```
-
-All packages listed in *build-depends* get also wrapped inside options
-*-package* in *ghc-options*: this is important when building them with
-*cabal v2-build* and then using inside GHC *package environments*. However,
-this duplication can be avoided if there is a method to get the package list
-in the *ghc-options* programmatically. One of such methods is based on
-collecting the direct dependencies with utility *cabal-plan*.
 
 ###### File *Setup.hs*
 
@@ -205,36 +195,11 @@ the GHC environment file into the list of options suitable for passing to the
 *&dollar;HOME/.cabal/store/ghc-&dollar;(ghc --numeric-version)/package.db* with
 all packages ever built by *cabal v2-build*.
 
-If the direct dependencies were not listed in the Cabal file, they must be
-collected inside the GHC environment file.
-
-```ShellSession
-$ . cabal-plan-direct-deps.sh >> .ghc.environment.x86_64-linux-$(ghc --numeric-version)
-```
-
-See details about collecting direct dependencies in the
-[next section](#collecting-direct-dependencies-with-cabal-plan).
-
-```ShellSession
-$ runhaskell --ghc-arg=-package=base --ghc-arg=-package=ngx-export-distribution Setup.hs build --ghc-options="ngx_distribution_test.hs -o ngx_distribution_test.so -threaded"
-```
-
-This should build library *ngx_distribution_test.so* and link it against
-Haskell libraries found in the global package db and the Cabal's global
-package store.
-
-##### Collecting direct dependencies with cabal-plan
-
-We listed build dependencies in both *build-depends* and *ghc-options*
-clauses in the Cabal file to let Cabal find dependencies built with
-*cabal v2-build* at the *configure* step and expose them to ghc at the
-*build* step. This approach is tedious and error-prone. Fortunately, there is
-utility [cabal-plan](https://hackage.haskell.org/package/cabal-plan) which is
-aimed to figure out dependencies of built packages. Particularly, with
-*cabal-plan* we can remove those *-package=...* lines from the *ghc-options*
-clause in the Cabal file and, instead, collect the direct dependencies
-programmatically and put them as *package-id* records in the GHC environment
-file.
+Before running the *configure* command, we commented out all packages listed in
+the GHC environment file. The build step requires linking the target library
+against the direct dependencies and their dependencies in turn. With
+[cabal-plan](https://hackage.haskell.org/package/cabal-plan), re-enabling the
+direct dependencies in the GHC environment file can be done automatically.
 
 The following bash script collects all direct dependencies reported by
 *cabal-plan*.
@@ -268,7 +233,15 @@ package-id ngx-export-1.7.5-17b83e3ac354cc52614227ba662f8c23a8ddd4e08f2a1a02b0d6
 ```
 
 will appear at the end of file *.ghc.environment.x86_64-linux-9.4.1*. This
-shall expose the four dependent packages at the *build* step.
+shall expose the four dependent packages at the next step.
+
+```ShellSession
+$ runhaskell --ghc-arg=-package=base --ghc-arg=-package=ngx-export-distribution Setup.hs build --ghc-options="ngx_distribution_test.hs -o ngx_distribution_test.so -threaded"
+```
+
+This should build library *ngx_distribution_test.so* and link it against
+Haskell libraries found in the global package database and the Cabal's global
+package store.
 
 ##### Drawbacks
 

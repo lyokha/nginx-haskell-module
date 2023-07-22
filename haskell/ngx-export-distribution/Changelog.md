@@ -1,3 +1,7 @@
+### 0.3.2.4
+
+- Improved docs.
+
 ### 0.3.2.3
 
 - Fixed docs on using *cabal-plan*.
