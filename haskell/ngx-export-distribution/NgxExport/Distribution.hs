@@ -397,17 +397,16 @@ patchAndCollectDependentLibs verbosity lib desc lbi = do
 ngxExportHooks :: Verbosity                         -- ^ Verbosity level
                -> UserHooks
 ngxExportHooks verbosity =
-    let hooks = simpleUserHooks
-    in hooks { hookedPrograms = [hslibdeps]
-             , confHook = \desc flags -> do
-                 let pdb = configPrograms flags
-                 _ <- requireProgram verbosity hslibdeps pdb >>=
-                          requireProgram verbosity patchelf . snd
-                 confHook simpleUserHooks desc flags
-             , buildHook =  \desc lbi _ flags ->
-                 buildSharedLib verbosity desc lbi flags >>= \lib ->
-                     patchAndCollectDependentLibs verbosity lib desc lbi
-             }
+    simpleUserHooks { hookedPrograms = [hslibdeps]
+                    , confHook = \desc flags -> do
+                        let pdb = configPrograms flags
+                        _ <- requireProgram verbosity hslibdeps pdb >>=
+                                 requireProgram verbosity patchelf . snd
+                        confHook simpleUserHooks desc flags
+                    , buildHook = \desc lbi _ flags ->
+                        buildSharedLib verbosity desc lbi flags >>= \lib ->
+                            patchAndCollectDependentLibs verbosity lib desc lbi
+                    }
 
 -- | A simple implementation of /main/ for a Cabal setup script.
 --
