@@ -149,11 +149,11 @@ the directory with dependent libraries and the tar-file to *deps/* and
 using option *--prefix*.
 
 ```ShellSession
-$ runhaskell Setup.hs configure --user
+$ runhaskell Setup.hs configure --user --hslibdeps-options="-t/var/lib/nginx/deps -ddeps -adeps"
 ```
 
 ```ShellSession
-$ runhaskell Setup.hs build --ghc-options="ngx_distribution_test.hs -o ngx_distribution_test.so -threaded" --hslibdeps-options="-t/var/lib/nginx/deps -ddeps -adeps"
+$ runhaskell Setup.hs build --ghc-options="ngx_distribution_test.hs -o ngx_distribution_test.so -threaded"
 ```
 
 ##### Building dependencies with cabal v2-build

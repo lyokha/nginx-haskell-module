@@ -200,9 +200,9 @@ import Data.Maybe
 -- /deps.tar.gz/ respectively, and also define the /rpath/ directory without
 -- using option /--prefix/.
 --
--- > $ runhaskell Setup.hs configure --user
+-- > $ runhaskell Setup.hs configure --user --hslibdeps-options="-t/var/lib/nginx/deps -ddeps -adeps"
 --
--- > $ runhaskell Setup.hs build --ghc-options="ngx_distribution_test.hs -o ngx_distribution_test.so -threaded" --hslibdeps-options="-t/var/lib/nginx/deps -ddeps -adeps"
+-- > $ runhaskell Setup.hs build --ghc-options="ngx_distribution_test.hs -o ngx_distribution_test.so -threaded"
 
 -- $deps-cabal-v2
 --
