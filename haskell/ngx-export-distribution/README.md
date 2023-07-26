@@ -240,8 +240,8 @@ $ runhaskell --ghc-arg=-package=base --ghc-arg=-package=ngx-export-distribution 
 ```
 
 This should build library *ngx_distribution_test.so* and link it against
-Haskell libraries found in the global package database and the Cabal's global
-package store.
+Haskell libraries found in the global package database and the Cabal package
+store.
 
 ##### Drawbacks
 
