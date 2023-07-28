@@ -4,8 +4,8 @@
 *_stub.h
 .ghc.environment.*
 
-/haskell/**/dist/
-/haskell/**/dist-newstyle/
+dist/
+dist-newstyle/
 /test/**/servroot/
 .hslibs/
 

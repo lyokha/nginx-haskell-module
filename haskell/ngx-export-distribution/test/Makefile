@@ -2,7 +2,7 @@
 # then build the library and create a tarball with all dependent libraries
 
 NAME := ngx_distribution_test
-PKGNAME := ngx-distribution-test
+PKGNAME := $(subst _,-,$(NAME))
 PKGVER := 0.1.0.0
 
 PREFIX := /var/lib/nginx
