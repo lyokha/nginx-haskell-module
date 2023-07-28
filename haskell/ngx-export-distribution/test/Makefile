@@ -26,7 +26,7 @@ all: $(DISTR)
 
 $(DISTR): $(SRC)
 	cabal v2-install --lib --only-dependencies --package-env .
-	cabal v2-install --lib $(PKGDISTR) --package-env .
+	cabal v2-build $(PKGDISTR)
 	sed -i 's/\(^package-id \)/--\1/' $(GHCENV)
 	runhaskell --ghc-arg=-package=base \
 		--ghc-arg=-package=$(PKGDISTR) Setup.hs configure \

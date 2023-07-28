@@ -214,17 +214,18 @@ import Data.Maybe
 --
 -- > $ cabal v2-install --lib --only-dependencies --package-env .
 --
--- > $ cabal v2-install --lib ngx-export-distribution --package-env .
+-- > $ cabal v2-build ngx-export-distribution
+--
+-- The second command is probably no-op because /ngx-export-distribution/ should
+-- have been installed by the first command. At least in Cabal /3.10/, this is
+-- the case.
 --
 -- > $ sed -i 's/\(^package-id \)/--\1/' .ghc.environment.x86_64-linux-$(ghc --numeric-version)
 --
 -- This /sed/ command comments out all lines that start with word /package-id/
 -- in file /.ghc.environment.x86_64-linux-9.4.1/ which has been created by the
--- former commands. This prevents the target library from linking against
--- libraries belonging to packages listed in those lines, thus making the
--- overall number and the size of dependent libraries as small as possible. If
--- this command breaks the following steps, some of the commented lines can be
--- selectively uncommented.
+-- first command. We will put all needed packages into this file after the next
+-- step.
 --
 -- > $ ADD_CABAL_STORE=$(sed -n 's/^\(package-db\)\s\+/--\1=/p' .ghc.environment.x86_64-linux-$(ghc --numeric-version))
 -- > $ runhaskell --ghc-arg=-package=base --ghc-arg=-package=ngx-export-distribution Setup.hs configure --package-db=clear --package-db=global $ADD_CABAL_STORE --prefix=/var/lib/nginx
@@ -252,7 +253,8 @@ import Data.Maybe
 -- > UNIT_ID="^UnitId\s\+\""
 -- > while IFS= read -r pkg
 -- > do sed -n "/$UNIT_ID$pkg/s/$UNIT_ID\(.*\)\"\$/package-id \1/p" <<< "$CABAL_PLAN"
--- > done < <(sed -n '/^CompNameLib$/,/^$/s/^\s\+//p' <<< "$CABAL_PLAN")
+-- > done < <(sed -n '/^CompNameLib$/,/^$/s/^\s\+//p' <<< "$CABAL_PLAN") |
+-- >     awk '!x[$0]++'
 -- > unset CABAL_PLAN UNIT_ID
 --
 -- After running this as
