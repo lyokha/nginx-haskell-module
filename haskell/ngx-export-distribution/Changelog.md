@@ -1,3 +1,8 @@
+### 0.4.0.0
+
+- Get verbosity level for all program invocations from configuration and build
+  flags.
+
 ### 0.3.2.4
 
 - Improved docs.

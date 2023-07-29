@@ -1,0 +1,5 @@
+-- note that ngx-export-distribution will be taken from Hackage;
+-- to build ngx-export-distribution locally, add
+-- ../ngx-export-distribution.cabal to packages
+packages: ngx-distribution-test.cabal
+

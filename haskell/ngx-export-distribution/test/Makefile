@@ -22,11 +22,19 @@ DEPLIBS := $(MACHINE)-$(KERNEL)-ghc-$(GHCVER)
 DISTDIR := dist
 DISTV2DIR := dist-newstyle
 
+INPLACE := $(shell grep '^packages:.*\.\./ngx-export-distribution' \
+                       cabal.project &>/dev/null && echo 1 || echo 0)
+
 all: $(DISTR)
 
 $(DISTR): $(SRC)
-	cabal v2-install --lib --only-dependencies --package-env .
-	cabal v2-build $(PKGDISTR)
+	cabal install --lib --only-dependencies --package-env .
+	cabal build $(PKGDISTR)
+ifeq ($(INPLACE),1)
+	cabal build ngx-export-distribution
+	echo "package-db $$(pwd)/$(DISTV2DIR)/packagedb/ghc-$(GHCVER)" >> \
+	  $(GHCENV)
+endif
 	sed -i 's/\(^package-id \)/--\1/' $(GHCENV)
 	runhaskell --ghc-arg=-package=base \
 		--ghc-arg=-package=$(PKGDISTR) Setup.hs configure \

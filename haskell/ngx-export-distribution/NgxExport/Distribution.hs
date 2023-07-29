@@ -396,27 +396,29 @@ patchAndCollectDependentLibs verbosity lib desc lbi = do
 --
 -- Other hooks from /simpleUserHooks/ get derived as is. Running them is
 -- neither tested nor recommended.
-ngxExportHooks :: Verbosity                         -- ^ Verbosity level
-               -> UserHooks
-ngxExportHooks verbosity =
+ngxExportHooks :: UserHooks
+ngxExportHooks =
     simpleUserHooks { hookedPrograms = [hslibdeps]
                     , confHook = \desc flags -> do
-                        let pdb = configPrograms flags
+                        let verbosity = toVerbosity $ configVerbosity flags
+                            pdb = configPrograms flags
                         _ <- requireProgram verbosity hslibdeps pdb >>=
                                  requireProgram verbosity patchelf . snd
                         confHook simpleUserHooks desc flags
-                    , buildHook = \desc lbi _ flags ->
+                    , buildHook = \desc lbi _ flags -> do
+                        let verbosity = toVerbosity $ buildVerbosity flags
                         buildSharedLib verbosity desc lbi flags >>= \lib ->
                             patchAndCollectDependentLibs verbosity lib desc lbi
                     }
+    where toVerbosity = fromFlagOrDefault normal
 
 -- | A simple implementation of /main/ for a Cabal setup script.
 --
 -- Implemented as
 --
 -- @
--- defaultMain = 'defaultMainWithHooks' $ 'ngxExportHooks' 'normal'
+-- defaultMain = 'defaultMainWithHooks' 'ngxExportHooks'
 -- @
 defaultMain :: IO ()
-defaultMain = defaultMainWithHooks $ ngxExportHooks normal
+defaultMain = defaultMainWithHooks ngxExportHooks
 
