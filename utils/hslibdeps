@@ -15,20 +15,23 @@ PRINT_DIRDEPS=
 
 usage()
 {
-    echo "Usage: $(basename "$0") [-d dir -a ar | -p] [-t target_dir] hslib"
-    echo "       $(basename "$0") -e"
-    echo "  'dir' is a directory where dependent libraries will be"
+    echo "Usage:"
+    echo
+    echo "  * $(basename "$0") [-d dir -a ar | -p] [-t target_dir] hslib"
+    echo "    'dir' is a directory where dependent libraries will be"
     echo "      collected (default is $DEF_DIR)"
-    echo "  'target_dir' is a directory where dependent libraries will be"
+    echo "    'target_dir' is a directory where dependent libraries will be"
     echo "      installed (no default, 'hslib' will not be patched if omitted)"
-    echo "  'ar' is a the base name of the archive to contain 'hslib' and"
+    echo "    'ar' is a the base name of the archive to contain 'hslib' and"
     echo "      'dir' (no default, the archive will not be created if omitted)"
-    echo "  if -p (patch-only) is specified then dependent libraries will"
-    echo "      not be collected nor archived"
-    echo "  special value '-' for 'dir', 'target_dir', and 'ar' resets them"
+    echo "    if -p (patch-only) is specified then dependent libraries will"
+    echo "      neither be collected nor archived"
+    echo "    special value '-' for 'dir', 'target_dir', and 'ar' resets them"
     echo "      (with -d- being equivalent to -p)"
-    echo "  with -e, print all direct dependencies found by cabal-plan,"
-    echo "      the output is compatible with format of GHC environment files"
+    echo
+    echo "  * $(basename "$0") -e"
+    echo "    print all direct dependencies found by cabal-plan, the output"
+    echo "      is compatible with format of GHC environment files"
 }
 
 while [ "$1" ]
