@@ -240,7 +240,7 @@ import Data.Maybe
 -- in the GHC environment file. The build step requires linking the target
 -- library against the direct dependencies and their dependencies in turn. With
 -- [cabal-plan](https://hackage.haskell.org/package/cabal-plan), finding the
--- direct dependencies in the GHC environment file can be done automatically.
+-- direct dependencies in the /cabal plan/ can be done automatically.
 --
 -- > $ hslibdeps -e >> .ghc.environment.x86_64-linux-$(ghc --numeric-version)
 --
