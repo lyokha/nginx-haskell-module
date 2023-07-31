@@ -33,7 +33,7 @@ $(DISTR): $(SRC) $(CPLUG).o
 	  --package-db=clear --package-db=global \
 	  $$(sed -n 's/^\(package-db\)\s\+/--\1=/p' $(GHCENV)) \
 	  --prefix=$(PREFIX)
-	. ./cabal-plan-direct-deps.sh >> $(GHCENV)
+	hslibdeps -e >> $(GHCENV)
 	runhaskell --ghc-arg=-package=base \
 	  --ghc-arg=-package=$(PKGDISTR) Setup.hs build \
 	  --ghc-options="$(CPLUG).o $(SRC) -o $(LIB) $(LINKRTS)"

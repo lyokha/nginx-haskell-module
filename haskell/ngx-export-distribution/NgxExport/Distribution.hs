@@ -239,29 +239,13 @@ import Data.Maybe
 -- Before running the /configure/ command, we commented out all packages listed
 -- in the GHC environment file. The build step requires linking the target
 -- library against the direct dependencies and their dependencies in turn. With
--- [cabal-plan](https://hackage.haskell.org/package/cabal-plan), re-enabling
--- the direct dependencies in the GHC environment file can be done
--- automatically.
+-- [cabal-plan](https://hackage.haskell.org/package/cabal-plan), finding the
+-- direct dependencies in the GHC environment file can be done automatically.
 --
--- The following bash script collects all direct dependencies reported by
--- /cabal-plan/.
+-- > $ hslibdeps -e >> .ghc.environment.x86_64-linux-$(ghc --numeric-version)
 --
--- ==== File /cabal-plan-direct-deps.sh/
--- > #!/usr/bin/env bash
--- >
--- > CABAL_PLAN=$(cabal-plan info --ascii)
--- > UNIT_ID="^UnitId\s\+\""
--- > while IFS= read -r pkg
--- > do sed -n "/$UNIT_ID$pkg/s/$UNIT_ID\(.*\)\"\$/package-id \1/p" <<< "$CABAL_PLAN"
--- > done < <(sed -n '/^CompNameLib$/,/^$/s/^\s\+//p' <<< "$CABAL_PLAN") |
--- >     awk '!x[$0]++'
--- > unset CABAL_PLAN UNIT_ID
---
--- After running this as
---
--- > $ . cabal-plan-direct-deps.sh >> .ghc.environment.x86_64-linux-$(ghc --numeric-version)
---
--- four lines looking similar to
+-- Command /hslibdeps -e/ is a convenient wrapper around /cabal-plan/. After
+-- running this, four lines looking similar to
 --
 -- > package-id aeson-2.1.0.0-9b19e87ee2a82567866c50e13806427068fd4bcc78cedb01ecad7389791f6761
 -- > package-id base-4.17.0.0

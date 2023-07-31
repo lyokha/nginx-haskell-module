@@ -27,3 +27,12 @@ To skip collecting dependent libraries, use option *-p* (patch-only).
 $ hslibdeps -p -t /var/lib/nginx/hslibs ngx_haskell.so
 ```
 
+With option *-e*, print all direct dependencies found by
+[*cabal-plan*](https://hackage.haskell.org/package/cabal-plan) to *stdout*.
+
+```ShellSession
+$ hslibdeps -e
+```
+
+The output is compatible with format of *GHC environment* files.
+

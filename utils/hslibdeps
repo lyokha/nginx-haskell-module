@@ -1,6 +1,9 @@
 #!/bin/bash
 
+NARGS=$#
+
 PATCHELF=patchelf
+CABAL_PLAN=cabal-plan
 
 HSLIB=
 DIR=
@@ -8,10 +11,12 @@ TARGET_DIR=
 ARCHIVE=
 DEF_DIR=.hslibs
 PATCH_ONLY=
+PRINT_DIRDEPS=
 
 usage()
 {
     echo "Usage: $(basename "$0") [-d dir -a ar | -p] [-t target_dir] hslib"
+    echo "       $(basename "$0") -e"
     echo "  'dir' is a directory where dependent libraries will be"
     echo "      collected (default is $DEF_DIR)"
     echo "  'target_dir' is a directory where dependent libraries will be"
@@ -22,6 +27,8 @@ usage()
     echo "      not be collected nor archived"
     echo "  special value '-' for 'dir', 'target_dir', and 'ar' resets them"
     echo "      (with -d- being equivalent to -p)"
+    echo "  with -e, print all direct dependencies found by cabal-plan,"
+    echo "      the output is compatible with format of GHC environment files"
 }
 
 while [ "$1" ]
@@ -50,6 +57,7 @@ do
                                 shift ; ARCHIVE=$1
                             fi ;;
         -p)                 PATCH_ONLY=1 ;;
+        -e)                 PRINT_DIRDEPS=1 ;;
         -*)                 usage ; exit 1 ;;
         *)                  if [ -n "$HSLIB" ]
                             then
@@ -61,12 +69,31 @@ do
     shift
 done
 
+if [ "$PRINT_DIRDEPS" = 1 ]
+then
+    (( NARGS > 1 )) && { usage ; exit 1 ; }
+    if ! $CABAL_PLAN --version >/dev/null 2>&1
+    then
+        echo "Required utility $CABAL_PLAN was not found!" 1>&2
+        exit 2
+    fi
+    PLAN=$($CABAL_PLAN info --ascii)
+    RET=$?
+    [ -z "$PLAN" ] && exit $RET
+    UNIT_ID="^UnitId\s\+\""
+    while IFS= read -r pkg
+    do sed -n "/$UNIT_ID$pkg/s/$UNIT_ID\(.*\)\"\$/package-id \1/p" <<< "$PLAN"
+    done < <(sed -n '/^CompNameLib$/,/^$/s/^\s\+//p' <<< "$PLAN") |
+        awk '!x[$0]++'
+    exit 0
+fi
+
 [ -z "$HSLIB" ] && { usage ; exit 1 ; }
 
 if [ ! -f "$HSLIB" ]
 then
-    echo "File $HSLIB does not exist or not a regular file!"
-    exit 1
+    echo "File $HSLIB does not exist or not a regular file!" 1>&2
+    exit 3
 fi
 
 [ "$DIR" = - ] && PATCH_ONLY=1
@@ -80,9 +107,9 @@ then
     TEST_LIBS=$(echo "$LIBS" | grep -E -v '\s+=>\s+/')
     if [ -n "$TEST_LIBS" ]
     then
-        echo "There were errors while collecting Haskell libraries:"
-        echo "$TEST_LIBS"
-        exit 2
+        echo "There were errors while collecting Haskell libraries:" 1>&2
+        echo "$TEST_LIBS" 1>&2
+        exit 4
     fi
     LIBS=$(echo "$LIBS" | sed -E 's/^(.*)\s+=>\s+(\S+).*/\2/')
     [ -z "$DIR" ] && DIR=$DEF_DIR
@@ -96,8 +123,8 @@ then
     echo "---> Patching $HSLIB"
     if ! $PATCHELF --version >/dev/null 2>&1
     then
-        echo "Required utility $PATCHELF is not found!"
-        exit 3
+        echo "Required utility $PATCHELF was not found!" 1>&2
+        exit 2
     fi
     RPATH=$($PATCHELF --print-rpath "$HSLIB")
     if ! echo "$RPATH" | grep -E "(^|:)$TARGET_DIR(:|$)" >/dev/null 2>&1
