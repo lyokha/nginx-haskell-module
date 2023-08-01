@@ -8,10 +8,15 @@
   <style>
     code{white-space: pre-wrap;}
     span.smallcaps{font-variant: small-caps;}
-    span.underline{text-decoration: underline;}
-    div.column{display: inline-block; vertical-align: top; width: 50%;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
     div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
     ul.task-list{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
     .display.math{display: block; text-align: center; margin: 0.5rem auto;}
   </style>
   <link rel="stylesheet" href="./pandoc.css" />
@@ -112,15 +117,21 @@ exporters in braces, as they are shown in the table — is implemented
 using <em>CPP macros</em>. Both of them provide <em>FFI</em>
 declarations for functions they export, but the camel-cased exporters
 are available only from a separate Haskell module <a
-href="http://hackage.haskell.org/package/ngx-export"><em>ngx-export</em></a>,
+href="https://hackage.haskell.org/package/ngx-export"><em>ngx-export</em></a>,
 which can be downloaded and installed by <em>cabal</em>, whereas the CPP
 exporters are implemented inside the <em>nginx-haskell-module</em> in
 so-called <em>standalone</em> approach, where custom Haskell
 declarations get wrapped inside common Haskell code.</p>
 <h2 id="examples">Examples</h2>
-<p>In all examples in this section and later we will use
+<p>In all examples in this section and later, we will use
 <em>modular</em> approach with <em>camel-cased</em> exporters and
 separate compilation of Haskell code.</p>
+<p>To build examples, we will use <em>ghc</em>. This is rather not
+practical in modern world where dependencies get normally installed by
+<em>cabal</em> into directories not known to <em>ghc</em>. Look <a
+href="https://github.com/lyokha/nginx-haskell-module/tree/master/docs/yet-another-doc-with-examples/test"><em>here</em></a>
+to learn how to build examples using <em>cabal</em> and <a
+href="https://hackage.haskell.org/package/ngx-export-distribution"><em>ngx-export-distribution</em></a>.</p>
 <p><strong>File test.hs</strong></p>
 <pre style="overflow-x: auto; background: #FFE">
 <span style="color: #870087;">{-# LANGUAGE TemplateHaskell #-}</span>
@@ -142,7 +153,7 @@ separate compilation of Haskell code.</p>
 <span style="color: #008787;">ngxExportBLS</span><span style="color: #000000;"> '</span><span style="color: #000000;">isInList</span>
 </pre>
 
-<p>In this module we declared three synchronous handlers:
+<p>In this module, we declared three synchronous handlers:
 <em>toUpper</em>, <em>reverse</em>, and <em>isInList</em>. Handler
 <em>reverse</em> exports existing and well-known Haskell function
 <em>reverse</em> which reverses lists. Let’s compile <em>test.hs</em>
@@ -151,7 +162,7 @@ and move the library to a directory, from where we will load this.</p>
 <span style="color: #005FAF;">ghc -O2 -dynamic -shared -fPIC -flink-rts test.hs -o test.so</span>
 <span style="color: #808080;">[1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )</span>
 <span style="color: #808080;">Linking test.so ...</span>
-<span style="color: #005FAF;">cp test.so /var/lib/nginx/</span>
+<span style="color: #005FAF;">sudo cp test.so /var/lib/nginx/</span>
 </pre>
 
 <p>Note that in <em>ghc</em> older than <em>8.10.6</em>, option
@@ -396,7 +407,7 @@ time!</p>
 <span style="color: #005FAF;">ghc -O2 -dynamic -shared -fPIC -flink-rts -threaded test.hs -o test.so</span>
 <span style="color: #808080;">[1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )</span>
 <span style="color: #808080;">Linking test.so ...</span>
-<span style="color: #005FAF;">cp test.so /var/lib/nginx/</span>
+<span style="color: #005FAF;">sudo cp test.so /var/lib/nginx/</span>
 </pre>
 
 <p>Note that in <em>ghc</em> older than <em>8.10.6</em>, options
@@ -557,7 +568,7 @@ CPU cores, and therefore it’s better now to compile this with option
 <span style="color: #005FAF;">ghc -O2 -feager-blackholing -dynamic -shared -fPIC -flink-rts -threaded test.hs -o test.so</span>
 <span style="color: #808080;">[1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )</span>
 <span style="color: #808080;">Linking test.so ...</span>
-<span style="color: #005FAF;">cp test.so /var/lib/nginx/</span>
+<span style="color: #005FAF;">sudo cp test.so /var/lib/nginx/</span>
 </pre>
 
 <p><strong>File test.conf</strong> (<em>additions</em>)</p>
@@ -790,7 +801,7 @@ showing them in the response sorted. For that we could add a Haskell
 handler, say <em>sortLinks</em>, and pass to it all the page content on
 every request. But the page may appear huge, let’s extract all the links
 from it and put them into a global state using update variable
-<em>_upd__hs_service_httpbin</em>. In this case function
+<em>_upd__hs_service_httpbin</em>. In this case, function
 <em>sortLinks</em> must be impure, as it must be able to read from the
 global state.</p>
 <p><strong>File test.hs</strong> (<em>additions</em>)</p>
@@ -1090,7 +1101,7 @@ needed when service hooks pass nothing. Location <em>/httpbin/url</em>
 is protected from unauthorized access with Nginx directives
 <em>allow</em> and <em>deny</em>.</p>
 <p>Run curl tests.</p>
-<p>First let’s check that <em>httpbin.org</em> replies as expected.</p>
+<p>First, let’s check that <em>httpbin.org</em> replies as expected.</p>
 <pre style="overflow-x: auto; border-style: none none none solid; border-color: #6DF; border-width: 10px; padding: 5px 10px">
 <span style="color: #005FAF;">curl 'http://127.0.0.1:8010/httpbin'</span>
 <span style="color: #808080;">&lt;!DOCTYPE html&gt;</span>
@@ -1447,7 +1458,7 @@ variable and content handlers, and before the next service iteration for
 service handlers.</p>
 <p>Complex scenarios may require <em>typed exchange</em> between Haskell
 handlers and the Nginx part using <em>serialized</em> data types such as
-Haskell records. In this case <em>bytestring</em> flavors of the
+Haskell records. In this case, <em>bytestring</em> flavors of the
 handlers would be the best choice. There are two well-known
 serialization mechanisms: <em>packing Show</em> / <em>unpacking
 Read</em> and <em>ToJSON</em> / <em>FromJSON</em> from Haskell package
@@ -1687,9 +1698,9 @@ requests only from a single worker process.</td>
 </table>
 <h1 id="module-ngxexport.tools">Module NgxExport.Tools</h1>
 <p>Package <a
-href="http://hackage.haskell.org/package/ngx-export-tools"><em>ngx-export-tools</em></a>
+href="https://hackage.haskell.org/package/ngx-export-tools"><em>ngx-export-tools</em></a>
 provides module <a
-href="http://hackage.haskell.org/package/ngx-export-tools/docs/NgxExport-Tools.html"><em>NgxExport.Tools</em></a>
+href="https://hackage.haskell.org/package/ngx-export-tools/docs/NgxExport-Tools.html"><em>NgxExport.Tools</em></a>
 that exports various utility functions and data as well as specialized
 service exporters and adapters. As soon as the module is well
 documented, its features are only basically lined up below.</p>

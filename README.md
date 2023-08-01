@@ -11,9 +11,8 @@
 [![Read the Docs](https://img.shields.io/readthedocs/nginx-haskell-module/latest?logo=readthedocs)](https://nginx-haskell-module.readthedocs.io/en/latest/)
 [![Doc](https://img.shields.io/badge/pdf-yet_another_doc_with_examples-786D5F.svg?logo=jupyter)](https://nbviewer.jupyter.org/github/lyokha/nginx-haskell-module/blob/master/docs/yet-another-doc-with-examples/nginx-haskell-module-yadwe.pdf)
 
-This Nginx module allows compiling and running Haskell source code found in a
-configuration file or an existing shared library. It allows for writing in
-Haskell
+Use this module to build and run custom Haskell handlers in the Nginx Web
+Server. Supported types of custom handlers include
 
 - synchronous variable handlers,
 - asynchronous tasks,
@@ -65,17 +64,17 @@ them available in Nginx configuration files, they must be exported with special
 declarations named *exporters*. Below is a table of *type/exporter*
 correspondence for all available synchronous handlers.
 
-| Type                                       |  Exporter
-| ------------------------------------------ |  ----------------------------------- |
-| `String -> String`                         |  `ngxExportSS` (`NGX_EXPORT_S_S`)    |
-| `String -> String -> String`               |  `ngxExportSSS` (`NGX_EXPORT_S_SS`)  |
-| `String -> Bool`                           |  `ngxExportBS` (`NGX_EXPORT_B_S`)    |
-| `String -> String -> Bool`                 |  `ngxExportBSS` (`NGX_EXPORT_B_SS`)  |
-| `[String] -> String`                       |  `ngxExportSLS` (`NGX_EXPORT_S_LS`)  |
-| `[String] -> Bool`                         |  `ngxExportBLS` (`NGX_EXPORT_B_LS`)  |
-| `ByteString -> L.ByteString`               |  `ngxExportYY` (`NGX_EXPORT_Y_Y`)    |
-| `ByteString -> Bool`                       |  `ngxExportBY` (`NGX_EXPORT_B_Y`)    |
-| `ByteString -> IO L.ByteString`            |  `ngxExportIOYY` (`NGX_EXPORT_IOY_Y`)|
+| Type                                       | Exporter                             |
+| ------------------------------------------ | ------------------------------------ |
+| `String -> String`                         | `ngxExportSS` (`NGX_EXPORT_S_S`)     |
+| `String -> String -> String`               | `ngxExportSSS` (`NGX_EXPORT_S_SS`)   |
+| `String -> Bool`                           | `ngxExportBS` (`NGX_EXPORT_B_S`)     |
+| `String -> String -> Bool`                 | `ngxExportBSS` (`NGX_EXPORT_B_SS`)   |
+| `[String] -> String`                       | `ngxExportSLS` (`NGX_EXPORT_S_LS`)   |
+| `[String] -> Bool`                         | `ngxExportBLS` (`NGX_EXPORT_B_LS`)   |
+| `ByteString -> L.ByteString`               | `ngxExportYY` (`NGX_EXPORT_Y_Y`)     |
+| `ByteString -> Bool`                       | `ngxExportBY` (`NGX_EXPORT_B_Y`)     |
+| `ByteString -> IO L.ByteString`            | `ngxExportIOYY` (`NGX_EXPORT_IOY_Y`) |
 
 All synchronous handlers may accept *strings* (one or two), a *list of strings*,
 or a *strict bytestring*, and return a *string*, a *boolean* or a *lazy
@@ -88,7 +87,7 @@ of *Template Haskell*, the other kind &mdash; exporters in braces, as they are
 shown in the table &mdash; is implemented using *CPP macros*. Both of them
 provide *FFI* declarations for functions they export, but the camel-cased
 exporters are available only from a separate Haskell module
-[*ngx-export*](http://hackage.haskell.org/package/ngx-export), which can be
+[*ngx-export*](https://hackage.haskell.org/package/ngx-export), which can be
 downloaded and installed by *cabal*, whereas the CPP exporters are implemented
 inside the *nginx-haskell-module* in so-called *standalone* approach, where
 custom Haskell declarations get wrapped inside common Haskell code.
@@ -1413,9 +1412,9 @@ handlers in Haskell handlers, when it's possible, should be preferred.
 # Module NgxExport.Tools
 
 Package
-[*ngx-export-tools*](http://hackage.haskell.org/package/ngx-export-tools)
+[*ngx-export-tools*](https://hackage.haskell.org/package/ngx-export-tools)
 provides module
-[*NgxExport.Tools*](http://hackage.haskell.org/package/ngx-export-tools/docs/NgxExport-Tools.html)
+[*NgxExport.Tools*](https://hackage.haskell.org/package/ngx-export-tools/docs/NgxExport-Tools.html)
 that exports various utility functions and data as well as specialized service
 exporters and adapters. As soon as the module is well documented, its features
 are only basically lined up below.
@@ -1472,11 +1471,11 @@ The old [*README.md*](docs/old-readme/README.md).
 There are some articles about the module in my blog.
 
 * [*nginx module to enable haskell binding to nginx configuration
-files*](http://lin-techdet.blogspot.com/2015/12/nginx-module-to-enable-haskell-binding.html).
+files*](https://lin-techdet.blogspot.com/2015/12/nginx-module-to-enable-haskell-binding.html).
 * [*nginx-haskell-module: labeled media routing
-example*](http://lin-techdet.blogspot.com/2017/01/nginx-haskell-module-labeled-media.html).
+example*](https://lin-techdet.blogspot.com/2017/01/nginx-haskell-module-labeled-media.html).
 * [*Passing ByteString contents reliably into C
-code*](http://lin-techdet.blogspot.com/2017/08/passing-bytestring-contents-reliably.html).
+code*](https://lin-techdet.blogspot.com/2017/08/passing-bytestring-contents-reliably.html).
 * [*Signaling all worker processes in Nginx via an event
-channel*](http://lin-techdet.blogspot.com/2018/03/signaling-all-worker-processes-in-nginx.html).
+channel*](https://lin-techdet.blogspot.com/2018/03/signaling-all-worker-processes-in-nginx.html).
 

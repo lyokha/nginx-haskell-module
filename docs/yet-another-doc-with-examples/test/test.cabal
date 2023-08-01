@@ -23,7 +23,7 @@ library
                           , JuicyPixels
                           , safe
 
-  ghc-options:             -Wall -O2
+  ghc-options:             -Wall -O2 -feager-blackholing
 
   if impl(ghc >= 8.10.6)
     ghc-options:           -threaded

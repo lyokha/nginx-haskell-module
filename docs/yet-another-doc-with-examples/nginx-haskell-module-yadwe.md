@@ -48,18 +48,24 @@ The first kind --- *camel-cased* exporters --- is implemented by means of
 the table --- is implemented using *CPP macros*. Both of them provide *FFI*
 declarations for functions they export, but the camel-cased exporters are
 available only from a separate Haskell module
-[*ngx-export*](http://hackage.haskell.org/package/ngx-export), which can be
+[*ngx-export*](https://hackage.haskell.org/package/ngx-export), which can be
 downloaded and installed by *cabal*, whereas the CPP exporters are implemented
 inside the *nginx-haskell-module* in so-called *standalone* approach, where
 custom Haskell declarations get wrapped inside common Haskell code.
 
 ## Examples
 
-In all examples in this section and later we will use *modular* approach with
+In all examples in this section and later, we will use *modular* approach with
 *camel-cased* exporters and separate compilation of Haskell code.
 
-\pagebreak
+To build examples, we will use *ghc*. This is rather not practical in modern
+world where dependencies get normally installed by *cabal* into directories not
+known to *ghc*. Look
+[*here*](https://github.com/lyokha/nginx-haskell-module/tree/master/docs/yet-another-doc-with-examples/test)
+to learn how to build examples using *cabal* and
+[*ngx-export-distribution*](https://hackage.haskell.org/package/ngx-export-distribution).
 
+\vspace{5pt}
 **File test.hs**
 
 ``` {.haskell hl="vim"}
@@ -82,21 +88,22 @@ isInList (x : xs) = x `elem` xs
 ngxExportBLS 'isInList
 ```
 
-In this module we declared three synchronous handlers: *toUpper*, *reverse*, and
-*isInList*. Handler *reverse* exports existing and well-known Haskell function
-*reverse* which reverses lists. Let's compile *test.hs* and move the library to
-a directory, from where we will load this.
+In this module, we declared three synchronous handlers: *toUpper*, *reverse*,
+and *isInList*. Handler *reverse* exports existing and well-known Haskell
+function *reverse* which reverses lists. Let's compile *test.hs* and move the
+library to a directory, from where we will load this.
 
 ``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
 ||| ghc -O2 -dynamic -shared -fPIC -flink-rts test.hs -o test.so
 [1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )
 Linking test.so ...
-||| cp test.so /var/lib/nginx/
+||| sudo cp test.so /var/lib/nginx/
 ```
 
 Note that in *ghc* older than *8.10.6*, option *-flink-rts* must be replaced
 with option *-lHSrts-ghc&dollar;(ghc &dash;&dash;numeric-version)*.
 
+\vspace{5pt}
 **File test.conf**
 
 ``` {.nginx hl="vim"}
@@ -274,6 +281,7 @@ Let's add two asynchronous handlers into *test.hs*: one for extracting a field
 from POST data, and the other for delaying response for a given number of
 seconds.
 
+\vspace{5pt}
 **File test.hs** (*additions*)
 
 ``` {.haskell hl="vim"}
@@ -303,7 +311,7 @@ This code must be linked with *threaded* Haskell RTS this time!
 ||| ghc -O2 -dynamic -shared -fPIC -flink-rts -threaded test.hs -o test.so
 [1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )
 Linking test.so ...
-||| cp test.so /var/lib/nginx/
+||| sudo cp test.so /var/lib/nginx/
 ```
 
 Note that in *ghc* older than *8.10.6*, options *-flink-rts -threaded* must be
@@ -312,6 +320,7 @@ replaced with option *-lHSrts_thr-ghc&dollar;(ghc &dash;&dash;numeric-version)*.
 Let's make location */timer*, where we will read how many seconds to wait in
 POST field *timer*, and then wait them until returning the response.
 
+\vspace{5pt}
 **File test.conf** (*additions*)
 
 ``` {.nginx hl="vim"}
@@ -379,6 +388,7 @@ originally computed chunks.
 
 Let's rewrite our *timer* example using *haskell_async_content*.
 
+\vspace{5pt}
 **File test.hs** (*additions*)
 
 ``` {.haskell hl="vim"}
@@ -407,6 +417,7 @@ ngxExportAsyncHandler 'delayContent
 For the *content type* we used a static string *"text/plain"#* that ends with a
 *magic hash* merely to avoid any dynamic memory allocations.
 
+\vspace{5pt}
 **File test.conf** (*additions*)
 
 ``` {.nginx hl="vim"}
@@ -428,6 +439,7 @@ Waited 0 sec
 In the next example we will create an *online image converter* to convert images
 of various formats into PNG using Haskell library *JuicyPixels*.
 
+\vspace{5pt}
 **File test.hs** (*additions*)
 
 ``` {.haskell hl="vim"}
@@ -452,9 +464,10 @@ therefore it's better now to compile this with option *-feager-blackholing*.
 ||| ghc -O2 -feager-blackholing -dynamic -shared -fPIC -flink-rts -threaded test.hs -o test.so
 [1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )
 Linking test.so ...
-||| cp test.so /var/lib/nginx/
+||| sudo cp test.so /var/lib/nginx/
 ```
 
+\vspace{5pt}
 **File test.conf** (*additions*)
 
 ``` {.nginx hl="vim"}
@@ -546,6 +559,7 @@ following example.
 Let's retrieve content of a specific URL, say *httpbin.org*, in background. Data
 will update every 20 seconds.
 
+\vspace{5pt}
 **File test.hs** (*additions*)
 
 ``` {.haskell hl="vim"}
@@ -584,6 +598,7 @@ run except the first, and then runs the HTTP client. All HTTP exceptions are
 caught by *catchHttpException*, others hit the handler on top of the custom
 Haskell code and get logged by Nginx.
 
+\vspace{5pt}
 **File test.conf** (*additions*)
 
 ``` {.nginx hl="vim"}
@@ -681,8 +696,10 @@ extracting all links from the page and showing them in the response sorted. For
 that we could add a Haskell handler, say *sortLinks*, and pass to it all the
 page content on every request. But the page may appear huge, let's extract all
 the links from it and put them into a global state using update variable
-*\_upd\_\_hs_service_httpbin*. In this case function *sortLinks* must be impure,
-as it must be able to read from the global state.
+*\_upd\_\_hs_service_httpbin*. In this case, function *sortLinks* must be
+impure, as it must be able to read from the global state.
+
+\pagebreak
 
 **File test.hs** (*additions*)
 
@@ -738,6 +755,8 @@ in-place. Handler *sortLinks* is parameterized by data identifier: when the
 identifier is equal to *httpbin*, it reads the global state and returns it
 sorted, otherwise it returns an empty string.
 
+\pagebreak
+
 **File test.conf** (*additions*)
 
 ``` {.nginx hl="vim"}
@@ -790,6 +809,7 @@ shm stats variable is built from the service variable's name with prefix
 Let's add a location to show shm stats about our *httpbin* service. This time
 only configuration file *test.conf* is affected.
 
+\vspace{5pt}
 **File test.conf** (*additions*)
 
 ``` {.nginx hl="vim"}
@@ -838,6 +858,7 @@ appeared to be able to vary from time to time). For this we will use counters
 from
 [*nginx-custom-counters-module*](https://github.com/lyokha/nginx-custom-counters-module).
 
+\vspace{5pt}
 **File test.hs** (*additions*)
 
 ``` {.haskell hl="vim"}
@@ -852,6 +873,7 @@ Handler *cbHttpbin* is a simple HTTP client. On the first run it waits 5 seconds
 before sending request because the request is supposed to be destined to self,
 while Nginx workers may appear to be not ready to accept it.
 
+\vspace{5pt}
 **File test.conf** (*additions*)
 
 ``` {.nginx hl="vim"}
@@ -922,6 +944,7 @@ Let's make it able to change the URL for the *httpbin* service in runtime. For
 this we must enable *getUrlService* to read from a global state where the URL
 value will reside.
 
+\vspace{5pt}
 **File test.hs** (*additions, getUrlService reimplemented*)
 
 ``` {.haskell hl="vim"}
@@ -962,6 +985,7 @@ Service hook *getUrlServiceHook* writes into two global states:
 *getUrlServiceLink* where the URL is stored, and *getUrlServiceLinkUpdated*
 which will signal service *getUrlService* that the URL has been updated.
 
+\vspace{5pt}
 **File test.conf** (*additions*)
 
 ``` {.nginx hl="vim"}
@@ -984,7 +1008,7 @@ directives *allow* and *deny*.
 
 Run curl tests.
 
-First let's check that *httpbin.org* replies as expected.
+First, let's check that *httpbin.org* replies as expected.
 
 ``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
 ||| curl 'http://127.0.0.1:8010/httpbin'
@@ -1078,6 +1102,7 @@ In the log we'll find
 2018/02/13 16:24:12 [notice] 28797#0: an exception was caught while getting value of service variable "hs_service_httpbin": "Service was interrupted by a service hook", using old value
 ```
 
+\vspace{-40pt}
 ## Service update hooks
 
 This is a reimplementation of *update variables* for shared services by means of
@@ -1103,6 +1128,7 @@ using directive *haskell_service_update_hook* on the *http* configuration level.
 
 Let's reimplement the example with update of service links using a service hook.
 
+\vspace{5pt}
 **File test.hs** (*additions*)
 
 ``` {.haskell hl="vim"}
@@ -1118,6 +1144,7 @@ grepHttpbinLinksHook v = do
 ngxExportServiceHook 'grepHttpbinLinksHook
 ```
 
+\vspace{5pt}
 **File test.conf** (*additions*)
 
 ``` {.nginx hl="vim"}
@@ -1155,6 +1182,7 @@ regarded strictly as experimental!
 
 Let's write a plugin that will add an HTTP header to the response.
 
+\vspace{5pt}
 **File test_c_plugin.c**
 
 ``` {.c hl="vim"}
@@ -1200,8 +1228,7 @@ Here we are going to mimic the Nginx build process.
 Now we have an object file *test_c_plugin.o* to link with the Haskell code.
 Below is the Haskell code itself.
 
-\pagebreak
-
+\vspace{5pt}
 **File test.hs** (*additions*)
 
 ``` {.haskell hl="vim"}
@@ -1238,6 +1265,7 @@ Linking test.so ...
 ||| cp test.so /var/lib/nginx/
 ```
 
+\vspace{5pt}
 **File test.conf** (*additions*)
 
 ``` {.nginx hl="vim"}
@@ -1335,7 +1363,7 @@ variable and content handlers, and before the next service iteration for service
 handlers.
 
 Complex scenarios may require *typed exchange* between Haskell handlers and the
-Nginx part using *serialized* data types such as Haskell records. In this case
+Nginx part using *serialized* data types such as Haskell records. In this case,
 *bytestring* flavors of the handlers would be the best choice. There are two
 well-known serialization mechanisms: *packing Show* / *unpacking Read* and
 *ToJSON* / *FromJSON* from Haskell package *aeson*. In practice, *Show* is
@@ -1367,8 +1395,6 @@ Fortunately, all exceptions, synchronous and asynchronous, are caught on top of
 the module's Haskell code. If a handler does not catch an exception itself, the
 exception gets caught higher and logged by Nginx. However, using exception
 handlers in Haskell handlers, when it's possible, should be preferred.
-
-\pagebreak
 
 # Summary table of all Nginx directives of the module
 
@@ -1465,9 +1491,9 @@ Directive                                                                 Level 
 # Module NgxExport.Tools
 
 Package
-[*ngx-export-tools*](http://hackage.haskell.org/package/ngx-export-tools)
+[*ngx-export-tools*](https://hackage.haskell.org/package/ngx-export-tools)
 provides module
-[*NgxExport.Tools*](http://hackage.haskell.org/package/ngx-export-tools/docs/NgxExport-Tools.html)
+[*NgxExport.Tools*](https://hackage.haskell.org/package/ngx-export-tools/docs/NgxExport-Tools.html)
 that exports various utility functions and data as well as specialized service
 exporters and adapters. As soon as the module is well documented, its features
 are only basically lined up below.

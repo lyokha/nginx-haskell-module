@@ -42,17 +42,21 @@ bytestring*. The last handler from the table is *impure* or *effectful*, and it 
 There are two kinds of exporters which differ only in their implementations. The first kind — *camel-cased* exporters — is implemented by means of *Template
 Haskell*, the other kind — exporters in braces, as they are shown in the table — is implemented using *CPP macros*. Both of them provide *FFI* declarations for
 functions they export, but the camel-cased exporters are available only from a separate Haskell module
-`ngx-export <http://hackage.haskell.org/package/ngx-export>`__, which can be downloaded and installed by *cabal*, whereas the CPP exporters are implemented
+`ngx-export <https://hackage.haskell.org/package/ngx-export>`__, which can be downloaded and installed by *cabal*, whereas the CPP exporters are implemented
 inside the *nginx-haskell-module* in so-called *standalone* approach, where custom Haskell declarations get wrapped inside common Haskell code.
 
 Examples
 --------
 
-In all examples in this section and later we will use *modular* approach with *camel-cased* exporters and separate compilation of Haskell code.
+In all examples in this section and later, we will use *modular* approach with *camel-cased* exporters and separate compilation of Haskell code.
+
+To build examples, we will use *ghc*. This is rather not practical in modern world where dependencies get normally installed by *cabal* into directories not
+known to *ghc*. Look `here <https://github.com/lyokha/nginx-haskell-module/tree/master/docs/yet-another-doc-with-examples/test>`__ to learn how to build
+examples using *cabal* and `ngx-export-distribution <https://hackage.haskell.org/package/ngx-export-distribution>`__.
 
 .. raw:: latex
 
-   \pagebreak
+   \vspace{5pt}
 
 **File test.hs**
 
@@ -76,7 +80,7 @@ In all examples in this section and later we will use *modular* approach with *c
    isInList (x : xs) = x `elem` xs
    ngxExportBLS 'isInList
 
-In this module we declared three synchronous handlers: *toUpper*, *reverse*, and *isInList*. Handler *reverse* exports existing and well-known Haskell function
+In this module, we declared three synchronous handlers: *toUpper*, *reverse*, and *isInList*. Handler *reverse* exports existing and well-known Haskell function
 *reverse* which reverses lists. Let’s compile *test.hs* and move the library to a directory, from where we will load this.
 
 .. code-block:: console
@@ -84,9 +88,13 @@ In this module we declared three synchronous handlers: *toUpper*, *reverse*, and
    $ ghc -O2 -dynamic -shared -fPIC -flink-rts test.hs -o test.so
    [1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )
    Linking test.so ...
-   $ cp test.so /var/lib/nginx/
+   $ sudo cp test.so /var/lib/nginx/
 
 Note that in *ghc* older than *8.10.6*, option *-flink-rts* must be replaced with option *-lHSrts-ghc$(ghc ‐‐numeric-version)*.
+
+.. raw:: latex
+
+   \vspace{5pt}
 
 **File test.conf**
 
@@ -246,6 +254,10 @@ An example
 Let’s add two asynchronous handlers into *test.hs*: one for extracting a field from POST data, and the other for delaying response for a given number of
 seconds.
 
+.. raw:: latex
+
+   \vspace{5pt}
+
 **File test.hs** (*additions*)
 
 .. code-block:: haskell
@@ -276,11 +288,15 @@ This code must be linked with *threaded* Haskell RTS this time!
    $ ghc -O2 -dynamic -shared -fPIC -flink-rts -threaded test.hs -o test.so
    [1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )
    Linking test.so ...
-   $ cp test.so /var/lib/nginx/
+   $ sudo cp test.so /var/lib/nginx/
 
 Note that in *ghc* older than *8.10.6*, options *-flink-rts -threaded* must be replaced with option *-lHSrts_thr-ghc$(ghc ‐‐numeric-version)*.
 
 Let’s make location */timer*, where we will read how many seconds to wait in POST field *timer*, and then wait them until returning the response.
+
+.. raw:: latex
+
+   \vspace{5pt}
 
 **File test.conf** (*additions*)
 
@@ -342,6 +358,10 @@ Examples (including online image converter)
 
 Let’s rewrite our *timer* example using *haskell_async_content*.
 
+.. raw:: latex
+
+   \vspace{5pt}
+
 **File test.hs** (*additions*)
 
 .. code-block:: haskell
@@ -369,6 +389,10 @@ Let’s rewrite our *timer* example using *haskell_async_content*.
 
 For the *content type* we used a static string *“text/plain”#* that ends with a *magic hash* merely to avoid any dynamic memory allocations.
 
+.. raw:: latex
+
+   \vspace{5pt}
+
 **File test.conf** (*additions*)
 
 .. code-block:: nginx
@@ -388,6 +412,10 @@ Run curl tests.
    Waited 0 sec
 
 In the next example we will create an *online image converter* to convert images of various formats into PNG using Haskell library *JuicyPixels*.
+
+.. raw:: latex
+
+   \vspace{5pt}
 
 **File test.hs** (*additions*)
 
@@ -413,7 +441,11 @@ We are going to run instances of *convertToPng* on multiple CPU cores, and there
    $ ghc -O2 -feager-blackholing -dynamic -shared -fPIC -flink-rts -threaded test.hs -o test.so
    [1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )
    Linking test.so ...
-   $ cp test.so /var/lib/nginx/
+   $ sudo cp test.so /var/lib/nginx/
+
+.. raw:: latex
+
+   \vspace{5pt}
 
 **File test.conf** (*additions*)
 
@@ -489,6 +521,10 @@ An example
 
 Let’s retrieve content of a specific URL, say *httpbin.org*, in background. Data will update every 20 seconds.
 
+.. raw:: latex
+
+   \vspace{5pt}
+
 **File test.hs** (*additions*)
 
 .. code-block:: haskell
@@ -522,6 +558,10 @@ The *httpManager* defines a global state, not to say a *variable*: this is an as
 *NOINLINE* ensures that all functions will refer to the same client object, i.e. it will nowhere be inlined. Functions *getUrl* and *catchHttpException* are
 used in our service handler *getUrlService*. The handler waits 20 seconds on every run except the first, and then runs the HTTP client. All HTTP exceptions are
 caught by *catchHttpException*, others hit the handler on top of the custom Haskell code and get logged by Nginx.
+
+.. raw:: latex
+
+   \vspace{5pt}
 
 **File test.conf** (*additions*)
 
@@ -592,7 +632,7 @@ data? Unfortunately, not: the shared memory is accessible for reading and writin
 Does it mean that we have only one option to let the Haskell part update its global state unavailable in inactive workers: passing values of shared variables
 into the Haskell part on every request? This would be extremely inefficient. Update variables is a trick to avoid this. They evaluate to the corresponding
 service variable’s value only when it changes in the shared memory since the last check in the current worker, and to an empty string otherwise. Every service
-variable has its own update variable counterpart whose name is built from the service variable’s name prefixed by *\_upd_\_*.
+variable has its own update variable counterpart whose name is built from the service variable’s name prefixed by *\_upd\_\_*.
 
 .. _an-example-3:
 
@@ -602,7 +642,11 @@ An example
 Let’s extend our example with loading a page in background. We are still going to load *httpbin.org*, but this time let’s assume that we have another task, say
 extracting all links from the page and showing them in the response sorted. For that we could add a Haskell handler, say *sortLinks*, and pass to it all the
 page content on every request. But the page may appear huge, let’s extract all the links from it and put them into a global state using update variable
-*\_upd__hs_service_httpbin*. In this case function *sortLinks* must be impure, as it must be able to read from the global state.
+*\_upd\__hs_service_httpbin*. In this case, function *sortLinks* must be impure, as it must be able to read from the global state.
+
+.. raw:: latex
+
+   \pagebreak
 
 **File test.hs** (*additions*)
 
@@ -645,12 +689,16 @@ page content on every request. But the page may appear huge, let’s extract all
    sortLinks _ = return ""
    ngxExportIOYY 'sortLinks
 
-Here *gHttpbinLinks* is the global state, *grepHttpbinLinks* is a handler for update variable *\_upd__hs_service_httpbin*, almost all the time it does nothing —
-just returns an empty string, but when the update variable becomes not empty, it updates the global state and returns an empty string again. Notice that the
+Here *gHttpbinLinks* is the global state, *grepHttpbinLinks* is a handler for update variable *\_upd\__hs_service_httpbin*, almost all the time it does nothing
+— just returns an empty string, but when the update variable becomes not empty, it updates the global state and returns an empty string again. Notice that the
 original bytestring is copied with *B.copy* before its parts get collected as matches and put in the global state. This is an important step because the
 original bytestring’s lifetime does not extend beyond the current request whereas the global state may last much longer! Sometimes copying is not necessary, for
 example when the bytestring gets deserialized into an object in-place. Handler *sortLinks* is parameterized by data identifier: when the identifier is equal to
 *httpbin*, it reads the global state and returns it sorted, otherwise it returns an empty string.
+
+.. raw:: latex
+
+   \pagebreak
 
 **File test.conf** (*additions*)
 
@@ -690,7 +738,7 @@ Every service variable in shared memory has another associated variable that pro
 failed*, where *timestamp* is a number of seconds elapsed from the beginning of the *UNIX epoch* till the last change of the variable’s value, *size* is the
 size of the variable in bytes, *changes* is a number of changes, and *failures* is a number of memory allocation failures since the last Nginx reload, the value
 of flag *failed* (*0* or *1*) denotes if the last attempt of memory allocation from the shared memory pool for a new value of the variable has failed. The name
-of the shm stats variable is built from the service variable’s name with prefix *\_shm_\_*.
+of the shm stats variable is built from the service variable’s name with prefix *\_shm\_\_*.
 
 .. _an-example-4:
 
@@ -698,6 +746,10 @@ An example
 ~~~~~~~~~~
 
 Let’s add a location to show shm stats about our *httpbin* service. This time only configuration file *test.conf* is affected.
+
+.. raw:: latex
+
+   \vspace{5pt}
 
 **File test.conf** (*additions*)
 
@@ -742,6 +794,10 @@ Let’s count all changes of service variable *hs_service_httpbin* during Nginx 
 initialization because *httpbin.org* looks like a static page, but responses appeared to be able to vary from time to time). For this we will use counters from
 `nginx-custom-counters-module <https://github.com/lyokha/nginx-custom-counters-module>`__.
 
+.. raw:: latex
+
+   \vspace{5pt}
+
 **File test.hs** (*additions*)
 
 .. code-block:: haskell
@@ -754,6 +810,10 @@ initialization because *httpbin.org* looks like a static page, but responses app
 
 Handler *cbHttpbin* is a simple HTTP client. On the first run it waits 5 seconds before sending request because the request is supposed to be destined to self,
 while Nginx workers may appear to be not ready to accept it.
+
+.. raw:: latex
+
+   \vspace{5pt}
 
 **File test.conf** (*additions*)
 
@@ -822,6 +882,10 @@ An example
 Let’s make it able to change the URL for the *httpbin* service in runtime. For this we must enable *getUrlService* to read from a global state where the URL
 value will reside.
 
+.. raw:: latex
+
+   \vspace{5pt}
+
 **File test.hs** (*additions, getUrlService reimplemented*)
 
 .. code-block:: haskell
@@ -861,6 +925,10 @@ value will reside.
 Service hook *getUrlServiceHook* writes into two global states: *getUrlServiceLink* where the URL is stored, and *getUrlServiceLinkUpdated* which will signal
 service *getUrlService* that the URL has been updated.
 
+.. raw:: latex
+
+   \vspace{5pt}
+
 **File test.conf** (*additions*)
 
 .. code-block:: nginx
@@ -881,7 +949,7 @@ mandatory: shm zone is not really needed when service hooks pass nothing. Locati
 
 Run curl tests.
 
-First let’s check that *httpbin.org* replies as expected.
+First, let’s check that *httpbin.org* replies as expected.
 
 .. code-block:: console
 
@@ -973,6 +1041,10 @@ In the log we’ll find
    2018/02/13 16:24:12 [notice] 28798#0: service hook reported "getUrlService reset URL"
    2018/02/13 16:24:12 [notice] 28797#0: an exception was caught while getting value of service variable "hs_service_httpbin": "Service was interrupted by a service hook", using old value
 
+.. raw:: latex
+
+   \vspace{-40pt}
+
 Service update hooks
 --------------------
 
@@ -995,6 +1067,10 @@ An example
 
 Let’s reimplement the example with update of service links using a service hook.
 
+.. raw:: latex
+
+   \vspace{5pt}
+
 **File test.hs** (*additions*)
 
 .. code-block:: haskell
@@ -1009,6 +1085,10 @@ Let’s reimplement the example with update of service links using a service hoo
        writeIORef gHttpbinLinks links
        return $ L.fromChunks ["getUrlService set links ", linksList]
    ngxExportServiceHook 'grepHttpbinLinksHook
+
+.. raw:: latex
+
+   \vspace{5pt}
 
 **File test.conf** (*additions*)
 
@@ -1042,6 +1122,10 @@ An example
 ----------
 
 Let’s write a plugin that will add an HTTP header to the response.
+
+.. raw:: latex
+
+   \vspace{5pt}
 
 **File test_c_plugin.c**
 
@@ -1088,7 +1172,7 @@ Now we have an object file *test_c_plugin.o* to link with the Haskell code. Belo
 
 .. raw:: latex
 
-   \pagebreak
+   \vspace{5pt}
 
 **File test.hs** (*additions*)
 
@@ -1124,6 +1208,10 @@ returns *NGX_OK* or *NGX_ERROR* respectively. When compiled with *ghc*, this cod
    Linking test.so ...
    $ cp test.so /var/lib/nginx/
 
+.. raw:: latex
+
+   \vspace{5pt}
+
 **File test.conf** (*additions*)
 
 .. code-block:: nginx
@@ -1152,7 +1240,7 @@ The header *X-Powered-By* is in the response!
 
 Notice that the value of *\_r_ptr* has a binary representation and therefore must not be used in textual contexts such as Haskell *data* declarations or JSON
 objects. It makes sense to put *\_r_ptr* in the beginning of the handler’s argument as it must be easy to extract it from the rest of the argument later. This
-can be achieved explicitly, e.g. *${_r_ptr}my data*, or by adding suffix *(r)* at the end of the handler’s name.
+can be achieved explicitly, e.g. *${\_r_ptr}my data*, or by adding suffix *(r)* at the end of the handler’s name.
 
 C plugins in service update hooks
 ---------------------------------
@@ -1207,7 +1295,7 @@ variable and service handlers, but not in content handlers because the former us
 bytestring’s chunks in the Nginx part ensures that they won’t be garbage collected until the pointer gets freed. Stable pointers get freed upon the request
 termination for variable and content handlers, and before the next service iteration for service handlers.
 
-Complex scenarios may require *typed exchange* between Haskell handlers and the Nginx part using *serialized* data types such as Haskell records. In this case
+Complex scenarios may require *typed exchange* between Haskell handlers and the Nginx part using *serialized* data types such as Haskell records. In this case,
 *bytestring* flavors of the handlers would be the best choice. There are two well-known serialization mechanisms: *packing Show* / *unpacking Read* and *ToJSON*
 / *FromJSON* from Haskell package *aeson*. In practice, *Show* is basically faster than *ToJSON*, however in many cases *FromJSON* outperforms *Read*.
 
@@ -1227,10 +1315,6 @@ There is no way to catch exceptions in *pure* handlers. However they can arise f
 
 Fortunately, all exceptions, synchronous and asynchronous, are caught on top of the module’s Haskell code. If a handler does not catch an exception itself, the
 exception gets caught higher and logged by Nginx. However, using exception handlers in Haskell handlers, when it’s possible, should be preferred.
-
-.. raw:: latex
-
-   \pagebreak
 
 Summary table of all Nginx directives of the module
 ===================================================
@@ -1329,8 +1413,8 @@ Summary table of all Nginx directives of the module
 Module NgxExport.Tools
 ======================
 
-Package `ngx-export-tools <http://hackage.haskell.org/package/ngx-export-tools>`__ provides module
-`NgxExport.Tools <http://hackage.haskell.org/package/ngx-export-tools/docs/NgxExport-Tools.html>`__ that exports various utility functions and data as well as
+Package `ngx-export-tools <https://hackage.haskell.org/package/ngx-export-tools>`__ provides module
+`NgxExport.Tools <https://hackage.haskell.org/package/ngx-export-tools/docs/NgxExport-Tools.html>`__ that exports various utility functions and data as well as
 specialized service exporters and adapters. As soon as the module is well documented, its features are only basically lined up below.
 
 -  Utility functions *terminateWorkerProcess* and *restartWorkerProcess* make it possible to terminate the worker process from within a Haskell service.
