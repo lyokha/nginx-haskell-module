@@ -40,27 +40,17 @@ them available in Nginx configuration files, they must be exported with special
 declarations named *exporters*. Below is a table of *type/exporter*
 correspondence for all available synchronous handlers.
 
---------------------------------------------------------------------------------------
-Type                                        Exporter
-------------------------------------------  ------------------------------------------
-`String -> String`                          `ngxExportSS` (`NGX_EXPORT_S_S`)
-
-`String -> String -> String`                `ngxExportSSS` (`NGX_EXPORT_S_SS`)
-
-`String -> Bool`                            `ngxExportBS` (`NGX_EXPORT_B_S`)
-
-`String -> String -> Bool`                  `ngxExportBSS` (`NGX_EXPORT_B_SS`)
-
-`[String] -> String`                        `ngxExportSLS` (`NGX_EXPORT_S_LS`)
-
-`[String] -> Bool`                          `ngxExportBLS` (`NGX_EXPORT_B_LS`)
-
-`ByteString -> L.ByteString`                `ngxExportYY` (`NGX_EXPORT_Y_Y`)
-
-`ByteString -> Bool`                        `ngxExportBY` (`NGX_EXPORT_B_Y`)
-
-`ByteString -> IO L.ByteString`             `ngxExportIOYY` (`NGX_EXPORT_IOY_Y`)
---------------------------------------------------------------------------------------
+| Type                                       |  Exporter
+| ------------------------------------------ |  ----------------------------------- |
+| `String -> String`                         |  `ngxExportSS` (`NGX_EXPORT_S_S`)    |
+| `String -> String -> String`               |  `ngxExportSSS` (`NGX_EXPORT_S_SS`)  |
+| `String -> Bool`                           |  `ngxExportBS` (`NGX_EXPORT_B_S`)    |
+| `String -> String -> Bool`                 |  `ngxExportBSS` (`NGX_EXPORT_B_SS`)  |
+| `[String] -> String`                       |  `ngxExportSLS` (`NGX_EXPORT_S_LS`)  |
+| `[String] -> Bool`                         |  `ngxExportBLS` (`NGX_EXPORT_B_LS`)  |
+| `ByteString -> L.ByteString`               |  `ngxExportYY` (`NGX_EXPORT_Y_Y`)    |
+| `ByteString -> Bool`                       |  `ngxExportBY` (`NGX_EXPORT_B_Y`)    |
+| `ByteString -> IO L.ByteString`            |  `ngxExportIOYY` (`NGX_EXPORT_IOY_Y`)|
 
 All synchronous handlers may accept *strings* (one or two), a *list of strings*,
 or a *strict bytestring*, and return a *string*, a *boolean* or a *lazy
