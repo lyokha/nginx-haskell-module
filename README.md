@@ -13,13 +13,19 @@
 
 This Nginx module allows compiling and running Haskell source code found in a
 configuration file or an existing shared library. It allows for writing in
-Haskell synchronous variable handlers, asynchronous tasks, services (i.e.
-asynchronous tasks that are not bound to requests), shared services (i.e.
-services that work exclusively on a single Nginx worker process all the time),
-content handlers and POST request handlers.
+Haskell
+
+- synchronous variable handlers,
+- asynchronous tasks,
+- services (i.e. asynchronous tasks that are not bound to requests),
+- shared services (i.e. services that work exclusively on a single Nginx worker
+  process all the time),
+- content handlers,
+- POST request handlers.
 
 # Table of contents
 
+- [Building and installation](#bulding-and-installation)
 - [Synchronous tasks](#synchronous-tasks)
 - [Synchronous content handlers](#synchronous-content-handlers)
 - [Asynchronous tasks and request body handlers](#asynchronous-tasks-and-request-body-handlers)
@@ -32,6 +38,25 @@ content handlers and POST request handlers.
 - [Exceptions in Haskell handlers](#exceptions-in-haskell-handlers)
 - [Summary table of all Nginx directives of the module](#summary-table-of-all-nginx-directives-of-the-module)
 - [Module NgxExport.Tools](#module-ngxexporttools)
+- [List of batteries included](#list-of-batteries-included)
+- [See also](#see-also)
+
+# Building and installation
+
+In directory with the Nginx sources, run
+
+```ShellSession
+$ ./configure --add-module=/path/to/echo_module_sources --add-module=/path/to/this_module_sources
+$ make
+$ sudo make install
+```
+
+To build examples, we will use *ghc*. This is rather not practical in modern
+world where dependencies get normally installed by *cabal* into directories not
+known to *ghc*. Look
+[*here*](https://github.com/lyokha/nginx-haskell-module/tree/master/docs/yet-another-doc-with-examples/test)
+to learn how to build examples using *cabal* and
+[*ngx-export-distribution*](https://hackage.haskell.org/package/ngx-export-distribution).
 
 # Synchronous tasks
 
@@ -72,13 +97,6 @@ custom Haskell declarations get wrapped inside common Haskell code.
 
 In all examples in this section and later, we will use *modular* approach with
 *camel-cased* exporters and separate compilation of Haskell code.
-
-To build examples, we will use *ghc*. This is rather not practical in modern
-world where dependencies get normally installed by *cabal* into directories not
-known to *ghc*. Look
-[*here*](https://github.com/lyokha/nginx-haskell-module/tree/master/docs/yet-another-doc-with-examples/test)
-to learn how to build examples using *cabal* and
-[*ngx-export-distribution*](https://hackage.haskell.org/package/ngx-export-distribution).
 
 #### File test.hs
 
@@ -1362,35 +1380,35 @@ handlers in Haskell handlers, when it's possible, should be preferred.
 
 # Summary table of all Nginx directives of the module
 
-Directive                                                                Level                                         Comment                                                                                                                                                                                      |
------------------------------------------------------------------------- --------------------------------------------- -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-`haskell compile`                                                        `http`                                        Compile Haskell code found in the last argument. Accepts arguments *threaded* (use *threaded* RTS library), *debug* (use *debug* RTS library), and *standalone* (use *standalone* approach). |
-`haskell load`                                                           `http`                                        Load the specified Haskell library.                                                                                                                                                          |
-`haskell ghc_extra_options`                                              `http`                                        Specify extra options for GHC when the library compiles.                                                                                                                                     |
-`haskell rts_options`                                                    `http`                                        Specify options for Haskell RTS.                                                                                                                                                             |
-`haskell program_options`                                                `http`                                        Specify program options. This is just another way for passing data into Haskell handlers.                                                                                                    |
-`haskell_run`                                                            `server`, `location`, `location if`           Run a synchronous Haskell task.                                                                                                                                                              |
-`haskell_run_async`                                                      `server`, `location`, `location if`           Run an asynchronous Haskell task.                                                                                                                                                            |
-`haskell_run_async_on_request_body`                                      `server`, `location`, `location if`           Run an asynchronous Haskell request body handler.                                                                                                                                            |
-`haskell_run_service`                                                    `http`                                        Run a Haskell service.                                                                                                                                                                       |
-`haskell_service_var_update_callback`                                    `http`                                        Run a callback on a service variable's update.                                                                                                                                               |
-`haskell_content`                                                        `location`, `location if`                     Declare a Haskell content handler.                                                                                                                                                           |
-`haskell_static_content`                                                 `location`, `location if`                     Declare a static Haskell content handler.                                                                                                                                                    |
-`haskell_unsafe_content`                                                 `location`, `location if`                     Declare an unsafe Haskell content handler.                                                                                                                                                   |
-`haskell_async_content`                                                  `location`, `location if`                     Declare an asynchronous Haskell content handler.                                                                                                                                             |
-`haskell_async_content_on_request_body`                                  `location`, `location if`                     Declare an asynchronous Haskell content handler with access to request body.                                                                                                                 |
-`haskell_service_hook`                                                   `location`, `location if`                     Declare a service hook and create a content handler for managing the corresponding service.                                                                                                  |
-`haskell_service_update_hook`                                            `http`                                        Declare a service update hook.                                                                                                                                                               |
-`haskell_request_body_read_temp_file`                                    `server`, `location`, `location if`           This flag (*on* or *off*) makes asynchronous tasks and content handlers read buffered in a *temporary file* POST data. If not set, then buffered data is not read.                           |
-`haskell_var_nocacheable`                                                `http`                                        All variables in the list become no cacheable and safe for using in ad-hoc iterations over *error_page* cycles. Applicable to variables of any *get handler*.                                |
-`haskell_var_nohash`                                                     `http`                                        Nginx won't build hashes for variables in the list. Applicable to variables of any *get handler*.                                                                                            |
-`haskell_var_compensate_uri_changes`                                     `http`                                        All variables in the list allow to cheat *error_page* when used in its redirections and make the cycle infinite.                                                                             |
-`haskell_var_empty_on_error`                                             `http`                                        All variables in the list return empty values on errors while the errors are still being logged by Nginx. Applicable to effectful synchronous and asynchronous variable handlers.            |
-`haskell_service_var_ignore_empty`                                       `http`                                        All service variables in the list do not write the service result when its value is empty.                                                                                                   |
-`haskell_service_var_in_shm`                                             `http`                                        All service variables in the list store the service result in a shared memory. Implicitly declares a shared service.                                                                         |
-`haskell_service_hooks_zone`                                             `http`                                        Declare shm zone for a temporary storage of service hooks data.                                                                                                                              |
-`haskell_request_variable_name`                                          `http`                                        Change the name of the request variable if default value *\_r\_ptr* is already used.                                                                                                         |
-`single_listener`                                                        `server`                                      Make the virtual server accept client requests only from a single worker process.                                                                                                            |
+| Directive                                                                | Level                                         | Comment                                                                                                                                                                                      |
+| ------------------------------------------------------------------------ | --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `haskell compile`                                                        | `http`                                        | Compile Haskell code found in the last argument. Accepts arguments *threaded* (use *threaded* RTS library), *debug* (use *debug* RTS library), and *standalone* (use *standalone* approach). |
+| `haskell load`                                                           | `http`                                        | Load the specified Haskell library.                                                                                                                                                          |
+| `haskell ghc_extra_options`                                              | `http`                                        | Specify extra options for GHC when the library compiles.                                                                                                                                     |
+| `haskell rts_options`                                                    | `http`                                        | Specify options for Haskell RTS.                                                                                                                                                             |
+| `haskell program_options`                                                | `http`                                        | Specify program options. This is just another way for passing data into Haskell handlers.                                                                                                    |
+| `haskell_run`                                                            | `server`, `location`, `location if`           | Run a synchronous Haskell task.                                                                                                                                                              |
+| `haskell_run_async`                                                      | `server`, `location`, `location if`           | Run an asynchronous Haskell task.                                                                                                                                                            |
+| `haskell_run_async_on_request_body`                                      | `server`, `location`, `location if`           | Run an asynchronous Haskell request body handler.                                                                                                                                            |
+| `haskell_run_service`                                                    | `http`                                        | Run a Haskell service.                                                                                                                                                                       |
+| `haskell_service_var_update_callback`                                    | `http`                                        | Run a callback on a service variable's update.                                                                                                                                               |
+| `haskell_content`                                                        | `location`, `location if`                     | Declare a Haskell content handler.                                                                                                                                                           |
+| `haskell_static_content`                                                 | `location`, `location if`                     | Declare a static Haskell content handler.                                                                                                                                                    |
+| `haskell_unsafe_content`                                                 | `location`, `location if`                     | Declare an unsafe Haskell content handler.                                                                                                                                                   |
+| `haskell_async_content`                                                  | `location`, `location if`                     | Declare an asynchronous Haskell content handler.                                                                                                                                             |
+| `haskell_async_content_on_request_body`                                  | `location`, `location if`                     | Declare an asynchronous Haskell content handler with access to request body.                                                                                                                 |
+| `haskell_service_hook`                                                   | `location`, `location if`                     | Declare a service hook and create a content handler for managing the corresponding service.                                                                                                  |
+| `haskell_service_update_hook`                                            | `http`                                        | Declare a service update hook.                                                                                                                                                               |
+| `haskell_request_body_read_temp_file`                                    | `server`, `location`, `location if`           | This flag (*on* or *off*) makes asynchronous tasks and content handlers read buffered in a *temporary file* POST data. If not set, then buffered data is not read.                           |
+| `haskell_var_nocacheable`                                                | `http`                                        | All variables in the list become no cacheable and safe for using in ad-hoc iterations over *error_page* cycles. Applicable to variables of any *get handler*.                                |
+| `haskell_var_nohash`                                                     | `http`                                        | Nginx won't build hashes for variables in the list. Applicable to variables of any *get handler*.                                                                                            |
+| `haskell_var_compensate_uri_changes`                                     | `http`                                        | All variables in the list allow to cheat *error_page* when used in its redirections and make the cycle infinite.                                                                             |
+| `haskell_var_empty_on_error`                                             | `http`                                        | All variables in the list return empty values on errors while the errors are still being logged by Nginx. Applicable to effectful synchronous and asynchronous variable handlers.            |
+| `haskell_service_var_ignore_empty`                                       | `http`                                        | All service variables in the list do not write the service result when its value is empty.                                                                                                   |
+| `haskell_service_var_in_shm`                                             | `http`                                        | All service variables in the list store the service result in a shared memory. Implicitly declares a shared service.                                                                         |
+| `haskell_service_hooks_zone`                                             | `http`                                        | Declare shm zone for a temporary storage of service hooks data.                                                                                                                              |
+| `haskell_request_variable_name`                                          | `http`                                        | Change the name of the request variable if default value *\_r\_ptr* is already used.                                                                                                         |
+| `single_listener`                                                        | `server`                                      | Make the virtual server accept client requests only from a single worker process.                                                                                                            |
 
 # Module NgxExport.Tools
 
@@ -1420,4 +1438,45 @@ are only basically lined up below.
   *ignition* services (those that run when the service runs for the first time)
   and *deferred* services (those that run when the service runs for the second
   time and later).
+  
+# List of batteries included
+
+* Haskell modules with docs and examples on Hackage
+    * Package [*ngx-export*](https://hackage.haskell.org/package/ngx-export)
+        * Module [*NgxExport*](https://hackage.haskell.org/package/ngx-export/docs/NgxExport.html)
+    * Package [*ngx-export-tools*](https://hackage.haskell.org/package/ngx-export-tools)
+        * Module [*NgxExport.Tools*](https://hackage.haskell.org/package/ngx-export-tools/docs/NgxExport-Tools.html)
+        * Module [*NgxExport.Tools.Read*](https://hackage.haskell.org/package/ngx-export-tools/docs/NgxExport-Tools-Read.html)
+        * Module [*NgxExport.Tools.SimpleService*](https://hackage.haskell.org/package/ngx-export-tools/docs/NgxExport-Tools-SimpleService.html)
+        * Module [*NgxExport.Tools.SplitService*](https://hackage.haskell.org/package/ngx-export-tools/docs/NgxExport-Tools-SplitService.html)
+        * Module [*NgxExport.Tools.System*](https://hackage.haskell.org/package/ngx-export-tools/docs/NgxExport-Tools-System.html)
+        * Module [*NgxExport.Tools.TimeInterval*](https://hackage.haskell.org/package/ngx-export-tools/docs/NgxExport-Tools-TimeInterval.html)
+    * Package [*ngx-export-tools-extra*](https://hackage.haskell.org/package/ngx-export-tools-extra)
+        * Module [*NgxExport.Tools.Aggregate*](https://hackage.haskell.org/package/ngx-export-tools-extra/docs/NgxExport-Tools-Aggregate.html)
+        * Module [*NgxExport.Tools.EDE*](https://hackage.haskell.org/package/ngx-export-tools-extra/docs/NgxExport-Tools-EDE.html)
+        * Module [*NgxExport.Tools.PCRE*](https://hackage.haskell.org/package/ngx-export-tools-extra/docs/NgxExport-Tools-PCRE.html)
+        * Module [*NgxExport.Tools.Prometheus*](https://hackage.haskell.org/package/ngx-export-tools-extra/docs/NgxExport-Tools-Prometheus.html)
+        * Module [*NgxExport.Tools.Resolve*](https://hackage.haskell.org/package/ngx-export-tools-extra/docs/NgxExport-Tools-Resolve.html)
+        * Module [*NgxExport.Tools.ServiceHookAdaptor*](https://hackage.haskell.org/package/ngx-export-tools-extra/docs/NgxExport-Tools-ServiceHookAdaptor.html)
+        * Module [*NgxExport.Tools.Subrequest*](https://hackage.haskell.org/package/ngx-export-tools-extra/docs/NgxExport-Tools-Subrequest.html)
+    * Package [*ngx-export-distribution*](https://hackage.haskell.org/package/ngx-export-distribution)
+        * Module [*NgxExport.Distribution*](https://hackage.haskell.org/package/ngx-export-distribution/docs/NgxExport-Distribution.html)
+* Haskell modules implemented as C plugins
+    * Package [*ngx-export-healthcheck*](https://github.com/lyokha/nginx-healthcheck-plugin)
+    * Package [*ngx-export-log*](https://github.com/lyokha/nginx-log-plugin)
+
+# See also
+
+The old [*README.md*](docs/old-readme/README.md).
+
+There are some articles about the module in my blog.
+
+* [*nginx module to enable haskell binding to nginx configuration
+files*](http://lin-techdet.blogspot.com/2015/12/nginx-module-to-enable-haskell-binding.html).
+* [*nginx-haskell-module: labeled media routing
+example*](http://lin-techdet.blogspot.com/2017/01/nginx-haskell-module-labeled-media.html).
+* [*Passing ByteString contents reliably into C
+code*](http://lin-techdet.blogspot.com/2017/08/passing-bytestring-contents-reliably.html).
+* [*Signaling all worker processes in Nginx via an event
+channel*](http://lin-techdet.blogspot.com/2018/03/signaling-all-worker-processes-in-nginx.html).
 
