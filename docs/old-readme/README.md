@@ -6,6 +6,7 @@
 [![Build Status](https://github.com/lyokha/nginx-haskell-module/workflows/CI/badge.svg)](https://github.com/lyokha/nginx-haskell-module/actions?query=workflow%3ACI)
 [![Hackage](https://img.shields.io/hackage/v/ngx-export.svg?label=hackage%20%7C%20ngx-export&logo=haskell&logoColor=%239580D1)](https://hackage.haskell.org/package/ngx-export)
 [![Hackage](https://img.shields.io/hackage/v/ngx-export-tools.svg?label=hackage%20%7C%20ngx-export-tools&logo=haskell&logoColor=%239580D1)](https://hackage.haskell.org/package/ngx-export-tools)
+[![Hackage](https://img.shields.io/hackage/v/ngx-export-distribution.svg?label=hackage%20%7C%20ngx-export-distribution&logo=haskell&logoColor=%239580D1)](https://hackage.haskell.org/package/ngx-export-distribution)
 [![Docker](https://img.shields.io/docker/v/lyokha/nginx-haskell-module/latest?label=docker&logo=docker)](https://hub.docker.com/r/lyokha/nginx-haskell-module)
 [![Read the Docs](https://img.shields.io/readthedocs/nginx-haskell-module/latest?logo=readthedocs)](https://nginx-haskell-module.readthedocs.io/en/latest/)
 [![Doc](https://img.shields.io/badge/pdf-yet_another_doc_with_examples-786D5F.svg?logo=jupyter)](https://nbviewer.jupyter.org/github/lyokha/nginx-haskell-module/blob/master/docs/yet-another-doc-with-examples/nginx-haskell-module-yadwe.pdf)
