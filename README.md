@@ -58,11 +58,11 @@ bytestring*. The last handler from the table is *impure* or *effectful*, and it
 returns a *lazy bytestring* wrapped in *IO Monad*.
 
 There are two kinds of exporters which differ only in their implementations.
-The first kind --- *camel-cased* exporters --- is implemented by means of
-*Template Haskell*, the other kind --- exporters in braces, as they are shown in
-the table --- is implemented using *CPP macros*. Both of them provide *FFI*
-declarations for functions they export, but the camel-cased exporters are
-available only from a separate Haskell module
+The first kind &mdash; *camel-cased* exporters &mdash; is implemented by means
+of *Template Haskell*, the other kind &mdash; exporters in braces, as they are
+shown in the table &mdash; is implemented using *CPP macros*. Both of them
+provide *FFI* declarations for functions they export, but the camel-cased
+exporters are available only from a separate Haskell module
 [*ngx-export*](http://hackage.haskell.org/package/ngx-export), which can be
 downloaded and installed by *cabal*, whereas the CPP exporters are implemented
 inside the *nginx-haskell-module* in so-called *standalone* approach, where
@@ -171,15 +171,11 @@ reverse world = dlrow
 
 There are three types of exporters for synchronous content handlers.
 
----------------------------------------------------------------------------------------------------------------------------
-Type                                                                 Exporter
--------------------------------------------------------------------  ------------------------------------------------------
-`ByteString -> ContentHandlerResult`                                 `ngxExportHandler` (`NGX_EXPORT_HANDLER`)
-
-`ByteString -> L.ByteString`                                         `ngxExportDefHandler` (`NGX_EXPORT_DEF_HANDLER`)
-
-`ByteString -> UnsafeContentHandlerResult`                           `ngxExportUnsafeHandler` (`NGX_EXPORT_UNSAFE_HANDLER`)
----------------------------------------------------------------------------------------------------------------------------
+| Type                                                                | Exporter                                               |
+| ------------------------------------------------------------------- | ------------------------------------------------------ |
+| `ByteString -> ContentHandlerResult`                                | `ngxExportHandler` (`NGX_EXPORT_HANDLER`)              |
+| `ByteString -> L.ByteString`                                        | `ngxExportDefHandler` (`NGX_EXPORT_DEF_HANDLER`)       |
+| `ByteString -> UnsafeContentHandlerResult`                          | `ngxExportUnsafeHandler` (`NGX_EXPORT_UNSAFE_HANDLER`) |
 
 Types *ContentHandlerResult* and *UnsafeContentHandlerResult* are declared as
 type synonyms in module *NgxExport*.
@@ -253,13 +249,10 @@ needle `isInList` [needle, in, stack] = 1
 There are two types of Haskell handlers for per-request asynchronous tasks: an
 asynchronous handler and an asynchronous request body handler.
 
----------------------------------------------------------------------------------------------------------------------------------------
-Type                                                                         Exporter
----------------------------------------------------------------------------  ----------------------------------------------------------
-`ByteString -> IO L.ByteString`                                              `ngxExportAsyncIOYY` (`NGX_EXPORT_ASYNC_IOY_Y`)
-
-`L.ByteString -> ByteString -> IO L.ByteString`                              `ngxExportAsyncOnReqBody` (`NGX_EXPORT_ASYNC_ON_REQ_BODY`)
----------------------------------------------------------------------------------------------------------------------------------------
+| Type                                                                        | Exporter                                                   |
+| --------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `ByteString -> IO L.ByteString`                                             | `ngxExportAsyncIOYY` (`NGX_EXPORT_ASYNC_IOY_Y`)            |
+| `L.ByteString -> ByteString -> IO L.ByteString`                             | `ngxExportAsyncOnReqBody` (`NGX_EXPORT_ASYNC_ON_REQ_BODY`) |
 
 Normal asynchronous handler accepts a strict bytestring and returns a lazy
 bytestring. Its type exactly corresponds to that of the handlers exported with
@@ -358,13 +351,10 @@ One of them corresponds to that of the *normal* content handler, except the
 result is wrapped in *IO Monad*. The other accepts request body chunks in its
 first argument like the handler exported with *ngxExportAsyncOnReqBody*.
 
---------------------------------------------------------------------------------------------------------------------------------------------------------------
-Type                                                                                 Exporter
------------------------------------------------------------------------------------  -------------------------------------------------------------------------
-`ByteString -> IO ContentHandlerResult`                                              `ngxExportAsyncHandler` (`NGX_EXPORT_ASYNC_HANDLER`)
-
-`L.ByteString -> ByteString -> IO ContentHandlerResult`                              `ngxExportAsyncHandlerOnReqBody` (`NGX_EXPORT_ASYNC_HANDLER_ON_REQ_BODY`)
---------------------------------------------------------------------------------------------------------------------------------------------------------------
+| Type                                                                                | Exporter                                                                  |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `ByteString -> IO ContentHandlerResult`                                             | `ngxExportAsyncHandler` (`NGX_EXPORT_ASYNC_HANDLER`)                      |
+| `L.ByteString -> ByteString -> IO ContentHandlerResult`                             | `ngxExportAsyncHandlerOnReqBody` (`NGX_EXPORT_ASYNC_HANDLER_ON_REQ_BODY`) |
 
 The first handler is declared with directive *haskell_async_content*, the
 handler that accepts request body chunks is declared with directive
@@ -392,8 +382,8 @@ location: handler *getUrl* will run before redirection, but variable
 location.
 
 The task starts from the content handler asynchronously, and the lazy
-bytestring --- the contents --- gets used in the task as is, with all of its
-originally computed chunks.
+bytestring &mdash; the contents &mdash; gets used in the task as is, with all
+of its originally computed chunks.
 
 ## Examples (including online image converter)
 
@@ -526,11 +516,9 @@ data shared in many requests.
 
 There is only one type of asynchronous services exporters.
 
-----------------------------------------------------------------------------------------------------
-Type                                             Exporter
------------------------------------------------  ---------------------------------------------------
-`ByteString -> Bool -> IO L.ByteString`          `ngxExportServiceIOYY` (`NGX_EXPORT_SERVICE_IOY_Y`)
-----------------------------------------------------------------------------------------------------
+| Type                                            | Exporter                                            |
+| ----------------------------------------------- | --------------------------------------------------- |
+| `ByteString -> Bool -> IO L.ByteString`         | `ngxExportServiceIOYY` (`NGX_EXPORT_SERVICE_IOY_Y`) |
 
 It accepts a strict bytestring and a boolean value, and returns a lazy
 bytestring (chunks of data). If the boolean argument is *True* then this service
@@ -545,12 +533,12 @@ configuration level.
     haskell_run_service getUrlService $hs_service_httpbin "http://httpbin.org";
 ```
 
-The first argument is, as ever, the name of a Haskell handler, the second --- a
-variable where the service result will be put, and the third argument is data
-passed to the handler *getUrlService* in its first parameter. Notice that the
-third argument cannot contain variables because variable handlers in Nginx are
-only available in a request context, hence this argument may only be a static
-string.
+The first argument is, as ever, the name of a Haskell handler, the second
+&mdash; a variable where the service result will be put, and the third argument
+is data passed to the handler *getUrlService* in its first parameter. Notice
+that the third argument cannot contain variables because variable handlers in
+Nginx are only available in a request context, hence this argument may only be
+a static string.
 
 Asynchronous services are bound to the Nginx event loop in the same way as
 asynchronous tasks. When a service finishes its computation, it pokes data into
@@ -659,10 +647,10 @@ clause),
 ```
 
 makes service *getUrlService*, that stores its result in variable
-*hs_service_httpbin*, shared. The first argument of the directive --- *httpbin*
---- is an identifier of a shared memory segment, *512k* is its maximum size,
-*/tmp* is a directory where *file locks* will be put (see below), and
-*&dollar;hs_service_httpbin* is the service variable.
+*hs_service_httpbin*, shared. The first argument of the directive &mdash;
+*httpbin* &mdash; is an identifier of a shared memory segment, *512k* is its
+maximum size, */tmp* is a directory where *file locks* will be put (see below),
+and *&dollar;hs_service_httpbin* is the service variable.
 
 Shared services are called *shared* not only because they store results in
 shared memory, but also because at any moment of the Nginx master lifetime there
@@ -747,15 +735,15 @@ ngxExportIOYY 'sortLinks
 
 Here *gHttpbinLinks* is the global state, *grepHttpbinLinks* is a handler for
 update variable *\_upd\_\_hs_service_httpbin*, almost all the time it does
-nothing --- just returns an empty string, but when the update variable becomes
-not empty, it updates the global state and returns an empty string again. Notice
-that the original bytestring is copied with *B.copy* before its parts get
-collected as matches and put in the global state. This is an important step
-because the original bytestring's lifetime does not extend beyond the current
-request whereas the global state may last much longer! Sometimes copying is not
-necessary, for example when the bytestring gets deserialized into an object
-in-place. Handler *sortLinks* is parameterized by data identifier: when the
-identifier is equal to *httpbin*, it reads the global state and returns it
+nothing &mdash; just returns an empty string, but when the update variable
+becomes not empty, it updates the global state and returns an empty string
+again. Notice that the original bytestring is copied with *B.copy* before its
+parts get collected as matches and put in the global state. This is an important
+step because the original bytestring's lifetime does not extend beyond the
+current request whereas the global state may last much longer! Sometimes copying
+is not necessary, for example when the bytestring gets deserialized into an
+object in-place. Handler *sortLinks* is parameterized by data identifier: when
+the identifier is equal to *httpbin*, it reads the global state and returns it
 sorted, otherwise it returns an empty string.
 
 #### File test.conf (additions)
@@ -775,7 +763,7 @@ sorted, otherwise it returns an empty string.
 We have to pass variable *\_upd\_links\_* in *sortLinks* because this will
 trigger update in the worker by *grepHttpbinLinks*, otherwise update won't run:
 remember that Nginx directives are lazy? On the other hand, *\_upd\_links\_* is
-always empty and won't mess up with the rest of the argument --- value
+always empty and won't mess up with the rest of the argument &mdash; value
 *httpbin*.
 
 Run curl tests.
@@ -911,11 +899,9 @@ shared. They are supposed to change global states that affect services behavior
 and can be thought of as service API handlers, thereto being run from dedicated
 Nginx locations.
 
-----------------------------------------------------------------------------------------------
-Type                                        Exporter
-------------------------------------------  --------------------------------------------------
-`ByteString -> IO L.ByteString`             `ngxExportServiceHook` (`NGX_EXPORT_SERVICE_HOOK`)
-----------------------------------------------------------------------------------------------
+| Type                                       | Exporter                                           |
+| ------------------------------------------ | -------------------------------------------------- |
+| `ByteString -> IO L.ByteString`            | `ngxExportServiceHook` (`NGX_EXPORT_SERVICE_HOOK`) |
 
 Service hooks install a content handler when declared. In the following example,
 
@@ -1299,23 +1285,19 @@ variables such as *ngx_cycle* for doing a variety of low level actions.
 Below is a table of functions exported from the Haskell module that return
 opaque pointers to Nginx global variables for using them in C plugins.
 
--------------------------------------------------------------------------------------------
-Function                                    Returned value and its type
-------------------------------------------  -----------------------------------------------
-`ngxCyclePtr`                               value of argument `cycle` in the worker's
-                                            initialization function\
-                                            (of type `ngx_cycle_t *`)
-
-`ngxUpstreamMainConfPtr`                    value of expression
-                                            `ngx_http_cycle_get_module_main_conf(cycle,
-                                                ngx_http_upstream_module)` in the worker's
-                                            initialization function\
-                                            (of type `ngx_http_upstream_main_conf_t *`)
-
-`ngxCachedTimePtr`                          *address* of the Nginx global variable
-                                            `ngx_cached_time`\
-                                            (of type `volatile ngx_time_t **`)
--------------------------------------------------------------------------------------------
+| Function                                   | Returned value and its type                     |
+| ------------------------------------------ | ----------------------------------------------- |
+| `ngxCyclePtr`                              | value of argument `cycle` in the worker's       |
+|                                            | initialization function\                        |
+|                                            | (of type `ngx_cycle_t *`)                       |
+| `ngxUpstreamMainConfPtr`                   | value of expression                             |
+|                                            | `ngx_http_cycle_get_module_main_conf(cycle,     |
+|                                            |     ngx_http_upstream_module)` in the worker's  |
+|                                            | initialization function\                        |
+|                                            | (of type `ngx_http_upstream_main_conf_t *`)     |
+| `ngxCachedTimePtr`                         | *address* of the Nginx global variable          |
+|                                            | `ngx_cached_time`\                              |
+|                                            | (of type `volatile ngx_time_t **`)              |
 
 Notice that besides synchronous nature of service update hooks, there are other
 features that distinguish them from service update callbacks.
