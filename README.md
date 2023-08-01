@@ -82,7 +82,7 @@ to learn how to build examples using *cabal* and
 
 #### File test.hs
 
-``` {.haskell hl="vim"}
+```haskell
 {-# LANGUAGE TemplateHaskell #-}
 
 module NgxHaskellUserRuntime where
@@ -107,11 +107,11 @@ and *isInList*. Handler *reverse* exports existing and well-known Haskell
 function *reverse* which reverses lists. Let's compile *test.hs* and move the
 library to a directory, from where we will load this.
 
-``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
-||| ghc -O2 -dynamic -shared -fPIC -flink-rts test.hs -o test.so
+```ShellSession
+$ ghc -O2 -dynamic -shared -fPIC -flink-rts test.hs -o test.so
 [1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )
 Linking test.so ...
-||| cp test.so /var/lib/nginx/
+$ sudo cp test.so /var/lib/nginx/
 ```
 
 Note that in *ghc* older than *8.10.6*, option *-flink-rts* must be replaced
@@ -119,7 +119,7 @@ with option *-lHSrts-ghc&dollar;(ghc &dash;&dash;numeric-version)*.
 
 #### File test.conf
 
-``` {.nginx hl="vim"}
+```nginx
 user                    nginx;
 worker_processes        4;
 
@@ -160,8 +160,8 @@ directives.
 
 Let's test the configuration with *curl*.
 
-``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
-||| curl 'http://127.0.0.1:8010/?u=hello&r=world&a=1&b=10&c=1'
+```ShellSession
+$ curl 'http://127.0.0.1:8010/?u=hello&r=world&a=1&b=10&c=1'
 toUpper hello = HELLO
 reverse world = dlrow
 1 `isInList` [10, 1, ] = 1
@@ -180,7 +180,7 @@ There are three types of exporters for synchronous content handlers.
 Types *ContentHandlerResult* and *UnsafeContentHandlerResult* are declared as
 type synonyms in module *NgxExport*.
 
-``` {.haskell hl="vim"}
+```haskell
 type ContentHandlerResult = (L.ByteString, ByteString, Int, HTTPHeaders)
 type UnsafeContentHandlerResult = (ByteString, ByteString, Int)
 type HTTPHeaders = [(ByteString, ByteString)]
@@ -208,7 +208,7 @@ on further requests. The *unsafe* handler is declared with directive
 Let's replace Nginx directive *echo* with our own default content handler
 *echo*. Add in *test.hs*,
 
-``` {.haskell hl="vim"}
+```haskell
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString.Lazy as L
 
@@ -222,7 +222,7 @@ ngxExportDefHandler 'echo
 compile it and put *test.so* into */var/lib/nginx/*. Add new location */ch* into
 *test.conf*,
 
-``` {.nginx hl="vim"}
+```nginx
         location /ch {
             haskell_run toUpper $hs_upper $arg_u;
             haskell_run reverse $hs_reverse $arg_r;
@@ -237,8 +237,8 @@ $arg_a `isInList` [$arg_b, $arg_c, $arg_d] = $hs_isInList
 
 and test again.
 
-``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
-||| curl 'http://127.0.0.1:8010/ch?u=content&r=handler&a=needle&b=needle&c=in&d=stack'
+```ShellSession
+$ curl 'http://127.0.0.1:8010/ch?u=content&r=handler&a=needle&b=needle&c=in&d=stack'
 toUpper content = CONTENT
 reverse handler = reldnah
 needle `isInList` [needle, in, stack] = 1
@@ -289,7 +289,7 @@ seconds.
 
 #### File test.hs (additions)
 
-``` {.haskell hl="vim"}
+```haskell
 import qualified Data.ByteString.Char8 as C8
 import qualified Data.ByteString.Lazy.Char8 as C8L
 import           Control.Concurrent
@@ -312,11 +312,11 @@ ngxExportAsyncIOYY 'delay
 
 This code must be linked with *threaded* Haskell RTS this time!
 
-``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
-||| ghc -O2 -dynamic -shared -fPIC -flink-rts -threaded test.hs -o test.so
+```ShellSession
+$ ghc -O2 -dynamic -shared -fPIC -flink-rts -threaded test.hs -o test.so
 [1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )
 Linking test.so ...
-||| cp test.so /var/lib/nginx/
+$ sudo cp test.so /var/lib/nginx/
 ```
 
 Note that in *ghc* older than *8.10.6*, options *-flink-rts -threaded* must be
@@ -327,7 +327,7 @@ POST field *timer*, and then wait them until returning the response.
 
 #### File test.conf (additions)
 
-``` {.nginx hl="vim"}
+```nginx
         location /timer {
             haskell_run_async_on_request_body reqFld $hs_timeout timer;
             haskell_run_async delay $hs_waited $hs_timeout;
@@ -337,10 +337,10 @@ POST field *timer*, and then wait them until returning the response.
 
 Run curl tests.
 
-``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
-||| curl -d 'timer=3' 'http://127.0.0.1:8010/timer'
+```ShellSession
+$ curl -d 'timer=3' 'http://127.0.0.1:8010/timer'
 Waited 3 sec
-||| curl -d 'timer=bad' 'http://127.0.0.1:8010/timer'
+$ curl -d 'timer=bad' 'http://127.0.0.1:8010/timer'
 Waited 0 sec
 ```
 
@@ -363,7 +363,7 @@ handler that accepts request body chunks is declared with directive
 It's easy to emulate effects in a synchronous content handler by combining the
 latter with an asynchronous task like in the following example.
 
-``` {.nginx hl="vim"}
+```nginx
         location /async_content {
             haskell_run_async getUrl $hs_async_httpbin "http://httpbin.org";
             haskell_content echo $hs_async_httpbin;
@@ -391,7 +391,7 @@ Let's rewrite our *timer* example using *haskell_async_content*.
 
 #### File test.hs (additions)
 
-``` {.haskell hl="vim"}
+```haskell
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE MagicHash #-}
 
@@ -419,7 +419,7 @@ For the *content type* we used a static string *"text/plain"#* that ends with a
 
 #### File test.conf (additions)
 
-``` {.nginx hl="vim"}
+```nginx
         location /timer/ch {
             haskell_run_async_on_request_body reqFld $hs_timeout timer;
             haskell_async_content delayContent $hs_timeout;
@@ -428,10 +428,10 @@ For the *content type* we used a static string *"text/plain"#* that ends with a
 
 Run curl tests.
 
-``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
-||| curl -d 'timer=3' 'http://127.0.0.1:8010/timer/ch'
+```ShellSession
+$ curl -d 'timer=3' 'http://127.0.0.1:8010/timer/ch'
 Waited 3 sec
-||| curl 'http://127.0.0.1:8010/timer/ch'
+$ curl 'http://127.0.0.1:8010/timer/ch'
 Waited 0 sec
 ```
 
@@ -440,7 +440,7 @@ of various formats into PNG using Haskell library *JuicyPixels*.
 
 #### File test.hs (additions)
 
-``` {.haskell hl="vim"}
+```haskell
 import           Codec.Picture
 
 -- ...
@@ -458,16 +458,16 @@ ngxExportAsyncHandlerOnReqBody 'convertToPng
 We are going to run instances of *convertToPng* on multiple CPU cores, and
 therefore it's better now to compile this with option *-feager-blackholing*.
 
-``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
-||| ghc -O2 -feager-blackholing -dynamic -shared -fPIC -flink-rts -threaded test.hs -o test.so
+```ShellSession
+$ ghc -O2 -feager-blackholing -dynamic -shared -fPIC -flink-rts -threaded test.hs -o test.so
 [1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )
 Linking test.so ...
-||| cp test.so /var/lib/nginx/
+$ sudo cp test.so /var/lib/nginx/
 ```
 
 #### File test.conf (additions)
 
-``` {.nginx hl="vim"}
+```nginx
     haskell rts_options -N4 -A32m -qg;
 
     limit_conn_zone all zone=all:10m;
@@ -503,8 +503,8 @@ omitted.
 For running tests, an original file, say *sample.tif*, must be prepared. We will
 pipe command *display* from *ImageMagick* to the output of curl for more fun.
 
-``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
-||| curl --data-binary @sample.tif 'http://127.0.0.1:8010/convert/topng' | display
+```ShellSession
+$ curl --data-binary @sample.tif 'http://127.0.0.1:8010/convert/topng' | display
 ```
 
 # Asynchronous services
@@ -529,7 +529,7 @@ Services are declared with Nginx directive *haskell_run_service*. As far as they
 are not bound to requests, the directive is only available on the *http*
 configuration level.
 
-``` {.nginx hl="vim"}
+```nginx
     haskell_run_service getUrlService $hs_service_httpbin "http://httpbin.org";
 ```
 
@@ -556,7 +556,7 @@ will update every 20 seconds.
 
 #### File test.hs (additions)
 
-``` {.haskell hl="vim"}
+```haskell
 import           Network.HTTP.Client
 import           Control.Exception
 import           System.IO.Unsafe
@@ -594,7 +594,7 @@ Haskell code and get logged by Nginx.
 
 #### File test.conf (additions)
 
-``` {.nginx hl="vim"}
+```nginx
     haskell_run_service getUrlService $hs_service_httpbin "http://httpbin.org";
 
     # ...
@@ -606,8 +606,8 @@ Haskell code and get logged by Nginx.
 
 Run curl tests.
 
-``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
-||| curl 'http://127.0.0.1:8010/httpbin'
+```ShellSession
+$ curl 'http://127.0.0.1:8010/httpbin'
 <!DOCTYPE html>
 <html>
 <head>
@@ -642,7 +642,7 @@ all worker processes. This is achieved with directive
 *haskell_service_var_in_shm*. For example, the following declaration (in *http*
 clause),
 
-``` {.nginx hl="vim"}
+```nginx
     haskell_service_var_in_shm httpbin 512k /tmp $hs_service_httpbin;
 ```
 
@@ -694,7 +694,7 @@ impure, as it must be able to read from the global state.
 
 #### File test.hs (additions)
 
-``` {.haskell hl="vim"}
+```haskell
 {-# LANGUAGE OverloadedStrings #-}
 
 -- ...
@@ -748,7 +748,7 @@ sorted, otherwise it returns an empty string.
 
 #### File test.conf (additions)
 
-``` {.nginx hl="vim"}
+```nginx
     haskell_service_var_in_shm httpbin 512k /tmp $hs_service_httpbin;
 
     # ...
@@ -768,8 +768,8 @@ always empty and won't mess up with the rest of the argument &mdash; value
 
 Run curl tests.
 
-``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
-||| curl 'http://127.0.0.1:8010/httpbin/sortlinks'
+```ShellSession
+$ curl 'http://127.0.0.1:8010/httpbin/sortlinks'
 /
 /absolute-redirect/6
 /anything
@@ -800,7 +800,7 @@ only configuration file *test.conf* is affected.
 
 #### File test.conf (additions)
 
-``` {.nginx hl="vim"}
+```nginx
         location /httpbin/shmstats {
             echo "Httpbin service shm stats: $_shm__hs_service_httpbin";
         }
@@ -808,8 +808,8 @@ only configuration file *test.conf* is affected.
 
 Run curl tests.
 
-``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
-||| curl 'http://127.0.0.1:8010/httpbin/shmstats'
+```ShellSession
+$ curl 'http://127.0.0.1:8010/httpbin/shmstats'
 Httpbin service shm stats: 1516274639 | 13011 | 1 | 0 | 0
 ```
 
@@ -822,7 +822,7 @@ from start of Nginx), and that there were no memory allocation failures.
 There is a special type of single-shot services called update callbacks. They
 are declared like
 
-``` {.nginx hl="vim"}
+```nginx
     haskell_service_var_update_callback cbHttpbin $hs_service_httpbin optional_value;
 ```
 
@@ -848,7 +848,7 @@ from
 
 #### File test.hs (additions)
 
-``` {.haskell hl="vim"}
+```haskell
 cbHttpbin :: ByteString -> Bool -> IO L.ByteString
 cbHttpbin url firstRun = do
     when firstRun $ threadDelay $ 5 * 1000000
@@ -862,7 +862,7 @@ while Nginx workers may appear to be not ready to accept it.
 
 #### File test.conf (additions)
 
-``` {.nginx hl="vim"}
+```nginx
     haskell_service_var_update_callback cbHttpbin $hs_service_httpbin
                                         "http://127.0.0.1:8010/httpbin/count";
 
@@ -880,15 +880,15 @@ while Nginx workers may appear to be not ready to accept it.
 
 Wait at least 5 seconds after Nginx start and run curl tests.
 
-``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
-||| curl 'http://127.0.0.1:8010/counters'
+```ShellSession
+$ curl 'http://127.0.0.1:8010/counters'
 Httpbin service changes count: 1
 ```
 
 Further the count will probably be steadily increasing.
 
-``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
-||| curl 'http://127.0.0.1:8010/counters'
+```ShellSession
+$ curl 'http://127.0.0.1:8010/counters'
 Httpbin service changes count: 3
 ```
 
@@ -905,7 +905,7 @@ Nginx locations.
 
 Service hooks install a content handler when declared. In the following example,
 
-``` {.nginx hl="vim"}
+```nginx
         location /httpbin/url {
             haskell_service_hook getUrlServiceHook $hs_service_httpbin $arg_v;
         }
@@ -930,7 +930,7 @@ value will reside.
 
 #### File test.hs (additions, getUrlService reimplemented)
 
-``` {.haskell hl="vim"}
+```haskell
 import           Data.Maybe
 
 -- ...
@@ -970,7 +970,7 @@ which will signal service *getUrlService* that the URL has been updated.
 
 #### File test.conf (additions)
 
-``` {.nginx hl="vim"}
+```nginx
     haskell_service_hooks_zone hooks 32k;
 
     # ...
@@ -992,8 +992,8 @@ Run curl tests.
 
 First, let's check that *httpbin.org* replies as expected.
 
-``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
-||| curl 'http://127.0.0.1:8010/httpbin'
+```ShellSession
+$ curl 'http://127.0.0.1:8010/httpbin'
 <!DOCTYPE html>
 <html>
 <head>
@@ -1002,7 +1002,7 @@ First, let's check that *httpbin.org* replies as expected.
   <title>httpbin(1): HTTP Client Testing Service</title>
 
 ...
-||| curl 'http://127.0.0.1:8010/httpbin/sortlinks'
+$ curl 'http://127.0.0.1:8010/httpbin/sortlinks'
 /
 /absolute-redirect/6
 /anything
@@ -1015,13 +1015,13 @@ First, let's check that *httpbin.org* replies as expected.
 
 Then change URL to, say, *example.com*,
 
-``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
-||| curl 'http://127.0.0.1:8010/httpbin/url?v=http://example.com'
+```ShellSession
+$ curl 'http://127.0.0.1:8010/httpbin/url?v=http://example.com'
 ```
 
 and peek, by the way, into the Nginx error log.
 
-``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
+```ShellSession
 2018/02/13 16:12:33 [notice] 28794#0: service hook reported "getUrlService set URL http://example.com"
 2018/02/13 16:12:33 [notice] 28795#0: service hook reported "getUrlService set URL http://example.com"
 2018/02/13 16:12:33 [notice] 28797#0: service hook reported "getUrlService set URL http://example.com"
@@ -1036,8 +1036,8 @@ immediately after restart, and the service variable will be updated.
 
 Let's see what we are getting now.
 
-``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
-||| curl 'http://127.0.0.1:8010/httpbin'
+```ShellSession
+$ curl 'http://127.0.0.1:8010/httpbin'
 <!doctype html>
 <html>
 <head>
@@ -1046,15 +1046,15 @@ Let's see what we are getting now.
     <meta charset="utf-8" />
 
 ...
-||| curl 'http://127.0.0.1:8010/httpbin/sortlinks'
+$ curl 'http://127.0.0.1:8010/httpbin/sortlinks'
 http://www.iana.org/domains/example
 ```
 
 Let's reset the URL.
 
-``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
-||| curl 'http://127.0.0.1:8010/httpbin/url'
-||| curl 'http://127.0.0.1:8010/httpbin'
+```ShellSession
+$ curl 'http://127.0.0.1:8010/httpbin/url'
+$ curl 'http://127.0.0.1:8010/httpbin'
 <!DOCTYPE html>
 <html>
 <head>
@@ -1063,7 +1063,7 @@ Let's reset the URL.
   <title>httpbin(1): HTTP Client Testing Service</title>
 
 ...
-||| curl 'http://127.0.0.1:8010/httpbin/sortlinks'
+$ curl 'http://127.0.0.1:8010/httpbin/sortlinks'
 /
 /absolute-redirect/6
 /anything
@@ -1076,7 +1076,7 @@ Let's reset the URL.
 
 In the log we'll find
 
-``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
+```ShellSession
 2018/02/13 16:24:12 [notice] 28795#0: service hook reported "getUrlService reset URL"
 2018/02/13 16:24:12 [notice] 28794#0: service hook reported "getUrlService reset URL"
 2018/02/13 16:24:12 [notice] 28797#0: service hook reported "getUrlService reset URL"
@@ -1111,7 +1111,7 @@ Let's reimplement the example with update of service links using a service hook.
 
 #### File test.hs (additions)
 
-``` {.haskell hl="vim"}
+```haskell
 grepHttpbinLinksHook :: ByteString -> IO L.ByteString
 grepHttpbinLinksHook v = do
     let links = grepLinks v
@@ -1126,7 +1126,7 @@ ngxExportServiceHook 'grepHttpbinLinksHook
 
 #### File test.conf (additions)
 
-``` {.nginx hl="vim"}
+```nginx
     haskell_service_update_hook grepHttpbinLinksHook $hs_service_httpbin;
 
     # ...
@@ -1163,7 +1163,7 @@ Let's write a plugin that will add an HTTP header to the response.
 
 #### File test_c_plugin.c
 
-``` {.c hl="vim"}
+```c
 #include <ngx_core.h>
 #include <ngx_http.h>
 
@@ -1193,14 +1193,14 @@ ngx_http_haskell_test_c_plugin(ngx_http_request_t *r)
 Let's compile the C code. For this we need a directory where Nginx sources were
 sometime compiled. Let's refer to it in an environment variable *NGX_HOME*.
 
-``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
-||| NGX_HOME=/path/to/nginx_sources
+```ShellSession
+$ NGX_HOME=/path/to/nginx_sources
 ```
 
 Here we are going to mimic the Nginx build process.
 
-``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
-||| gcc -O2 -fPIC -c -o test_c_plugin.o -I $NGX_HOME/src/core -I $NGX_HOME/src/http -I $NGX_HOME/src/http/modules -I $NGX_HOME/src/event -I $NGX_HOME/src/event/modules -I $NGX_HOME/src/os/unix -I $NGX_HOME/objs test_c_plugin.c
+```ShellSession
+$ gcc -O2 -fPIC -c -o test_c_plugin.o -I $NGX_HOME/src/core -I $NGX_HOME/src/http -I $NGX_HOME/src/http/modules -I $NGX_HOME/src/event -I $NGX_HOME/src/event/modules -I $NGX_HOME/src/os/unix -I $NGX_HOME/objs test_c_plugin.c
 ```
 
 Now we have an object file *test_c_plugin.o* to link with the Haskell code.
@@ -1208,7 +1208,7 @@ Below is the Haskell code itself.
 
 #### File test.hs (additions)
 
-``` {.haskell hl="vim"}
+```haskell
 import           Data.Binary.Get
 import           Foreign.C.Types
 import           Foreign.Ptr
@@ -1235,16 +1235,16 @@ C plugin and returns *Success!* or *Failure!* in cases when the C function
 returns *NGX_OK* or *NGX_ERROR* respectively. When compiled with *ghc*, this
 code has to be linked with *test_c_plugin.o*.
 
-``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
-||| ghc -O2 -dynamic -shared -fPIC -flink-rts -threaded test_c_plugin.o test.hs -o test.so
+```ShellSession
+$ ghc -O2 -dynamic -shared -fPIC -flink-rts -threaded test_c_plugin.o test.hs -o test.so
 [1 of 1] Compiling NgxHaskellUserRuntime ( test.hs, test.o )
 Linking test.so ...
-||| cp test.so /var/lib/nginx/
+$ sudo cp test.so /var/lib/nginx/
 ```
 
 #### File test.conf (additions)
 
-``` {.nginx hl="vim"}
+```nginx
         location /cplugin {
             haskell_run testCPlugin $hs_test_c_plugin $_r_ptr;
             echo "Test C plugin returned $hs_test_c_plugin";
@@ -1253,8 +1253,8 @@ Linking test.so ...
 
 Run curl tests.
 
-``` {.shelloutput hl="vim" vars="PhBlockRole=output"}
-||| curl -D- 'http://localhost:8010/cplugin'
+```ShellSession
+$ curl -D- 'http://localhost:8010/cplugin'
 HTTP/1.1 200 OK
 Server: nginx/1.12.1
 Date: Thu, 08 Mar 2018 12:09:52 GMT
@@ -1285,19 +1285,11 @@ variables such as *ngx_cycle* for doing a variety of low level actions.
 Below is a table of functions exported from the Haskell module that return
 opaque pointers to Nginx global variables for using them in C plugins.
 
-| Function                                   | Returned value and its type                     |
-| ------------------------------------------ | ----------------------------------------------- |
-| `ngxCyclePtr`                              | value of argument `cycle` in the worker's       |
-|                                            | initialization function\                        |
-|                                            | (of type `ngx_cycle_t *`)                       |
-| `ngxUpstreamMainConfPtr`                   | value of expression                             |
-|                                            | `ngx_http_cycle_get_module_main_conf(cycle,     |
-|                                            |     ngx_http_upstream_module)` in the worker's  |
-|                                            | initialization function\                        |
-|                                            | (of type `ngx_http_upstream_main_conf_t *`)     |
-| `ngxCachedTimePtr`                         | *address* of the Nginx global variable          |
-|                                            | `ngx_cached_time`\                              |
-|                                            | (of type `volatile ngx_time_t **`)              |
+| Function                                   | Returned value and its type                                                                                                                                                    |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ngxCyclePtr`                              | value of argument `cycle` in the worker's initialization function (of type `ngx_cycle_t *`)                                                                                    |
+| `ngxUpstreamMainConfPtr`                   | value of expression `ngx_http_cycle_get_module_main_conf(cycle, ngx_http_upstream_module)` in the worker's initialization function (of type `ngx_http_upstream_main_conf_t *`) |
+| `ngxCachedTimePtr`                         | *address* of the Nginx global variable `ngx_cached_time` (of type `volatile ngx_time_t **`)                                                                                    |
 
 Notice that besides synchronous nature of service update hooks, there are other
 features that distinguish them from service update callbacks.
@@ -1370,95 +1362,35 @@ handlers in Haskell handlers, when it's possible, should be preferred.
 
 # Summary table of all Nginx directives of the module
 
----------------------------------------------------------------------------------------------------------------------------------------------------------
-Directive                                                                 Level                 Comment
-------------------------------------------------------------------------  --------------------  ---------------------------------------------------------
-`haskell compile`                                                         `http`                Compile Haskell code found in the last argument. Accepts
-                                                                                                arguments *threaded* (use *threaded* RTS library),
-                                                                                                *debug* (use *debug* RTS library), and *standalone* (use
-                                                                                                *standalone* approach).
-
-`haskell load`                                                            `http`                Load the specified Haskell library.
-
-`haskell ghc_extra_options`                                               `http`                Specify extra options for GHC when the library compiles.
-
-`haskell rts_options`                                                     `http`                Specify options for Haskell RTS.
-
-`haskell program_options`                                                 `http`                Specify program options. This is just another way for
-                                                                                                passing data into Haskell handlers.
-
-`haskell_run`                                                             `server`,             Run a synchronous Haskell task.
-                                                                          `location`,
-                                                                          `location if`
-
-`haskell_run_async`                                                       `server`,             Run an asynchronous Haskell task.
-                                                                          `location`,
-                                                                          `location if`
-
-`haskell_run_async_on_request_body`                                       `server`,             Run an asynchronous Haskell request body handler.
-                                                                          `location`,
-                                                                          `location if`
-
-`haskell_run_service`                                                     `http`                Run a Haskell service.
-
-`haskell_service_var_update_callback`                                     `http`                Run a callback on a service variable's update.
-
-`haskell_content`                                                         `location`,           Declare a Haskell content handler.
-                                                                          `location if`
-
-`haskell_static_content`                                                  `location`,           Declare a static Haskell content handler.
-                                                                          `location if`
-
-`haskell_unsafe_content`                                                  `location`,           Declare an unsafe Haskell content handler.
-                                                                          `location if`
-
-`haskell_async_content`                                                   `location`,           Declare an asynchronous Haskell content handler.
-                                                                          `location if`
-
-`haskell_async_content_on_request_body`                                   `location`,           Declare an asynchronous Haskell content handler with
-                                                                          `location if`         access to request body.
-
-`haskell_service_hook`                                                    `location`,           Declare a service hook and create a content handler for
-                                                                          `location if`         managing the corresponding service.
-
-`haskell_service_update_hook`                                             `http`                Declare a service update hook.
-
-`haskell_request_body_read_temp_file`                                     `server`,             This flag (*on* or *off*) makes asynchronous tasks and
-                                                                          `location`,           content handlers read buffered in a *temporary file* POST
-                                                                          `location if`         data. If not set, then buffered data is not read.
-
-`haskell_var_nocacheable`                                                 `http`                All variables in the list become no cacheable and safe
-                                                                                                for using in ad-hoc iterations over *error_page* cycles.
-                                                                                                Applicable to variables of any *get handler*.
-
-`haskell_var_nohash`                                                      `http`                Nginx won't build hashes for variables in the list.
-                                                                                                Applicable to variables of any *get handler*.
-
-`haskell_var_compensate_uri_changes`                                      `http`                All variables in the list allow to cheat *error_page*
-                                                                                                when used in its redirections and make the cycle
-                                                                                                infinite.
-
-`haskell_var_empty_on_error`                                              `http`                All variables in the list return empty values on errors
-                                                                                                while the errors are still being logged by Nginx.
-                                                                                                Applicable to effectful synchronous and asynchronous
-                                                                                                variable handlers.
-
-`haskell_service_var_ignore_empty`                                        `http`                All service variables in the list do not write the
-                                                                                                service result when its value is empty.
-
-`haskell_service_var_in_shm`                                              `http`                All service variables in the list store the service
-                                                                                                result in a shared memory. Implicitly declares a shared
-                                                                                                service.
-
-`haskell_service_hooks_zone`                                              `http`                Declare shm zone for a temporary storage of service hooks
-                                                                                                data.
-
-`haskell_request_variable_name`                                           `http`                Change the name of the request variable if default
-                                                                                                value *\_r\_ptr* is already used.
-
-`single_listener`                                                         `server`              Make the virtual server accept client requests only from
-                                                                                                a single worker process.
----------------------------------------------------------------------------------------------------------------------------------------------------------
+Directive                                                                Level                                         Comment                                                                                                                                                                                      |
+------------------------------------------------------------------------ --------------------------------------------- -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+`haskell compile`                                                        `http`                                        Compile Haskell code found in the last argument. Accepts arguments *threaded* (use *threaded* RTS library), *debug* (use *debug* RTS library), and *standalone* (use *standalone* approach). |
+`haskell load`                                                           `http`                                        Load the specified Haskell library.                                                                                                                                                          |
+`haskell ghc_extra_options`                                              `http`                                        Specify extra options for GHC when the library compiles.                                                                                                                                     |
+`haskell rts_options`                                                    `http`                                        Specify options for Haskell RTS.                                                                                                                                                             |
+`haskell program_options`                                                `http`                                        Specify program options. This is just another way for passing data into Haskell handlers.                                                                                                    |
+`haskell_run`                                                            `server`, `location`, `location if`           Run a synchronous Haskell task.                                                                                                                                                              |
+`haskell_run_async`                                                      `server`, `location`, `location if`           Run an asynchronous Haskell task.                                                                                                                                                            |
+`haskell_run_async_on_request_body`                                      `server`, `location`, `location if`           Run an asynchronous Haskell request body handler.                                                                                                                                            |
+`haskell_run_service`                                                    `http`                                        Run a Haskell service.                                                                                                                                                                       |
+`haskell_service_var_update_callback`                                    `http`                                        Run a callback on a service variable's update.                                                                                                                                               |
+`haskell_content`                                                        `location`, `location if`                     Declare a Haskell content handler.                                                                                                                                                           |
+`haskell_static_content`                                                 `location`, `location if`                     Declare a static Haskell content handler.                                                                                                                                                    |
+`haskell_unsafe_content`                                                 `location`, `location if`                     Declare an unsafe Haskell content handler.                                                                                                                                                   |
+`haskell_async_content`                                                  `location`, `location if`                     Declare an asynchronous Haskell content handler.                                                                                                                                             |
+`haskell_async_content_on_request_body`                                  `location`, `location if`                     Declare an asynchronous Haskell content handler with access to request body.                                                                                                                 |
+`haskell_service_hook`                                                   `location`, `location if`                     Declare a service hook and create a content handler for managing the corresponding service.                                                                                                  |
+`haskell_service_update_hook`                                            `http`                                        Declare a service update hook.                                                                                                                                                               |
+`haskell_request_body_read_temp_file`                                    `server`, `location`, `location if`           This flag (*on* or *off*) makes asynchronous tasks and content handlers read buffered in a *temporary file* POST data. If not set, then buffered data is not read.                           |
+`haskell_var_nocacheable`                                                `http`                                        All variables in the list become no cacheable and safe for using in ad-hoc iterations over *error_page* cycles. Applicable to variables of any *get handler*.                                |
+`haskell_var_nohash`                                                     `http`                                        Nginx won't build hashes for variables in the list. Applicable to variables of any *get handler*.                                                                                            |
+`haskell_var_compensate_uri_changes`                                     `http`                                        All variables in the list allow to cheat *error_page* when used in its redirections and make the cycle infinite.                                                                             |
+`haskell_var_empty_on_error`                                             `http`                                        All variables in the list return empty values on errors while the errors are still being logged by Nginx. Applicable to effectful synchronous and asynchronous variable handlers.            |
+`haskell_service_var_ignore_empty`                                       `http`                                        All service variables in the list do not write the service result when its value is empty.                                                                                                   |
+`haskell_service_var_in_shm`                                             `http`                                        All service variables in the list store the service result in a shared memory. Implicitly declares a shared service.                                                                         |
+`haskell_service_hooks_zone`                                             `http`                                        Declare shm zone for a temporary storage of service hooks data.                                                                                                                              |
+`haskell_request_variable_name`                                          `http`                                        Change the name of the request variable if default value *\_r\_ptr* is already used.                                                                                                         |
+`single_listener`                                                        `server`                                      Make the virtual server accept client requests only from a single worker process.                                                                                                            |
 
 # Module NgxExport.Tools
 
