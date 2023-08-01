@@ -1,16 +1,3 @@
-<div align="center">
-  <img src="docs/images/nginx-haskell-module-social.png">
-</div>
-
-<!--[![Build Status](https://travis-ci.com/lyokha/nginx-haskell-module.svg?branch=master)](https://travis-ci.com/lyokha/nginx-haskell-module)-->
-[![Build Status](https://github.com/lyokha/nginx-haskell-module/workflows/CI/badge.svg)](https://github.com/lyokha/nginx-haskell-module/actions?query=workflow%3ACI)
-[![Hackage](https://img.shields.io/hackage/v/ngx-export.svg?label=hackage%20%7C%20ngx-export&logo=haskell&logoColor=%239580D1)](https://hackage.haskell.org/package/ngx-export)
-[![Hackage](https://img.shields.io/hackage/v/ngx-export-tools.svg?label=hackage%20%7C%20ngx-export-tools&logo=haskell&logoColor=%239580D1)](https://hackage.haskell.org/package/ngx-export-tools)
-[![Hackage](https://img.shields.io/hackage/v/ngx-export-distribution.svg?label=hackage%20%7C%20ngx-export-distribution&logo=haskell&logoColor=%239580D1)](https://hackage.haskell.org/package/ngx-export-distribution)
-[![Docker](https://img.shields.io/docker/v/lyokha/nginx-haskell-module/latest?label=docker&logo=docker)](https://hub.docker.com/r/lyokha/nginx-haskell-module)
-[![Read the Docs](https://img.shields.io/readthedocs/nginx-haskell-module/latest?logo=readthedocs)](https://nginx-haskell-module.readthedocs.io/en/latest/)
-[![Doc](https://img.shields.io/badge/pdf-yet_another_doc_with_examples-786D5F.svg?logo=jupyter)](https://nbviewer.jupyter.org/github/lyokha/nginx-haskell-module/blob/master/docs/yet-another-doc-with-examples/nginx-haskell-module-yadwe.pdf)
-
 This Nginx module allows compiling and running Haskell source code found in a
 configuration file or an existing shared library. It allows for writing in
 Haskell synchronous variable handlers, asynchronous tasks, services (i.e.
@@ -544,7 +531,7 @@ in the module *Data.FileEmbed* are: *file-embed* version *0.0.7* and *Template
 Haskell* version *2.5.0* (bundled with *ghc* since version *7.0.1*).
 
 The unsafe content handler implementation from the above example can be found in
-file [test/tsung/nginx-static.conf](test/tsung/nginx-static.conf).
+file [test/tsung/nginx-static.conf](../../test/tsung/nginx-static.conf).
 
 <br><hr><a name="fnuch1"><sup>**1**</sup></a>&nbsp; Did you read the notice in
 the beginning of the section? Yes, lazy bytestrings contents can be safely
@@ -883,7 +870,7 @@ NGX_EXPORT_IOY_Y (getIOValue)
 ```
 
 You can find all the examples shown here in file
-[test/tsung/nginx-async.conf](test/tsung/nginx-async.conf).
+[test/tsung/nginx-async.conf](../../test/tsung/nginx-async.conf).
 
 <br><hr><a name="fnat1"><sup>**1**</sup></a>&nbsp; Starting from version *1.4.3*
 of the module you can use technique of catching *ThreadKilled* exception for
@@ -1147,7 +1134,7 @@ memory because there could be multiple nginx worker processes and any of them
 could receive a request for running the callback function.
 
 See an example of using this approach in
-[examples/dynamicUpstreams](examples/dynamicUpstreams).
+[examples/dynamicUpstreams](../../examples/dynamicUpstreams).
 
 This approach can also be used to provide reliable transactional semantics for
 service handlers.
@@ -1535,8 +1522,8 @@ To address limitations of the standalone module approach, another *modular*
 approach was introduced. In it, the wrapping haskell code must be built in a
 separate haskell module *NgxExport* and installed in the system with *cabal*.
 The source code of the module is located in directory
-[haskell/ngx-export](haskell/ngx-export) of the project tree. You can also find
-it on [hackage](http://hackage.haskell.org/package/ngx-export). The user's
+[haskell/ngx-export](../../haskell/ngx-export) of the project tree. You can also
+find it on [hackage](http://hackage.haskell.org/package/ngx-export). The user's
 haskell code in this approach must import the module *NgxExport*.
 
 The export macros in *modular* approach syntactically and semantically differ
@@ -1555,8 +1542,8 @@ In the modular approach the user's haskell code is compiled with option
 *-XTemplateHaskell* as soon as single quotes as names starters require it. The
 module must be declared explicitly. You can find an nginx configuration file
 equivalent to the example in the first section with the haskell code translated
-for the modular approach in directory [haskell/ngx-export](haskell/ngx-export)
-of the project tree.
+for the modular approach in directory
+[haskell/ngx-export](../../haskell/ngx-export) of the project tree.
 
 It's worth saying that the standalone module compilation gets enabled with
 keyword *standalone* passed as the first argument in directives *haskell
