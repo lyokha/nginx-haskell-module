@@ -11,7 +11,7 @@
 [![Read the Docs](https://img.shields.io/readthedocs/nginx-haskell-module/latest?logo=readthedocs)](https://nginx-haskell-module.readthedocs.io/en/latest/)
 [![Doc](https://img.shields.io/badge/pdf-yet_another_doc_with_examples-786D5F.svg?logo=jupyter)](https://nbviewer.jupyter.org/github/lyokha/nginx-haskell-module/blob/master/docs/yet-another-doc-with-examples/nginx-haskell-module-yadwe.pdf)
 
-Use this module to build and run custom Haskell handlers in the Nginx Web
+Use this module to build custom Haskell handlers and run them in the Nginx Web
 Server. Supported types of custom handlers include
 
 - synchronous variable handlers,
@@ -24,7 +24,7 @@ Server. Supported types of custom handlers include
 
 # Table of contents
 
-- [Building and installation](#bulding-and-installation)
+- [Building and installation](#building-and-installation)
 - [Synchronous tasks](#synchronous-tasks)
 - [Synchronous content handlers](#synchronous-content-handlers)
 - [Asynchronous tasks and request body handlers](#asynchronous-tasks-and-request-body-handlers)
