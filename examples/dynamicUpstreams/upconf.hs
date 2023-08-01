@@ -16,6 +16,8 @@ module NgxHaskellUserRuntime where
 
 import           NgxExport
 import qualified Data.ByteString.Char8 as C8
+import           Data.ByteString (ByteString)
+import qualified Data.ByteString.Lazy as L
 import qualified Data.Map.Strict as M
 import           Data.Map.Strict (Map)
 import           Network.HTTP.Client
@@ -75,16 +77,22 @@ collectedData :: IORef CollectedData
 collectedData = unsafePerformIO $ newIORef M.empty
 {-# NOINLINE collectedData #-}
 
+httpManager :: Manager
 httpManager = unsafePerformIO $ newManager defaultManagerSettings
 {-# NOINLINE httpManager #-}
 
+getResponse :: String -> (Request -> IO (Response L.ByteString)) ->
+    IO L.ByteString
 getResponse url = fmap responseBody . (parseRequest url >>=)
 
+getUrl :: String -> IO L.ByteString
 getUrl url = getResponse url $ flip httpLbs httpManager
 
+query :: String -> String -> IO L.ByteString
 query = (getUrl .) . flip mkAddr
     where mkAddr = (("http://" ++) .) . (++)
 
+getUpstreams :: ByteString -> Bool -> IO L.ByteString
 getUpstreams (C8.unpack -> conf) firstRun = do
     let Conf (toSec -> upd) (url, addr) = readDef (Conf (Hr 24) ("", "")) conf
     unless firstRun $ threadDelaySec upd
@@ -105,6 +113,7 @@ getUpstreams (C8.unpack -> conf) firstRun = do
           toSec (MinSec (m, s)) = 60 * m + s
 ngxExportServiceIOYY 'getUpstreams
 
+signalUpconf :: ByteString -> Bool -> IO L.ByteString
 signalUpconf (C8.unpack -> conf) = const $ do
     let Upconf (url, addr) = readDef (Upconf ("", "")) conf
     void $ handle (\(_ :: SomeException) -> return "") $ query url addr

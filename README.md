@@ -1471,11 +1471,11 @@ The old [*README.md*](docs/old-readme/README.md).
 There are some articles about the module in my blog.
 
 * [*nginx module to enable haskell binding to nginx configuration
-files*](https://lin-techdet.blogspot.com/2015/12/nginx-module-to-enable-haskell-binding.html).
+files*](https://lin-techdet.blogspot.com/2015/12/nginx-module-to-enable-haskell-binding.html),
 * [*nginx-haskell-module: labeled media routing
-example*](https://lin-techdet.blogspot.com/2017/01/nginx-haskell-module-labeled-media.html).
+example*](https://lin-techdet.blogspot.com/2017/01/nginx-haskell-module-labeled-media.html),
 * [*Passing ByteString contents reliably into C
-code*](https://lin-techdet.blogspot.com/2017/08/passing-bytestring-contents-reliably.html).
+code*](https://lin-techdet.blogspot.com/2017/08/passing-bytestring-contents-reliably.html),
 * [*Signaling all worker processes in Nginx via an event
 channel*](https://lin-techdet.blogspot.com/2018/03/signaling-all-worker-processes-in-nginx.html).
 
