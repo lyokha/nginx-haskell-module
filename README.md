@@ -1450,6 +1450,8 @@ are only basically lined up below.
   
 # List of batteries included
 
+Note: click on the links to read descriptions and documentation.
+
 * Haskell modules with docs and examples on Hackage
     * Package [*ngx-export*](https://hackage.haskell.org/package/ngx-export)
         * Module [*NgxExport*](https://hackage.haskell.org/package/ngx-export/docs/NgxExport.html)
