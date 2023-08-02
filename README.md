@@ -50,6 +50,12 @@ $ make
 $ sudo make install
 ```
 
+You may also want to add `--add-module=/path/to/this_module_sources/aliases`
+and
+`--add-module=/path/to/this_module_sources/examples/dynamicUpstreams/nginx-upconf-module`
+to the configure options to enable modules [*aliases*](aliases) and
+[*upconf*](examples/dynamicUpstreams/nginx-upconf-module) respectively.
+
 To build examples, we will use *ghc*. This is rather not practical in modern
 world where dependencies get normally installed by *cabal* into directories not
 known to *ghc*. Look
@@ -1466,7 +1472,12 @@ are only basically lined up below.
 
 # See also
 
-The old [*README.md*](docs/old-readme/README.md).
+* The old [*README.md*](docs/old-readme/README.md) contains more details on the
+implementation of the module and some topics not covered here.
+* Module [*aliases*](aliases) declares handy aliases for a few directives from
+this module.
+* Module [*upconf*](examples/dynamicUpstreams/nginx-upconf-module) provides
+basic support for dynamic upstreams.
 
 There are some articles about the module in my blog.
 
