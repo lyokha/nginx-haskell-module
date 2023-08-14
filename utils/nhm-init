@@ -3,6 +3,7 @@
 PROJECT_NAME=
 FORCE_REWRITE=
 NO_THREADED=
+TO_STDOUT=
 
 DEF_PREFIX=/var/lib/nginx
 PREFIX=$DEF_PREFIX
@@ -13,6 +14,9 @@ MAKEFILE=Makefile
 
 CABAL_FILE=
 
+C_START=
+C_END=
+
 usage()
 {
     local name
@@ -20,10 +24,12 @@ usage()
     echo "$name: bootstrap environment to build custom Haskell handlers"
     echo
     echo "Usage:"
-    echo "  $name [-p dir] [-f] [-no-threaded] project-name"
+    echo
+    echo "  $name [-p dir] [-no-threaded] [-f | -to-stdout] project-name"
     echo "    '-p' prefix for install dir, default is $DEF_PREFIX"
-    echo "    '-f' force re-writing of existing files"
     echo "    '-no-threaded' use base RTS library"
+    echo "    '-f' force re-writing of existing files"
+    echo "    '-to-stdout' do not write files but dump what will be written"
     echo
     echo "Note that the root Haskell source file must be project_name.hs"
     echo "where project_name is 'project-name' with all '-' replaced by '_'"
@@ -42,6 +48,7 @@ do
                             fi ;;
         -f)                 FORCE_REWRITE=1 ;;
         -no-threaded)       NO_THREADED=1 ;;
+        -to-stdout)         TO_STDOUT=1 ;;
         -*)                 usage ; exit 1 ;;
         *)                  if [ -n "$PROJECT_NAME" ]
                             then
@@ -54,31 +61,62 @@ do
 done
 
 [ -z "$PROJECT_NAME" ] && { usage ; exit 1 ; }
+[ -n "$FORCE_REWRITE" ] && [ -n "$TO_STDOUT" ] && { usage ; exit 1 ; }
 
-if [ -e "$CABAL_PROJECT" ] && [ -z "$FORCE_REWRITE" ]
+if [ -z "$TO_STDOUT" ]
+then
+    CABAL_PROJECT_STREAM=$CABAL_PROJECT
+    SETUP_HS_STREAM=$SETUP_HS
+    MAKEFILE_STREAM=$MAKEFILE
+    CABAL_FILE_STREAM=$CABAL_FILE
+else
+    CABAL_PROJECT_STREAM=/dev/stdout
+    SETUP_HS_STREAM=/dev/stdout
+    MAKEFILE_STREAM=/dev/stdout
+    CABAL_FILE_STREAM=/dev/stdout
+    if [ -t 1 ]
+    then
+        C_START='\e[4m'
+        C_END='\033[0m'
+        if [ "$(tput colors)" -ge 8 ]
+        then
+            C_START='\033[0;34m'$C_START
+        fi
+    else
+        CABAL_PROJECT=' ~~~ '$CABAL_PROJECT
+        SETUP_HS=' ~~~ '$SETUP_HS
+        MAKEFILE=' ~~~ '$MAKEFILE
+        CABAL_FILE=' ~~~ '$CABAL_FILE
+    fi
+fi
+
+if [ -e "$CABAL_PROJECT" ] && [ -z "$FORCE_REWRITE" ] && [ -z "$TO_STDOUT" ]
 then
     echo "File $CABAL_PROJECT exists, use option -f to rewrite it" 1>&2
 else
-    cat <<EOF >"$CABAL_PROJECT" 2>&1
+    [ -n "$TO_STDOUT" ] && echo -e "$C_START$CABAL_PROJECT$C_END\n"
+    cat <<EOF >"$CABAL_PROJECT_STREAM" 2>&1
 packages: $PROJECT_NAME.cabal
 EOF
 fi
 
-if [ -e "$SETUP_HS" ] && [ -z "$FORCE_REWRITE" ]
+if [ -e "$SETUP_HS" ] && [ -z "$FORCE_REWRITE" ] && [ -z "$TO_STDOUT" ]
 then
     echo "File $SETUP_HS exists, use option -f to rewrite it" 1>&2
 else
-    cat <<EOF >"$SETUP_HS" 2>&1
+    [ -n "$TO_STDOUT" ] && echo -e "\n$C_START$SETUP_HS$C_END\n"
+    cat <<EOF >"$SETUP_HS_STREAM" 2>&1
 import NgxExport.Distribution
 main = defaultMain
 EOF
 fi
 
-if [ -e "$CABAL_FILE" ] && [ -z "$FORCE_REWRITE" ]
+if [ -e "$CABAL_FILE" ] && [ -z "$FORCE_REWRITE" ] && [ -z "$TO_STDOUT" ]
 then
     echo "File $CABAL_FILE exists, use option -f to rewrite it" 1>&2
 else
-    cat <<EOF >"$CABAL_FILE" 2>&1
+    [ -n "$TO_STDOUT" ] && echo -e "\n$C_START$CABAL_FILE$C_END\n"
+    cat <<EOF >"$CABAL_FILE_STREAM" 2>&1
 name:                       $PROJECT_NAME
 version:                    0.1.0.0
 build-type:                 Custom
@@ -98,7 +136,7 @@ EOF
 
     if [ -z "$NO_THREADED" ]
     then
-        cat <<EOF >>"$CABAL_FILE" 2>&1
+        cat <<EOF >>"$CABAL_FILE_STREAM" 2>&1
 
   if impl(ghc >= 8.10.6)
     ghc-options:           -threaded
@@ -106,11 +144,12 @@ EOF
     fi
 fi
 
-if [ -e "$MAKEFILE" ] && [ -z "$FORCE_REWRITE" ]
+if [ -e "$MAKEFILE" ] && [ -z "$FORCE_REWRITE" ] && [ -z "$TO_STDOUT" ]
 then
     echo "File $MAKEFILE exists, use option -f to rewrite it" 1>&2
 else
-    cat <<EOF >"$MAKEFILE" 2>&1
+    [ -n "$TO_STDOUT" ] && echo -e "\n$C_START$MAKEFILE$C_END\n"
+    cat <<EOF >"$MAKEFILE_STREAM" 2>&1
 NAME := $(echo "$PROJECT_NAME" | tr - _)
 PKGNAME := \$(subst _,-,\$(NAME))
 PKGVER := 0.1.0.0
