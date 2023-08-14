@@ -1,4 +1,4 @@
-#### hslibdeps
+### hslibdeps
 
 Collects all Haskell libraries the target library depends on. Optionally,
 patches the target library by extending its *RUNPATH* value with a specified
@@ -36,7 +36,7 @@ $ hslibdeps -e
 
 The output is compatible with format of *GHC environment* files.
 
-#### nhm-init
+### nhm-init
 
 Bootstraps environment to build custom Haskell handlers. Running
 
@@ -55,6 +55,8 @@ The target library will be installed in directory */var/lib/nginx*. Use option
 
 Note that the root Haskell source file must be *project_name.hs*
 where *project_name* is *project-name* with all dashes replaced by underscores.
+If the source file depends on packages other than *base* and *ngx-export*, add
+them into *project-name.cabal* manually.
 
 After bootstrapping the environment, build and install the target library.
 
