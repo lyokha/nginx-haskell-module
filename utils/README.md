@@ -1,4 +1,4 @@
-#### Utility hslibdeps
+#### hslibdeps
 
 Collects all Haskell libraries the target library depends on. Optionally,
 patches the target library by extending its *RUNPATH* value with a specified
@@ -35,4 +35,37 @@ $ hslibdeps -e
 ```
 
 The output is compatible with format of *GHC environment* files.
+
+#### nhm-init
+
+Bootstraps environment to build custom Haskell handlers. Running
+
+```ShellSession
+$ nhm-init project-name
+```
+
+produces files *cabal.project*, *Setup.hs*, *project-name.cabal*, and
+*Makefile*. If any of the files exist, add option *-f* to override them.
+
+By default, the target library will be linked against the threaded Haskell RTS
+library. To link against the base RTS library, add option *-no-threaded*.
+
+The target library will be installed in directory */var/lib/nginx*. Use option
+*-p prefix* to override the install directory.
+
+Note that the root Haskell source file must be *project_name.hs*
+where *project_name* is *project-name* with all dashes replaced by underscores.
+
+After bootstrapping the environment, build and install the target library.
+
+```ShellSession
+$ make
+$ sudo make install
+```
+
+With ghc older than *8.10.6*, build with
+
+```ShellSession
+$ make LINKRTS=-lHSrts_thr-ghc$(ghc --numeric-version)
+```
 

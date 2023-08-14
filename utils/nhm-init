@@ -1,0 +1,166 @@
+#!/bin/bash
+
+PROJECT_NAME=
+FORCE_REWRITE=
+NO_THREADED=
+
+DEF_PREFIX=/var/lib/nginx
+PREFIX=$DEF_PREFIX
+
+CABAL_PROJECT=cabal.project
+SETUP_HS=Setup.hs
+MAKEFILE=Makefile
+
+CABAL_FILE=
+
+usage()
+{
+    local name
+    name=$(basename "$0")
+    echo "$name: bootstrap environment to build custom Haskell handlers"
+    echo
+    echo "Usage:"
+    echo "  $name [-p dir] [-f] [-no-threaded] project-name"
+    echo "    '-p' prefix for install dir, default is $DEF_PREFIX"
+    echo "    '-f' force re-writing of existing files"
+    echo "    '-no-threaded' use base RTS library"
+    echo
+    echo "Note that the root Haskell source file must be project_name.hs"
+    echo "where project_name is 'project-name' with all '-' replaced by '_'"
+}
+
+while [ "$1" ]
+do
+    case $1 in
+        -h|-help|--help)    usage ; exit 0 ;;
+        -p*)                OPTVAL=$(echo "$1" | cut -c3-)
+                            if [ -n "$OPTVAL" ]
+                            then
+                                PREFIX=$OPTVAL
+                            else
+                                shift ; PREFIX=$1
+                            fi ;;
+        -f)                 FORCE_REWRITE=1 ;;
+        -no-threaded)       NO_THREADED=1 ;;
+        -*)                 usage ; exit 1 ;;
+        *)                  if [ -n "$PROJECT_NAME" ]
+                            then
+                                usage ; exit 1
+                            else
+                                PROJECT_NAME=$1 ; CABAL_FILE=$1.cabal
+                            fi ;;
+    esac
+    shift
+done
+
+[ -z "$PROJECT_NAME" ] && { usage ; exit 1 ; }
+
+if [ -e "$CABAL_PROJECT" ] && [ -z "$FORCE_REWRITE" ]
+then
+    echo "File $CABAL_PROJECT exists, use option -f to rewrite it" 1>&2
+else
+    cat <<EOF >"$CABAL_PROJECT" 2>&1
+packages: $PROJECT_NAME.cabal
+EOF
+fi
+
+if [ -e "$SETUP_HS" ] && [ -z "$FORCE_REWRITE" ]
+then
+    echo "File $SETUP_HS exists, use option -f to rewrite it" 1>&2
+else
+    cat <<EOF >"$SETUP_HS" 2>&1
+import NgxExport.Distribution
+main = defaultMain
+EOF
+fi
+
+if [ -e "$CABAL_FILE" ] && [ -z "$FORCE_REWRITE" ]
+then
+    echo "File $CABAL_FILE exists, use option -f to rewrite it" 1>&2
+else
+    cat <<EOF >"$CABAL_FILE" 2>&1
+name:                       $PROJECT_NAME
+version:                    0.1.0.0
+build-type:                 Custom
+cabal-version:              1.24
+
+custom-setup
+  setup-depends:            base >= 4.8 && < 5
+                          , ngx-export-distribution
+
+library
+  default-language:         Haskell2010
+  build-depends:            base >= 4.8 && < 5
+                          , ngx-export
+
+  ghc-options:             -Wall -O2
+EOF
+
+    if [ -z "$NO_THREADED" ]
+    then
+        cat <<EOF >>"$CABAL_FILE" 2>&1
+
+  if impl(ghc >= 8.10.6)
+    ghc-options:           -threaded
+EOF
+    fi
+fi
+
+if [ -e "$MAKEFILE" ] && [ -z "$FORCE_REWRITE" ]
+then
+    echo "File $MAKEFILE exists, use option -f to rewrite it" 1>&2
+else
+    cat <<EOF >"$MAKEFILE" 2>&1
+NAME := $(echo "$PROJECT_NAME" | tr - _)
+PKGNAME := \$(subst _,-,\$(NAME))
+PKGVER := 0.1.0.0
+
+PREFIX := $PREFIX
+MACHINE := \$(shell uname -m)
+KERNEL := \$(shell uname -s | tr A-Z a-z)
+
+PKGDISTR := ngx-export-distribution
+
+SRC := \$(NAME).hs
+LIB := \$(NAME).so
+STUB := \$(NAME)_stub.h
+DISTR := \$(PKGNAME)-\$(PKGVER).tar.gz
+
+GHCVER := \$(shell ghc --numeric-version)
+GHCENV := .ghc.environment.\$(MACHINE)-\$(KERNEL)-\$(GHCVER)
+DEPLIBS := \$(MACHINE)-\$(KERNEL)-ghc-\$(GHCVER)
+DISTDIR := dist
+DISTV2DIR := dist-newstyle
+
+all: \$(DISTR)
+
+\$(DISTR): \$(SRC)
+	cabal install --lib --only-dependencies --package-env .
+	cabal build \$(PKGDISTR)
+	sed -i 's/\\(^package-id \\)/--\\1/' \$(GHCENV)
+	runhaskell --ghc-arg=-package=base \\
+	 --ghc-arg=-package=\$(PKGDISTR) Setup.hs configure \\
+	 --package-db=clear --package-db=global \\
+	 \$\$(sed -n 's/^\\(package-db\\)\\s\\+/--\\1=/p' \$(GHCENV)) \\
+	 --prefix=\$(PREFIX)
+	hslibdeps -e >> \$(GHCENV)
+	runhaskell --ghc-arg=-package=base \\
+	 --ghc-arg=-package=\$(PKGDISTR) Setup.hs build \\
+	 --ghc-options="\$(SRC) -o \$(LIB) \$(LINKRTS)"
+
+install: \$(DISTR)
+	install -d \$(PREFIX)
+	tar xf \$(DISTR) -C \$(PREFIX) --no-same-owner
+
+.PHONY: clean
+
+clean:
+	rm -rf \$(DISTDIR) \$(DISTV2DIR) \$(DEPLIBS)
+	rm -f \$(GHCENV) \$(STUB) \$(NAME).hi \$(NAME).o
+	rm -f \$(LIB)
+
+clean-all: clean
+	rm -f \$(DISTR)
+EOF
+fi
+
