@@ -1,3 +1,5 @@
+<a id="utility-hslibdeps"></a>
+
 ### hslibdeps
 
 Collects all Haskell libraries the target library depends on. Optionally,
@@ -58,7 +60,11 @@ where *project_name* is *project-name* with all dashes replaced by underscores.
 If the source file depends on packages other than *base* and *ngx-export*, add
 them into *project-name.cabal* manually.
 
-After bootstrapping the environment, build and install the target library.
+After bootstrapping the environment, make sure that Cabal,
+[*patchelf*](https://github.com/NixOS/patchelf),
+[*hslibdeps*](#utility-hslibdeps), and
+[*cabal-plan*](https://hackage.haskell.org/package/cabal-plan) are available in
+the system, and then build and install the target library.
 
 ```ShellSession
 $ make
