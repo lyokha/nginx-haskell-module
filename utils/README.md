@@ -47,7 +47,9 @@ $ nhm-init project-name
 ```
 
 produces files *cabal.project*, *Setup.hs*, *project-name.cabal*, and
-*Makefile*. If any of the files exist, add option *-f* to override them.
+*Makefile*. If any of the files exist, add option *-f* to override them. This
+set of files implements approach outlined
+[*here*](../haskell/ngx-export-distribution#building-dependencies-with-cabal-v2-build).
 
 By default, the target library will be linked against the threaded Haskell RTS
 library. To link against the base RTS library, add option *-no-threaded*.

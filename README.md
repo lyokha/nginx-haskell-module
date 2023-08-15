@@ -62,9 +62,8 @@ to the configure options to enable modules [*aliases*](aliases) and
 
 To build examples, we will use *ghc*. This is rather not practical in modern
 world where dependencies get normally installed by *cabal* into directories not
-known to *ghc*. Look
-[*here*](https://github.com/lyokha/nginx-haskell-module/tree/master/docs/yet-another-doc-with-examples/test)
-to learn how to build examples using *cabal* and
+known to *ghc*. Look [*here*](utils#nhm-init) to learn how to build examples
+using *cabal* and
 [*ngx-export-distribution*](https://hackage.haskell.org/package/ngx-export-distribution).
 
 # Synchronous tasks
