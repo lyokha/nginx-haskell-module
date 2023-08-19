@@ -46,10 +46,15 @@ Bootstraps environment to build custom Haskell handlers. Running
 $ nhm-init project-name
 ```
 
-produces files *cabal.project*, *Setup.hs*, *project-name.cabal*, and
-*Makefile*. If any of the files exist, add option *-f* to override them. This
-set of files implements approach outlined
+produces files *cabal.project*, *Setup.hs*, *project-name.cabal*, *Makefile*,
+and *project_name.hs*. If any of the former four files exist, add option *-f* to
+override them. This set of files implements approach outlined
 [*here*](../haskell/ngx-export-distribution#building-dependencies-with-cabal-v2-build).
+
+Note that the root Haskell source file is *project_name.hs* where *project_name*
+is *project-name* with all dashes replaced by underscores. If the source code
+will depend on packages other than *base* and *ngx-export*, add them into
+*project-name.cabal* manually.
 
 By default, the target library will be linked against the threaded Haskell RTS
 library. To link against the base RTS library, add option *-no-threaded*.
@@ -57,12 +62,8 @@ library. To link against the base RTS library, add option *-no-threaded*.
 The target library will be installed in directory */var/lib/nginx*. Use option
 *-p prefix* to override the install directory.
 
-Note that the root Haskell source file must be *project_name.hs*
-where *project_name* is *project-name* with all dashes replaced by underscores.
-If the source file depends on packages other than *base* and *ngx-export*, add
-them into *project-name.cabal* manually.
-
-After bootstrapping the environment, make sure that Cabal,
+After bootstrapping the environment and extending the Haskell source code with
+useful content, make sure that Cabal,
 [*patchelf*](https://github.com/NixOS/patchelf),
 [*hslibdeps*](#utility-hslibdeps), and
 [*cabal-plan*](https://hackage.haskell.org/package/cabal-plan) are available in

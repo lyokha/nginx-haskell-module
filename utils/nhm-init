@@ -13,6 +13,8 @@ SETUP_HS=Setup.hs
 MAKEFILE=Makefile
 
 CABAL_FILE=
+SRC_NAME=
+SRC_FILE=
 
 C_START=
 C_END=
@@ -28,11 +30,8 @@ usage()
     echo "  $name [-p dir] [-no-threaded] [-f | -to-stdout] project-name"
     echo "    '-p' prefix for install dir, default is $DEF_PREFIX"
     echo "    '-no-threaded' use base RTS library"
-    echo "    '-f' force re-writing of existing files"
+    echo "    '-f' force re-writing of existing files (except the source file)"
     echo "    '-to-stdout' do not write files but dump what will be written"
-    echo
-    echo "Note that the root Haskell source file must be project_name.hs"
-    echo "where project_name is 'project-name' with all '-' replaced by '_'"
 }
 
 while [ "$1" ]
@@ -54,7 +53,10 @@ do
                             then
                                 usage ; exit 1
                             else
-                                PROJECT_NAME=$1 ; CABAL_FILE=$1.cabal
+                                PROJECT_NAME=$1 ;
+                                CABAL_FILE=$1.cabal ;
+                                SRC_NAME=$(echo "$PROJECT_NAME" | tr - _) ;
+                                SRC_FILE=$SRC_NAME.hs
                             fi ;;
     esac
     shift
@@ -69,11 +71,13 @@ then
     SETUP_HS_STREAM=$SETUP_HS
     MAKEFILE_STREAM=$MAKEFILE
     CABAL_FILE_STREAM=$CABAL_FILE
+    SRC_FILE_STREAM=$SRC_FILE
 else
     CABAL_PROJECT_STREAM=/dev/stdout
     SETUP_HS_STREAM=/dev/stdout
     MAKEFILE_STREAM=/dev/stdout
     CABAL_FILE_STREAM=/dev/stdout
+    SRC_FILE_STREAM=/dev/stdout
     if [ -t 1 ]
     then
         C_START='\e[4m'
@@ -87,6 +91,7 @@ else
         SETUP_HS=' ~~~ '$SETUP_HS
         MAKEFILE=' ~~~ '$MAKEFILE
         CABAL_FILE=' ~~~ '$CABAL_FILE
+        SRC_FILE=' ~~~ '$SRC_FILE
     fi
 fi
 
@@ -150,7 +155,7 @@ then
 else
     [ -n "$TO_STDOUT" ] && echo -e "\n$C_START$MAKEFILE$C_END\n"
     cat <<EOF >"$MAKEFILE_STREAM" 2>&1
-NAME := $(echo "$PROJECT_NAME" | tr - _)
+NAME := $SRC_NAME
 PKGNAME := \$(subst _,-,\$(NAME))
 PKGVER := 0.1.0.0
 
@@ -200,6 +205,19 @@ clean:
 
 clean-all: clean
 	rm -f \$(DISTR)
+EOF
+fi
+
+if [ -e "$SRC_FILE" ] && [ -z "$TO_STDOUT" ]
+then
+    echo "File $SRC_FILE exists" 1>&2
+else
+    [ -n "$TO_STDOUT" ] && echo -e "\n$C_START$SRC_FILE$C_END\n"
+    cat <<EOF >"$SRC_FILE_STREAM" 2>&1
+{-# LANGUAGE TemplateHaskell #-}
+
+module $(echo "$SRC_NAME" | sed -r 's/(^|_)(\w)/\U\2/g') where
+
 EOF
 fi
 
