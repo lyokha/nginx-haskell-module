@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, TupleSections #-}
+{-# LANGUAGE TupleSections #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -45,11 +45,12 @@ module NgxExport.Distribution (
 
 import Distribution.Simple hiding (defaultMain)
 import Distribution.Simple.LocalBuildInfo
+import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Builtin
 import Distribution.Simple.Program.Run
 import Distribution.Simple.Program.Db
-import Distribution.Simple.Program
 import Distribution.Simple.Setup
+import Distribution.Simple.Utils
 import Distribution.Types.PackageDescription
 import Distribution.Types.BuildInfo
 import Distribution.Types.Library
@@ -278,6 +279,21 @@ hslibdeps = simpleProgram "hslibdeps"
 patchelf :: Program
 patchelf = simpleProgram "patchelf"
 
+requireHslibdeps :: Verbosity -> ProgramDb -> IO (ConfiguredProgram, ProgramDb)
+requireHslibdeps verbosity progdb = do
+    mres <- needProgram verbosity prog progdb
+    case mres of
+        Nothing -> die' verbosity notFound
+        Just res -> return res
+    where prog = hslibdeps
+          progName = programName prog
+          notFound = "The program '" ++ progName ++
+              "' is required but it could not be found." ++
+              "\nNote: Get '" ++ progName ++ "' from " ++ url ++
+              " and put it into a directory listed in the PATH."
+          url = "https://github.com/lyokha/nginx-haskell-module\
+              \/blob/master/utils/hslibdeps"
+
 -- | Builds a shared library.
 --
 -- Runs /ghc/ compiler with the following arguments.
@@ -322,16 +338,16 @@ buildSharedLib verbosity desc lbi flags = do
     unless (null extraGhcOptions) $ do
         let extraSourceFile = head extraGhcOptions
         extraSourceFileExists <- doesFileExist extraSourceFile
-        unless extraSourceFileExists $ ioError $ userError $
-            "File " ++ extraSourceFile ++ " does not exist, " ++
-            "you may want to specify input and output files in --ghc-options"
+        unless extraSourceFileExists $ die' verbosity $
+            "File " ++ extraSourceFile ++ " does not exist, \
+            \you may want to specify input and output files in --ghc-options"
     ghcP <- fst <$> requireProgram verbosity ghcProgram (withPrograms lbi)
-    let ghcR = programInvocation ghcP $
-#if MIN_TOOL_VERSION_ghc(8,10,6)
-            "-flink-rts" :
-#endif
-                ["-dynamic", "-shared", "-fPIC"] ++
-                    map snd configGhcOptions ++ extraGhcOptions
+    let libGhcOptions = ["-dynamic", "-shared", "-fPIC"]
+        libGhcOptions' = if programVersion ghcP >= Just (mkVersion [8, 10, 6])
+                             then "-flink-rts" : libGhcOptions
+                             else libGhcOptions
+        ghcR = programInvocation ghcP $
+            libGhcOptions' ++ map snd configGhcOptions ++ extraGhcOptions
     runProgramInvocation verbosity ghcR
     return lib'
 
@@ -364,7 +380,7 @@ patchAndCollectDependentLibs verbosity lib desc lbi = do
         rpathArg = maybe [] (("-t" :) . pure . (</> dir) . fromPathTemplate) $
             flagToMaybe $ prefix $ configInstallDirs $ configFlags lbi
         archiveArg = "-a" : [prettyShow $ package desc]
-    hslibdepsP <- fst <$> requireProgram verbosity hslibdeps (withPrograms lbi)
+    hslibdepsP <- fst <$> requireHslibdeps verbosity (withPrograms lbi)
     let hslibdepsR = programInvocation hslibdepsP $
             lib : rpathArg ++ dirArg ++ archiveArg
     runProgramInvocation verbosity hslibdepsR
@@ -386,7 +402,7 @@ ngxExportHooks =
                     , confHook = \desc flags -> do
                         let verbosity = toVerbosity $ configVerbosity flags
                             pdb = configPrograms flags
-                        _ <- requireProgram verbosity hslibdeps pdb >>=
+                        _ <- requireHslibdeps verbosity pdb >>=
                                  requireProgram verbosity patchelf . snd
                         confHook simpleUserHooks desc flags
                     , buildHook = \desc lbi _ flags -> do

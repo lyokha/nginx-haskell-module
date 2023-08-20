@@ -1,3 +1,8 @@
+### 0.4.1.0
+
+- Test GHC version to figure out whether to use option *-flink-rts* in run-time.
+- Note on where to get *hslibdeps* when build fails due to its unavailability.
+
 ### 0.4.0.0
 
 - Get verbosity level for all program invocations from configuration and build
