@@ -332,8 +332,8 @@ buildSharedLib verbosity desc lbi flags = do
                           map (second pure) configGhcOptions
         (lib', extraGhcOptions) =
             maybe (let name = unPackageName $ pkgName $ package desc
-                       nameSo = addExtension name "so"
-                   in (nameSo, [addExtension name "hs", "-o", nameSo])
+                       nameSo = name <.> "so"
+                   in (nameSo, [name <.> "hs", "-o", nameSo])
                   ) (, []) lib
     unless (null extraGhcOptions) $ do
         let extraSourceFile = head extraGhcOptions
