@@ -24,6 +24,7 @@ usage()
     local name
     name=$(basename "$0")
     echo "$name: bootstrap environment to build custom Haskell handlers"
+    echo "this is a tool from https://github.com/lyokha/nginx-haskell-module"
     echo
     echo "Usage:"
     echo

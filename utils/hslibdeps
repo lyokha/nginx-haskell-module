@@ -15,9 +15,14 @@ PRINT_DIRDEPS=
 
 usage()
 {
+    local name
+    name=$(basename "$0")
+    echo "$name: collect Haskell libraries in installable distribution"
+    echo "this is a tool from https://github.com/lyokha/nginx-haskell-module"
+    echo
     echo "Usage:"
     echo
-    echo "  * $(basename "$0") [-d dir -a ar | -p] [-t target_dir] hslib"
+    echo "  * $name [-d dir -a ar | -p] [-t target_dir] hslib"
     echo "    'dir' is a directory where dependent libraries will be"
     echo "      collected (default is $DEF_DIR)"
     echo "    'target_dir' is a directory where dependent libraries will be"
@@ -29,7 +34,7 @@ usage()
     echo "    special value '-' for 'dir', 'target_dir', and 'ar' resets them"
     echo "      (with -d- being equivalent to -p)"
     echo
-    echo "  * $(basename "$0") -e"
+    echo "  * $name -e"
     echo "    print all direct dependencies found by cabal-plan, the output"
     echo "      is compatible with format of GHC environment files"
 }
@@ -107,17 +112,23 @@ if [ -z "$PATCH_ONLY" ]
 then
     echo "---> Collecting libraries"
     LIBS=$(ldd "$HSLIB" | grep -E '^\s*libHS')
-    TEST_LIBS=$(echo "$LIBS" | grep -E -v '\s+=>\s+/')
+    if [ -z "$LIBS" ]
+    then
+        echo "There were no Haskell libraries collected!" 1>&2
+        exit 4
+    fi
+    TEST_LIBS=$(echo "$LIBS" | grep -E -v '\s+=>\s+/.+\s+\(0x[[:xdigit:]]+\)$')
     if [ -n "$TEST_LIBS" ]
     then
         echo "There were errors while collecting Haskell libraries:" 1>&2
         echo "$TEST_LIBS" 1>&2
         exit 4
     fi
-    LIBS=$(echo "$LIBS" | sed -E 's/^(.*)\s+=>\s+(\S+).*/\2/')
+    LIBS=$(echo "$LIBS" |
+        sed -E 's/^.*\s+=>\s+(\/.+)\s+\(0x[[:xdigit:]]+\)$/\1/')
     [ -z "$DIR" ] && DIR=$DEF_DIR
     mkdir -p "$DIR"
-    cp -uv $LIBS "$DIR"
+    echo -e "${LIBS//\"/\\\"}\n$DIR" | sed 's/.*/"&"/' | xargs cp -uv
 fi
 
 if [ -n "$TARGET_DIR" ]
