@@ -2,6 +2,9 @@
 
 ### hslibdeps
 
+**Note**: this utility is obsoleted by utility *nhm-tool* which is shipped with
+package *ngx-export-distribution*.
+
 Collects all Haskell libraries the target library depends on. Optionally,
 patches the target library by extending its *RUNPATH* value with a specified
 directory (this requires utility [*patchelf*](https://nixos.org/patchelf.html)).
@@ -39,6 +42,9 @@ $ hslibdeps -e
 The output is compatible with format of *GHC environment* files.
 
 ### nhm-init
+
+**Note**: this utility is obsoleted by utility *nhm-tool* which is shipped with
+package *ngx-export-distribution*.
 
 Bootstraps environment to build custom Haskell handlers. Running
 

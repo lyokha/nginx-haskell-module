@@ -1,8 +1,7 @@
 ##### Building and installation
 
 The build tool requires Cabal, [*patchelf*](https://github.com/NixOS/patchelf),
-[*hslibdeps*](https://github.com/lyokha/nginx-haskell-module/blob/master/utils/README.md#utility-hslibdeps),
-and [*cabal-plan*](https://hackage.haskell.org/package/cabal-plan).
+and utility *nhm-tool* which is shipped with package *ngx-export-distribution*.
 
 ```ShellSession
 $ make

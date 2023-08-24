@@ -98,7 +98,7 @@ fi
 
 if [ -e "$CABAL_PROJECT" ] && [ -z "$FORCE_REWRITE" ] && [ -z "$TO_STDOUT" ]
 then
-    echo "File $CABAL_PROJECT exists, use option -f to rewrite it" 1>&2
+    echo "File $CABAL_PROJECT exists, use option -f to override it" 1>&2
 else
     [ -n "$TO_STDOUT" ] && echo -e "$C_START$CABAL_PROJECT$C_END\n"
     cat <<EOF >"$CABAL_PROJECT_STREAM" 2>&1
@@ -108,7 +108,7 @@ fi
 
 if [ -e "$SETUP_HS" ] && [ -z "$FORCE_REWRITE" ] && [ -z "$TO_STDOUT" ]
 then
-    echo "File $SETUP_HS exists, use option -f to rewrite it" 1>&2
+    echo "File $SETUP_HS exists, use option -f to override it" 1>&2
 else
     [ -n "$TO_STDOUT" ] && echo -e "\n$C_START$SETUP_HS$C_END\n"
     cat <<EOF >"$SETUP_HS_STREAM" 2>&1
@@ -119,7 +119,7 @@ fi
 
 if [ -e "$CABAL_FILE" ] && [ -z "$FORCE_REWRITE" ] && [ -z "$TO_STDOUT" ]
 then
-    echo "File $CABAL_FILE exists, use option -f to rewrite it" 1>&2
+    echo "File $CABAL_FILE exists, use option -f to override it" 1>&2
 else
     [ -n "$TO_STDOUT" ] && echo -e "\n$C_START$CABAL_FILE$C_END\n"
     cat <<EOF >"$CABAL_FILE_STREAM" 2>&1
@@ -152,7 +152,7 @@ fi
 
 if [ -e "$MAKEFILE" ] && [ -z "$FORCE_REWRITE" ] && [ -z "$TO_STDOUT" ]
 then
-    echo "File $MAKEFILE exists, use option -f to rewrite it" 1>&2
+    echo "File $MAKEFILE exists, use option -f to override it" 1>&2
 else
     [ -n "$TO_STDOUT" ] && echo -e "\n$C_START$MAKEFILE$C_END\n"
     cat <<EOF >"$MAKEFILE_STREAM" 2>&1

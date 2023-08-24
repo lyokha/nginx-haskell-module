@@ -55,14 +55,27 @@ import NgxExport.Distribution
 main = defaultMain
 ```
 
-The configuration step requires that utilities *patchelf* and
-[hslibdeps](../../utils/README.md) were found in the paths of environment
-variable *PATH*.
+The configuration step requires that utilities *nhm-tool* and *patchelf* were
+found in the paths of environment variable *PATH*. The *nhm-tool* can be
+installed by running
+
+```ShellSession
+$ cabal install
+```
+
+from the root directory of the project, or, as soon as it's shipped in the
+Hackage distribution, by running
+
+```ShellSession
+$ cabal install ngx-export-distribution
+```
+
+from any other directory.
 
 Building is a bit cumbersome: it expects explicit option *--prefix* at the
 configuration step (which will be interpreted as the prefix part of the
-*rpath* by utility *hslibdeps*) and explicit ghc option *-o* at the build
-step which is as well used by *hslibdeps* as the name of the target library.
+*rpath* by *nhm-tool dist*) and explicit ghc option *-o* at the build
+step which is as well used by *nhm-tool dist* as the name of the target library.
 
 ##### Building with cabal v1-commands
 
@@ -141,7 +154,7 @@ installation in directory */var/lib/nginx* at the target system.
 
 ##### Building with Setup.hs commands
 
-For building custom artifacts, options of *hslibdeps* must be accessed
+For building custom artifacts, options of *nhm-tool dist* must be accessed
 directly. For this, commands *runhaskell Setup.hs configure / build* can be
 used instead of *cabal v1-configure / v1-build*. Let's change the names of
 the directory with dependent libraries and the tar-file to *deps/* and
@@ -149,8 +162,11 @@ the directory with dependent libraries and the tar-file to *deps/* and
 using option *--prefix*.
 
 ```ShellSession
-$ runhaskell Setup.hs configure --user --hslibdeps-options="-t/var/lib/nginx/deps -ddeps -adeps"
+$ runhaskell Setup.hs configure --user --nhm-tool-options="-t/var/lib/nginx/deps -ddeps -adeps"
 ```
+
+Note that despite the name *--nhm-tool-options*, internally, the specified
+options are passed into a sub-command *nhm-tool dist*.
 
 ```ShellSession
 $ runhaskell Setup.hs build --ghc-options="ngx_distribution_test.hs -o ngx_distribution_test.so -threaded"
@@ -165,11 +181,11 @@ build dependencies and put them in a package environment in the current
 working directory.
 
 ```ShellSession
-$ cabal v2-install --lib --only-dependencies --package-env .
+$ cabal install --lib --only-dependencies --package-env .
 ```
 
 ```ShellSession
-$ cabal v2-build ngx-export-distribution
+$ cabal build ngx-export-distribution
 ```
 
 The second command is probably no-op because *ngx-export-distribution* should
@@ -203,11 +219,11 @@ against the direct dependencies and their dependencies in turn. With
 direct dependencies in the *cabal plan* can be done automatically.
 
 ```ShellSession
-$ hslibdeps -e >> .ghc.environment.x86_64-linux-$(ghc --numeric-version)
+$ nhm-tool plan >> .ghc.environment.x86_64-linux-$(ghc --numeric-version)
 ```
 
-Command *hslibdeps -e* is a convenient wrapper around *cabal-plan*. After
-running this, four lines looking similar to
+Command *nhm-tool plan* builds around the code of the *cabal-plan* library.
+After running this, four lines looking similar to
 
 ```
 package-id aeson-2.1.0.0-9b19e87ee2a82567866c50e13806427068fd4bcc78cedb01ecad7389791f6761
@@ -227,12 +243,49 @@ This should build library *ngx_distribution_test.so* and link it against
 Haskell libraries found in the global package database and the Cabal package
 store.
 
+##### Bootstrapping a new project
+
+All the steps listed in the previous section can be automated. This is exactly
+what *nhm-tool init* does. Running
+
+```ShellSession
+$ nhm-tool init project-name
+```
+
+produces files *cabal.project*, *Setup.hs*, *project-name.cabal*, *Makefile*,
+and *project_name.hs*. If any of the former four files exist, add option *-f*
+to override them.
+
+Note that the root Haskell source file is *project_name.hs* where *project_name*
+is *project-name* with all dashes replaced by underscores. If the source code
+will depend on packages other than *base* and *ngx-export*, add them into
+*project-name.cabal* manually.
+
+By default, the target library will be linked against the threaded Haskell RTS
+library. To link against the base RTS library, add option *-no-threaded*.
+
+The target library will be installed in directory */var/lib/nginx*. Use option
+*-p prefix* to override the install directory.
+
+Build and install the target library.
+
+```ShellSession
+$ make
+$ sudo make install
+```
+
+With ghc older than *8.10.6*, build with
+
+```ShellSession
+$ make LINKRTS=-lHSrts_thr-ghc$(ghc --numeric-version)
+```
+
 ##### Drawbacks
 
 With all the building approaches shown above, the following list of drawbacks
 must be taken into account.
 
-- Utility *hslibdeps* collects only libraries prefixed with *libHS*,
+- Utility *nhm-tool* collects only libraries prefixed with *libHS*,
 - clean commands such as *cabal v1-clean* do not delete build artifacts in
   the current working directory,
 - behavior of Cabal commands other than *configure*, *build* and *clean* is

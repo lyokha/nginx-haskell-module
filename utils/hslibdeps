@@ -27,7 +27,7 @@ usage()
     echo "      collected (default is $DEF_DIR)"
     echo "    'target_dir' is a directory where dependent libraries will be"
     echo "      installed (no default, 'hslib' will not be patched if omitted)"
-    echo "    'ar' is a the base name of the archive to contain 'hslib' and"
+    echo "    'ar' is the base name of the archive to contain 'hslib' and"
     echo "      'dir' (no default, the archive will not be created if omitted)"
     echo "    if -p (patch-only) is specified then dependent libraries will"
     echo "      neither be collected nor archived"

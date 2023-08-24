@@ -33,6 +33,9 @@ module NgxExport.Distribution (
     -- *** Building dependencies with cabal v2-build
     -- $deps-cabal-v2
 
+    -- *** Bootstrapping a new project
+    -- $bootstrapping-project
+
     -- *** Drawbacks
     -- $drawbacks
 
@@ -114,14 +117,24 @@ import Data.Maybe
 -- main = 'defaultMain'
 -- @
 --
--- The configuration step requires that utilities /patchelf/ and
--- <https://github.com/lyokha/nginx-haskell-module/blob/master/utils/hslibdeps hslibdeps>
--- were found in the paths of environment variable /$PATH/.
+-- The configuration step requires that utilities /nhm-tool/ and /patchelf/
+-- were found in the paths of environment variable /$PATH/. The /nhm-tool/ can
+-- be installed by running
+--
+-- > $ cabal install
+--
+-- from the root directory of the project, or, as soon as it's shipped in the
+-- Hackage distribution, by running
+--
+-- > $ cabal install ngx-export-distribution
+--
+-- from any other directory.
 --
 -- Building is a bit cumbersome: it expects explicit option /--prefix/ at the
 -- configuration step (which will be interpreted as the prefix part of the
--- /rpath/ by utility /hslibdeps/) and explicit ghc option /-o/ at the build
--- step which is as well used by /hslibdeps/ as the name of the target library.
+-- /rpath/ by  /nhm-tool dist/) and explicit ghc option /-o/ at the build
+-- step which is as well used by /nhm-tool dist/ as the name of the target
+-- library.
 
 -- $cabal-v1
 --
@@ -194,14 +207,17 @@ import Data.Maybe
 
 -- $setup-hs
 --
--- For building custom artifacts, options of /hslibdeps/ must be accessed
+-- For building custom artifacts, options of /nhm-tool dist/ must be accessed
 -- directly. For this, commands /runhaskell Setup.hs configure \/ build/ can be
 -- used instead of /cabal v1-configure \/ v1-build/. Let's change the names of
 -- the directory with dependent libraries and the tar-file to /deps\// and
 -- /deps.tar.gz/ respectively, and also define the /rpath/ directory without
 -- using option /--prefix/.
 --
--- > $ runhaskell Setup.hs configure --user --hslibdeps-options="-t/var/lib/nginx/deps -ddeps -adeps"
+-- > $ runhaskell Setup.hs configure --user --nhm-tool-options="-t/var/lib/nginx/deps -ddeps -adeps"
+--
+--  Note that despite the name /--nhm-tool-options/, internally, the specified
+--  options are passed into a sub-command /nhm-tool dist/.
 --
 -- > $ runhaskell Setup.hs build --ghc-options="ngx_distribution_test.hs -o ngx_distribution_test.so -threaded"
 
@@ -213,9 +229,9 @@ import Data.Maybe
 -- build dependencies and put them in a package environment in the current
 -- working directory.
 --
--- > $ cabal v2-install --lib --only-dependencies --package-env .
+-- > $ cabal install --lib --only-dependencies --package-env .
 --
--- > $ cabal v2-build ngx-export-distribution
+-- > $ cabal build ngx-export-distribution
 --
 -- The second command is probably no-op because /ngx-export-distribution/ should
 -- have been installed by the first command. At least in Cabal /3.10/, this is
@@ -243,10 +259,10 @@ import Data.Maybe
 -- [cabal-plan](https://hackage.haskell.org/package/cabal-plan), finding the
 -- direct dependencies in the /cabal plan/ can be done automatically.
 --
--- > $ hslibdeps -e >> .ghc.environment.x86_64-linux-$(ghc --numeric-version)
+-- > $ nhm-tool plan >> .ghc.environment.x86_64-linux-$(ghc --numeric-version)
 --
--- Command /hslibdeps -e/ is a convenient wrapper around /cabal-plan/. After
--- running this, four lines looking similar to
+-- Command /nhm-tool plan/ builds around the code of the /cabal-plan/ library.
+-- After running this, four lines looking similar to
 --
 -- > package-id aeson-2.1.0.0-9b19e87ee2a82567866c50e13806427068fd4bcc78cedb01ecad7389791f6761
 -- > package-id base-4.17.0.0
@@ -262,37 +278,53 @@ import Data.Maybe
 -- Haskell libraries found in the global package database and the Cabal package
 -- store.
 
+-- $bootstrapping-project
+--
+-- All the steps listed in the previous section can be automated. This is
+-- exactly what /nhm-tool init/ does. Running
+--
+-- > $ nhm-tool init project-name
+--
+-- produces files /cabal.project/, /Setup.hs/, /project-name.cabal/, /Makefile/,
+-- and /project_name.hs/. If any of the former four files exist, add option /-f/
+-- to override them.
+--
+-- Note that the root Haskell source file is /project_name.hs/ where
+-- /project_name/ is /project-name/ with all dashes replaced by underscores. If
+-- the source code will depend on packages other than /base/ and /ngx-export/,
+-- add them into /project-name.cabal/ manually.
+--
+-- By default, the target library will be linked against the threaded Haskell
+-- RTS library. To link against the base RTS library, add option /-no-threaded/.
+--
+-- The target library will be installed in directory /\/var\/lib\/nginx/. Use
+-- option /-p prefix/ to override the install directory.
+--
+-- Build and install the target library.
+--
+-- > $ make
+-- > $ sudo make install
+--
+-- With ghc older than /8.10.6/, build with
+--
+-- > $ make LINKRTS=-lHSrts_thr-ghc$(ghc --numeric-version)
+
 -- $drawbacks
 --
 -- With all the building approaches shown above, the following list of drawbacks
 -- must be taken into account.
 --
--- - Utility /hslibdeps/ collects only libraries prefixed with /libHS/,
+-- - Utility /nhm-tool/ collects only libraries prefixed with /libHS/,
 -- - clean commands such as /cabal v1-clean/ do not delete build artifacts in
 --   the current working directory,
 -- - behavior of Cabal commands other than /configure/, /build/ and /clean/ is
 --   not well defined.
 
-hslibdeps :: Program
-hslibdeps = simpleProgram "hslibdeps"
+nhmTool :: Program
+nhmTool = simpleProgram "nhm-tool"
 
 patchelf :: Program
 patchelf = simpleProgram "patchelf"
-
-requireHslibdeps :: Verbosity -> ProgramDb -> IO (ConfiguredProgram, ProgramDb)
-requireHslibdeps verbosity progdb = do
-    mres <- needProgram verbosity prog progdb
-    case mres of
-        Nothing -> die' verbosity notFound
-        Just res -> return res
-    where prog = hslibdeps
-          progName = programName prog
-          notFound = "The program '" ++ progName ++
-              "' is required but it could not be found." ++
-              "\nNote: Get '" ++ progName ++ "' from " ++ url ++
-              " and put it into a directory listed in the PATH."
-          url = "https://github.com/lyokha/nginx-haskell-module\
-              \/blob/master/utils/hslibdeps"
 
 -- | Builds a shared library.
 --
@@ -357,17 +389,16 @@ buildSharedLib verbosity desc lbi flags = do
 --
 -- - Collects all dependent Haskell libraries in a directory with the name equal
 --   to the value of /$abi/ which normally expands to /$arch-$os-$compiler/ (or
---   with that overridden in option /--hslibdeps-options/),
+--   with that overridden in option /--nhm-tool-options/),
 -- - adds value /$prefix\/$abi/ (or that overridden in option
---   /--hslibdeps-options/) in the beginning of the list of /rpath/ in the
+--   /--nhm-tool-options/) in the beginning of the list of /rpath/ in the
 --   shared library,
 -- - archives the shared library and the directory with the collected dependent
 --   libraries in a /tar.gz/ file.
 --
--- All steps are performed by utility
--- <https://github.com/lyokha/nginx-haskell-module/blob/master/utils/hslibdeps hslibdeps>.
--- It collects all libraries with prefix /libHS/ from the list returned by
--- command /ldd/ applied to the shared library.
+-- All steps are performed by utility /nhm-tool/. It collects all libraries
+-- with prefix /libHS/ from the list returned by command /ldd/ applied to the
+-- shared library.
 patchAndCollectDependentLibs :: Verbosity           -- ^ Verbosity level
                              -> FilePath            -- ^ Path to the library
                              -> PackageDescription  -- ^ Package description
@@ -380,16 +411,16 @@ patchAndCollectDependentLibs verbosity lib desc lbi = do
         rpathArg = maybe [] (("-t" :) . pure . (</> dir) . fromPathTemplate) $
             flagToMaybe $ prefix $ configInstallDirs $ configFlags lbi
         archiveArg = "-a" : [prettyShow $ package desc]
-    hslibdepsP <- fst <$> requireHslibdeps verbosity (withPrograms lbi)
-    let hslibdepsR = programInvocation hslibdepsP $
-            lib : rpathArg ++ dirArg ++ archiveArg
-    runProgramInvocation verbosity hslibdepsR
+    nhmToolP <- fst <$> requireProgram verbosity nhmTool (withPrograms lbi)
+    let nhmToolR = programInvocation nhmToolP $
+            "dist" : lib : "-v" : rpathArg ++ dirArg ++ archiveArg
+    runProgramInvocation verbosity nhmToolR
 
 -- | Build hooks.
 --
 -- Based on 'simpleUserHooks'. Overrides
 --
--- - 'confHook' by configuring programs /hslibdeps/ and /patchelf/ and then
+-- - 'confHook' by configuring programs /nhm-tool/ and /patchelf/ and then
 --   running the original /confHook/ from /simpleUserHooks/,
 -- - 'buildHook' by running in sequence 'buildSharedLib' and
 --   'patchAndCollectDependentLibs'.
@@ -398,11 +429,11 @@ patchAndCollectDependentLibs verbosity lib desc lbi = do
 -- neither tested nor recommended.
 ngxExportHooks :: UserHooks
 ngxExportHooks =
-    simpleUserHooks { hookedPrograms = [hslibdeps]
+    simpleUserHooks { hookedPrograms = [nhmTool]
                     , confHook = \desc flags -> do
                         let verbosity = toVerbosity $ configVerbosity flags
                             pdb = configPrograms flags
-                        _ <- requireHslibdeps verbosity pdb >>=
+                        _ <- requireProgram verbosity nhmTool pdb >>=
                                  requireProgram verbosity patchelf . snd
                         confHook simpleUserHooks desc flags
                     , buildHook = \desc lbi _ flags -> do

@@ -41,7 +41,7 @@ endif
 		--package-db=clear --package-db=global \
 		$$(sed -n 's/^\(package-db\)\s\+/--\1=/p' $(GHCENV)) \
 		--prefix=$(PREFIX)
-	hslibdeps -e >> $(GHCENV)
+	nhm-tool plan >> $(GHCENV)
 	runhaskell --ghc-arg=-package=base \
 		--ghc-arg=-package=$(PKGDISTR) Setup.hs build \
 		--ghc-options="$(SRC) -o $(LIB) -threaded"
