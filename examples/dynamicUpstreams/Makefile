@@ -23,14 +23,13 @@ all: $(DISTR)
 
 $(DISTR): $(SRC)
 	cabal install --lib --only-dependencies --package-env .
-	cabal build $(PKGDISTR)
 	sed -i 's/\(^package-id \)/--\1/' $(GHCENV)
 	runhaskell --ghc-arg=-package=base \
 	  --ghc-arg=-package=$(PKGDISTR) Setup.hs configure \
 	  --package-db=clear --package-db=global \
 	  $$(sed -n 's/^\(package-db\)\s\+/--\1=/p' $(GHCENV)) \
 	  --prefix=$(PREFIX)
-	nhm-tool plan >> $(GHCENV)
+	nhm-tool plan $(PKGNAME) >> $(GHCENV)
 	runhaskell --ghc-arg=-package=base \
 	  --ghc-arg=-package=$(PKGDISTR) Setup.hs build \
 	  --ghc-options="$(SRC) -o $(LIB) $(LINKRTS)"

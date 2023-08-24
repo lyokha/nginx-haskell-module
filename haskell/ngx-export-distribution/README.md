@@ -185,14 +185,6 @@ $ cabal install --lib --only-dependencies --package-env .
 ```
 
 ```ShellSession
-$ cabal build ngx-export-distribution
-```
-
-The second command is probably no-op because *ngx-export-distribution* should
-have been installed by the first command. At least in Cabal *3.10*, this is the
-case.
-
-```ShellSession
 $ sed -i 's/\(^package-id \)/--\1/' .ghc.environment.x86_64-linux-$(ghc --numeric-version)
 ```
 
@@ -219,7 +211,7 @@ against the direct dependencies and their dependencies in turn. With
 direct dependencies in the *cabal plan* can be done automatically.
 
 ```ShellSession
-$ nhm-tool plan >> .ghc.environment.x86_64-linux-$(ghc --numeric-version)
+$ nhm-tool plan ngx-distribution-test >> .ghc.environment.x86_64-linux-$(ghc --numeric-version)
 ```
 
 Command *nhm-tool plan* builds around the code of the *cabal-plan* library.

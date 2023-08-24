@@ -36,7 +36,7 @@ usage()
     echo
     echo "  * $name -e"
     echo "    print all direct dependencies found by cabal-plan, the output"
-    echo "      is compatible with format of GHC environment files"
+    echo "      is compatible with the format of GHC environment files"
 }
 
 while [ "$1" ]
@@ -91,6 +91,7 @@ then
     UNIT_ID="^UnitId\s\+\""
     while IFS= read -r pkg
     do sed -n "/$UNIT_ID$pkg/s/$UNIT_ID\(.*\)\"\$/package-id \1/p" <<< "$PLAN"
+    # FIXME: this collects direct dependencies of all packages in the plan
     done < <(sed -n '/^CompNameLib$/,/^$/s/^\s\+//p' <<< "$PLAN") |
         awk '!x[$0]++'
     exit 0

@@ -29,29 +29,31 @@ import System.IO
 import GHC.IO.Device
 import qualified GHC.IO.FD as FD
 
-data DistData = DistData { distDataDir :: String,
-                           distDataArchive :: String,
-                           distDataTargetDir :: String,
-                           distDataPatchOnly :: Bool,
-                           distDataTargetLib :: String,
-                           distDataWait :: Maybe ArgWait,
-                           distDataOwnVerbosity :: Verbosity,
-                           distDataOtherVerbosity :: Verbosity,
-                           distDataHelp :: Bool
+data DistData = DistData { distDataDir :: String
+                         , distDataArchive :: String
+                         , distDataTargetDir :: String
+                         , distDataPatchOnly :: Bool
+                         , distDataTargetLib :: String
+                         , distDataWait :: Maybe ArgWait
+                         , distDataOwnVerbosity :: Verbosity
+                         , distDataOtherVerbosity :: Verbosity
+                         , distDataHelp :: Bool
                          }
 
 defaultDistDataDir :: String
 defaultDistDataDir = ".hslibs"
 
-newtype PlanData = PlanData { planDataHelp :: Bool }
+data PlanData = PlanData { planDataProject :: String
+                         , planDataHelp :: Bool
+                         }
 
-data InitData = InitData { initDataPrefix :: String,
-                           initDataNoThreaded :: Bool,
-                           initDataForce :: Bool,
-                           initDataToStdout :: Bool,
-                           initDataProject :: String,
-                           initDataWait :: Maybe ArgWait,
-                           initDataHelp :: Bool
+data InitData = InitData { initDataPrefix :: String
+                         , initDataNoThreaded :: Bool
+                         , initDataForce :: Bool
+                         , initDataToStdout :: Bool
+                         , initDataProject :: String
+                         , initDataWait :: Maybe ArgWait
+                         , initDataHelp :: Bool
                          }
 
 defaultInitDataPrefix :: String
@@ -90,9 +92,9 @@ usage section success = do
         ]
     when (isNothing section || section == Just HelpPlan) $
         T.putStrLn "\n\
-        \  * nhm-tool plan\n\n\
-        \    print all direct dependencies, the output is compatible with\n\
-        \    format of GHC environment files"
+        \  * nhm-tool plan project-name\n\n\
+        \    print all direct dependencies of the given project,\n\
+        \    the output is compatible with the format of GHC environment files"
     when (isNothing section || section == Just HelpInit) $
         T.putStrLn $ T.concat ["\n\
         \  * nhm-tool init [-p dir] [-no-threaded] [-f | -to-stdout] \
@@ -131,13 +133,15 @@ main = do
                                  else cmdDist distData'
         "plan" -> do
             let planData = foldl parsePlanArgs (Just defaultArgs) $ tail args
-                defaultArgs = PlanData False
+                defaultArgs = PlanData "" False
             case planData of
                 Nothing -> usage (Just HelpPlan) False
                 Just planData'@PlanData {..} ->
                     if planDataHelp
                         then usage (Just HelpPlan) True
-                        else cmdPlan planData'
+                        else if null planDataProject
+                                 then usage (Just HelpPlan) False
+                                 else cmdPlan planData'
         "init" -> do
             let initData = foldl parseInitArgs (Just defaultArgs) $ tail args
                 defaultArgs = InitData defaultInitDataPrefix False False False
@@ -210,10 +214,14 @@ parseDistArgs (Just dist@DistData {..}) arg =
 
 parsePlanArgs :: Maybe PlanData -> String -> Maybe PlanData
 parsePlanArgs Nothing _ = Nothing
-parsePlanArgs (Just plan) arg =
-    if "-h" == arg || "-help" == arg || "--help" == arg
-        then Just plan { planDataHelp = True }
-        else Nothing
+parsePlanArgs (Just plan@PlanData {..}) arg =
+    if | "-h" == arg || "-help" == arg || "--help" == arg ->
+             Just plan { planDataHelp = True }
+       | "-" `isPrefixOf` arg -> Nothing
+       | otherwise ->
+              if null planDataProject
+                  then Just plan { planDataProject = arg }
+                  else Nothing
 
 parseInitArgs :: Maybe InitData -> String -> Maybe InitData
 parseInitArgs Nothing _ = Nothing
@@ -298,7 +306,7 @@ cmdDist DistData {..} = do
               if null recsLibHS
                   then do
                       hPutStrLn stderr
-                          "There were no Haskell libraries collected!"
+                          "There were no Haskell libraries collected"
                       exitFailure
                   else do
                       let recsLibHSNotFound =
@@ -360,13 +368,18 @@ parseLddOutput = flip parse "ldd" $ many $
           bs = '/'
 
 cmdPlan :: PlanData -> IO ()
-cmdPlan = const $ do
+cmdPlan PlanData {..} = do
     units <- pjUnits <$> findAndDecodePlanJson (ProjectRelativeToDir ".")
     let locals = [ Unit {..}
                  | Unit {..} <- M.elems units
-                 , uType == UnitTypeLocal, M.member CompNameLib uComps
+                 , uType == UnitTypeLocal
+                 , M.member CompNameLib uComps
+                 , toPkgName uPId == T.pack planDataProject
                  ]
-        locals' = foldl (\a (Unit {..}) ->
+    when (null locals) $ do
+        hPutStrLn stderr $ "Failed to find plan for " ++ planDataProject
+        exitFailure
+    let locals' = foldl (\a (Unit {..}) ->
                             let comps = M.filterWithKey
                                     (const . (== CompNameLib)) uComps
                                 deps = M.map ciLibDeps comps
@@ -374,6 +387,7 @@ cmdPlan = const $ do
                         ) S.empty locals
     forM_ (S.toList locals') $ \(UnitId local) ->
         putStrLn $ "package-id " ++ T.unpack local
+    where toPkgName (PkgId (PkgName name) _) = name
 
 cmdInit :: InitData -> IO ()
 cmdInit init'@InitData {..} = do
@@ -472,14 +486,13 @@ makefile InitData {..} = T.concat
      \\n\
      \$(DISTR): $(SRC)\n\
      \\tcabal install --lib --only-dependencies --package-env .\n\
-     \\tcabal build $(PKGDISTR)\n\
      \\tsed -i 's/\\(^package-id \\)/--\\1/' $(GHCENV)\n\
      \\trunhaskell --ghc-arg=-package=base \\\n\
      \\t --ghc-arg=-package=$(PKGDISTR) Setup.hs configure \\\n\
      \\t --package-db=clear --package-db=global \\\n\
      \\t $$(sed -n 's/^\\(package-db\\)\\s\\+/--\\1=/p' $(GHCENV)) \\\n\
      \\t --prefix=$(PREFIX)\n\
-     \\tnhm-tool plan >> $(GHCENV)\n\
+     \\tnhm-tool plan $(PKGNAME) >> $(GHCENV)\n\
      \\trunhaskell --ghc-arg=-package=base \\\n\
      \\t --ghc-arg=-package=$(PKGDISTR) Setup.hs build \\\n\
      \\t --ghc-options=\"$(SRC) -o $(LIB) $(LINKRTS)\"\n\

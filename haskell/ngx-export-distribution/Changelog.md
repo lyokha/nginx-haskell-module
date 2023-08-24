@@ -1,3 +1,7 @@
+### 0.5.0.0
+
+- Build executable *nhm-tool* to replace utilities *hslibdeps* and *nhm-init*.
+
 ### 0.4.1.0
 
 - Test GHC version to figure out whether to use option *-flink-rts* in run-time.
