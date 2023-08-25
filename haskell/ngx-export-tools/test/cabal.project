@@ -1,0 +1,5 @@
+-- note that ngx-export-tools will be taken from Hackage;
+-- to build ngx-export-tools locally, add
+-- ../ngx-export-tools.cabal to packages
+packages: test-tools.cabal
+

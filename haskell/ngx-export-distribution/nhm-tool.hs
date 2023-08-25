@@ -329,7 +329,7 @@ cmdDist DistData {..} = do
                                  "There were missing Haskell libraries:\n" ++
                                      lddOut
                               exitFailure
-          archiveLibs tar' = do
+          archiveLibs tar' =
               unless (null distDataArchive) $ do
                   putStrLn' "---> Archiving artifacts"
                   tarOut <- getProgramOutput distDataOtherVerbosity tar'
@@ -400,22 +400,20 @@ cmdInit init'@InitData {..} = do
                   ,False
                  )
                 ]
-    if initDataToStdout
-        then mapM_ (\(name, file, _) ->
-                       printHeader name >> T.putStrLn file
-                   ) files
-        else do
-            mapM_ (\(name, file, overridable) -> do
-                       exists <- doesFileExist name
-                       if exists
-                           then if initDataForce && overridable
-                                    then T.writeFile name file
-                                    else hPutStrLn stderr $
-                                        if overridable
-                                            then useForceMsg name
-                                            else existsMsg name
-                           else T.writeFile name file
-                   ) files
+    forM_ files $
+        if initDataToStdout
+            then \(name, file, _) ->
+                printHeader name >> T.putStrLn file
+            else \(name, file, overridable) -> do
+                exists <- doesFileExist name
+                if exists
+                    then if initDataForce && overridable
+                             then T.writeFile name file
+                             else hPutStrLn stderr $
+                                 if overridable
+                                     then useForceMsg name
+                                     else existsMsg name
+                    else T.writeFile name file
     where printHeader header = do
               isTerm <- isTerminal FD.stdout
               if isTerm

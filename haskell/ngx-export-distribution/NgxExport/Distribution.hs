@@ -118,17 +118,16 @@ import Data.Maybe
 -- @
 --
 -- The configuration step requires that utilities /nhm-tool/ and /patchelf/
--- were found in the paths of environment variable /$PATH/. The /nhm-tool/ can
--- be installed by running
+-- were found in the paths of environment variable /$PATH/. The /nhm-tool/ is
+-- packaged with this module and can be installed by running
 --
 -- > $ cabal install
 --
--- from the root directory of the project, or, as soon as it's shipped in the
--- Hackage distribution, by running
+-- from the root directory of the module or by running
 --
 -- > $ cabal install ngx-export-distribution
 --
--- from any other directory.
+-- from any other directory, in which case it will be installed from /Hackage/.
 --
 -- Building is a bit cumbersome: it expects explicit option /--prefix/ at the
 -- configuration step (which will be interpreted as the prefix part of the
@@ -216,8 +215,8 @@ import Data.Maybe
 --
 -- > $ runhaskell Setup.hs configure --user --nhm-tool-options="-t/var/lib/nginx/deps -ddeps -adeps"
 --
---  Note that despite the name /--nhm-tool-options/, internally, the specified
---  options are passed into a sub-command /nhm-tool dist/.
+--  Note that despite the name /--nhm-tool-options/, the specified options are
+--  passed internally into a sub-command /nhm-tool dist/.
 --
 -- > $ runhaskell Setup.hs build --ghc-options="ngx_distribution_test.hs -o ngx_distribution_test.so -threaded"
 
