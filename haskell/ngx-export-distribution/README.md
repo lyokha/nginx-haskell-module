@@ -210,10 +210,10 @@ against the direct dependencies and their dependencies in turn. With
 direct dependencies in the *cabal plan* can be done automatically.
 
 ```ShellSession
-$ nhm-tool plan ngx-distribution-test >> .ghc.environment.x86_64-linux-$(ghc --numeric-version)
+$ nhm-tool deps ngx-distribution-test >> .ghc.environment.x86_64-linux-$(ghc --numeric-version)
 ```
 
-Command *nhm-tool plan* builds around the code of the *cabal-plan* library.
+Command *nhm-tool deps* builds around the code of the *cabal-plan* library.
 After running this, four lines looking similar to
 
 ```

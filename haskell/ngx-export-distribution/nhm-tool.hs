@@ -43,8 +43,8 @@ data DistData = DistData { distDataDir :: String
 defaultDistDataDir :: String
 defaultDistDataDir = ".hslibs"
 
-data PlanData = PlanData { planDataProject :: String
-                         , planDataHelp :: Bool
+data DepsData = DepsData { depsDataProject :: String
+                         , depsDataHelp :: Bool
                          }
 
 data InitData = InitData { initDataPrefix :: String
@@ -65,7 +65,7 @@ data LddRec = LibHS String (Maybe FilePath)
             | LibOther String (Maybe FilePath)
             deriving Show
 
-data HelpSection = HelpDist | HelpPlan | HelpInit deriving Eq
+data HelpSection = HelpDist | HelpDeps | HelpInit deriving Eq
 
 usage :: Maybe HelpSection -> Bool -> IO ()
 usage section success = do
@@ -90,9 +90,9 @@ usage section success = do
         \    special value '-' for 'dir', 'target_dir', and 'ar' resets them\n\
         \      (with -d- being equivalent to -p)"
         ]
-    when (isNothing section || section == Just HelpPlan) $
+    when (isNothing section || section == Just HelpDeps) $
         T.putStrLn "\n\
-        \  * nhm-tool plan project-name\n\n\
+        \  * nhm-tool deps project-name\n\n\
         \    print all direct dependencies of the given project,\n\
         \    the output is compatible with the format of GHC environment files"
     when (isNothing section || section == Just HelpInit) $
@@ -131,17 +131,17 @@ main = do
                         else if isJust distDataWait || null distDataTargetLib
                                  then usage (Just HelpDist) False
                                  else cmdDist distData'
-        "plan" -> do
-            let planData = foldl parsePlanArgs (Just defaultArgs) $ tail args
-                defaultArgs = PlanData "" False
-            case planData of
-                Nothing -> usage (Just HelpPlan) False
-                Just planData'@PlanData {..} ->
-                    if planDataHelp
-                        then usage (Just HelpPlan) True
-                        else if null planDataProject
-                                 then usage (Just HelpPlan) False
-                                 else cmdPlan planData'
+        "deps" -> do
+            let depsData = foldl parseDepsArgs (Just defaultArgs) $ tail args
+                defaultArgs = DepsData "" False
+            case depsData of
+                Nothing -> usage (Just HelpDeps) False
+                Just depsData'@DepsData {..} ->
+                    if depsDataHelp
+                        then usage (Just HelpDeps) True
+                        else if null depsDataProject
+                                 then usage (Just HelpDeps) False
+                                 else cmdDeps depsData'
         "init" -> do
             let initData = foldl parseInitArgs (Just defaultArgs) $ tail args
                 defaultArgs = InitData defaultInitDataPrefix False False False
@@ -212,15 +212,15 @@ parseDistArgs (Just dist@DistData {..}) arg =
         Just _ -> undefined
         where dist' = dist { distDataWait = Nothing }
 
-parsePlanArgs :: Maybe PlanData -> String -> Maybe PlanData
-parsePlanArgs Nothing _ = Nothing
-parsePlanArgs (Just plan@PlanData {..}) arg =
+parseDepsArgs :: Maybe DepsData -> String -> Maybe DepsData
+parseDepsArgs Nothing _ = Nothing
+parseDepsArgs (Just deps@DepsData {..}) arg =
     if | "-h" == arg || "-help" == arg || "--help" == arg ->
-             Just plan { planDataHelp = True }
+             Just deps { depsDataHelp = True }
        | "-" `isPrefixOf` arg -> Nothing
        | otherwise ->
-              if null planDataProject
-                  then Just plan { planDataProject = arg }
+              if null depsDataProject
+                  then Just deps { depsDataProject = arg }
                   else Nothing
 
 parseInitArgs :: Maybe InitData -> String -> Maybe InitData
@@ -367,17 +367,17 @@ parseLddOutput = flip parse "ldd" $ many $
           spaces1 = skipMany1 space
           bs = '/'
 
-cmdPlan :: PlanData -> IO ()
-cmdPlan PlanData {..} = do
+cmdDeps :: DepsData -> IO ()
+cmdDeps DepsData {..} = do
     units <- pjUnits <$> findAndDecodePlanJson (ProjectRelativeToDir ".")
     let locals = [ Unit {..}
                  | Unit {..} <- M.elems units
                  , uType == UnitTypeLocal
                  , M.member CompNameLib uComps
-                 , toPkgName uPId == T.pack planDataProject
+                 , toPkgName uPId == T.pack depsDataProject
                  ]
     when (null locals) $ do
-        hPutStrLn stderr $ "Failed to find plan for " ++ planDataProject
+        hPutStrLn stderr $ "Failed to find plan for " ++ depsDataProject
         exitFailure
     let locals' = foldl (\a (Unit {..}) ->
                             let comps = M.filterWithKey
@@ -490,7 +490,7 @@ makefile InitData {..} = T.concat
      \\t --package-db=clear --package-db=global \\\n\
      \\t $$(sed -n 's/^\\(package-db\\)\\s\\+/--\\1=/p' $(GHCENV)) \\\n\
      \\t --prefix=$(PREFIX)\n\
-     \\tnhm-tool plan $(PKGNAME) >> $(GHCENV)\n\
+     \\tnhm-tool deps $(PKGNAME) >> $(GHCENV)\n\
      \\trunhaskell --ghc-arg=-package=base \\\n\
      \\t --ghc-arg=-package=$(PKGDISTR) Setup.hs build \\\n\
      \\t --ghc-options=\"$(SRC) -o $(LIB) $(LINKRTS)\"\n\

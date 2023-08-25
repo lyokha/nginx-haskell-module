@@ -32,7 +32,7 @@ $(DISTR): $(SRC) $(CPLUG).o
 	  --package-db=clear --package-db=global \
 	  $$(sed -n 's/^\(package-db\)\s\+/--\1=/p' $(GHCENV)) \
 	  --prefix=$(PREFIX)
-	nhm-tool plan $(PKGNAME) >> $(GHCENV)
+	nhm-tool deps $(PKGNAME) >> $(GHCENV)
 	runhaskell --ghc-arg=-package=base \
 	  --ghc-arg=-package=$(PKGDISTR) Setup.hs build \
 	  --ghc-options="$(CPLUG).o $(SRC) -o $(LIB) $(LINKRTS)"

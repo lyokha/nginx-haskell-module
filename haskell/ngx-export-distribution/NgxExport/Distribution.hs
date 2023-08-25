@@ -252,9 +252,9 @@ import Data.Maybe
 -- [cabal-plan](https://hackage.haskell.org/package/cabal-plan), finding the
 -- direct dependencies in the /cabal plan/ can be done automatically.
 --
--- > $ nhm-tool plan ngx-distribution-test >> .ghc.environment.x86_64-linux-$(ghc --numeric-version)
+-- > $ nhm-tool deps ngx-distribution-test >> .ghc.environment.x86_64-linux-$(ghc --numeric-version)
 --
--- Command /nhm-tool plan/ builds around the code of the /cabal-plan/ library.
+-- Command /nhm-tool deps/ builds around the code of the /cabal-plan/ library.
 -- After running this, four lines looking similar to
 --
 -- > package-id aeson-2.1.0.0-9b19e87ee2a82567866c50e13806427068fd4bcc78cedb01ecad7389791f6761
