@@ -18,7 +18,6 @@ import Data.Functor
 import Data.Maybe
 import Data.Char
 import Data.List
-import Data.List.Extra
 import Prettyprinter (pretty, annotate)
 import Prettyprinter.Render.Terminal
 import System.Environment
@@ -344,7 +343,12 @@ cmdDist DistData {..} = do
                       ]
                   putStrLnTrim tarOut
           putStrLn' = when (distDataOwnVerbosity == verbose) . putStrLn
-          putStrLnTrim = putStrLn' . fst . spanEnd (== '\n')
+          putStrLnTrim = putStrLn' . trimEnd '\n'
+          trimEnd end = fst . foldr (\v a@(vs, skipped) ->
+                                         if skipped || v /= end
+                                             then (v : vs, True)
+                                             else a
+                                    ) ("", False)
 
 parsePatchelfRpathOutput :: String -> Either ParseError [String]
 parsePatchelfRpathOutput =
@@ -399,7 +403,7 @@ cmdInit init'@InitData {..} = do
                 ,("Setup.hs", setupHs init', True)
                 ,(initDataProject ++ ".cabal", projectCabal init', True)
                 ,("Makefile", makefile init', True)
-                ,(replace "-" "_" initDataProject ++ ".hs"
+                ,(replace '-' '_' initDataProject ++ ".hs"
                   ,projectHs init'
                   ,False
                  )
@@ -418,7 +422,8 @@ cmdInit init'@InitData {..} = do
                                      then useForceMsg name
                                      else existsMsg name
                     else T.writeFile name file
-    where printHeader header = do
+    where replace from to = foldr (\v -> ((if v == from then to else v) :)) ""
+          printHeader header = do
               isTerm <- isTerminal FD.stdout
               if isTerm
                   then putDoc $ annotate (color Blue <> underlined) $
