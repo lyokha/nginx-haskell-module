@@ -92,44 +92,44 @@ Use --reinstall if you want to reinstall anyway.
 $ cabal v1-configure --prefix=/var/lib/nginx
 Resolving dependencies...
 [1 of 2] Compiling Main             ( dist/setup/setup.hs, dist/setup/Main.o )
-[2 of 2] Linking ./dist/setup/setup ...
+[2 of 2] Linking ./dist/setup/setup
 Configuring ngx-distribution-test-0.1.0.0...
 ```
 
 ```ShellSession
 $ cabal v1-build --ghc-options="ngx_distribution_test.hs -o ngx_distribution_test.so -threaded"
 [1 of 2] Compiling NgxDistributionTest ( ngx_distribution_test.hs, ngx_distribution_test.o )
-[2 of 2] Linking ngx_distribution_test.so ...
+[2 of 2] Linking ngx_distribution_test.so
 ---> Collecting libraries
-'/home/lyokha/.cabal/lib/x86_64-linux-ghc-9.4.1/libHSngx-export-1.7.5-FkCfFIq2kiq6MpFtZt6Wso-ghc9.4.1.so' -> 'x86_64-linux-ghc-9.4.1/libHSngx-export-1.7.5-FkCfFIq2kiq6MpFtZt6Wso-ghc9.4.1.so'
-'/home/lyokha/.cabal/lib/x86_64-linux-ghc-9.4.1/libHSmonad-loops-0.4.3-5HNgusEuKV7E9KDl2xfIIb-ghc9.4.1.so' -> 'x86_64-linux-ghc-9.4.1/libHSmonad-loops-0.4.3-5HNgusEuKV7E9KDl2xfIIb-ghc9.4.1.so'
-'/home/lyokha/.cabal/lib/x86_64-linux-ghc-9.4.1/libHSasync-2.2.4-BHmUTH2SmtgLLoxIOXNoMc-ghc9.4.1.so' -> 'x86_64-linux-ghc-9.4.1/libHSasync-2.2.4-BHmUTH2SmtgLLoxIOXNoMc-ghc9.4.1.so'
-'/home/lyokha/.cabal/lib/x86_64-linux-ghc-9.4.1/libHSaeson-2.1.0.0-79sgaqQ0msAJaL6HuNRLaK-ghc9.4.1.so' -> 'x86_64-linux-ghc-9.4.1/libHSaeson-2.1.0.0-79sgaqQ0msAJaL6HuNRLaK-ghc9.4.1.so'
-'/home/lyokha/.cabal/lib/x86_64-linux-ghc-9.4.1/libHSwitherable-0.4.2-1AWCu2zvFImLTaoXk8CRkT-ghc9.4.1.so' -> 'x86_64-linux-ghc-9.4.1/libHSwitherable-0.4.2-1AWCu2zvFImLTaoXk8CRkT-ghc9.4.1.so'
-'/home/lyokha/.cabal/lib/x86_64-linux-ghc-9.4.1/libHSuuid-types-1.0.5-BduubbeXxFCF9me5IkbXLU-ghc9.4.1.so' -> 'x86_64-linux-ghc-9.4.1/libHSuuid-types-1.0.5-BduubbeXxFCF9me5IkbXLU-ghc9.4.1.so'
+/home/lyokha/.cabal/lib/x86_64-linux-ghc-9.6.2/libHSngx-export-1.7.5-FKKGVRZDmRmCwc8075DbYl-ghc9.6.2.so -> x86_64-linux-ghc-9.6.2/libHSngx-export-1.7.5-FKKGVRZDmRmCwc8075DbYl-ghc9.6.2.so
+/usr/lib64/ghc-9.6.2/lib/../lib/x86_64-linux-ghc-9.6.2/libHSunix-2.8.1.0-ghc9.6.2.so -> x86_64-linux-ghc-9.6.2/libHSunix-2.8.1.0-ghc9.6.2.so
+/home/lyokha/.cabal/lib/x86_64-linux-ghc-9.6.2/libHSmonad-loops-0.4.3-JOAJ0hfyQmbETqIRZyULfB-ghc9.6.2.so -> x86_64-linux-ghc-9.6.2/libHSmonad-loops-0.4.3-JOAJ0hfyQmbETqIRZyULfB-ghc9.6.2.so
+/home/lyokha/.cabal/lib/x86_64-linux-ghc-9.6.2/libHSasync-2.2.4-Bps1tT28WAgAP1V90ox12z-ghc9.6.2.so -> x86_64-linux-ghc-9.6.2/libHSasync-2.2.4-Bps1tT28WAgAP1V90ox12z-ghc9.6.2.so
+/home/lyokha/.cabal/lib/x86_64-linux-ghc-9.6.2/libHSaeson-2.2.0.0-KcH800TS6us8tZ6AZDtIQh-ghc9.6.2.so -> x86_64-linux-ghc-9.6.2/libHSaeson-2.2.0.0-KcH800TS6us8tZ6AZDtIQh-ghc9.6.2.so
+/home/lyokha/.cabal/lib/x86_64-linux-ghc-9.6.2/libHSwitherable-0.4.2-KGoJH5wjsMLKLjx4iVJYPg-ghc9.6.2.so -> x86_64-linux-ghc-9.6.2/libHSwitherable-0.4.2-KGoJH5wjsMLKLjx4iVJYPg-ghc9.6.2.so
 
    ...
 
-'/usr/lib64/ghc-9.4.1/lib/../lib/x86_64-linux-ghc-9.4.1/libHSghc-bignum-1.3-ghc9.4.1.so' -> 'x86_64-linux-ghc-9.4.1/libHSghc-bignum-1.3-ghc9.4.1.so'
-'/usr/lib64/ghc-9.4.1/lib/../lib/x86_64-linux-ghc-9.4.1/libHSghc-prim-0.9.0-ghc9.4.1.so' -> 'x86_64-linux-ghc-9.4.1/libHSghc-prim-0.9.0-ghc9.4.1.so'
-'/usr/lib64/ghc-9.4.1/lib/../lib/x86_64-linux-ghc-9.4.1/libHSrts-1.0.2_thr-ghc9.4.1.so' -> 'x86_64-linux-ghc-9.4.1/libHSrts-1.0.2_thr-ghc9.4.1.so'
+/usr/lib64/ghc-9.6.2/lib/../lib/x86_64-linux-ghc-9.6.2/libHSghc-bignum-1.3-ghc9.6.2.so -> x86_64-linux-ghc-9.6.2/libHSghc-bignum-1.3-ghc9.6.2.so
+/usr/lib64/ghc-9.6.2/lib/../lib/x86_64-linux-ghc-9.6.2/libHSghc-prim-0.10.0-ghc9.6.2.so -> x86_64-linux-ghc-9.6.2/libHSghc-prim-0.10.0-ghc9.6.2.so
+/usr/lib64/ghc-9.6.2/lib/../lib/x86_64-linux-ghc-9.6.2/libHSrts-1.0.2_thr-ghc9.6.2.so -> x86_64-linux-ghc-9.6.2/libHSrts-1.0.2_thr-ghc9.6.2.so
 
 ---> Patching ngx_distribution_test.so
-/var/lib/nginx/x86_64-linux-ghc-9.4.1:/home/lyokha/.cabal/lib/x86_64-linux-ghc-9.4.1:/usr/lib64/ghc-9.4.1/lib/../lib/x86_64-linux-ghc-9.4.1
+/var/lib/nginx/x86_64-linux-ghc-9.6.2:/home/lyokha/.cabal/lib/x86_64-linux-ghc-9.6.2:/usr/lib64/ghc-9.6.2/lib/../lib/x86_64-linux-ghc-9.6.2
 
 ---> Archiving artifacts
 ngx_distribution_test.so
-x86_64-linux-ghc-9.4.1/
-x86_64-linux-ghc-9.4.1/libHSrts-1.0.2_thr-ghc9.4.1.so
-x86_64-linux-ghc-9.4.1/libHSwitherable-0.4.2-1AWCu2zvFImLTaoXk8CRkT-ghc9.4.1.so
-x86_64-linux-ghc-9.4.1/libHSsplitmix-0.1.0.4-HUWpFUIlsWJ8kN1EGcaWa2-ghc9.4.1.so
-x86_64-linux-ghc-9.4.1/libHSscientific-0.3.7.0-C7AyvjqJeHGGsm9gk5kZlS-ghc9.4.1.so
+x86_64-linux-ghc-9.6.2/
+x86_64-linux-ghc-9.6.2/libHSngx-export-1.7.5-FKKGVRZDmRmCwc8075DbYl-ghc9.6.2.so
+x86_64-linux-ghc-9.6.2/libHSunix-2.8.1.0-ghc9.6.2.so
+x86_64-linux-ghc-9.6.2/libHSmonad-loops-0.4.3-JOAJ0hfyQmbETqIRZyULfB-ghc9.6.2.so
+x86_64-linux-ghc-9.6.2/libHSasync-2.2.4-Bps1tT28WAgAP1V90ox12z-ghc9.6.2.so
 
    ...
 
-x86_64-linux-ghc-9.4.1/libHSunix-2.7.3-ghc9.4.1.so
-x86_64-linux-ghc-9.4.1/libHSpretty-1.1.3.6-ghc9.4.1.so
-x86_64-linux-ghc-9.4.1/libHSdeepseq-1.4.8.0-ghc9.4.1.so
+x86_64-linux-ghc-9.6.2/libHSghc-bignum-1.3-ghc9.6.2.so
+x86_64-linux-ghc-9.6.2/libHSghc-prim-0.10.0-ghc9.6.2.so
+x86_64-linux-ghc-9.6.2/libHSrts-1.0.2_thr-ghc9.6.2.so
 ```
 
 Notes about the value of *--ghc-options* in command *cabal v1-build*.
@@ -147,7 +147,7 @@ Notes about the value of *--ghc-options* in command *cabal v1-build*.
 
 Now the current working directory contains new files
 *ngx_distribution_test.so* and *ngx-distribution-test-0.1.0.0.tar.gz* and a
-new directory *x86_64-linux-ghc-9.4.1*. The tar-file contains the patched
+new directory *x86_64-linux-ghc-9.6.2*. The tar-file contains the patched
 shared library and the directory with dependent libraries: it is ready for
 installation in directory */var/lib/nginx* at the target system.
 
@@ -188,7 +188,7 @@ $ sed -i 's/\(^package-id \)/--\1/' .ghc.environment.x86_64-linux-$(ghc --numeri
 ```
 
 This *sed* command comments out all lines that start with word *package-id*
-in file *.ghc.environment.x86_64-linux-9.4.1* which has been created by the
+in file *.ghc.environment.x86_64-linux-9.6.2* which has been created by the
 first command. We will put all needed packages into this file after the next
 step.
 
@@ -223,7 +223,7 @@ package-id bytestring-0.11.3.1
 package-id ngx-export-1.7.5-17b83e3ac354cc52614227ba662f8c23a8ddd4e08f2a1a02b0d6b51b2dd849ea
 ```
 
-will appear at the end of file *.ghc.environment.x86_64-linux-9.4.1*. This
+will appear at the end of file *.ghc.environment.x86_64-linux-9.6.2*. This
 shall expose the four dependent packages at the next step.
 
 ```ShellSession
