@@ -1,3 +1,7 @@
+### 0.5.0.1
+
+- More detailed help for *nhm-tool*.
+
 ### 0.5.0.0
 
 - Build executable *nhm-tool* to replace utilities *hslibdeps* and *nhm-init*.

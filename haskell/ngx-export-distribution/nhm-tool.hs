@@ -77,12 +77,15 @@ usage section success = do
     when (isNothing section || section == Just HelpDist) $
         T.putStrLn $ T.concat ["\n\
         \  * nhm-tool dist [-d dir -a ar | -p] [-t target_dir] [-v | -vv] \
-        \hslib\n\n\
+        \lib\n\n\
+        \    collect Haskell libraries on which 'lib' depends,\n\
+        \    patch 'lib' to enable loading dependent libraries from \
+        \'target_dir'\n\n\
         \    'dir' is a directory where dependent libraries will be\n\
-        \      collected (default is", T.pack defaultDistDataDir, ")\n\
+        \      collected (default is ", T.pack defaultDistDataDir, ")\n\
         \    'target_dir' is a directory where dependent libraries will be\n\
-        \      installed (no default, 'hslib' will not be patched if omitted)\n\
-        \    'ar' is the base name of the archive to contain 'hslib' and\n\
+        \      installed (no default, 'lib' will not be patched if omitted)\n\
+        \    'ar' is the base name of the archive to contain 'lib' and\n\
         \      'dir' (no default, the archive will not be created if omitted)\n\
         \    if '-p' (patch-only) is specified then dependent libraries will\n\
         \      neither be collected nor archived\n\
@@ -93,12 +96,13 @@ usage section success = do
     when (isNothing section || section == Just HelpDeps) $
         T.putStrLn "\n\
         \  * nhm-tool deps project-name\n\n\
-        \    print all direct dependencies of the given project,\n\
+        \    print all direct dependencies of 'project-name',\n\
         \    the output is compatible with the format of GHC environment files"
     when (isNothing section || section == Just HelpInit) $
         T.putStrLn $ T.concat ["\n\
         \  * nhm-tool init [-p dir] [-no-threaded] [-f | -to-stdout] \
         \project-name\n\n\
+        \    bootstrap environment to build custom Haskell handlers\n\n\
         \    '-p' prefix for install dir, default is ",
         T.pack defaultInitDataPrefix, "\n\
         \    '-no-threaded' use base RTS library\n\
