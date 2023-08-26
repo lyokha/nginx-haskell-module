@@ -353,21 +353,22 @@ parsePatchelfRpathOutput =
 
 parseLddOutput :: String -> Either ParseError [LddRec]
 parseLddOutput = flip parse "ldd" $ many $
-    spaces >>
-    (try (do
-              lib <- manyTill anyChar' sep
-              path <- (char bs >> right <&> Just . (bs :))
-                      <|> (string "not found" >> return Nothing)
-              return $ (if "libHS" `isPrefixOf` lib
-                            then LibHS
-                            else LibOther) lib path
+    spaces *>
+    (try (toLddRec <$>
+              manyTill anyChar' sep <*>
+                  ((char bs *> right <&> Just . (bs :))
+                   <|> string "not found" $> Nothing
+                  )
          )
      <|> (right <&> (`LibOther` Nothing))
     )
-    where right = manyTill anyChar' $ spaces1 >> addr >> newline
-          addr = string "(0x" >> many1 hexDigit >> char ')'
+    where toLddRec lib = (if "libHS" `isPrefixOf` lib
+                              then LibHS
+                              else LibOther) lib
+          right = manyTill anyChar' $ spaces1 *> addr *> newline
+          addr = string "(0x" *> many1 hexDigit *> char ')'
           anyChar' = satisfy (/= '\n')
-          sep = spaces1 >> string "=>" >> spaces1
+          sep = spaces1 *> string "=>" *> spaces1
           spaces1 = skipMany1 space
           bs = '/'
 
