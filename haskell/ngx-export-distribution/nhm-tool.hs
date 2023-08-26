@@ -268,8 +268,8 @@ cmdDist DistData {..} = do
             lddOut <- getProgramOutput distDataOtherVerbosity
                 ldd' [distDataTargetLib]
             case parseLddOutput lddOut of
-                Left msg -> do
-                    hPrint stderr msg
+                Left err -> do
+                    hPutStrLn stderr $ show err ++ " in\n" ++ lddOut
                     exitFailure
                 Right recs -> do
                     (tar', _) <- requireProgram distDataOtherVerbosity
@@ -285,8 +285,8 @@ cmdDist DistData {..} = do
                   patchelfOut <- getProgramOutput distDataOtherVerbosity
                       patchelf' ["--print-rpath", distDataTargetLib]
                   case parsePatchelfRpathOutput patchelfOut of
-                      Left msg -> do
-                          hPrint stderr msg
+                      Left err -> do
+                          hPutStrLn stderr $ show err ++ " in\n" ++ patchelfOut
                           exitFailure
                       Right paths -> do
                           unless (distDataTargetDir `elem` paths) $

@@ -1,6 +1,6 @@
 ### 0.5.0.2
 
-- *nhm-tool*: get rid of dependency on package *extra*.
+- *nhm-tool*: get rid of dependency on package *extra* and other improvements.
 
 ### 0.5.0.1
 
