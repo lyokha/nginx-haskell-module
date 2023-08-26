@@ -302,35 +302,31 @@ cmdDist DistData {..} = do
                                             ]
                           putStrLnTrim patchelfOut'
           collectLibs recs lddOut = do
-              let recsLibHS = filter (\case
-                                          LibHS _ _ -> True
-                                          _ -> False
-                                     ) recs
-              if null recsLibHS
+              let recsLibHS = M.fromList $
+                      mapMaybe (\case
+                                    LibHS name path -> Just (name, path)
+                                    _ -> Nothing
+                               ) recs
+              if M.null recsLibHS
                   then do
-                      hPutStrLn stderr
-                          "There were no Haskell libraries collected"
+                      hPutStrLn stderr $
+                          "No Haskell libraries were collected in\n" ++ lddOut
                       exitFailure
                   else do
-                      let recsLibHSNotFound =
-                              filter (\case
-                                          LibHS _ Nothing -> True
-                                          _ -> False
-                                     ) recsLibHS
-                      if null recsLibHSNotFound
+                      let (M.mapMaybe id -> recsLibHS', recsLibHSNotFound) =
+                              M.partition isJust recsLibHS
+                      if M.null recsLibHSNotFound
                           then do
                               createDirectoryIfMissing False distDataDir
-                              forM_ recsLibHS $ \case
-                                  LibHS _ (Just path) -> do
-                                      let dst = distDataDir </>
-                                                    takeFileName path
-                                      putStrLn' $ path ++ " -> " ++ dst
-                                      copyFile path dst
-                                  _ -> undefined
+                              forM_ (M.elems recsLibHS') $ \path -> do
+                                  let dst = distDataDir </> takeFileName path
+                                  putStrLn' $ path ++ " -> " ++ dst
+                                  copyFile path dst
                           else do
                               hPutStrLn stderr $
-                                 "There were missing Haskell libraries:\n" ++
-                                     lddOut
+                                 "Haskell libraries " ++
+                                     show (M.keys recsLibHSNotFound) ++
+                                         " were not found in\n" ++ lddOut
                               exitFailure
           archiveLibs tar' =
               unless (null distDataArchive) $ do
@@ -362,13 +358,13 @@ parseLddOutput = flip parse "ldd" $ many $
               lib <- manyTill anyChar' sep
               path <- (char bs >> right <&> Just . (bs :))
                       <|> (string "not found" >> return Nothing)
-              return $ if "libHS" `isPrefixOf` lib
-                           then LibHS lib path
-                           else LibOther lib path
+              return $ (if "libHS" `isPrefixOf` lib
+                            then LibHS
+                            else LibOther) lib path
          )
      <|> (right <&> (`LibOther` Nothing))
     )
-    where right = manyTill anyChar' (try $ spaces1 >> addr >> newline)
+    where right = manyTill anyChar' $ spaces1 >> addr >> newline
           addr = string "(0x" >> many1 hexDigit >> char ')'
           anyChar' = satisfy (/= '\n')
           sep = spaces1 >> string "=>" >> spaces1
