@@ -14,7 +14,6 @@ import qualified Data.Text.IO as T
 import Data.Text (Text)
 import qualified Data.Map as M
 import qualified Data.Set as S
-import Data.Functor
 import Data.Maybe
 import Data.Char
 import Data.List
@@ -356,21 +355,22 @@ parseLddOutput = flip parse "ldd" $ many $
     spaces *>
     (try (toLddRec <$>
               manyTill anyChar' sep <*>
-                  ((char bs *> right <&> Just . (bs :))
-                   <|> string "not found" $> Nothing
+                  ((Just .) . (:) <$> char '/' <*> right
+                   <|> Nothing <$ string "not found"
                   )
          )
-     <|> (right <&> (`LibOther` Nothing))
+     -- FIXME: in some documents, vdso record has an arrow in the middle
+     --         linux-vdso.so.1 =>  (0x00007fffd33f2000)
+     -- this format is not supported here, not sure if it should be.
+     <|> (`LibOther` Nothing) <$> right
     )
-    where toLddRec lib = (if "libHS" `isPrefixOf` lib
-                              then LibHS
-                              else LibOther) lib
+    where toLddRec lib | "libHS" `isPrefixOf` lib = LibHS lib
+                       | otherwise = LibOther lib
           right = manyTill anyChar' $ spaces1 *> addr *> newline
           addr = string "(0x" *> many1 hexDigit *> char ')'
           anyChar' = satisfy (/= '\n')
           sep = spaces1 *> string "=>" *> spaces1
           spaces1 = skipMany1 space
-          bs = '/'
 
 cmdDeps :: DepsData -> IO ()
 cmdDeps DepsData {..} = do
