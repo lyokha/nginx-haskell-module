@@ -17,15 +17,12 @@ import qualified Data.Set as S
 import Data.Maybe
 import Data.Char
 import Data.List
-import Prettyprinter (pretty, annotate)
-import Prettyprinter.Render.Terminal
+import System.Console.ANSI
 import System.Environment
 import System.Directory
 import System.FilePath
 import System.Exit
 import System.IO
-import GHC.IO.Device
-import qualified GHC.IO.FD as FD
 
 data DistData = DistData { distDataDir :: String
                          , distDataArchive :: String
@@ -408,7 +405,7 @@ cmdInit init'@InitData {..} = do
     forM_ files $
         if initDataToStdout
             then \(name, file, _) ->
-                printHeader name >> T.putStrLn file
+                printHeader (name ++ "\n") >> T.putStrLn file
             else \(name, file, overridable) -> do
                 exists <- doesFileExist name
                 if exists
@@ -421,11 +418,15 @@ cmdInit init'@InitData {..} = do
                     else T.writeFile name file
     where replace from to = foldr (\v -> ((if v == from then to else v) :)) ""
           printHeader header = do
-              isTerm <- isTerminal FD.stdout
+              isTerm <- hIsTerminalDevice stdout
               if isTerm
-                  then putDoc $ annotate (color Blue <> underlined) $
-                      pretty $ header ++ "\n\n"
-                  else putStrLn $ " ~~~ " ++ header ++ "\n"
+                  then do
+                      setSGR [SetColor Foreground Dull Blue
+                             ,SetUnderlining SingleUnderline
+                             ]
+                      putStrLn header
+                      setSGR [Reset]
+                  else putStrLn $ " ~~~ " ++ header
           existsMsg name = "File " ++ name ++ " exists"
           useForceMsg name = existsMsg name ++ ", use option -f to override it"
 

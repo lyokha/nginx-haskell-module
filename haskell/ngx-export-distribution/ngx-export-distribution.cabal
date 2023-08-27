@@ -34,8 +34,7 @@ executable nhm-tool
                           , filepath
                           , text
                           , containers
-                          , prettyprinter
-                          , prettyprinter-ansi-terminal
+                          , ansi-terminal
                           , cabal-plan
                           , parsec
 
