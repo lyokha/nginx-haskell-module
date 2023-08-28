@@ -1,3 +1,7 @@
+### 0.5.0.3
+
+- *nhm-tool*: replace dependency on *prettyprinter* by *ansi-terminal*.
+
 ### 0.5.0.2
 
 - *nhm-tool*: get rid of dependency on package *extra* and other improvements.

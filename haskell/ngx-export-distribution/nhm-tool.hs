@@ -372,23 +372,21 @@ parseLddOutput = flip parse "ldd" $ many $
 cmdDeps :: DepsData -> IO ()
 cmdDeps DepsData {..} = do
     units <- pjUnits <$> findAndDecodePlanJson (ProjectRelativeToDir ".")
-    let locals = [ Unit {..}
-                 | Unit {..} <- M.elems units
-                 , uType == UnitTypeLocal
-                 , M.member CompNameLib uComps
-                 , toPkgName uPId == T.pack depsDataProject
-                 ]
-    when (null locals) $ do
+    let comps = [ uComps
+                | Unit {..} <- M.elems units
+                , uType == UnitTypeLocal
+                , toPkgName uPId == T.pack depsDataProject
+                ]
+    when (null comps) $ do
         hPutStrLn stderr $ "Failed to find plan for " ++ depsDataProject
         exitFailure
-    let locals' = foldl (\a (Unit {..}) ->
-                            let comps = M.filterWithKey
-                                    (const . (== CompNameLib)) uComps
-                                deps = M.map ciLibDeps comps
-                            in M.foldr S.union a deps
-                        ) S.empty locals
-    forM_ (S.toList locals') $ \(UnitId local) ->
-        putStrLn $ "package-id " ++ T.unpack local
+    let deps = foldl (\a curComps ->
+                          let libComps = M.filterWithKey
+                                  (const . (== CompNameLib)) curComps
+                          in M.foldr S.union a $ M.map ciLibDeps libComps
+                     ) S.empty comps
+    forM_ (S.toList deps) $ \(UnitId unit) ->
+        putStrLn $ "package-id " ++ T.unpack unit
     where toPkgName (PkgId (PkgName name) _) = name
 
 cmdInit :: InitData -> IO ()
@@ -398,8 +396,8 @@ cmdInit init'@InitData {..} = do
                 ,(initDataProject ++ ".cabal", projectCabal init', True)
                 ,("Makefile", makefile init', True)
                 ,(replace '-' '_' initDataProject ++ ".hs"
-                  ,projectHs init'
-                  ,False
+                 ,projectHs init'
+                 ,False
                  )
                 ]
     forM_ files $

@@ -62,9 +62,36 @@ to the configure options to enable modules [*aliases*](aliases) and
 
 To build examples, we will use *ghc*. This is rather not practical in modern
 world where dependencies get normally installed by *cabal* into directories not
-known to *ghc*. Look [*here*](utils#nhm-init) to learn how to build examples
-using *cabal* and
+known to *ghc*. Look [*here*](haskell/ngx-export-distribution/README.md) to
+learn how to build custom Haskell handlers using *cabal* and
 [*ngx-export-distribution*](https://hackage.haskell.org/package/ngx-export-distribution).
+
+In brief:
+
+1. Run
+
+    ```ShellSession
+   $ nhm-tool init my-project
+    ```
+
+   to bootstrap build environment. This command produces files *cabal.project*,
+   *Setup.hs*, *my-project.cabal*, *Makefile*, and *my_project.hs* in the
+   current directory.
+2. Put whatever Haskell code and exporters into *my_project.hs*.
+3. Build and (optionally) install the target library.
+
+    ```ShellSession
+   $ make
+   $ sudo make install
+    ```
+
+4. Load the target library
+
+    ```nginx
+   haskell load /var/lib/nginx/my_project.so;
+    ```
+
+   and use the Haskell exporters in the Nginx configuration file.
 
 # Synchronous tasks
 
