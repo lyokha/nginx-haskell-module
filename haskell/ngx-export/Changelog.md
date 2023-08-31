@@ -1,3 +1,8 @@
+### 1.7.6
+
+- Less verbose type annotations by using type synonyms.
+- All hints proposed by *hlint* were applied.
+
 ### 1.7.5
 
 - More robust pattern exhaustion check after inclusion of option

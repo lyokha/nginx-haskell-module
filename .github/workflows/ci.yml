@@ -9,7 +9,7 @@ jobs:
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       matrix:
-        ghc: [8.0.2, 8.2.2, 8.4.4, 8.6.5, 8.8.4, 8.10.7, 9.0.2, 9.2.8, 9.4.5]
+        ghc: [8.0.2, 8.2.2, 8.4.4, 8.6.5, 8.8.4, 8.10.7, 9.0.2, 9.2.8, 9.4.6]
         cabal: [3.8.1.0]
         nginx: ['']
         experimental: [false]
@@ -24,31 +24,31 @@ jobs:
             experimental: true
           - ghc: 9.6.2
             cabal: 3.10.1.0
-            nginx: 1.22.1
+            nginx: 1.24.0
             experimental: false
-          - ghc: 9.4.5
+          - ghc: 9.4.6
             cabal: 3.8.1.0
-            nginx: 1.22.1
+            nginx: 1.24.0
             experimental: false
           - ghc: 9.2.8
             cabal: 3.8.1.0
-            nginx: 1.22.1
+            nginx: 1.24.0
             experimental: false
           - ghc: 9.0.2
             cabal: 3.8.1.0
-            nginx: 1.20.2
+            nginx: 1.22.1
             experimental: false
           - ghc: 8.10.7
             cabal: 3.8.1.0
-            nginx: 1.18.0
+            nginx: 1.20.2
             experimental: false
           - ghc: 8.8.4
             cabal: 3.8.1.0
-            nginx: 1.16.1
+            nginx: 1.18.0
             experimental: false
           - ghc: 8.6.5
             cabal: 3.8.1.0
-            nginx: 1.14.2
+            nginx: 1.16.1
             experimental: false
     steps:
       - name: Checkout
