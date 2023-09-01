@@ -100,9 +100,9 @@ import           Data.Version
 import           Paths_ngx_export (version)
 
 #if MIN_VERSION_template_haskell(2,11,0)
-#define EXTRA_WILDCARD_BEFORE_CON _
+#define WILDCARD_DATAD_MAYBE_KIND _
 #else
-#define EXTRA_WILDCARD_BEFORE_CON
+#define WILDCARD_DATAD_MAYBE_KIND
 #endif
 
 #if MIN_TOOL_VERSION_ghc(8,0,1)
@@ -166,9 +166,9 @@ data NgxExportTypeAmbiguityTag = Unambiguous
                                | IOYYAsync
 
 do
-    TyConI (DataD _ _ _ EXTRA_WILDCARD_BEFORE_CON tCs _) <-
+    TyConI (DataD _ _ _ WILDCARD_DATAD_MAYBE_KIND tCs _) <-
         reify ''NgxExport
-    TyConI (DataD _ _ _ EXTRA_WILDCARD_BEFORE_CON aCs _) <-
+    TyConI (DataD _ _ _ WILDCARD_DATAD_MAYBE_KIND aCs _) <-
         reify ''NgxExportTypeAmbiguityTag
     let tName = mkName "exportType"
         aName = mkName "exportTypeAmbiguity"

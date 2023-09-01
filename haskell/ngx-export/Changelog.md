@@ -1,7 +1,7 @@
 ### 1.7.6
 
-- Less verbose type annotations by using type synonyms.
-- All hints proposed by *hlint* were applied.
+- Fancier, de-duplicated type annotations by leveraging type synonyms.
+- Applied hints proposed by *hlint*.
 
 ### 1.7.5
 
