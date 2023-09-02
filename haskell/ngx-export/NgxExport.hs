@@ -99,15 +99,7 @@ import           Data.Bits
 import           Data.Version
 import           Paths_ngx_export (version)
 
-#if MIN_VERSION_template_haskell(2,11,0)
-#define WILDCARD_DATAD_MAYBE_KIND _
-#else
-#define WILDCARD_DATAD_MAYBE_KIND
-#endif
-
-#if MIN_TOOL_VERSION_ghc(8,0,1)
 pattern I :: (Num i, Integral a) => i -> a
-#endif
 pattern I i <- (fromIntegral -> i)
 #if MIN_TOOL_VERSION_ghc(8,2,1)
 {-# COMPLETE I :: Int #-}
@@ -115,14 +107,10 @@ pattern I i <- (fromIntegral -> i)
 {-# COMPLETE I :: CSize #-}
 #endif
 
-#if MIN_TOOL_VERSION_ghc(8,0,1)
 pattern PtrLen :: Num l => Ptr s -> l -> (Ptr s, Int)
-#endif
 pattern PtrLen s l <- (s, I l)
 
-#if MIN_TOOL_VERSION_ghc(8,0,1)
 pattern ToBool :: (Num i, Eq i) => Bool -> i
-#endif
 pattern ToBool i <- (toBool -> i)
 #if MIN_TOOL_VERSION_ghc(8,2,1)
 {-# COMPLETE ToBool :: CUInt #-}
@@ -166,10 +154,8 @@ data NgxExportTypeAmbiguityTag = Unambiguous
                                | IOYYAsync
 
 do
-    TyConI (DataD _ _ _ WILDCARD_DATAD_MAYBE_KIND tCs _) <-
-        reify ''NgxExport
-    TyConI (DataD _ _ _ WILDCARD_DATAD_MAYBE_KIND aCs _) <-
-        reify ''NgxExportTypeAmbiguityTag
+    TyConI (DataD _ _ _ _ tCs _) <- reify ''NgxExport
+    TyConI (DataD _ _ _ _ aCs _) <- reify ''NgxExportTypeAmbiguityTag
     let tName = mkName "exportType"
         aName = mkName "exportTypeAmbiguity"
         tCons = map (\case
