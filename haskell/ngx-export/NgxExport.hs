@@ -99,7 +99,7 @@ import           Data.Bits
 import           Data.Version
 import           Paths_ngx_export (version)
 
-pattern I :: (Num i, Integral a) => i -> a
+pattern I :: (Num i, Integral j) => i -> j
 pattern I i <- (fromIntegral -> i)
 #if MIN_TOOL_VERSION_ghc(8,2,1)
 {-# COMPLETE I :: Int #-}
@@ -111,7 +111,7 @@ pattern PtrLen :: Num l => Ptr s -> l -> (Ptr s, Int)
 pattern PtrLen s l <- (s, I l)
 
 pattern ToBool :: (Num i, Eq i) => Bool -> i
-pattern ToBool i <- (toBool -> i)
+pattern ToBool b <- (toBool -> b)
 #if MIN_TOOL_VERSION_ghc(8,2,1)
 {-# COMPLETE ToBool :: CUInt #-}
 #endif
