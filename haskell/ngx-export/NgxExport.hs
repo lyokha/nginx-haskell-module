@@ -153,66 +153,20 @@ data NgxExportTypeAmbiguityTag = Unambiguous
                                | IOYYSync
                                | IOYYAsync
 
-do
-    TyConI (DataD _ _ _ _ tCs _) <- reify ''NgxExport
-    TyConI (DataD _ _ _ _ aCs _) <- reify ''NgxExportTypeAmbiguityTag
-    let tName = mkName "exportType"
-        aName = mkName "exportTypeAmbiguity"
-        tCons = map (\case
-                         NormalC con [(_, typ)] -> (con, typ)
-                         _ -> undefined
-                    ) tCs
-        aCons = map (\case
-                         NormalC con [] -> con
-                         _ -> undefined
-                    ) aCs
-    sequence $
-        [sigD tName [t|NgxExport -> IO CInt|]
-        ,funD tName $
-             map (\(fst -> c, i) ->
-                    clause [conP c [wildP]] (normalB [|return i|]) []
-                 ) (zip tCons [1 ..] :: [((Name, Type), Int)])
-        ,sigD aName [t|NgxExportTypeAmbiguityTag -> IO CInt|]
-        ,funD aName $
-             map (\(c, i) ->
-                    clause [conP c []] (normalB [|return i|]) []
-                 ) (zip aCons [0 ..] :: [(Name, Int)])
-        ]
-        ++
-        map (\(c, t) -> tySynD (mkName $ nameBase c) [] $ return t) tCons
-
-ngxExport' :: (Name -> Q Exp) ->
-    Name -> Name -> Name -> Q Type -> Name -> Q [Dec]
-ngxExport' m e a h t f = sequence
-    [sigD nameFt typeFt
-    ,funD nameFt $ body [|exportType $cefVar|]
-    ,ForeignD . ExportF CCall ftName nameFt <$> typeFt
-    ,sigD nameFta typeFta
-    ,funD nameFta $ body [|exportTypeAmbiguity $(conE a)|]
-    ,ForeignD . ExportF CCall ftaName nameFta <$> typeFta
-    ,sigD nameF t
-    ,funD nameF $ body [|$(varE h) $efVar|]
-    ,ForeignD . ExportF CCall fName nameF <$> t
-    ]
-    where efVar   = m f
-          cefVar  = conE e `appE` efVar
-          fName   = "ngx_hs_" ++ nameBase f
-          nameF   = mkName fName
-          ftName  = "type_" ++ fName
-          nameFt  = mkName ftName
-          typeFt  = [t|IO CInt|]
-          ftaName = "ambiguity_" ++ fName
-          nameFta = mkName ftaName
-          typeFta = [t|IO CInt|]
-          body b  = [clause [] (normalB b) []]
-
-ngxExport :: Name -> Name -> Name -> Q Type -> Name -> Q [Dec]
-ngxExport = ngxExport' varE
-
-ngxExportC :: Name -> Name -> Name -> Q Type -> Name -> Q [Dec]
-ngxExportC = ngxExport' $ infixE (Just $ varE 'const) (varE '(.)) . Just . varE
-
 data NgxStrType = NgxStrType CSize CString
+
+instance Storable NgxStrType where
+    alignment = const $ max (alignment (undefined :: CSize))
+                            (alignment (undefined :: CString))
+    sizeOf = (2 *) . alignment  -- must always be correct for
+                                -- aligned struct ngx_str_t
+    peek p = do
+        n <- peekByteOff p 0
+        s <- peekByteOff p $ alignment (undefined :: NgxStrType)
+        return $ NgxStrType n s
+    poke p x@(NgxStrType n s) = do
+        poke (castPtr p) n
+        poke (plusPtr p $ alignment x) s
 
 type SSImpl =
     CString -> CInt -> Ptr CString -> Ptr CInt -> IO CUInt
@@ -273,6 +227,65 @@ type AsyncHandlerImpl =
 
 type AsyncHandlerRBImpl =
     Ptr NgxStrType -> Ptr NgxStrType -> CInt -> AsyncHandlerImpl
+
+do
+    TyConI (DataD _ _ _ _ tCs _) <- reify ''NgxExport
+    TyConI (DataD _ _ _ _ aCs _) <- reify ''NgxExportTypeAmbiguityTag
+    let tName = mkName "exportType"
+        aName = mkName "exportTypeAmbiguity"
+        tCons = map (\case
+                         NormalC con [(_, typ)] -> (con, typ)
+                         _ -> undefined
+                    ) tCs
+        aCons = map (\case
+                         NormalC con [] -> con
+                         _ -> undefined
+                    ) aCs
+    sequence $
+        [sigD tName [t|NgxExport -> IO CInt|]
+        ,funD tName $
+             map (\(fst -> c, i) ->
+                    clause [conP c [wildP]] (normalB [|return i|]) []
+                 ) (zip tCons [1 ..] :: [((Name, Type), Int)])
+        ,sigD aName [t|NgxExportTypeAmbiguityTag -> IO CInt|]
+        ,funD aName $
+             map (\(c, i) ->
+                    clause [conP c []] (normalB [|return i|]) []
+                 ) (zip aCons [0 ..] :: [(Name, Int)])
+        ]
+        ++
+        map (\(c, t) -> tySynD (mkName $ nameBase c) [] $ return t) tCons
+
+ngxExport' :: (Name -> Q Exp) ->
+    Name -> Name -> Name -> Q Type -> Name -> Q [Dec]
+ngxExport' m e a h t f = sequence
+    [sigD nameFt typeFt
+    ,funD nameFt $ body [|exportType $cefVar|]
+    ,ForeignD . ExportF CCall ftName nameFt <$> typeFt
+    ,sigD nameFta typeFta
+    ,funD nameFta $ body [|exportTypeAmbiguity $(conE a)|]
+    ,ForeignD . ExportF CCall ftaName nameFta <$> typeFta
+    ,sigD nameF t
+    ,funD nameF $ body [|$(varE h) $efVar|]
+    ,ForeignD . ExportF CCall fName nameF <$> t
+    ]
+    where efVar   = m f
+          cefVar  = conE e `appE` efVar
+          fName   = "ngx_hs_" ++ nameBase f
+          nameF   = mkName fName
+          ftName  = "type_" ++ fName
+          nameFt  = mkName ftName
+          typeFt  = [t|IO CInt|]
+          ftaName = "ambiguity_" ++ fName
+          nameFta = mkName ftaName
+          typeFta = [t|IO CInt|]
+          body b  = [clause [] (normalB b) []]
+
+ngxExport :: Name -> Name -> Name -> Q Type -> Name -> Q [Dec]
+ngxExport = ngxExport' varE
+
+ngxExportC :: Name -> Name -> Name -> Q Type -> Name -> Q [Dec]
+ngxExportC = ngxExport' $ infixE (Just $ varE 'const) (varE '(.)) . Just . varE
 
 -- | Exports a function of type
 --
@@ -484,19 +497,6 @@ ngxExportAsyncHandlerOnReqBody = ngxExport 'AsyncHandlerRB 'Unambiguous
 ngxExportServiceHook :: Name -> Q [Dec]
 ngxExportServiceHook = ngxExportC 'IOYY 'IOYYSync
     'ioyYWithFree [t|YYImpl|]
-
-instance Storable NgxStrType where
-    alignment = const $ max (alignment (undefined :: CSize))
-                            (alignment (undefined :: CString))
-    sizeOf = (2 *) . alignment  -- must always be correct for
-                                -- aligned struct ngx_str_t
-    peek p = do
-        n <- peekByteOff p 0
-        s <- peekByteOff p $ alignment (undefined :: NgxStrType)
-        return $ NgxStrType n s
-    poke p x@(NgxStrType n s) = do
-        poke (castPtr p) n
-        poke (plusPtr p $ alignment x) s
 
 data ServiceHookInterrupt = ServiceHookInterrupt
 
