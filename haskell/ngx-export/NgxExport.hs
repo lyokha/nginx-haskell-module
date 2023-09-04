@@ -65,11 +65,7 @@ module NgxExport (
 
 import           NgxExport.Internal.SafeFileLock
 
-#if MIN_VERSION_template_haskell(2,12,0)
-import           Language.Haskell.TH hiding (interruptible)
-#else
 import           Language.Haskell.TH
-#endif
 import           Foreign.C
 import           Foreign.Ptr
 import           Foreign.StablePtr
@@ -776,7 +772,7 @@ asyncIOCommon a (I fd) efd p pl pr spd = mask_ $
     (do
         (s, (r, exiting)) <- safeAsyncYYHandler $ do
             (s, exiting) <- a
-            interruptible $ fmap (, (0, exiting)) $ return $!! s
+            E.interruptible $ fmap (, (0, exiting)) $ return $!! s
         pokeLazyByteString s p pl spd
         poke pr r
         if exiting
@@ -818,11 +814,12 @@ asyncIOYY f x (I n) fd (I fdlk) active (ToBool efd) (ToBool fstRun) =
             else do
                 when fstRun $ poke active 1
                 x' <- B.unsafePackCStringLen (x, n)
-                interruptible $ (, False) <$> f x' fstRun
+                E.interruptible $ (, False) <$> f x' fstRun
     ) fd efd
     where acquireLock lk cmd = snd <$>
               iterateUntil fst
-              (interruptible (safeWaitToSetLock lk cmd >> return (True, False))
+              (E.interruptible
+                   (safeWaitToSetLock lk cmd >> return (True, False))
                `catches`
                [E.Handler $ \e ->
                    if isEINTR e
@@ -857,7 +854,7 @@ asyncIOYYY f tmpf b (I m) x (I n) fd (ToBool efd) =
     (do
         b' <- peekRequestBodyChunks tmpf b m
         x' <- B.unsafePackCStringLen (x, n)
-        interruptible $ (, False) <$> f b' x'
+        E.interruptible $ (, False) <$> f b' x'
     ) fd efd
 
 asyncHandler :: AsyncHandler -> AsyncHandlerImpl
@@ -866,7 +863,7 @@ asyncHandler f x (I n) fd (ToBool efd) pct plct spct pst
     asyncIOCommon
     (do
         x' <- B.unsafePackCStringLen (x, n)
-        (s, ct, I st, rhs) <- interruptible $ do
+        (s, ct, I st, rhs) <- E.interruptible $ do
             v <- f x'
             return $!! v
         pokeAsyncHandlerData ct pct plct spct pst st rhs prhs plrhs sprhs
@@ -880,7 +877,7 @@ asyncHandlerRB f tmpf b (I m) x (I n) fd (ToBool efd) pct plct spct pst
     (do
         b' <- peekRequestBodyChunks tmpf b m
         x' <- B.unsafePackCStringLen (x, n)
-        (s, ct, I st, rhs) <- interruptible $ do
+        (s, ct, I st, rhs) <- E.interruptible $ do
             v <- f b' x'
             return $!! v
         pokeAsyncHandlerData ct pct plct spct pst st rhs prhs plrhs sprhs

@@ -671,8 +671,8 @@ page content on every request. But the page may appear huge, let’s extract all
 
    grepLinks :: ByteString -> [ByteString]
    grepLinks =
-       map (fst . snd) . filter ((1 ==) . fst) . concatMap A.assocs .
-           filter (not . null) . concatMap (matchAllText regex) .
+       map (fst . snd) . concatMap (filter ((1 ==) . fst) . A.assocs) .
+           concatMap (filter (not . null) . matchAllText regex) .
                C8.lines
        where regex = makeRegex $ C8.pack "a href=\"([^\"]+)\"" :: Regex
 

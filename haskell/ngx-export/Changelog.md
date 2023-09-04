@@ -1,3 +1,7 @@
+### 1.7.7
+
+- Cleanup declarations which still had explicit support for GHC *7.x*.
+
 ### 1.7.6
 
 - Fancier, de-duplicated type annotations by leveraging type synonyms.
