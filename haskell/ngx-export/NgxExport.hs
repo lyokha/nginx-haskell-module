@@ -23,6 +23,8 @@ module NgxExport (
                  ,UnsafeContentHandlerResult
                  ,HTTPHeaders
     -- * Exporters
+    -- $exporters
+
     -- *** Synchronous handlers
                  ,ngxExportSS
                  ,ngxExportSSS
@@ -282,6 +284,92 @@ ngxExport = ngxExport' varE
 
 ngxExportC :: Name -> Name -> Name -> Q Type -> Name -> Q [Dec]
 ngxExportC = ngxExport' $ infixE (Just $ varE 'const) (varE '(.)) . Just . varE
+
+-- $exporters
+--
+-- Nginx Haskell module aims at bringing regular Haskell code into Nginx
+-- configuration. A special sort of functions to accomplish this is called
+-- /exporters/. An exporter accepts a 'Name' of an /exported/ Haskell function
+-- (also called /handler/) and generates appropriate FFI code.
+--
+-- Exporters export Haskell handlers of a few types:
+--
+-- * synchronous handlers,
+-- * asynchronous handlers,
+-- * services (which are asynchronous handlers that run in background),
+-- * synchronous content handlers,
+-- * asynchronous content handlers,
+-- * synchronous service hooks.
+--
+-- Exporters accept handlers only of certain types. For example, exporter
+-- 'ngxExportSS' accepts only functions of type /String -> String/.
+--
+-- Below is a simple example featuring synchronous handlers.
+--
+-- ==== File /test.hs/
+--
+-- @
+-- {-\# LANGUAGE TemplateHaskell \#-}
+--
+-- module Test where
+--
+-- import           NgxExport
+-- import qualified Data.Char as C
+--
+-- toUpper :: /String -> String/
+-- toUpper = map C.toUpper
+-- 'ngxExportSS' \'__/toUpper/__
+--
+-- 'ngxExportSS' \'__/reverse/__
+--
+-- isInList :: /[String] -> Bool/
+-- isInList [] = False
+-- isInList (x : xs) = x \`elem\` xs
+-- 'ngxExportBLS' \'__/isInList/__
+-- @
+--
+-- In this module, we declared three synchronous handlers: /toUpper/, /reverse/,
+-- and /isInList/. Handler /reverse/ exports function /reverse/ from /Prelude/
+-- which reverses lists.
+--
+-- ==== File /nginx.conf/
+--
+-- @
+-- user                    nginx;
+-- worker_processes        4;
+--
+-- events {
+--     worker_connections  1024;
+-- }
+--
+-- http {
+--     default_type        application\/octet-stream;
+--     sendfile            on;
+--
+--     haskell load \/var\/lib\/nginx\/test.so;
+--
+--     server {
+--         listen          8010;
+--         server_name     main;
+--
+--         location \/ {
+--             __/haskell_run/__ __/toUpper/__ $hs_upper $arg_u;
+--             __/haskell_run/__ __/reverse/__ $hs_reverse $arg_r;
+--             __/haskell_run/__ __/isInList/__ $hs_isInList $arg_a $arg_b $arg_c $arg_d;
+--             echo "toUpper $arg_u = $hs_upper";
+--             echo "reverse $arg_r = $hs_reverse";
+--             echo "$arg_a \`isInList\` [$arg_b, $arg_c, $arg_d] = $hs_isInList";
+--         }
+--     }
+-- }
+-- @
+--
+-- ==== A simple test
+--
+-- > $ curl 'http://127.0.0.1:8010/?u=hello&r=world&a=1&b=10&c=1'
+-- > toUpper hello = HELLO
+-- > reverse world = dlrow
+-- > 1 `isInList` [10, 1, ] = 1
 
 -- | Exports a function of type
 --

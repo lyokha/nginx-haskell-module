@@ -51,7 +51,7 @@ Examples
 In all examples in this section and later, we will use *modular* approach with *camel-cased* exporters and separate compilation of Haskell code.
 
 To build examples, we will use *ghc*. This is rather not practical in modern world where dependencies get normally installed by *cabal* into directories not
-known to *ghc*. Look `here <https://github.com/lyokha/nginx-haskell-module/tree/master/docs/yet-another-doc-with-examples/test>`__ to learn how to build
+known to *ghc*. Look `here <https://github.com/lyokha/nginx-haskell-module/blob/master/haskell/ngx-export-distribution/README.md>`__ to learn how to build
 examples using *cabal* and `ngx-export-distribution <https://hackage.haskell.org/package/ngx-export-distribution>`__.
 
 .. raw:: latex
