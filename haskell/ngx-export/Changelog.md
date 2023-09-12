@@ -1,3 +1,7 @@
+### 1.7.7.1
+
+- Added a minimal example of using exporters.
+
 ### 1.7.7
 
 - Cleanup declarations which still had explicit support for GHC *7.x*.
