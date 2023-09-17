@@ -1,7 +1,7 @@
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  NgxExport.Tools.System
--- Copyright   :  (c) Alexey Radkov 2018-2022
+-- Copyright   :  (c) Alexey Radkov 2018-2023
 -- License     :  BSD-style
 --
 -- Maintainer  :  alexey.radkov@gmail.com
@@ -47,7 +47,7 @@ import           System.Posix.Types
 -- Nginx master process shall /not/ spawn a new worker process thereafter. This
 -- function throws exception 'TerminateWorkerProcess', and therefore terminates
 -- the worker process effectively only from a Haskell service.
-terminateWorkerProcess :: String -> IO ()
+terminateWorkerProcess :: String -> IO a
 terminateWorkerProcess = throwIO . TerminateWorkerProcess
 
 -- | Restarts the Nginx worker process from a Haskell service.
@@ -56,7 +56,7 @@ terminateWorkerProcess = throwIO . TerminateWorkerProcess
 -- the current one. This function throws exception 'RestartWorkerProcess', and
 -- therefore terminates the worker process effectively only from a Haskell
 -- service.
-restartWorkerProcess :: String -> IO ()
+restartWorkerProcess :: String -> IO a
 restartWorkerProcess = throwIO . RestartWorkerProcess
 
 -- | Finalizes the current HTTP request from a Haskell asynchronous variable
@@ -65,7 +65,7 @@ restartWorkerProcess = throwIO . RestartWorkerProcess
 -- This function throws exception 'FinalizeHTTPRequest', and therefore
 -- terminates the HTTP request effectively only from a Haskell asynchronous
 -- variable handler.
-finalizeHTTPRequest :: Int -> Maybe String -> IO ()
+finalizeHTTPRequest :: Int -> Maybe String -> IO a
 finalizeHTTPRequest = (throwIO .) . FinalizeHTTPRequest
 
 -- | Checks that a generic exception is of type 'WorkerProcessIsExiting'.

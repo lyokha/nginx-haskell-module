@@ -1,3 +1,8 @@
+### 1.1.0
+
+- Use polymorphic return types in functions *terminateWorkerProcess*,
+  *restartWorkerProcess*, and *finalizeHTTPRequest*.
+
 ### 1.0
 
 - The whole package was split into five separate sub-modules.
