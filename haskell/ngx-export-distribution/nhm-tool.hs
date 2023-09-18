@@ -458,7 +458,7 @@ projectCabal InitData {..} = T.concat
          then ""
          else
      "\n\
-     \  if impl(ghc >= 8.10.6)\n\
+     \  if impl(ghc >= 9.0.1)\n\
      \    ghc-options:           -threaded\n"
     ]
 

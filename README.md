@@ -167,7 +167,7 @@ Linking test.so ...
 $ sudo cp test.so /var/lib/nginx/
 ```
 
-Note that in *ghc* older than *8.10.6*, option *-flink-rts* must be replaced
+Note that in *ghc* older than *9.0.1*, option *-flink-rts* must be replaced
 with option *-lHSrts-ghc&dollar;(ghc &dash;&dash;numeric-version)*.
 
 #### File test.conf
@@ -372,7 +372,7 @@ Linking test.so ...
 $ sudo cp test.so /var/lib/nginx/
 ```
 
-Note that in *ghc* older than *8.10.6*, options *-flink-rts -threaded* must be
+Note that in *ghc* older than *9.0.1*, options *-flink-rts -threaded* must be
 replaced with option *-lHSrts_thr-ghc&dollar;(ghc &dash;&dash;numeric-version)*.
 
 Let's make location */timer*, where we will read how many seconds to wait in

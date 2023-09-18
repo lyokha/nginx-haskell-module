@@ -25,6 +25,6 @@ library
 
   ghc-options:             -Wall -O2 -feager-blackholing
 
-  if impl(ghc >= 8.10.6)
+  if impl(ghc >= 9.0.1)
     ghc-options:           -threaded
 

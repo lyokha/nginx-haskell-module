@@ -87,7 +87,7 @@ jobs:
           if [ -n "$NGXVER" ]
           then
               cd -
-              if [ "$NGXVER" == head ]
+              if [ "$NGXVER" = head ]
               then
                   git clone https://github.com/nginx/nginx.git nginx-head
               else
@@ -115,7 +115,7 @@ jobs:
           then
               cd -
               cd nginx-${NGXVER}/
-              if [ "$NGXVER" == head ]
+              if [ "$NGXVER" = head ]
               then
                   NGX_CONFIGURE=./auto/configure
               else

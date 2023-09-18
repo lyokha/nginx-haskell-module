@@ -187,7 +187,7 @@ import Data.Maybe
 --
 -- Notes about the value of /--ghc-options/ in command /cabal v1-build/.
 --
--- - In ghc older than /8.10.6/, option /-threaded/ must be replaced with option
+-- - In ghc older than /9.0.1/, option /-threaded/ must be replaced with option
 --   /-lHSrts_thr-ghc$(ghc --numeric-version)/ because ghc option /-flink-rts/,
 --   which is passed by the module internally, has first appeared in the said
 --   release,
@@ -298,7 +298,7 @@ import Data.Maybe
 -- > $ make
 -- > $ sudo make install
 --
--- With ghc older than /8.10.6/, build with
+-- With ghc older than /9.0.1/, build with
 --
 -- > $ make LINKRTS=-lHSrts_thr-ghc$(ghc --numeric-version)
 
@@ -323,7 +323,7 @@ patchelf = simpleProgram "patchelf"
 --
 -- Runs /ghc/ compiler with the following arguments.
 --
--- - /-dynamic/, /-shared/, /-fPIC/, /-flink-rts/ (in /ghc 8.10.6/ and newer),
+-- - /-dynamic/, /-shared/, /-fPIC/, /-flink-rts/ (in /ghc 9.0.1/ and newer),
 -- - all arguments listed in /ghc-options/ in the Cabal file,
 -- - all arguments passed in option /--ghc-options/ from command-line,
 -- - if arguments do not contain /-o path/ so far, then /$pkg.hs/, /-o $pkg.so/.
@@ -368,7 +368,7 @@ buildSharedLib verbosity desc lbi flags = do
             \you may want to specify input and output files in --ghc-options"
     ghcP <- fst <$> requireProgram verbosity ghcProgram (withPrograms lbi)
     let libGhcOptions = ["-dynamic", "-shared", "-fPIC"]
-        libGhcOptions' = if programVersion ghcP >= Just (mkVersion [8, 10, 6])
+        libGhcOptions' = if programVersion ghcP >= Just (mkVersion [9, 0, 1])
                              then "-flink-rts" : libGhcOptions
                              else libGhcOptions
         ghcR = programInvocation ghcP $

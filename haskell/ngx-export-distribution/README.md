@@ -134,7 +134,7 @@ x86_64-linux-ghc-9.6.2/libHSrts-1.0.2_thr-ghc9.6.2.so
 
 Notes about the value of *--ghc-options* in command *cabal v1-build*.
 
-- In ghc older than *8.10.6*, option *-threaded* must be replaced with option
+- In ghc older than *9.0.1*, option *-threaded* must be replaced with option
   *-lHSrts_thr-ghc&dollar;(ghc --numeric-version)* because ghc option
   *-flink-rts*, which is passed by the module internally, has first appeared in
   the said release,
@@ -265,7 +265,7 @@ $ make
 $ sudo make install
 ```
 
-With ghc older than *8.10.6*, build with
+With ghc older than *9.0.1*, build with
 
 ```ShellSession
 $ make LINKRTS=-lHSrts_thr-ghc$(ghc --numeric-version)

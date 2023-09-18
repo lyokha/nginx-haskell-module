@@ -11,8 +11,11 @@
     div.columns{display: flex; gap: min(4vw, 1.5em);}
     div.column{flex: auto; overflow-x: auto;}
     div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
-    ul.task-list{list-style: none;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
     ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
       width: 0.8em;
       margin: 0 0.8em 0.2em -1.6em;
       vertical-align: middle;
@@ -165,7 +168,7 @@ and move the library to a directory, from where we will load this.</p>
 <span style="color: #005FAF;">sudo cp test.so /var/lib/nginx/</span>
 </pre>
 
-<p>Note that in <em>ghc</em> older than <em>8.10.6</em>, option
+<p>Note that in <em>ghc</em> older than <em>9.0.1</em>, option
 <em>-flink-rts</em> must be replaced with option <em>-lHSrts-ghc$(ghc
 ‐‐numeric-version)</em>.</p>
 <p><strong>File test.conf</strong></p>
@@ -410,7 +413,7 @@ time!</p>
 <span style="color: #005FAF;">sudo cp test.so /var/lib/nginx/</span>
 </pre>
 
-<p>Note that in <em>ghc</em> older than <em>8.10.6</em>, options
+<p>Note that in <em>ghc</em> older than <em>9.0.1</em>, options
 <em>-flink-rts -threaded</em> must be replaced with option
 <em>-lHSrts_thr-ghc$(ghc ‐‐numeric-version)</em>.</p>
 <p>Let’s make location <em>/timer</em>, where we will read how many

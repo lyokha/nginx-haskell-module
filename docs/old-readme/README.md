@@ -1440,7 +1440,7 @@ $ ghc -O2 -dynamic -shared -fPIC -flink-rts -threaded test_c_plugin.o test.hs -o
 Linking test.so ...
 ```
 
-Note that in ghc older than *8.10.6*, options *-flink-rts -threaded* must be
+Note that in ghc older than *9.0.1*, options *-flink-rts -threaded* must be
 replaced with option *-lHSrts_thr-ghc&dollar;(ghc --numeric-version)*.
 
 If we add to the nginx configuration file a new location,

@@ -1,3 +1,7 @@
+### 0.5.0.4
+
+- *nhm-tool*: use GHC option *-flink-rts* only in GHC *9.x*.
+
 ### 0.5.0.3
 
 - *nhm-tool*: replace dependency on *prettyprinter* by *ansi-terminal*.

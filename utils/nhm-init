@@ -144,7 +144,7 @@ EOF
     then
         cat <<EOF >>"$CABAL_FILE_STREAM" 2>&1
 
-  if impl(ghc >= 8.10.6)
+  if impl(ghc >= 9.0.1)
     ghc-options:           -threaded
 EOF
     fi

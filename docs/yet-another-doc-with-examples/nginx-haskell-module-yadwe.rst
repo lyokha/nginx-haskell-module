@@ -90,7 +90,7 @@ In this module, we declared three synchronous handlers: *toUpper*, *reverse*, an
    Linking test.so ...
    $ sudo cp test.so /var/lib/nginx/
 
-Note that in *ghc* older than *8.10.6*, option *-flink-rts* must be replaced with option *-lHSrts-ghc$(ghc ‐‐numeric-version)*.
+Note that in *ghc* older than *9.0.1*, option *-flink-rts* must be replaced with option *-lHSrts-ghc$(ghc ‐‐numeric-version)*.
 
 .. raw:: latex
 
@@ -290,7 +290,7 @@ This code must be linked with *threaded* Haskell RTS this time!
    Linking test.so ...
    $ sudo cp test.so /var/lib/nginx/
 
-Note that in *ghc* older than *8.10.6*, options *-flink-rts -threaded* must be replaced with option *-lHSrts_thr-ghc$(ghc ‐‐numeric-version)*.
+Note that in *ghc* older than *9.0.1*, options *-flink-rts -threaded* must be replaced with option *-lHSrts_thr-ghc$(ghc ‐‐numeric-version)*.
 
 Let’s make location */timer*, where we will read how many seconds to wait in POST field *timer*, and then wait them until returning the response.
 
