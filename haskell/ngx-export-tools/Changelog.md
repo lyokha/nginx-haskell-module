@@ -1,7 +1,8 @@
 ### 1.1.0
 
 - Use polymorphic return types in functions *terminateWorkerProcess*,
-  *restartWorkerProcess*, and *finalizeHTTPRequest*.
+  *restartWorkerProcess*, and *finalizeHTTPRequest* which allows throwing the
+  corresponding exceptions in any context.
 
 ### 1.0
 
