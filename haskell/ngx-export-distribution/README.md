@@ -101,18 +101,18 @@ $ cabal v1-build --ghc-options="ngx_distribution_test.hs -o ngx_distribution_tes
 [1 of 2] Compiling NgxDistributionTest ( ngx_distribution_test.hs, ngx_distribution_test.o )
 [2 of 2] Linking ngx_distribution_test.so
 ---> Collecting libraries
-/home/lyokha/.cabal/lib/x86_64-linux-ghc-9.6.2/libHSngx-export-1.7.5-FKKGVRZDmRmCwc8075DbYl-ghc9.6.2.so -> x86_64-linux-ghc-9.6.2/libHSngx-export-1.7.5-FKKGVRZDmRmCwc8075DbYl-ghc9.6.2.so
-/usr/lib64/ghc-9.6.2/lib/../lib/x86_64-linux-ghc-9.6.2/libHSunix-2.8.1.0-ghc9.6.2.so -> x86_64-linux-ghc-9.6.2/libHSunix-2.8.1.0-ghc9.6.2.so
-/home/lyokha/.cabal/lib/x86_64-linux-ghc-9.6.2/libHSmonad-loops-0.4.3-JOAJ0hfyQmbETqIRZyULfB-ghc9.6.2.so -> x86_64-linux-ghc-9.6.2/libHSmonad-loops-0.4.3-JOAJ0hfyQmbETqIRZyULfB-ghc9.6.2.so
-/home/lyokha/.cabal/lib/x86_64-linux-ghc-9.6.2/libHSasync-2.2.4-Bps1tT28WAgAP1V90ox12z-ghc9.6.2.so -> x86_64-linux-ghc-9.6.2/libHSasync-2.2.4-Bps1tT28WAgAP1V90ox12z-ghc9.6.2.so
+/home/lyokha/.cabal/lib/x86_64-linux-ghc-9.6.2/libHSOneTuple-0.4.1.1-GTlScb3X0Hn7Y4A5VTBpq8-ghc9.6.2.so -> x86_64-linux-ghc-9.6.2/libHSOneTuple-0.4.1.1-GTlScb3X0Hn7Y4A5VTBpq8-ghc9.6.2.so
+/home/lyokha/.cabal/lib/x86_64-linux-ghc-9.6.2/libHSQuickCheck-2.14.3-FxURKqK1tk15J8arEBmUtc-ghc9.6.2.so -> x86_64-linux-ghc-9.6.2/libHSQuickCheck-2.14.3-FxURKqK1tk15J8arEBmUtc-ghc9.6.2.so
+/home/lyokha/.cabal/lib/x86_64-linux-ghc-9.6.2/libHSStateVar-1.2.2-F3B0sJlZ41353sDhwwFm1B-ghc9.6.2.so -> x86_64-linux-ghc-9.6.2/libHSStateVar-1.2.2-F3B0sJlZ41353sDhwwFm1B-ghc9.6.2.so
 /home/lyokha/.cabal/lib/x86_64-linux-ghc-9.6.2/libHSaeson-2.2.0.0-KcH800TS6us8tZ6AZDtIQh-ghc9.6.2.so -> x86_64-linux-ghc-9.6.2/libHSaeson-2.2.0.0-KcH800TS6us8tZ6AZDtIQh-ghc9.6.2.so
-/home/lyokha/.cabal/lib/x86_64-linux-ghc-9.6.2/libHSwitherable-0.4.2-KGoJH5wjsMLKLjx4iVJYPg-ghc9.6.2.so -> x86_64-linux-ghc-9.6.2/libHSwitherable-0.4.2-KGoJH5wjsMLKLjx4iVJYPg-ghc9.6.2.so
+/usr/lib64/ghc-9.6.2/lib/../lib/x86_64-linux-ghc-9.6.2/libHSarray-0.5.5.0-ghc9.6.2.so -> x86_64-linux-ghc-9.6.2/libHSarray-0.5.5.0-ghc9.6.2.so
+/home/lyokha/.cabal/lib/x86_64-linux-ghc-9.6.2/libHSassoc-1.1-5sFQqIOvFZQJX5kdLbEWB9-ghc9.6.2.so -> x86_64-linux-ghc-9.6.2/libHSassoc-1.1-5sFQqIOvFZQJX5kdLbEWB9-ghc9.6.2.so
 
    ...
 
-/usr/lib64/ghc-9.6.2/lib/../lib/x86_64-linux-ghc-9.6.2/libHSghc-bignum-1.3-ghc9.6.2.so -> x86_64-linux-ghc-9.6.2/libHSghc-bignum-1.3-ghc9.6.2.so
-/usr/lib64/ghc-9.6.2/lib/../lib/x86_64-linux-ghc-9.6.2/libHSghc-prim-0.10.0-ghc9.6.2.so -> x86_64-linux-ghc-9.6.2/libHSghc-prim-0.10.0-ghc9.6.2.so
-/usr/lib64/ghc-9.6.2/lib/../lib/x86_64-linux-ghc-9.6.2/libHSrts-1.0.2_thr-ghc9.6.2.so -> x86_64-linux-ghc-9.6.2/libHSrts-1.0.2_thr-ghc9.6.2.so
+/home/lyokha/.cabal/lib/x86_64-linux-ghc-9.6.2/libHSvector-stream-0.1.0.0-Kd51wsO6Y2s1Z8znT4c6B5-ghc9.6.2.so -> x86_64-linux-ghc-9.6.2/libHSvector-stream-0.1.0.0-Kd51wsO6Y2s1Z8znT4c6B5-ghc9.6.2.so
+/home/lyokha/.cabal/lib/x86_64-linux-ghc-9.6.2/libHSwitherable-0.4.2-KGoJH5wjsMLKLjx4iVJYPg-ghc9.6.2.so -> x86_64-linux-ghc-9.6.2/libHSwitherable-0.4.2-KGoJH5wjsMLKLjx4iVJYPg-ghc9.6.2.so
+/lib64/libffi.so.8 -> x86_64-linux-ghc-9.6.2/libffi.so.8
 
 ---> Patching ngx_distribution_test.so
 /var/lib/nginx/x86_64-linux-ghc-9.6.2:/home/lyokha/.cabal/lib/x86_64-linux-ghc-9.6.2:/usr/lib64/ghc-9.6.2/lib/../lib/x86_64-linux-ghc-9.6.2
@@ -120,16 +120,16 @@ $ cabal v1-build --ghc-options="ngx_distribution_test.hs -o ngx_distribution_tes
 ---> Archiving artifacts
 ngx_distribution_test.so
 x86_64-linux-ghc-9.6.2/
-x86_64-linux-ghc-9.6.2/libHSngx-export-1.7.5-FKKGVRZDmRmCwc8075DbYl-ghc9.6.2.so
-x86_64-linux-ghc-9.6.2/libHSunix-2.8.1.0-ghc9.6.2.so
-x86_64-linux-ghc-9.6.2/libHSmonad-loops-0.4.3-JOAJ0hfyQmbETqIRZyULfB-ghc9.6.2.so
-x86_64-linux-ghc-9.6.2/libHSasync-2.2.4-Bps1tT28WAgAP1V90ox12z-ghc9.6.2.so
+x86_64-linux-ghc-9.6.2/libHSOneTuple-0.4.1.1-GTlScb3X0Hn7Y4A5VTBpq8-ghc9.6.2.so
+x86_64-linux-ghc-9.6.2/libHSQuickCheck-2.14.3-FxURKqK1tk15J8arEBmUtc-ghc9.6.2.so
+x86_64-linux-ghc-9.6.2/libHSStateVar-1.2.2-F3B0sJlZ41353sDhwwFm1B-ghc9.6.2.so
+x86_64-linux-ghc-9.6.2/libHSaeson-2.2.0.0-KcH800TS6us8tZ6AZDtIQh-ghc9.6.2.so
 
    ...
 
-x86_64-linux-ghc-9.6.2/libHSghc-bignum-1.3-ghc9.6.2.so
-x86_64-linux-ghc-9.6.2/libHSghc-prim-0.10.0-ghc9.6.2.so
-x86_64-linux-ghc-9.6.2/libHSrts-1.0.2_thr-ghc9.6.2.so
+x86_64-linux-ghc-9.6.2/libHSvector-stream-0.1.0.0-Kd51wsO6Y2s1Z8znT4c6B5-ghc9.6.2.so
+x86_64-linux-ghc-9.6.2/libHSwitherable-0.4.2-KGoJH5wjsMLKLjx4iVJYPg-ghc9.6.2.so
+x86_64-linux-ghc-9.6.2/libffi.so.8
 ```
 
 Notes about the value of *--ghc-options* in command *cabal v1-build*.
@@ -217,10 +217,10 @@ Command *nhm-tool deps* builds around the code of the *cabal-plan* library.
 After running this, four lines looking similar to
 
 ```
-package-id aeson-2.1.0.0-9b19e87ee2a82567866c50e13806427068fd4bcc78cedb01ecad7389791f6761
-package-id base-4.17.0.0
-package-id bytestring-0.11.3.1
-package-id ngx-export-1.7.5-17b83e3ac354cc52614227ba662f8c23a8ddd4e08f2a1a02b0d6b51b2dd849ea
+package-id aeson-2.2.0.0-711db3f5b99af756f1eae54020c04616c024ecab6013b0b2140b60e4c06a6e9d
+package-id base-4.18.0.0
+package-id bytestring-0.11.4.0
+package-id ngx-export-1.7.7.1-7f7a3d21f396899b6466d425218188ba097f7cc49638994748bb4e4828d9e354
 ```
 
 will appear at the end of file *.ghc.environment.x86_64-linux-9.6.2*. This
@@ -276,7 +276,8 @@ $ make LINKRTS=-lHSrts_thr-ghc$(ghc --numeric-version)
 With all the building approaches shown above, the following list of drawbacks
 must be taken into account.
 
-- Utility *nhm-tool* collects only libraries prefixed with *libHS*,
+- Utility *nhm-tool* collects only libraries prefixed with *libHS* or
+  *libffi.so*,
 - clean commands such as *cabal v1-clean* do not delete build artifacts in
   the current working directory,
 - behavior of Cabal commands other than *configure*, *build* and *clean* is

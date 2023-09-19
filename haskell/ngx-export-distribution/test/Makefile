@@ -45,6 +45,10 @@ endif
 		--ghc-arg=-package=$(PKGDISTR) Setup.hs build \
 		--ghc-options="$(SRC) -o $(LIB) -threaded"
 
+install: $(DISTR)
+	install -d $(PREFIX)
+	tar xf $(DISTR) -C $(PREFIX) --no-same-owner
+
 .PHONY: clean
 
 clean:

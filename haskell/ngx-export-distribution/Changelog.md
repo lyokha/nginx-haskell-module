@@ -1,3 +1,11 @@
+### 0.5.1.1
+
+- Collect *libffi* library unconditionally.
+
+### 0.5.1.0
+
+- Collect *libffi* library if it was shipped with GHC.
+
 ### 0.5.0.4
 
 - *nhm-tool*: use GHC option *-flink-rts* only in GHC *9.x*.

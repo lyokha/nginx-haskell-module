@@ -57,6 +57,7 @@ defaultInitDataPrefix = "/var/lib/nginx"
 data ArgWait = ArgWaitA | ArgWaitD | ArgWaitT | ArgWaitP
 
 data LddRec = LibHS String (Maybe FilePath)
+            | LibFFI String (Maybe FilePath)
             | LibOther String (Maybe FilePath)
             deriving Show
 
@@ -76,8 +77,8 @@ usage section success = do
         \    collect Haskell libraries on which 'lib' depends,\n\
         \    patch 'lib' to enable loading dependent libraries from \
         \'target_dir'\n\n\
-        \    'dir' is a directory where dependent libraries will be\n\
-        \      collected (default is ", T.pack defaultDistDataDir, ")\n\
+        \    'dir' is a directory where dependent libraries will be collected\n\
+        \      (default is ", T.pack defaultDistDataDir, ")\n\
         \    'target_dir' is a directory where dependent libraries will be\n\
         \      installed (no default, 'lib' will not be patched if omitted)\n\
         \    'ar' is the base name of the archive to contain 'lib' and\n\
@@ -301,6 +302,7 @@ cmdDist DistData {..} = do
               let recsLibHS = M.fromList $
                       mapMaybe (\case
                                     LibHS name path -> Just (name, path)
+                                    LibFFI name path -> Just (name, path)
                                     _ -> Nothing
                                ) recs
               if M.null recsLibHS
@@ -362,6 +364,7 @@ parseLddOutput = flip parse "ldd" $ many $
      <|> (`LibOther` Nothing) <$> right
     )
     where toLddRec lib | "libHS" `isPrefixOf` lib = LibHS lib
+                       | "libffi.so" `isPrefixOf` lib = LibFFI lib
                        | otherwise = LibOther lib
           right = manyTill anyChar' $ spaces1 *> addr *> newline
           addr = string "(0x" *> many1 hexDigit *> char ')'
