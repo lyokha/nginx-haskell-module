@@ -50,6 +50,7 @@ data TimeInterval = Hr Int
                   deriving (Read)
 
 data ServerData = ServerData { sAddr        :: Destination
+                             , sHost        :: Maybe Destination
                              , sWeight      :: Maybe Int
                              , sMaxFails    :: Maybe Int
                              , sFailTimeout :: Maybe Int
@@ -58,6 +59,7 @@ data ServerData = ServerData { sAddr        :: Destination
 instance FromJSON ServerData where
     parseJSON = withObject "server_options" $ \o -> do
         sAddr        <- o .:  "addr"
+        sHost        <- o .:? "host"
         sWeight      <- o .:? "weight"
         sMaxFails    <- o .:? "max_fails"
         sFailTimeout <- o .:? "fail_timeout"
@@ -66,6 +68,7 @@ instance FromJSON ServerData where
 instance ToJSON ServerData where
     toJSON ServerData {..} =
         object $ catMaybes [ pure $ "addr"   .=      sAddr
+                           , ("host"         .=) <$> sHost
                            , ("weight"       .=) <$> sWeight
                            , ("max_fails"    .=) <$> sMaxFails
                            , ("fail_timeout" .=) <$> sFailTimeout

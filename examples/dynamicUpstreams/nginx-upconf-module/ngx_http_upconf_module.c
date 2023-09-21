@@ -56,6 +56,7 @@ typedef struct {
 
 typedef struct {
     ngx_str_t                     addr;
+    ngx_str_t                     host;
     ngx_int_t                     weight;
     ngx_int_t                     max_fails;
     ngx_int_t                     fail_timeout;
@@ -73,6 +74,7 @@ typedef struct {
     u_char                       *url;
     struct sockaddr              *sockaddr;
     ngx_http_upstream_rr_peer_t  *peer;
+    u_char                       *host;
 } ngx_http_upconf_shm_cleanup_data_t;
 
 
@@ -652,6 +654,7 @@ ngx_http_upconf_update(ngx_http_request_t *r, ngx_int_t idx, ngx_uint_t init)
             }
 
             ngx_str_null(&server_data[k].addr);
+            ngx_str_null(&server_data[k].host);
             server_data[k].weight = 1;
             server_data[k].max_fails = 1;
             server_data[k].fail_timeout = 10;
@@ -687,6 +690,18 @@ ngx_http_upconf_update(ngx_http_request_t *r, ngx_int_t idx, ngx_uint_t init)
                     field_value.len = jtok[j + 1].end - jtok[j + 1].start;
                     field_value.data = &var->data[jtok[j + 1].start];
                     server_data[k].addr = field_value;
+                } else if (field.len == 4
+                           && ngx_strncmp(field.data, "host", 4) == 0)
+                {
+                    if (jtok[j + 1].type != JSMN_STRING) {
+                        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                      "unexpected structure of JSON data: "
+                                      "server host name is not a string");
+                        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                    }
+                    field_value.len = jtok[j + 1].end - jtok[j + 1].start;
+                    field_value.data = &var->data[jtok[j + 1].start];
+                    server_data[k].host = field_value;
                 } else if (field.len == 6
                            && ngx_strncmp(field.data, "weight", 6) == 0)
                 {
@@ -794,6 +809,7 @@ ngx_http_upconf_update_shm_zone(ngx_http_request_t *r, ngx_str_t *zone_name,
     ngx_url_t                            u;
     struct sockaddr                     *sockaddr;
     socklen_t                            socklen;
+    ngx_str_t                            hostname;
     ngx_http_upconf_server_data_t       *server_data;
     ngx_array_t                          shm_cleanup_data;
     ngx_http_upconf_shm_cleanup_data_t  *shm_cleanup_data_elts;
@@ -888,6 +904,20 @@ ngx_http_upconf_update_shm_zone(ngx_http_request_t *r, ngx_str_t *zone_name,
         }
         shm_cleanup_data_elts[i].sockaddr = sockaddr;
 
+        if (server_data[i].host.len > 0) {
+            hostname.data = ngx_slab_alloc_locked(shpool,
+                                                  server_data[i].host.len);
+            if (hostname.data == NULL) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "failed to allocate memory for host name");
+                goto error_cleanup;
+            }
+            ngx_memcpy(hostname.data,
+                       server_data[i].host.data, server_data[i].host.len);
+            hostname.len = server_data[i].host.len;
+            shm_cleanup_data_elts[i].host = hostname.data;
+        }
+
         peer = ngx_slab_calloc_locked(shpool,
                                       sizeof(ngx_http_upstream_rr_peer_t));
         if (peer == NULL) {
@@ -898,7 +928,8 @@ ngx_http_upconf_update_shm_zone(ngx_http_request_t *r, ngx_str_t *zone_name,
         shm_cleanup_data_elts[i].peer = peer;
 
         peer->name = u.url;
-        peer->server = u.url;
+        peer->server = server_data[i].host.len == 0 ? u.url :
+                server_data[i].host;
         peer->sockaddr = sockaddr;
         peer->socklen = socklen;
         peer->weight = server_data[i].weight;
@@ -984,6 +1015,9 @@ error_cleanup:
         }
         if (shm_cleanup_data_elts[i].sockaddr != NULL) {
             ngx_slab_free_locked(shpool, shm_cleanup_data_elts[i].sockaddr);
+        }
+        if (shm_cleanup_data_elts[i].host != NULL) {
+            ngx_slab_free_locked(shpool, shm_cleanup_data_elts[i].url);
         }
         if (shm_cleanup_data_elts[i].peer != NULL) {
             ngx_slab_free_locked(shpool, shm_cleanup_data_elts[i].peer);
