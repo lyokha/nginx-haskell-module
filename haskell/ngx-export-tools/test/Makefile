@@ -19,8 +19,8 @@ DEPLIBS := $(MACHINE)-$(KERNEL)-ghc-$(GHCVER)
 DISTDIR := dist
 DISTV2DIR := dist-newstyle
 
-INPLACE := $(shell grep '^packages:.*\.\./ngx-export-tools' \
-                       cabal.project &>/dev/null && echo 1 || echo 0)
+INPLACE := $(shell grep -q '^packages:.*\.\./ngx-export-tools' \
+                       cabal.project && echo 1 || echo 0)
 
 all: $(DISTR)
 
