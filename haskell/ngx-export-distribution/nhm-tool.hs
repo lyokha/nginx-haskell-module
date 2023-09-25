@@ -358,10 +358,8 @@ parseLddOutput = flip parse "ldd" $ many $
                    <|> Nothing <$ string "not found"
                   )
          )
-     -- FIXME: in some documents, vdso record has an arrow in the middle
-     --         linux-vdso.so.1 =>  (0x00007fffd33f2000)
-     -- this format is not supported here, not sure if it should be.
-     <|> (`LibOther` Nothing) <$> right
+     <|> try ((`LibOther` Nothing) <$> right)
+     <|> (`LibOther` Nothing) <$> manyTill anyChar' (sep *> addr *> newline)
     )
     where toLddRec lib | "libHS" `isPrefixOf` lib = LibHS lib
                        | "libffi.so" `isPrefixOf` lib = LibFFI lib

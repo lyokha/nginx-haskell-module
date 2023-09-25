@@ -1,3 +1,8 @@
+### 0.5.1.2
+
+- Parse *ldd* outputs of older formats where the separator may occur between the
+  library and the address like in *linux-vdso.so.1 =>  (0x00007fffd33f2000)*.
+
 ### 0.5.1.1
 
 - Collect *libffi* library unconditionally.
