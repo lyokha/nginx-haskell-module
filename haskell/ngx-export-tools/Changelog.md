@@ -1,3 +1,8 @@
+### 1.2.0
+
+- Added a new module *NgxExport.Tools.Combinators* which exports a new function
+  *voidHandler* and the whole module *NgxExport.Tools.SplitService*.
+
 ### 1.1.0
 
 - Use polymorphic return types in functions *terminateWorkerProcess*,

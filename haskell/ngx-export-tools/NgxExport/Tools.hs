@@ -1,7 +1,7 @@
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  NgxExport.Tools
--- Copyright   :  (c) Alexey Radkov 2018-2022
+-- Copyright   :  (c) Alexey Radkov 2018-2023
 -- License     :  BSD-style
 --
 -- Maintainer  :  alexey.radkov@gmail.com
@@ -15,21 +15,21 @@
 
 
 module NgxExport.Tools (
+    -- | === Combinators of effectful actions (including split services)
+                        module NgxExport.Tools.Combinators
     -- | === Reading custom types from /ByteStrings/
-                        module NgxExport.Tools.Read
+                       ,module NgxExport.Tools.Read
     -- | === Exporters of simple services
                        ,module NgxExport.Tools.SimpleService
-    -- | === Split services
-                       ,module NgxExport.Tools.SplitService
     -- | === Various functions to access low-level Nginx API
                        ,module NgxExport.Tools.System
     -- | === A simple implementation of time intervals
                        ,module NgxExport.Tools.TimeInterval
                        ) where
 
+import           NgxExport.Tools.Combinators
 import           NgxExport.Tools.Read
 import           NgxExport.Tools.SimpleService
-import           NgxExport.Tools.SplitService
 import           NgxExport.Tools.System
 import           NgxExport.Tools.TimeInterval
 

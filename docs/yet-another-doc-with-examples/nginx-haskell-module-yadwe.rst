@@ -1426,6 +1426,8 @@ specialized service exporters and adapters. As soon as the module is well docume
    boilerplate code needed in the vanilla service exporters from module *NgxExport*.
 -  Special service adapters (*split services*) allow for distinguishing between *ignition* services (those that run when the service runs for the first time)
    and *deferred* services (those that run when the service runs for the second time and later).
+-  A simple combinator function *voidHandler* helps to avoid printing the final *return L.empty* or *return ““* in effectful handlers which return unused or
+   empty bytestrings.
 
 .. raw:: latex
 

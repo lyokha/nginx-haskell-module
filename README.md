@@ -1473,6 +1473,9 @@ are only basically lined up below.
   *ignition* services (those that run when the service runs for the first time)
   and *deferred* services (those that run when the service runs for the second
   time and later).
+- A simple combinator function *voidHandler* helps to avoid printing the final
+  *return L.empty* or *return ""* in effectful handlers which return unused or
+  empty bytestrings.
   
 # List of batteries included
 
@@ -1483,6 +1486,7 @@ Note: click on the links to read descriptions and documentation.
         * Module [*NgxExport*](https://hackage.haskell.org/package/ngx-export/docs/NgxExport.html)
     * Package [*ngx-export-tools*](https://hackage.haskell.org/package/ngx-export-tools)
         * Module [*NgxExport.Tools*](https://hackage.haskell.org/package/ngx-export-tools/docs/NgxExport-Tools.html)
+        * Module [*NgxExport.Tools.Combinators*](https://hackage.haskell.org/package/ngx-export-tools/docs/NgxExport-Tools-Combinators.html)
         * Module [*NgxExport.Tools.Read*](https://hackage.haskell.org/package/ngx-export-tools/docs/NgxExport-Tools-Read.html)
         * Module [*NgxExport.Tools.SimpleService*](https://hackage.haskell.org/package/ngx-export-tools/docs/NgxExport-Tools-SimpleService.html)
         * Module [*NgxExport.Tools.SplitService*](https://hackage.haskell.org/package/ngx-export-tools/docs/NgxExport-Tools-SplitService.html)

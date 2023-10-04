@@ -11,6 +11,7 @@ Haskell modules with docs and examples on Hackage
 * Package `ngx-export-tools <https://hackage.haskell.org/package/ngx-export-tools>`__
 
     * Module `NgxExport.Tools <https://hackage.haskell.org/package/ngx-export-tools/docs/NgxExport-Tools.html>`__
+    * Module `NgxExport.Tools.Combinators <https://hackage.haskell.org/package/ngx-export-tools/docs/NgxExport-Tools-Combinators.html>`__
     * Module `NgxExport.Tools.Read <https://hackage.haskell.org/package/ngx-export-tools/docs/NgxExport-Tools-Read.html>`__
     * Module `NgxExport.Tools.SimpleService <https://hackage.haskell.org/package/ngx-export-tools/docs/NgxExport-Tools-SimpleService.html>`__
     * Module `NgxExport.Tools.SplitService <https://hackage.haskell.org/package/ngx-export-tools/docs/NgxExport-Tools-SplitService.html>`__

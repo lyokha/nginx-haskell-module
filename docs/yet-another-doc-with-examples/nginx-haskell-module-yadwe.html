@@ -1731,6 +1731,9 @@ distinguishing between <em>ignition</em> services (those that run when
 the service runs for the first time) and <em>deferred</em> services
 (those that run when the service runs for the second time and
 later).</li>
+<li>A simple combinator function <em>voidHandler</em> helps to avoid
+printing the final <em>return L.empty</em> or <em>return ““</em> in
+effectful handlers which return unused or empty bytestrings.</li>
 </ul>
 <h1 id="appendix">Appendix</h1>
 <!--\appendixpagenumbering[TEST.HS]-->

@@ -15,7 +15,7 @@ html: $(NAME).md
 	        -o $(NAME).html -Fvimhl --standalone -c ./pandoc.css $(NAME).md
 
 pdf: $(NAME).md $(NAME).tex
-	pandoc -fmarkdown -tlatex \
+	pandoc -fmarkdown -tlatex-smart \
 	        -o $(NAME_TEX_CONTENT) -Fvimhl $(NAME).md
 	latexmk $(NAME)
 
