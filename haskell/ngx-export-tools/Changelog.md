@@ -1,3 +1,7 @@
+### 1.2.1
+
+- Added function *voidHandler'* in module *NgxExport.Tools.Combinators*.
+
 ### 1.2.0
 
 - Added a new module *NgxExport.Tools.Combinators* which exports a new function

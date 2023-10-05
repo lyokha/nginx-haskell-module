@@ -15,8 +15,9 @@ module NgxExport.Tools.Combinators (
     -- * Combinators of effectful actions
     -- $description
 
-    -- * Void handler
+    -- * Exported functions
                                     voidHandler
+                                   ,voidHandler'
     -- * Split services
                                    ,module NgxExport.Tools.SplitService
                                    ) where
@@ -65,4 +66,31 @@ import qualified Data.ByteString.Lazy as L
 voidHandler :: IO a                         -- ^ Target computation
             -> IO L.ByteString
 voidHandler = (>> return L.empty)
+
+-- | Runs an effectful computation and then returns an empty 'L.ByteString'
+--
+-- The same as 'voidHandler' except it accepts an additional value which is
+-- ignored. Implemented as
+--
+-- @
+-- voidHandler' = const . 'voidHandler'
+-- @
+--
+-- This can be useful in declarations of services that accept a boolean flag
+-- which marks whether the service is running for the first time. This flag is
+-- often ignored though, in which case using @voidHandler'@ can simplify code.
+--
+-- For instance, handler /signalUpconf/ from the example for 'voidHandler' can
+-- be further simplified as
+--
+-- @
+-- signalUpconf :: Upconf -> Bool -> IO L.ByteString
+-- signalUpconf = __/voidHandler'/__ . mapConcurrently_ getUrl
+-- @
+--
+-- @since 1.2.1
+voidHandler' :: IO a                        -- ^ Target computation
+             -> b                           -- ^ Ignored value
+             -> IO L.ByteString
+voidHandler' = const . voidHandler
 

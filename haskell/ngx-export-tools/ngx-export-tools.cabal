@@ -1,5 +1,5 @@
 name:                       ngx-export-tools
-version:                    1.2.0
+version:                    1.2.1
 synopsis:                   Extra tools for Nginx haskell module
 description:                Extra tools for
         <https://github.com/lyokha/nginx-haskell-module Nginx haskell module>.
