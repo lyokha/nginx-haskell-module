@@ -28,12 +28,12 @@ import qualified Data.ByteString.Lazy as L
 
 -- $description
 --
--- A set of convenient combinators of effectful actions for building handlers
--- and services tuned for special purposes.
+-- A set of functions to combine effectful actions for building handlers and
+-- services tuned for special purposes.
 
 -- | Runs an effectful computation and then returns an empty 'L.ByteString'
 --
--- This combinator saves printing the final @return L.empty@ action in handlers
+-- This function saves printing the final @return L.empty@ action in handlers
 -- that return unused or empty 'L.ByteString'.
 --
 -- For example, handler /signalUpconf/ being declared as an
