@@ -15,7 +15,6 @@
 
 
 module NgxExport.Tools (
-    -- * Contents
     -- *** Combinators of effectful actions (including split services)
                         module NgxExport.Tools.Combinators
     -- *** Reading custom types from /ByteStrings/
