@@ -3,7 +3,7 @@
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  NgxExport.Tools.SimpleService
--- Copyright   :  (c) Alexey Radkov 2018-2022
+-- Copyright   :  (c) Alexey Radkov 2018-2023
 -- License     :  BSD-style
 --
 -- Maintainer  :  alexey.radkov@gmail.com
@@ -22,6 +22,8 @@ module NgxExport.Tools.SimpleService (
                                      ,ngxExportSimpleService
                                      ,ngxExportSimpleServiceTyped
                                      ,ngxExportSimpleServiceTypedAsJSON
+    -- * Type declarations
+                                     ,NgxExportService
     -- * Re-exported data constructors from /Foreign.C/
     -- | Re-exports are needed by exporters for marshalling in foreign calls.
                                      ,Foreign.C.Types.CInt (..)
@@ -32,6 +34,7 @@ import           NgxExport
 import           NgxExport.Tools.Read
 import           NgxExport.Tools.System
 import           NgxExport.Tools.TimeInterval
+import           NgxExport.Tools.Types (NgxExportService)
 
 import           Language.Haskell.TH
 import           Foreign.C.Types

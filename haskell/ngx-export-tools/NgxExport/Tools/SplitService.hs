@@ -1,7 +1,7 @@
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  NgxExport.Tools.SplitService
--- Copyright   :  (c) Alexey Radkov 2018-2022
+-- Copyright   :  (c) Alexey Radkov 2018-2023
 -- License     :  BSD-style
 --
 -- Maintainer  :  alexey.radkov@gmail.com
@@ -19,7 +19,11 @@ module NgxExport.Tools.SplitService (
                                      splitService
                                     ,ignitionService
                                     ,deferredService
+    -- * Type declarations
+                                    ,NgxExportService
                                     ) where
+
+import           NgxExport.Tools.Types (NgxExportService)
 
 import qualified Data.ByteString.Lazy as L
 

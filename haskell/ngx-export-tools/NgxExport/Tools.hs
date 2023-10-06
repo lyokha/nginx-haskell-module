@@ -15,21 +15,28 @@
 
 
 module NgxExport.Tools (
-    -- | === Combinators of effectful actions (including split services)
+    -- * Contents
+    -- *** Combinators of effectful actions (including split services)
                         module NgxExport.Tools.Combinators
-    -- | === Reading custom types from /ByteStrings/
+    -- *** Reading custom types from /ByteStrings/
                        ,module NgxExport.Tools.Read
-    -- | === Exporters of simple services
+    -- *** Exporters of simple services
                        ,module NgxExport.Tools.SimpleService
-    -- | === Various functions to access low-level Nginx API
+    -- *** Split services
+                       ,module NgxExport.Tools.SplitService
+    -- *** Various functions to access low-level Nginx API
                        ,module NgxExport.Tools.System
-    -- | === A simple implementation of time intervals
+    -- *** A simple implementation of time intervals
                        ,module NgxExport.Tools.TimeInterval
+    -- *** Various type declarations
+                       ,module NgxExport.Tools.Types
                        ) where
 
 import           NgxExport.Tools.Combinators
 import           NgxExport.Tools.Read
 import           NgxExport.Tools.SimpleService
+import           NgxExport.Tools.SplitService
 import           NgxExport.Tools.System
 import           NgxExport.Tools.TimeInterval
+import           NgxExport.Tools.Types
 

@@ -1,5 +1,5 @@
 name:                       ngx-export-tools
-version:                    1.2.1
+version:                    1.2.2
 synopsis:                   Extra tools for Nginx haskell module
 description:                Extra tools for
         <https://github.com/lyokha/nginx-haskell-module Nginx haskell module>.
@@ -32,6 +32,7 @@ library
                             NgxExport.Tools.SplitService
                             NgxExport.Tools.System
                             NgxExport.Tools.TimeInterval
+                            NgxExport.Tools.Types
 
   ghc-options:             -Wall
 

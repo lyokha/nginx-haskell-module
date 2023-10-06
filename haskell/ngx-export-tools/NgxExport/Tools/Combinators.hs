@@ -36,14 +36,14 @@ import qualified Data.ByteString.Lazy as L
 -- This function saves printing the final @return L.empty@ action in handlers
 -- that return unused or empty 'L.ByteString'.
 --
--- For example, handler /signalUpconf/ being declared as an
+-- For example, service /signalUpconf/ being used as an
 -- [/update callback/](https://github.com/lyokha/nginx-haskell-module#update-callbacks)
 -- in
 --
 -- @
 -- type Upconf = [Text]
 --
--- signalUpconf :: Upconf -> Bool -> IO L.ByteString
+-- signalUpconf :: Upconf -> t'NgxExport.Tools.Types.NgxExportService'
 -- signalUpconf upconf = const $ do
 --     mapConcurrently_ getUrl upconf
 --     return L.empty
@@ -56,7 +56,7 @@ import qualified Data.ByteString.Lazy as L
 -- it can be rewritten as
 --
 -- @
--- signalUpconf :: Upconf -> Bool -> IO L.ByteString
+-- signalUpconf :: Upconf -> t'NgxExport.Tools.Types.NgxExportService'
 -- signalUpconf = const . __/voidHandler/__ . mapConcurrently_ getUrl
 -- @
 --
@@ -80,11 +80,11 @@ voidHandler = (>> return L.empty)
 -- which marks whether the service is running for the first time. This flag is
 -- often ignored though, in which case using @voidHandler'@ can simplify code.
 --
--- For instance, handler /signalUpconf/ from the example for 'voidHandler' can
+-- For instance, service /signalUpconf/ from the example for 'voidHandler' can
 -- be further simplified as
 --
 -- @
--- signalUpconf :: Upconf -> Bool -> IO L.ByteString
+-- signalUpconf :: Upconf -> t'NgxExport.Tools.Types.NgxExportService'
 -- signalUpconf = __/voidHandler'/__ . mapConcurrently_ getUrl
 -- @
 --

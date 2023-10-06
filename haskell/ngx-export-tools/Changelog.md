@@ -1,3 +1,8 @@
+### 1.2.2
+
+- Added a new module *NgxExport.Tools.Types* which exports a new type
+  *NgxExportService* for writing a fancier declarations of services.
+
 ### 1.2.1
 
 - Added function *voidHandler'* in module *NgxExport.Tools.Combinators*.
