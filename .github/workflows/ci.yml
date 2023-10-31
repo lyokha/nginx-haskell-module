@@ -14,6 +14,10 @@ jobs:
         nginx: ['']
         experimental: [false]
         include:
+          - ghc: '9.8'
+            cabal: '3.10'
+            nginx: 1.24.0
+            experimental: true
           - ghc: '9.6'
             cabal: '3.10'
             nginx: ''
