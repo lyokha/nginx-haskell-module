@@ -696,11 +696,10 @@ toBuffers :: L.ByteString -> Ptr NgxStrType -> IO (Ptr NgxStrType, Int)
 toBuffers (L.null -> True) _ =
     return (nullPtr, 0)
 toBuffers s p = do
-    let n = L.foldlChunks (const . succ) 0 s
+    let (s', n) = L.foldlChunks (flip (,) . succ . snd) (B.empty, 0) s
     if n == 1 && p /= nullPtr
         then do
-            B.unsafeUseAsCStringLen (head $ L.toChunks s) $
-                \(x, I l) -> poke p $ NgxStrType l x
+            B.unsafeUseAsCStringLen s' $ \(x, I l) -> poke p $ NgxStrType l x
             return (p, 1)
         else do
             t <- safeMallocBytes $ n * sizeOf (undefined :: NgxStrType)
