@@ -31,9 +31,6 @@ library
                             Paths_ngx_export
 
   ghc-options:             -Wall
-  if impl(ghc < 8.0)
-    ghc-options:           -fno-warn-incomplete-patterns
-  else
-    if impl(ghc < 8.2)
-      ghc-options:         -Wno-incomplete-patterns
+  if impl(ghc < 8.2)
+    ghc-options:           -Wno-incomplete-patterns
 
