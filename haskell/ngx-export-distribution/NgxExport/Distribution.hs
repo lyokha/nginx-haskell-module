@@ -361,12 +361,13 @@ buildSharedLib verbosity desc lbi flags = do
                        nameSo = name <.> "so"
                    in (nameSo, [name <.> "hs", "-o", nameSo])
                   ) (, []) lib
-    unless (null extraGhcOptions) $ do
-        let extraSourceFile = head extraGhcOptions
-        extraSourceFileExists <- doesFileExist extraSourceFile
-        unless extraSourceFileExists $ die' verbosity $
-            "File " ++ extraSourceFile ++ " does not exist, \
-            \you may want to specify input and output files in --ghc-options"
+    case extraGhcOptions of
+        extraSourceFile : _ -> do
+            extraSourceFileExists <- doesFileExist extraSourceFile
+            unless extraSourceFileExists $ die' verbosity $
+                "File " ++ extraSourceFile ++ " does not exist, you may want \
+                    \to specify input and output files in --ghc-options"
+        _ -> return ()
     ghcP <- fst <$> requireProgram verbosity ghcProgram (withPrograms lbi)
     let libGhcOptions = ["-dynamic", "-shared", "-fPIC"]
         libGhcOptions' = if programVersion ghcP >= Just (mkVersion [9, 0, 1])

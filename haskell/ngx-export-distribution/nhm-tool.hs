@@ -117,48 +117,47 @@ usage section success = do
 main :: IO ()
 main = do
     args <- getArgs
-    when (null args) $ usage Nothing True
-    case head args of
-        "dist" -> do
-            let distData = foldl parseDistArgs (Just defaultArgs) $ tail args
+    case args of
+        "dist" : args' -> do
+            let distData = foldl parseDistArg (Just defaultArgs) args'
                 defaultArgs = DistData defaultDistDataDir "" "" False ""
                     Nothing normal normal False
             case distData of
                 Nothing -> usage (Just HelpDist) False
                 Just (normalizeDistData -> distData'@DistData {..}) ->
                     if distDataHelp
-                        then usage (Just HelpDist) True
+                        then usage (Just HelpDist) $ length args' == 1
                         else if isJust distDataWait || null distDataTargetLib
                                  then usage (Just HelpDist) False
                                  else cmdDist distData'
-        "deps" -> do
-            let depsData = foldl parseDepsArgs (Just defaultArgs) $ tail args
+        "deps" : args' -> do
+            let depsData = foldl parseDepsArg (Just defaultArgs) args'
                 defaultArgs = DepsData "" False
             case depsData of
                 Nothing -> usage (Just HelpDeps) False
                 Just depsData'@DepsData {..} ->
                     if depsDataHelp
-                        then usage (Just HelpDeps) True
+                        then usage (Just HelpDeps) $ length args' == 1
                         else if null depsDataProject
                                  then usage (Just HelpDeps) False
                                  else cmdDeps depsData'
-        "init" -> do
-            let initData = foldl parseInitArgs (Just defaultArgs) $ tail args
+        "init" : args' -> do
+            let initData = foldl parseInitArg (Just defaultArgs) args'
                 defaultArgs = InitData defaultInitDataPrefix False False False
                     "" Nothing False
             case initData of
                 Nothing -> usage (Just HelpInit) False
                 Just initData'@InitData {..} ->
                     if initDataHelp
-                        then usage (Just HelpInit) True
+                        then usage (Just HelpInit) $ length args' == 1
                         else if isJust initDataWait || null initDataProject ||
                                     initDataForce && initDataToStdout
                                  then usage (Just HelpInit) False
                                  else cmdInit initData'
-        "-h" -> usage Nothing True
-        "-help" -> usage Nothing True
-        "--help" -> usage Nothing True
-        _ -> usage Nothing False
+        "-h" : args' -> usage Nothing $ null args'
+        "-help" : args' -> usage Nothing $ null args'
+        "--help" : args' -> usage Nothing $ null args'
+        args' -> usage Nothing $ null args'
     where normalizeDistData dist@DistData {..} =
               dist { distDataTargetDir =
                          if distDataTargetDir == "-"
@@ -172,9 +171,9 @@ main = do
                          distDataDir == "-" || distDataPatchOnly
                    }
 
-parseDistArgs :: Maybe DistData -> String -> Maybe DistData
-parseDistArgs Nothing _ = Nothing
-parseDistArgs (Just dist@DistData {..}) arg =
+parseDistArg :: Maybe DistData -> String -> Maybe DistData
+parseDistArg Nothing _ = Nothing
+parseDistArg (Just dist@DistData {..}) arg =
     case distDataWait of
         Nothing ->
             let optLong = length arg > 2
@@ -212,9 +211,9 @@ parseDistArgs (Just dist@DistData {..}) arg =
         Just _ -> undefined
         where dist' = dist { distDataWait = Nothing }
 
-parseDepsArgs :: Maybe DepsData -> String -> Maybe DepsData
-parseDepsArgs Nothing _ = Nothing
-parseDepsArgs (Just deps@DepsData {..}) arg =
+parseDepsArg :: Maybe DepsData -> String -> Maybe DepsData
+parseDepsArg Nothing _ = Nothing
+parseDepsArg (Just deps@DepsData {..}) arg =
     if | "-h" == arg || "-help" == arg || "--help" == arg ->
              Just deps { depsDataHelp = True }
        | "-" `isPrefixOf` arg -> Nothing
@@ -223,9 +222,9 @@ parseDepsArgs (Just deps@DepsData {..}) arg =
                   then Just deps { depsDataProject = arg }
                   else Nothing
 
-parseInitArgs :: Maybe InitData -> String -> Maybe InitData
-parseInitArgs Nothing _ = Nothing
-parseInitArgs (Just init'@InitData {..}) arg =
+parseInitArg :: Maybe InitData -> String -> Maybe InitData
+parseInitArg Nothing _ = Nothing
+parseInitArg (Just init'@InitData {..}) arg =
     case initDataWait of
         Nothing ->
             let optLong = length arg > 2
