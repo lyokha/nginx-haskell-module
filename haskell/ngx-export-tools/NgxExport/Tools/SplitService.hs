@@ -40,8 +40,7 @@ import qualified Data.ByteString.Lazy as L
 splitService :: (a -> IO L.ByteString)  -- ^ Ignition service
              -> (a -> IO L.ByteString)  -- ^ Deferred service
              -> a                       -- ^ Configuration
-             -> Bool                    -- ^ First-run flag
-             -> IO L.ByteString
+             -> NgxExportService
 splitService is ds c fstRun
     | fstRun = is c
     | otherwise = ds c
@@ -49,8 +48,7 @@ splitService is ds c fstRun
 -- | Sets an action as an ignition service.
 ignitionService :: (a -> IO L.ByteString)  -- ^ Ignition service
                 -> a                       -- ^ Configuration
-                -> Bool                    -- ^ First-run flag
-                -> IO L.ByteString
+                -> NgxExportService
 ignitionService is = splitService is $ const $ return L.empty
 
 -- | Sets an action as a deferred service.
@@ -60,7 +58,6 @@ ignitionService is = splitService is $ const $ return L.empty
 -- process, and therefore can be used as a cleanup handler.
 deferredService :: (a -> IO L.ByteString)  -- ^ Deferred service
                 -> a                       -- ^ Configuration
-                -> Bool                    -- ^ First-run flag
-                -> IO L.ByteString
+                -> NgxExportService
 deferredService = splitService $ const $ return L.empty
 

@@ -40,5 +40,6 @@ import qualified Data.ByteString.Lazy as L
 -- @
 --
 -- @since 1.2.2
-type NgxExportService = Bool -> IO L.ByteString
+type NgxExportService = Bool               -- ^ First-run flag
+                     -> IO L.ByteString
 
