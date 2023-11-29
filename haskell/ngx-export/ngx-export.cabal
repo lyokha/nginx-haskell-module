@@ -6,7 +6,7 @@ description:                Helper module for
 homepage:                   https://github.com/lyokha/nginx-haskell-module
 license:                    BSD3
 license-file:               LICENSE
-extra-source-files:         Changelog.md
+extra-doc-files:            Changelog.md
 author:                     Alexey Radkov <alexey.radkov@gmail.com>
 maintainer:                 Alexey Radkov <alexey.radkov@gmail.com>
 stability:                  stable
