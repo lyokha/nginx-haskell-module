@@ -91,6 +91,7 @@ import           Data.IORef
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Unsafe as B
 import qualified Data.ByteString.Lazy as L
+import qualified Data.ByteString.Lazy.Internal as L
 import qualified Data.ByteString.Lazy.Char8 as C8L
 import           Data.Binary.Put
 import           Data.Bits
@@ -693,27 +694,24 @@ pokeCStringLen x n p s = poke p x >> poke s n
     CString -> CSize -> Ptr CString -> Ptr CSize -> IO () #-}
 
 toBuffers :: L.ByteString -> Ptr NgxStrType -> IO (Ptr NgxStrType, Int)
-toBuffers (L.null -> True) _ =
+toBuffers L.Empty _ =
     return (nullPtr, 0)
-toBuffers s p = do
-    let (s', n) = L.foldlChunks (flip (,) . succ . snd) (B.empty, 0) s
-    if n == 1 && p /= nullPtr
-        then do
-            B.unsafeUseAsCStringLen s' $ \(x, I l) -> poke p $ NgxStrType l x
-            return (p, 1)
-        else do
-            t <- safeMallocBytes $ n * sizeOf (undefined :: NgxStrType)
-            if t == nullPtr
-                then return (nullPtr, -1)
-                else (t, ) <$>
-                        L.foldlChunks
-                            (\a c -> do
-                                off <- a
-                                B.unsafeUseAsCStringLen c $
-                                    \(x, I l) ->
-                                        pokeElemOff t off $ NgxStrType l x
-                                return $ off + 1
-                            ) (return 0) s
+toBuffers (L.Chunk s L.Empty) p | p /= nullPtr = do
+    B.unsafeUseAsCStringLen s $ \(x, I l) -> poke p $ NgxStrType l x
+    return (p, 1)
+toBuffers s _ = do
+    let n = L.foldlChunks (const . succ) 0 s
+    t <- safeMallocBytes $ n * sizeOf (undefined :: NgxStrType)
+    if t == nullPtr
+        then return (nullPtr, -1)
+        else (t, ) <$>
+                L.foldlChunks
+                    (\a c -> do
+                        off <- a
+                        B.unsafeUseAsCStringLen c $ \(x, I l) ->
+                            pokeElemOff t off $ NgxStrType l x
+                        return $ off + 1
+                    ) (return 0) s
 
 pokeLazyByteString :: L.ByteString ->
     Ptr (Ptr NgxStrType) -> Ptr CInt -> Ptr (StablePtr L.ByteString) -> IO ()
