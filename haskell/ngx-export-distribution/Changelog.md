@@ -1,3 +1,8 @@
+### 0.5.1.3
+
+- Refactored to avoid using *head* and *tail* as it triggers *x-partial*
+  warnings in GHC *9.8.1*.
+
 ### 0.5.1.2
 
 - Parse *ldd* outputs of older formats where the separator may occur between the

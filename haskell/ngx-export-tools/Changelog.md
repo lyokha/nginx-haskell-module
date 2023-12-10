@@ -1,3 +1,7 @@
+### 1.2.2.1
+
+- Use *NgxExportService* in declarations of split services.
+
 ### 1.2.2
 
 - Added a new module *NgxExport.Tools.Types* which exports a new type

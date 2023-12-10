@@ -1,3 +1,8 @@
+### 1.7.8
+
+- Refactored to avoid using *head* and *tail* as it triggers *x-partial*
+  warnings in GHC *9.8.1*.
+
 ### 1.7.7.1
 
 - Added a minimal example of using exporters.

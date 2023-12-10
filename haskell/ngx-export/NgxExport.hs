@@ -371,6 +371,9 @@ ngxExportC = ngxExport' $ infixE (Just $ varE 'const) (varE '(.)) . Just . varE
 -- > toUpper hello = HELLO
 -- > reverse world = dlrow
 -- > 1 `isInList` [10, 1, ] = 1
+--
+-- See documentation with more examples at
+-- <https://nginx-haskell-module.readthedocs.io>.
 
 -- | Exports a function of type
 --
