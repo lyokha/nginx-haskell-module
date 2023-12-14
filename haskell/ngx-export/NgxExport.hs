@@ -255,8 +255,10 @@ do
         ++
         map (\(c, t) -> tySynD (mkName $ nameBase c) [] $ return t) tCons
 
-ngxExport' :: (Name -> Q Exp) ->
-    Name -> Name -> Name -> Q Type -> Name -> Q [Dec]
+-- Exporter -> Ambiguity -> Handler impl -> Type impl -> Handler name -> Decls
+type NgxExportDec = Name -> Name -> Name -> Q Type -> Name -> Q [Dec]
+
+ngxExport' :: (Name -> Q Exp) -> NgxExportDec
 ngxExport' m e a h t f = sequence
     [sigD nameFt typeFt
     ,funD nameFt $ body [|exportType $cefVar|]
@@ -280,10 +282,10 @@ ngxExport' m e a h t f = sequence
           typeFta = [t|IO CInt|]
           body b  = [clause [] (normalB b) []]
 
-ngxExport :: Name -> Name -> Name -> Q Type -> Name -> Q [Dec]
+ngxExport :: NgxExportDec
 ngxExport = ngxExport' varE
 
-ngxExportC :: Name -> Name -> Name -> Q Type -> Name -> Q [Dec]
+ngxExportC :: NgxExportDec
 ngxExportC = ngxExport' $ infixE (Just $ varE 'const) (varE '(.)) . Just . varE
 
 -- $exporters

@@ -20,12 +20,22 @@ DEPLIBS := $(MACHINE)-$(KERNEL)-ghc-$(GHCVER)
 DISTDIR := dist
 DISTV2DIR := dist-newstyle
 
+PKGNGXEXPORT := ngx-export
+
+INPLACE := $(shell grep -q '^packages:.*\(\.\./\)\{3\}haskell/$(PKGNGXEXPORT)' \
+                       cabal.project && echo 1 || echo 0)
+
 NGX_HOME := .
 
 all: $(DISTR)
 
 $(DISTR): $(SRC) $(CPLUG).o
 	cabal install --lib --only-dependencies --package-env .
+ifeq ($(INPLACE),1)
+	cabal build $(PKGNGXEXPORT)
+	echo "package-db $$(pwd)/$(DISTV2DIR)/packagedb/ghc-$(GHCVER)" >> \
+	  $(GHCENV)
+endif
 	sed -i 's/\(^package-id \)/--\1/' $(GHCENV)
 	runhaskell --ghc-arg=-package=base \
 	  --ghc-arg=-package=$(PKGDISTR) Setup.hs configure \
@@ -35,7 +45,7 @@ $(DISTR): $(SRC) $(CPLUG).o
 	nhm-tool deps $(PKGNAME) >> $(GHCENV)
 	runhaskell --ghc-arg=-package=base \
 	  --ghc-arg=-package=$(PKGDISTR) Setup.hs build \
-	  --ghc-options="$(CPLUG).o $(SRC) -o $(LIB) $(LINKRTS)"
+	  --ghc-options="$(CPLUG).o $(SRC) -o $(LIB) -ddump-splices $(LINKRTS)"
 
 $(CPLUG).o: $(CPLUG).c
 	gcc -O2 -fPIC -c $(CPLUG).c -o $(CPLUG).o \

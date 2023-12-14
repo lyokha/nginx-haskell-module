@@ -14,3 +14,7 @@ With ghc older than *9.0.1*, build with
 $ make LINKRTS=-lHSrts_thr-ghc$(ghc --numeric-version)
 ```
 
+Note that *ngx-export* will be taken from *Hackage*. To build *ngx-export*
+locally, add *../../../haskell/ngx-export/ngx-export.cabal* to clause *packages*
+in *cabal.project*.
+
