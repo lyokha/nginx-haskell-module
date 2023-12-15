@@ -1,3 +1,7 @@
+### 1.7.9
+
+- Reify types of internal handlers from their signatures.
+
 ### 1.7.8
 
 - Refactored to avoid using *head* and *tail* as it triggers *x-partial*

@@ -255,22 +255,24 @@ do
         ++
         map (\(c, t) -> tySynD (mkName $ nameBase c) [] $ return t) tCons
 
--- Exporter -> Ambiguity -> Handler impl -> Type impl -> Handler name -> Decls
-type NgxExportDec = Name -> Name -> Name -> Q Type -> Name -> Q [Dec]
+-- Exporter -> Ambiguity -> Handler impl -> Handler name (Function) -> Decls
+type NgxExportDec = Name -> Name -> Name -> Name -> Q [Dec]
 
 ngxExport' :: (Name -> Q Exp) -> NgxExportDec
-ngxExport' m e a h t f = sequence
-    [sigD nameFt typeFt
-    ,funD nameFt $ body [|exportType $cefVar|]
-    ,ForeignD . ExportF CCall ftName nameFt <$> typeFt
-    ,sigD nameFta typeFta
-    ,funD nameFta $ body [|exportTypeAmbiguity $(conE a)|]
-    ,ForeignD . ExportF CCall ftaName nameFta <$> typeFta
-    ,sigD nameF t
-    ,funD nameF $ body [|$(varE h) $efVar|]
-    ,ForeignD . ExportF CCall fName nameF <$> t
-    ]
-    where efVar   = m f
+ngxExport' mode e a h f = do
+    AppT (AppT ArrowT _) typeF@(ConT _) <- reifyType h
+    sequence
+        [sigD nameFt typeFt
+        ,funD nameFt $ body [|exportType $cefVar|]
+        ,export ftName nameFt <$> typeFt
+        ,sigD nameFta typeFta
+        ,funD nameFta $ body [|exportTypeAmbiguity $(conE a)|]
+        ,export ftaName nameFta <$> typeFta
+        ,sigD nameF $ return typeF
+        ,funD nameF $ body [|$(varE h) $efVar|]
+        ,return $ export fName nameF typeF
+        ]
+    where efVar   = mode f
           cefVar  = conE e `appE` efVar
           fName   = "ngx_hs_" ++ nameBase f
           nameF   = mkName fName
@@ -281,6 +283,7 @@ ngxExport' m e a h t f = sequence
           nameFta = mkName ftaName
           typeFta = [t|IO CInt|]
           body b  = [clause [] (normalB b) []]
+          export  = ((ForeignD .) .) . ExportF CCall
 
 ngxExport :: NgxExportDec
 ngxExport = ngxExport' varE
@@ -385,8 +388,8 @@ ngxExportC = ngxExport' $ infixE (Just $ varE 'const) (varE '(.)) . Just . varE
 --
 -- for using in directive __/haskell_run/__.
 ngxExportSS :: Name -> Q [Dec]
-ngxExportSS = ngxExport 'SS 'Unambiguous
-    'sS [t|SSImpl|]
+ngxExportSS =
+    ngxExport 'SS 'Unambiguous 'sS
 
 -- | Exports a function of type
 --
@@ -396,8 +399,8 @@ ngxExportSS = ngxExport 'SS 'Unambiguous
 --
 -- for using in directive __/haskell_run/__.
 ngxExportSSS :: Name -> Q [Dec]
-ngxExportSSS = ngxExport 'SSS 'Unambiguous
-    'sSS [t|SSSImpl|]
+ngxExportSSS =
+    ngxExport 'SSS 'Unambiguous 'sSS
 
 -- | Exports a function of type
 --
@@ -407,8 +410,8 @@ ngxExportSSS = ngxExport 'SSS 'Unambiguous
 --
 -- for using in directive __/haskell_run/__.
 ngxExportSLS :: Name -> Q [Dec]
-ngxExportSLS = ngxExport 'SLS 'Unambiguous
-    'sLS [t|SLSImpl|]
+ngxExportSLS =
+    ngxExport 'SLS 'Unambiguous 'sLS
 
 -- | Exports a function of type
 --
@@ -418,8 +421,8 @@ ngxExportSLS = ngxExport 'SLS 'Unambiguous
 --
 -- for using in directive __/haskell_run/__.
 ngxExportBS :: Name -> Q [Dec]
-ngxExportBS = ngxExport 'BS 'Unambiguous
-    'bS [t|BSImpl|]
+ngxExportBS =
+    ngxExport 'BS 'Unambiguous 'bS
 
 -- | Exports a function of type
 --
@@ -429,8 +432,8 @@ ngxExportBS = ngxExport 'BS 'Unambiguous
 --
 -- for using in directive __/haskell_run/__.
 ngxExportBSS :: Name -> Q [Dec]
-ngxExportBSS = ngxExport 'BSS 'Unambiguous
-    'bSS [t|BSSImpl|]
+ngxExportBSS =
+    ngxExport 'BSS 'Unambiguous 'bSS
 
 -- | Exports a function of type
 --
@@ -440,8 +443,8 @@ ngxExportBSS = ngxExport 'BSS 'Unambiguous
 --
 -- for using in directive __/haskell_run/__.
 ngxExportBLS :: Name -> Q [Dec]
-ngxExportBLS = ngxExport 'BLS 'Unambiguous
-    'bLS [t|BLSImpl|]
+ngxExportBLS =
+    ngxExport 'BLS 'Unambiguous 'bLS
 
 -- | Exports a function of type
 --
@@ -451,8 +454,8 @@ ngxExportBLS = ngxExport 'BLS 'Unambiguous
 --
 -- for using in directive __/haskell_run/__.
 ngxExportYY :: Name -> Q [Dec]
-ngxExportYY = ngxExport 'YY 'YYSync
-    'yY [t|YYImpl|]
+ngxExportYY =
+    ngxExport 'YY 'YYSync 'yY
 
 -- | Exports a function of type
 --
@@ -462,8 +465,8 @@ ngxExportYY = ngxExport 'YY 'YYSync
 --
 -- for using in directive __/haskell_run/__.
 ngxExportBY :: Name -> Q [Dec]
-ngxExportBY = ngxExport 'BY 'Unambiguous
-    'bY [t|BYImpl|]
+ngxExportBY =
+    ngxExport 'BY 'Unambiguous 'bY
 
 -- | Exports a function of type
 --
@@ -473,8 +476,8 @@ ngxExportBY = ngxExport 'BY 'Unambiguous
 --
 -- for using in directive __/haskell_run/__.
 ngxExportIOYY :: Name -> Q [Dec]
-ngxExportIOYY = ngxExportC 'IOYY 'IOYYSync
-    'ioyY [t|YYImpl|]
+ngxExportIOYY =
+    ngxExportC 'IOYY 'IOYYSync 'ioyY
 
 -- | Exports a function of type
 --
@@ -484,8 +487,8 @@ ngxExportIOYY = ngxExportC 'IOYY 'IOYYSync
 --
 -- for using in directive __/haskell_run_async/__.
 ngxExportAsyncIOYY :: Name -> Q [Dec]
-ngxExportAsyncIOYY = ngxExportC 'IOYY 'IOYYAsync
-    'asyncIOYY [t|AsyncIOYYImpl|]
+ngxExportAsyncIOYY =
+    ngxExportC 'IOYY 'IOYYAsync 'asyncIOYY
 
 -- | Exports a function of type
 --
@@ -498,8 +501,8 @@ ngxExportAsyncIOYY = ngxExportC 'IOYY 'IOYYAsync
 -- The first argument of the exported function contains buffers of the client
 -- request body.
 ngxExportAsyncOnReqBody :: Name -> Q [Dec]
-ngxExportAsyncOnReqBody = ngxExport 'IOYYY 'Unambiguous
-    'asyncIOYYY [t|AsyncIOYYYImpl|]
+ngxExportAsyncOnReqBody =
+    ngxExport 'IOYYY 'Unambiguous 'asyncIOYYY
 
 -- | Exports a function of type
 --
@@ -513,8 +516,8 @@ ngxExportAsyncOnReqBody = ngxExport 'IOYYY 'Unambiguous
 -- The boolean argument of the exported function marks that the service is
 -- being run for the first time.
 ngxExportServiceIOYY :: Name -> Q [Dec]
-ngxExportServiceIOYY = ngxExport 'IOYY 'IOYYAsync
-    'asyncIOYY [t|AsyncIOYYImpl|]
+ngxExportServiceIOYY =
+    ngxExport 'IOYY 'IOYYAsync 'asyncIOYY
 
 -- | Exports a function of type
 --
@@ -525,8 +528,8 @@ ngxExportServiceIOYY = ngxExport 'IOYY 'IOYYAsync
 -- for using in directives __/haskell_content/__ and
 -- __/haskell_static_content/__.
 ngxExportHandler :: Name -> Q [Dec]
-ngxExportHandler = ngxExport 'Handler 'Unambiguous
-    'handler [t|HandlerImpl|]
+ngxExportHandler =
+    ngxExport 'Handler 'Unambiguous 'handler
 
 -- | Exports a function of type
 --
@@ -537,8 +540,8 @@ ngxExportHandler = ngxExport 'Handler 'Unambiguous
 -- for using in directives __/haskell_content/__ and
 -- __/haskell_static_content/__.
 ngxExportDefHandler :: Name -> Q [Dec]
-ngxExportDefHandler = ngxExport 'YY 'YYDefHandler
-    'defHandler [t|DefHandlerImpl|]
+ngxExportDefHandler =
+    ngxExport 'YY 'YYDefHandler 'defHandler
 
 -- | Exports a function of type
 --
@@ -548,8 +551,8 @@ ngxExportDefHandler = ngxExport 'YY 'YYDefHandler
 --
 -- for using in directive __/haskell_unsafe_content/__.
 ngxExportUnsafeHandler :: Name -> Q [Dec]
-ngxExportUnsafeHandler = ngxExport 'UnsafeHandler 'Unambiguous
-    'unsafeHandler [t|UnsafeHandlerImpl|]
+ngxExportUnsafeHandler =
+    ngxExport 'UnsafeHandler 'Unambiguous 'unsafeHandler
 
 -- | Exports a function of type
 --
@@ -559,8 +562,8 @@ ngxExportUnsafeHandler = ngxExport 'UnsafeHandler 'Unambiguous
 --
 -- for using in directive __/haskell_async_content/__.
 ngxExportAsyncHandler :: Name -> Q [Dec]
-ngxExportAsyncHandler = ngxExport 'AsyncHandler 'Unambiguous
-    'asyncHandler [t|AsyncHandlerImpl|]
+ngxExportAsyncHandler =
+    ngxExport 'AsyncHandler 'Unambiguous 'asyncHandler
 
 -- | Exports a function of type
 --
@@ -573,8 +576,8 @@ ngxExportAsyncHandler = ngxExport 'AsyncHandler 'Unambiguous
 -- The first argument of the exported function contains buffers of the client
 -- request body.
 ngxExportAsyncHandlerOnReqBody :: Name -> Q [Dec]
-ngxExportAsyncHandlerOnReqBody = ngxExport 'AsyncHandlerRB 'Unambiguous
-    'asyncHandlerRB [t|AsyncHandlerRBImpl|]
+ngxExportAsyncHandlerOnReqBody =
+    ngxExport 'AsyncHandlerRB 'Unambiguous 'asyncHandlerRB
 
 -- | Exports a function of type
 --
@@ -585,8 +588,8 @@ ngxExportAsyncHandlerOnReqBody = ngxExport 'AsyncHandlerRB 'Unambiguous
 -- for using in directives __/haskell_service_hook/__ and
 -- __/haskell_service_update_hook/__.
 ngxExportServiceHook :: Name -> Q [Dec]
-ngxExportServiceHook = ngxExportC 'IOYY 'IOYYSync
-    'ioyYWithFree [t|YYImpl|]
+ngxExportServiceHook =
+    ngxExportC 'IOYY 'IOYYSync 'ioyYWithFree
 
 data ServiceHookInterrupt = ServiceHookInterrupt
 
