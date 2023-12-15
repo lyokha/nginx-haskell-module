@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, TemplateHaskell, ForeignFunctionInterface #-}
+{-# LANGUAGE TemplateHaskell, ForeignFunctionInterface #-}
 {-# LANGUAGE ViewPatterns, PatternSynonyms, TupleSections, LambdaCase #-}
 
 -----------------------------------------------------------------------------
@@ -100,20 +100,16 @@ import           Paths_ngx_export (version)
 
 pattern I :: (Num i, Integral j) => i -> j
 pattern I i <- (fromIntegral -> i)
-#if MIN_TOOL_VERSION_ghc(8,2,1)
 {-# COMPLETE I :: Int #-}
 {-# COMPLETE I :: CInt #-}
 {-# COMPLETE I :: CSize #-}
-#endif
 
 pattern PtrLen :: Num l => Ptr s -> l -> (Ptr s, Int)
 pattern PtrLen s l <- (s, I l)
 
 pattern ToBool :: (Num i, Eq i) => Bool -> i
 pattern ToBool b <- (toBool -> b)
-#if MIN_TOOL_VERSION_ghc(8,2,1)
 {-# COMPLETE ToBool :: CUInt #-}
-#endif
 
 -- | The /4-tuple/ contains
 --   /(content, content-type, HTTP-status, response-headers)/.

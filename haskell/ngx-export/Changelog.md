@@ -1,6 +1,7 @@
 ### 1.7.9
 
 - Reify types of internal handlers from their signatures.
+- Dropped support for GHC versions older than *8.10* (due to *reifyType*).
 
 ### 1.7.8
 
