@@ -259,17 +259,16 @@ ngxExport' mode e a h f = do
     AppT (AppT ArrowT _) typeF@(ConT _) <- reifyType h
     sequence
         [sigD nameFt typeFt
-        ,funD nameFt $ body [|exportType $cefVar|]
+        ,funD nameFt $ body [|exportType $(conE e `appE` modeF)|]
         ,export ftName nameFt <$> typeFt
         ,sigD nameFta typeFta
         ,funD nameFta $ body [|exportTypeAmbiguity $(conE a)|]
         ,export ftaName nameFta <$> typeFta
         ,sigD nameF $ return typeF
-        ,funD nameF $ body [|$(varE h) $efVar|]
+        ,funD nameF $ body [|$(varE h) $modeF|]
         ,return $ export fName nameF typeF
         ]
-    where efVar   = mode f
-          cefVar  = conE e `appE` efVar
+    where modeF   = mode f
           fName   = "ngx_hs_" ++ nameBase f
           nameF   = mkName fName
           ftName  = "type_" ++ fName
