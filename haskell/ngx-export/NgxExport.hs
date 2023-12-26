@@ -787,7 +787,7 @@ safeAsyncYYHandler = handle $ \e ->
 {-# INLINE safeAsyncYYHandler #-}
 
 fromHTTPHeaders :: HTTPHeaders -> L.ByteString
-fromHTTPHeaders = L.fromChunks . foldr (\(z -> a, z -> b) -> ([a, b] ++)) []
+fromHTTPHeaders = L.fromChunks . foldr (\(a, b) -> (z a :) . (z b :)) []
     where z s | B.null s = B.singleton 0
               | otherwise = s
 
