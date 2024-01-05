@@ -68,7 +68,7 @@ jobs:
           cabal-version: ${{ matrix.cabal }}
       - name: Install prove
         if: matrix.nginx != ''
-        uses: perl-actions/install-with-cpanm@v1
+        uses: perl-actions/install-with-cpanm@stable
         with:
           install: "Test::Nginx"
           tests: false
