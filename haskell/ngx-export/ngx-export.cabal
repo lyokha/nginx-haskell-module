@@ -1,8 +1,8 @@
 name:                       ngx-export
 version:                    1.7.9
-synopsis:                   Helper module for Nginx haskell module
+synopsis:                   Helper module for Nginx Haskell module
 description:                Helper module for
-        <https://github.com/lyokha/nginx-haskell-module Nginx haskell module>.
+        <https://github.com/lyokha/nginx-haskell-module Nginx Haskell module>.
 homepage:                   https://github.com/lyokha/nginx-haskell-module
 license:                    BSD3
 license-file:               LICENSE

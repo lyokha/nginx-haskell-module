@@ -125,22 +125,23 @@ main = do
             case distData of
                 Nothing -> usage (Just HelpDist) False
                 Just (normalizeDistData -> distData'@DistData {..}) ->
-                    if distDataHelp
-                        then usage (Just HelpDist) $ length args' == 1
-                        else if isJust distDataWait || null distDataTargetLib
-                                 then usage (Just HelpDist) False
-                                 else cmdDist distData'
+                    if | distDataHelp ->
+                             usage (Just HelpDist) $ length args' == 1
+                       | isJust distDataWait
+                         || null distDataTargetLib ->
+                             usage (Just HelpDist) False
+                       | otherwise -> cmdDist distData'
         "deps" : args' -> do
             let depsData = foldl parseDepsArg (Just defaultArgs) args'
                 defaultArgs = DepsData "" False
             case depsData of
                 Nothing -> usage (Just HelpDeps) False
                 Just depsData'@DepsData {..} ->
-                    if depsDataHelp
-                        then usage (Just HelpDeps) $ length args' == 1
-                        else if null depsDataProject
-                                 then usage (Just HelpDeps) False
-                                 else cmdDeps depsData'
+                    if | depsDataHelp ->
+                             usage (Just HelpDeps) $ length args' == 1
+                       | null depsDataProject ->
+                             usage (Just HelpDeps) False
+                       | otherwise -> cmdDeps depsData'
         "init" : args' -> do
             let initData = foldl parseInitArg (Just defaultArgs) args'
                 defaultArgs = InitData defaultInitDataPrefix False False False
@@ -148,12 +149,13 @@ main = do
             case initData of
                 Nothing -> usage (Just HelpInit) False
                 Just initData'@InitData {..} ->
-                    if initDataHelp
-                        then usage (Just HelpInit) $ length args' == 1
-                        else if isJust initDataWait || null initDataProject ||
-                                    initDataForce && initDataToStdout
-                                 then usage (Just HelpInit) False
-                                 else cmdInit initData'
+                    if | initDataHelp ->
+                             usage (Just HelpInit) $ length args' == 1
+                       | isJust initDataWait
+                         || null initDataProject
+                         || initDataForce && initDataToStdout ->
+                             usage (Just HelpInit) False
+                       | otherwise -> cmdInit initData'
         "-h" : args' -> usage Nothing $ null args'
         "-help" : args' -> usage Nothing $ null args'
         "--help" : args' -> usage Nothing $ null args'
@@ -201,10 +203,9 @@ parseDistArg (Just dist@DistData {..}) arg =
                   | "-h" == arg || "-help" == arg || "--help" == arg ->
                         Just dist' { distDataHelp = True }
                   | "-" `isPrefixOf` arg -> Nothing
-                  | otherwise ->
-                         if null distDataTargetLib
-                             then Just dist' { distDataTargetLib = arg }
-                             else Nothing
+                  | null distDataTargetLib ->
+                        Just dist' { distDataTargetLib = arg }
+                  | otherwise -> Nothing
         Just ArgWaitD -> Just dist' { distDataDir = arg }
         Just ArgWaitT -> Just dist' { distDataTargetDir = arg }
         Just ArgWaitA -> Just dist' { distDataArchive = arg }
@@ -217,10 +218,9 @@ parseDepsArg (Just deps@DepsData {..}) arg =
     if | "-h" == arg || "-help" == arg || "--help" == arg ->
              Just deps { depsDataHelp = True }
        | "-" `isPrefixOf` arg -> Nothing
-       | otherwise ->
-              if null depsDataProject
-                  then Just deps { depsDataProject = arg }
-                  else Nothing
+       | null depsDataProject ->
+             Just deps { depsDataProject = arg }
+       | otherwise -> Nothing
 
 parseInitArg :: Maybe InitData -> String -> Maybe InitData
 parseInitArg Nothing _ = Nothing
@@ -242,10 +242,9 @@ parseInitArg (Just init'@InitData {..}) arg =
                   | "-h" == arg || "-help" == arg || "--help" == arg ->
                         Just init'' { initDataHelp = True }
                   | "-" `isPrefixOf` arg -> Nothing
-                  | otherwise ->
-                         if null initDataProject
-                             then Just init'' { initDataProject = arg }
-                             else Nothing
+                  | null initDataProject ->
+                        Just init'' { initDataProject = arg }
+                  | otherwise -> Nothing
         Just ArgWaitP -> Just init'' { initDataPrefix = arg }
         Just _ -> undefined
         where init'' = init' { initDataWait = Nothing }
@@ -520,11 +519,9 @@ projectHs InitData {..} = T.concat
     ["{-# LANGUAGE TemplateHaskell #-}\n\n\
      \module "
     ,T.pack $ fst $
-        foldl (\(a, tr) v -> if v == '-' || v == '_'
-                                 then (a, True)
-                                 else if tr || null a
-                                          then (a ++ [toUpper v], False)
-                                          else (a ++ [v], False)
+        foldl (\(a, tr) v -> if | v == '-' || v == '_' -> (a, True)
+                                | tr || null a -> (a ++ [toUpper v], False)
+                                | otherwise -> (a ++ [v], False)
               ) ("", False) initDataProject
     , " where\n\n"
     ]
