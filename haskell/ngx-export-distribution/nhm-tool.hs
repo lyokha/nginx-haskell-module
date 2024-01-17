@@ -3,7 +3,7 @@
 
 module Main where
 
-import Text.Parsec
+import Text.Parsec hiding (uncons)
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program
 import Distribution.Verbosity
@@ -518,11 +518,10 @@ projectHs :: InitData -> Text
 projectHs InitData {..} = T.concat
     ["{-# LANGUAGE TemplateHaskell #-}\n\n\
      \module "
-    ,T.pack $ fst $
-        foldl (\(a, tr) v -> if | v == '-' || v == '_' -> (a, True)
-                                | tr || null a -> (a ++ [toUpper v], False)
-                                | otherwise -> (a ++ [v], False)
-              ) ("", False) initDataProject
-    , " where\n\n"
+    ,T.pack $ foldr (\v -> if v == '-' || v == '_'
+                               then maybe [] (uncurry $ (:) . toUpper) . uncons
+                               else (v :)
+                    ) "" $ '_' : initDataProject
+    ," where\n\n"
     ]
 

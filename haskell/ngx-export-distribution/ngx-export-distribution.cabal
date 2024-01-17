@@ -36,7 +36,7 @@ executable nhm-tool
                           , containers
                           , ansi-terminal
                           , cabal-plan
-                          , parsec
+                          , parsec >= 3.0.0
 
   main-is:                  nhm-tool.hs
 
