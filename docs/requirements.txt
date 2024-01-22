@@ -47,7 +47,7 @@ packaging==23.1
     #   sphinx
 pandas==2.0.3
     # via -r requirements.in
-pillow==10.0.1
+pillow==10.2.0
     # via matplotlib
 pygments==2.16.1
     # via sphinx
