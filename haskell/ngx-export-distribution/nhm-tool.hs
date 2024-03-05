@@ -374,7 +374,8 @@ cmdDeps DepsData {..} = do
     let comps = [ uComps
                 | Unit {..} <- M.elems units
                 , uType == UnitTypeLocal
-                , toPkgName uPId == T.pack depsDataProject
+                , let uPkgName = (\(PkgId (PkgName name) _) -> name) uPId
+                , uPkgName == T.pack depsDataProject
                 ]
     when (null comps) $ do
         hPutStrLn stderr $ "Failed to find plan for " ++ depsDataProject
@@ -386,7 +387,6 @@ cmdDeps DepsData {..} = do
                      ) S.empty comps
     forM_ (S.toList deps) $ \(UnitId unit) ->
         putStrLn $ "package-id " ++ T.unpack unit
-    where toPkgName (PkgId (PkgName name) _) = name
 
 cmdInit :: InitData -> IO ()
 cmdInit init'@InitData {..} = do
