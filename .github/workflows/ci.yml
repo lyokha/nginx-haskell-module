@@ -58,6 +58,10 @@ jobs:
             cabal: '3.8'
             nginx: 1.16.1
             experimental: false
+          - ghc: '9.8'
+            cabal: '3.10'
+            nginx: freenginx-head
+            experimental: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -98,6 +102,9 @@ jobs:
               if [ "$NGXVER" = head ]
               then
                   git clone https://github.com/nginx/nginx.git nginx-head
+              elif [ "$NGXVER" = freenginx-head ]
+              then
+                  hg clone http://freenginx.org/hg/nginx nginx-freenginx-head
               else
                   wget http://nginx.org/download/nginx-${NGXVER}.tar.gz &&
                       tar xzvf nginx-${NGXVER}.tar.gz
@@ -123,7 +130,7 @@ jobs:
           then
               cd -
               cd nginx-${NGXVER}/
-              if [ "$NGXVER" = head ]
+              if [ "$NGXVER" = head ] || [ "$NGXVER" = freenginx-head ]
               then
                   NGX_CONFIGURE=./auto/configure
               else
