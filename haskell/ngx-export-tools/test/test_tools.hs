@@ -87,3 +87,13 @@ testReadConfWithRPtrJSONHandler = showAsLazyByteString .
     readFromByteStringWithRPtrAsJSON @ConfJSON
 ngxExportYY 'testReadConfWithRPtrJSONHandler
 
+testLoadConf :: Conf -> Bool -> IO L.ByteString
+testLoadConf = voidService
+
+ngxExportSimpleServiceTyped 'testLoadConf ''Conf SingleShotService
+
+testLoadConfStorage :: ByteString -> IO L.ByteString
+testLoadConfStorage = const $
+    showAsLazyByteString <$> readIORef storage_Conf_testLoadConf
+ngxExportIOYY 'testLoadConfStorage
+

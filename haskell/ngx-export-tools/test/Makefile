@@ -40,7 +40,7 @@ endif
 	nhm-tool deps $(PKGNAME) >> $(GHCENV)
 	runhaskell --ghc-arg=-package=base \
 	 --ghc-arg=-package=$(PKGDISTR) Setup.hs build \
-	 --ghc-options="$(SRC) -o $(LIB) $(LINKRTS)"
+	 --ghc-options="$(SRC) -o $(LIB) -ddump-splices $(LINKRTS)"
 
 install: $(DISTR)
 	install -d $(PREFIX)

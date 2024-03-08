@@ -1,3 +1,8 @@
+### 1.2.3
+
+- Added a void service *voidService* which helps to load global data from Nginx
+  configurations in a more concise and declarative way.
+
 ### 1.2.2.1
 
 - Use *NgxExportService* in declarations of split services.

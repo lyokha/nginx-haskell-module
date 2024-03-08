@@ -1,7 +1,7 @@
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  NgxExport.Tools.Combinators
--- Copyright   :  (c) Alexey Radkov 2023
+-- Copyright   :  (c) Alexey Radkov 2023-2024
 -- License     :  BSD-style
 --
 -- Maintainer  :  alexey.radkov@gmail.com
@@ -18,6 +18,7 @@ module NgxExport.Tools.Combinators (
     -- * Exported functions
                                     voidHandler
                                    ,voidHandler'
+                                   ,voidService
     -- * Split services
                                    ,module NgxExport.Tools.SplitService
                                    ) where
@@ -31,7 +32,7 @@ import qualified Data.ByteString.Lazy as L
 -- A set of functions to combine effectful actions for building handlers and
 -- services tuned for special purposes.
 
--- | Runs an effectful computation and then returns an empty 'L.ByteString'
+-- | Runs an effectful computation and then returns an empty 'L.ByteString'.
 --
 -- This function saves printing the final @return L.empty@ action in handlers
 -- that return unused or empty 'L.ByteString'.
@@ -67,10 +68,10 @@ voidHandler :: IO a                         -- ^ Target computation
             -> IO L.ByteString
 voidHandler = (>> return L.empty)
 
--- | Runs an effectful computation and then returns an empty 'L.ByteString'
+-- | Runs an effectful computation and then returns an empty 'L.ByteString'.
 --
--- The same as 'voidHandler' except it accepts an additional value which is
--- ignored. Implemented as
+-- The same as 'voidHandler' except it accepts an additional boolean value
+-- which is ignored. Implemented as
 --
 -- @
 -- voidHandler' = const . 'voidHandler'
@@ -90,7 +91,30 @@ voidHandler = (>> return L.empty)
 --
 -- @since 1.2.1
 voidHandler' :: IO a                        -- ^ Target computation
-             -> b                           -- ^ Ignored value
+             -> Bool                        -- ^ Ignored boolean value
              -> IO L.ByteString
 voidHandler' = const . voidHandler
+
+-- | A void service which does nothing and returns an empty 'L.ByteString'.
+--
+-- This can be useful for loading global data from the Nginx configuration in
+-- a more concise and declarative way.
+--
+-- For example, if data defined as
+--
+-- @
+-- newtype Conf = Conf Int deriving (Read, Show)
+--
+-- testLoadConf :: Conf -> t'NgxExport.Tools.Types.NgxExportService'
+-- testLoadConf = __/voidService/__
+--
+-- 'NgxExport.Tools.SimpleService.ngxExportSimpleServiceTyped' \'testLoadConf \'\'Conf 'NgxExport.Tools.SimpleService.SingleShotService'
+-- @
+--
+-- gets loaded from the Nginx configuration, then it can be accessed in the
+-- Haskell code via 'Data.IORef.IORef' data storage /storage_Conf_testLoadConf/.
+voidService :: a                            -- ^ Ignored configuration
+            -> Bool                         -- ^ Ignored boolean value
+            -> IO L.ByteString
+voidService = const $ voidHandler' $ return ()
 
