@@ -113,6 +113,8 @@ voidHandler' = const . voidHandler
 --
 -- gets loaded from the Nginx configuration, then it can be accessed in the
 -- Haskell code via 'Data.IORef.IORef' data storage /storage_Conf_testLoadConf/.
+--
+-- @since 1.2.3
 voidService :: a                            -- ^ Ignored configuration
             -> Bool                         -- ^ Ignored boolean value
             -> IO L.ByteString
