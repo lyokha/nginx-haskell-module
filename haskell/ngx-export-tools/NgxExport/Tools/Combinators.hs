@@ -70,8 +70,8 @@ voidHandler = (>> return L.empty)
 
 -- | Runs an effectful computation and then returns an empty 'L.ByteString'.
 --
--- The same as 'voidHandler' except it accepts an additional boolean value
--- which is ignored. Implemented as
+-- The same as 'voidHandler' except it accepts an additional value which is
+-- ignored. Implemented as
 --
 -- @
 -- voidHandler' = const . 'voidHandler'
@@ -91,7 +91,7 @@ voidHandler = (>> return L.empty)
 --
 -- @since 1.2.1
 voidHandler' :: IO a                        -- ^ Target computation
-             -> Bool                        -- ^ Ignored boolean value
+             -> b                           -- ^ Ignored value
              -> IO L.ByteString
 voidHandler' = const . voidHandler
 

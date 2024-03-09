@@ -1,3 +1,8 @@
+### 1.2.3.1
+
+- Stick to the original polymorphic type signature of *voidHandler'* to avoid
+  breakage of existing dependent code.
+
 ### 1.2.3
 
 - Added a void service *voidService* which helps to load global data from Nginx
