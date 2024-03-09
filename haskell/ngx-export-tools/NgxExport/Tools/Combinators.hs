@@ -100,7 +100,7 @@ voidHandler' = const . voidHandler
 -- This can be useful for loading global data from the Nginx configuration in
 -- a more concise and declarative way.
 --
--- For example, if data defined as
+-- For example, if data /Conf/ in
 --
 -- @
 -- newtype Conf = Conf Int deriving (Read, Show)
@@ -111,8 +111,9 @@ voidHandler' = const . voidHandler
 -- 'NgxExport.Tools.SimpleService.ngxExportSimpleServiceTyped' \'testLoadConf \'\'Conf 'NgxExport.Tools.SimpleService.SingleShotService'
 -- @
 --
--- gets loaded from the Nginx configuration, then it can be accessed in the
--- Haskell code via 'Data.IORef.IORef' data storage /storage_Conf_testLoadConf/.
+-- gets loaded by service /testLoadConf/ from the Nginx configuration, then it
+-- can be accessed in the Haskell code via 'Data.IORef.IORef' data storage
+-- /storage_Conf_testLoadConf/.
 --
 -- @since 1.2.3
 voidService :: a                            -- ^ Ignored configuration
