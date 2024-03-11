@@ -112,7 +112,7 @@ voidHandler' = const . voidHandler
 -- @
 --
 -- gets loaded by service /testLoadConf/ from the Nginx configuration, then it
--- can be accessed in the Haskell code via 'Data.IORef.IORef' data storage
+-- can be accessed in the Haskell code via t'Data.IORef.IORef' data storage
 -- /storage_Conf_testLoadConf/.
 --
 -- @since 1.2.3

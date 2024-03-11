@@ -361,7 +361,8 @@ ngxExportSimpleService f =
 -- be further accessed directly from this storage. The storage can be accessed
 -- from elsewhere by a name comprised of the name of the custom type and the
 -- name of the service connected by an underscore and prefixed as a whole word
--- with __/storage_/__. The stored data is wrapped in 'Maybe' container.
+-- with __/storage_/__. The stored data is wrapped in a 'Maybe' container which
+-- contains 'Nothing' until the initialization on the first service run.
 --
 -- When reading of the custom object fails on the first service run, the
 -- service terminates the worker process by calling 'terminateWorkerProcess'
@@ -376,19 +377,20 @@ ngxExportSimpleServiceTyped f c =
 -- | Exports a simple service of type
 --
 -- @
--- 'Data.Aeson.FromJSON' a => a -> 'Prelude.Bool' -> 'IO' 'L.ByteString'
+-- t'Data.Aeson.FromJSON' a => a -> 'Prelude.Bool' -> 'IO' 'L.ByteString'
 -- @
 --
 -- with specified name and service mode.
 --
 -- The service expects an object of a custom type implementing an instance of
--- 'Data.Aeson.FromJSON' at its first argument. For the sake of efficiency, this
--- object gets deserialized into a global 'IORef' data storage on the first
+-- t'Data.Aeson.FromJSON' at its first argument. For the sake of efficiency,
+-- this object gets deserialized into a global 'IORef' data storage on the first
 -- service run to be further accessed directly from this storage. The storage
 -- can be accessed from elsewhere by a name comprised of the name of the custom
 -- type and the name of the service connected by an underscore and prefixed as a
--- whole word with __/storage_/__. The stored data is wrapped in 'Maybe'
--- container.
+-- whole word with __/storage_/__. The stored data is wrapped in a 'Maybe'
+-- container which contains 'Nothing' until the initialization on the first
+-- service run.
 --
 -- When reading of the custom object fails on the first service run, the
 -- service terminates the worker process by calling 'terminateWorkerProcess'
