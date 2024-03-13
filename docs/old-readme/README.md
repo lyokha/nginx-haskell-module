@@ -21,6 +21,7 @@ Table of contents
 - [Service variables in shared memory and integration with other nginx modules](#service-variables-in-shared-memory-and-integration-with-other-nginx-modules)
 - [Shared services and global states](#shared-services-and-global-states)
 - [Service hooks](#service-hooks)
+- [Initialization hook](#initialization-hook)
 - [C plugins with low level access to the Nginx request object](#c-plugins-with-low-level-access-to-the-nginx-request-object)
 - [Reloading of haskell code and static content](#reloading-of-haskell-code-and-static-content)
 - [Wrapping haskell code organization](#wrapping-haskell-code-organization)
@@ -1339,6 +1340,21 @@ safely call a C function which would acquire related to Nginx context from the
 global Nginx variable *ngx_cycle* (which is accessible from the Haskell part via
 function *ngxCyclePtr*) for doing a variety of low level actions. Notice that
 unlike update callbacks, service hooks get triggered in all worker processes.
+
+Initialization hook
+-------------------
+
+The initialization hook is a special *synchronous* Haskell handler of type
+*IO()* which can be used to initialize global states before handling client
+requests. Note that *asynchronous* services that write global states on the
+first run cannot guarantee the data has been written before the start of
+processing client requests. It is not possible to register more than one
+initialization hooks. If required, data for the initialization hook can be
+passed via directive *haskell program_options* and handled with *getArgs* inside
+the hook.
+
+The hook is exported by *NGX_EXPORT_INIT_HOOK* (or *ngxExportInitHook* in
+*modular* approach).
 
 C plugins with low level access to the Nginx request object
 -----------------------------------------------------------

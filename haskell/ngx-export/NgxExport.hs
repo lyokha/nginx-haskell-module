@@ -4,7 +4,7 @@
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  NgxExport
--- Copyright   :  (c) Alexey Radkov 2016-2023
+-- Copyright   :  (c) Alexey Radkov 2016-2024
 -- License     :  BSD-style
 --
 -- Maintainer  :  alexey.radkov@gmail.com
@@ -47,6 +47,8 @@ module NgxExport (
                  ,ngxExportAsyncHandlerOnReqBody
     -- *** Service hooks
                  ,ngxExportServiceHook
+    -- *** Initialization hook
+                 ,ngxExportInitHook
     -- * Accessing Nginx global objects
     -- *** Opaque pointers
                  ,ngxCyclePtr
@@ -223,6 +225,9 @@ type AsyncHandlerImpl =
 type AsyncHandlerRBImpl =
     Ptr NgxStrType -> Ptr NgxStrType -> CInt -> AsyncHandlerImpl
 
+type InitHookImpl =
+    Ptr CString -> Ptr CInt -> IO CUInt
+
 do
     TyConI (DataD _ _ _ _ tCs _) <- reify ''NgxExport
     TyConI (DataD _ _ _ _ aCs _) <- reify ''NgxExportTypeAmbiguityTag
@@ -251,6 +256,12 @@ do
         ++
         map (\(c, t) -> tySynD (mkName $ nameBase c) [] $ return t) tCons
 
+fExport :: String -> Name -> Type -> Dec
+fExport = ((ForeignD .) .) . ExportF CCall
+
+fBody :: Q Exp -> [Q Clause]
+fBody b = [clause [] (normalB b) []]
+
 -- Exporter -> Ambiguity -> Handler impl -> Handler name (Function) -> Decls
 type NgxExportDec = Name -> Name -> Name -> Name -> Q [Dec]
 
@@ -263,14 +274,14 @@ ngxExport' mode e a h f = do
 #endif
     sequence
         [sigD nameFt typeFt
-        ,funD nameFt $ body [|exportType $(conE e `appE` modeF)|]
-        ,export ftName nameFt <$> typeFt
+        ,funD nameFt $ fBody [|exportType $(conE e `appE` modeF)|]
+        ,fExport ftName nameFt <$> typeFt
         ,sigD nameFta typeFta
-        ,funD nameFta $ body [|exportTypeAmbiguity $(conE a)|]
-        ,export ftaName nameFta <$> typeFta
+        ,funD nameFta $ fBody [|exportTypeAmbiguity $(conE a)|]
+        ,fExport ftaName nameFta <$> typeFta
         ,sigD nameF $ return typeF
-        ,funD nameF $ body [|$(varE h) $modeF|]
-        ,return $ export fName nameF typeF
+        ,funD nameF $ fBody [|$(varE h) $modeF|]
+        ,return $ fExport fName nameF typeF
         ]
     where modeF   = mode f
           fName   = "ngx_hs_" ++ nameBase f
@@ -281,8 +292,6 @@ ngxExport' mode e a h f = do
           ftaName = "ambiguity_" ++ fName
           nameFta = mkName ftaName
           typeFta = [t|IO CInt|]
-          body b  = [clause [] (normalB b) []]
-          export  = ((ForeignD .) .) . ExportF CCall
 
 ngxExport :: NgxExportDec
 ngxExport = ngxExport' varE
@@ -589,6 +598,35 @@ ngxExportAsyncHandlerOnReqBody =
 ngxExportServiceHook :: Name -> Q [Dec]
 ngxExportServiceHook =
     ngxExportC 'IOYY 'IOYYSync 'ioyYWithFree
+
+-- | Exports a function of type
+--
+-- @
+-- 'IO' ()
+-- @
+--
+-- as a synchronous initialization hook.
+--
+-- This can be used to initialize global data /synchronously/ before handling
+-- client requests. Note that asynchronous services that write global data on
+-- the first run cannot guarantee the data has been written before the start of
+-- processing client requests.
+--
+-- It is not possible to register more than one initialization hooks.
+--
+-- If required, data for the initialization hook can be passed via directive
+-- /haskell program_options/ and handled with 'System.Environment.getArgs'
+-- inside the hook.
+ngxExportInitHook :: Name -> Q [Dec]
+ngxExportInitHook f =
+    sequence
+        [sigD nameF typeF
+        ,funD nameF $ fBody [|initHook $(varE f)|]
+        ,fExport fName nameF <$> typeF
+        ]
+    where fName = "ngx_hsinit"
+          nameF = mkName fName
+          typeF = [t|InitHookImpl|]
 
 data ServiceHookInterrupt = ServiceHookInterrupt
 
@@ -1031,6 +1069,10 @@ unsafeHandler f x (I n) p pl pct plct pst =
         PtrLen t l <- B.unsafeUseAsCStringLen s return
         pokeCStringLen t l p pl
         return 0
+
+initHook :: IO () -> InitHookImpl
+initHook f p pl =
+    safeHandler p pl $ f >> return 0
 
 foreign export ccall ngxExportInstallSignalHandler :: IO ()
 ngxExportInstallSignalHandler :: IO ()

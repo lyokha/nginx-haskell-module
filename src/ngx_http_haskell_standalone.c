@@ -246,6 +246,12 @@ ngx_string(
 "    AUX_NGX.Ptr (AUX_NGX.StablePtr AUX_NGX_BSL.ByteString) -> \\\n"
 "    IO AUX_NGX.CUInt;\n\n"
 
+"#define NGX_EXPORT_INIT_HOOK(F) \\\n"
+"ngx_hsinit = aux_ngx_hs_init_hook (F); \\\n"
+"foreign export ccall ngx_hsinit :: \\\n"
+"    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CInt -> \\\n"
+"    IO AUX_NGX.CUInt;\n\n"
+
 "{-# LANGUAGE ViewPatterns, TupleSections #-}\n\n"
 
 "module NgxHaskellUserRuntime where\n\n"
@@ -981,6 +987,12 @@ ngx_string(
 "        (t, fromIntegral -> l) <- AUX_NGX_BS.unsafeUseAsCStringLen s return\n"
 "        aux_ngx_pokeCStringLen t l p pl\n"
 "        return 0\n\n"
+
+"aux_ngx_hs_init_hook ::\n"
+"    IO () -> AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CInt ->\n"
+"    IO AUX_NGX.CUInt\n"
+"aux_ngx_hs_init_hook f p pl =\n"
+"    aux_ngx_safeHandler p pl $ f >> return 0\n\n"
 
 "{- SPLICE: safe version of waitToSetLock as defined in System.Posix.IO -}\n\n"
 

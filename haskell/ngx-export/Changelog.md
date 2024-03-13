@@ -1,3 +1,8 @@
+### 1.7.10
+
+- Added exporter *ngxExportInitHook* which can be used for writing global data
+  *synchronously* before the start of handling client requests.
+
 ### 1.7.9
 
 - Reify types of internal handlers from their signatures.

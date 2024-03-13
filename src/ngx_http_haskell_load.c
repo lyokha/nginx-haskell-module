@@ -50,6 +50,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     typedef CInt                   (*version_f_t)(CInt *, CInt);
     typedef CInt                   (*type_checker_t)(void);
     typedef CInt                   (*ambiguity_checker_t)(void);
+    typedef CUInt                  (*init_hook_t)(char **, CInt *);
 
     typedef enum {
         ngx_http_haskell_handler_ambiguity_unambiguous = 0,
@@ -71,11 +72,15 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     CInt                             version[4], version_len;
     void                          (**exit_fn)(int);
     void                           (*install_signal_handler)(void);
+    init_hook_t                      ngx_hsinit;
     ngx_uint_t                       single_proc_fg;
 #if !(NGX_WIN32)
     struct sigaction                 sa;
 #endif
     ngx_str_t                        checker_name = ngx_null_string;
+    char                            *res = NULL;
+    CInt                             len = 0;
+    ngx_str_t                        reslen;
 
     mcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_haskell_module);
     if (mcf == NULL || !mcf->code_loaded) {
@@ -522,6 +527,19 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                           "actual type of haskell handler \"%V\" "
                           "does not match call samples", &handler_name);
+            goto unload_and_exit;
+        }
+    }
+
+    ngx_hsinit = (init_hook_t) dlsym(mcf->dl_handle, "ngx_hsinit");
+    if (dlerror() == NULL) {
+        if (ngx_hsinit(&res, &len) != 0) {
+            reslen.len = len;
+            reslen.data = (u_char *) res;
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                          "failed to run init hook \"ngx_hsinit\": %V",
+                          &reslen);
+            ngx_free(res);
             goto unload_and_exit;
         }
     }
