@@ -1348,13 +1348,37 @@ The initialization hook is a special *synchronous* Haskell handler of type
 *IO()* which can be used to initialize global states before handling client
 requests. Note that *asynchronous* services that write global states on the
 first run cannot guarantee the data has been written before the start of
-processing client requests. It is not possible to register more than one
-initialization hooks. If required, data for the initialization hook can be
-passed via directive *haskell program_options* and handled with *getArgs* inside
-the hook.
+processing client requests.
 
 The hook is exported by *NGX_EXPORT_INIT_HOOK* (or *ngxExportInitHook* in
-*modular* approach).
+*modular* approach). It is not possible to register more than one initialization
+hooks.
+
+If required, data for the initialization hook can be passed in directive
+*haskell program_options* and handled with *getArgs* inside the hook. For
+example, let's read an integer value from *program_options* and update a
+*Maybe Int* storage right after the start of the Haskell runtime.
+
+```haskell
+import           System.Environment
+
+-- ...
+
+level :: IORef (Maybe Int)
+level = unsafePerformIO $ newIORef Nothing
+{-# NOINLINE level #-}
+
+initLevel :: IO ()
+initLevel = do
+    v : _ <- getArgs
+    let l = read v
+    l `seq` writeIORef level (Just l)
+ngxExportInitHook 'initLevel
+```
+
+```nginx
+    haskell program_options 4;
+```
 
 C plugins with low level access to the Nginx request object
 -----------------------------------------------------------

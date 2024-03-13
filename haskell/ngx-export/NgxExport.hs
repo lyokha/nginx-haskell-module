@@ -614,7 +614,7 @@ ngxExportServiceHook =
 --
 -- It is not possible to register more than one initialization hooks.
 --
--- If required, data for the initialization hook can be passed via directive
+-- If required, data for the initialization hook can be passed in directive
 -- /haskell program_options/ and handled with 'System.Environment.getArgs'
 -- inside the hook.
 ngxExportInitHook :: Name -> Q [Dec]
