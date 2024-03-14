@@ -28,6 +28,7 @@ static const ngx_str_t  haskell_module_type_checker_prefix =
 ngx_string("type_");
 static const ngx_str_t  haskell_module_ambiguity_checker_prefix =
 ngx_string("ambiguity_");
+static const char  *ngx_hsinit = "ngx_hsinit_";
 
 /* FIXME: installing signal handlers ("yes", which is default) makes a worker
  * defunct when sending SIGINT to it, disabling signal handlers by setting "no"
@@ -72,12 +73,13 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     CInt                             version[4], version_len;
     void                          (**exit_fn)(int);
     void                           (*install_signal_handler)(void);
-    init_hook_t                      ngx_hsinit;
+    init_hook_t                      ngx_hsinit_hook;
     ngx_uint_t                       single_proc_fg;
 #if !(NGX_WIN32)
     struct sigaction                 sa;
 #endif
     ngx_str_t                        checker_name = ngx_null_string;
+    Dl_info                          dlinfo;
     char                            *res = NULL;
     CInt                             len = 0;
     ngx_str_t                        reslen;
@@ -459,7 +461,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
                    handlers[i].name.data, handlers[i].name.len + 1);
 
         ambiguity_checker = (ambiguity_checker_t) dlsym(mcf->dl_handle,
-                                                (char*) checker_name.data);
+                                                (char *) checker_name.data);
         dl_error = dlerror();
         if (dl_error != NULL) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
@@ -531,18 +533,33 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         }
     }
 
-    ngx_hsinit = (init_hook_t) dlsym(mcf->dl_handle, "ngx_hsinit");
+    ngx_hsinit_hook = (init_hook_t) dlsym(mcf->dl_handle, ngx_hsinit);
     if (dlerror() == NULL) {
-        if (ngx_hsinit(&res, &len) != 0) {
+        if (dladdr(ngx_hsinit_hook, &dlinfo) != 0) {
+            if (ngx_strcmp(dlinfo.dli_fname, mcf->lib_path.data) != 0) {
+                ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0,
+                              "init hook \"%s\" was found in %s, ignored",
+                              ngx_hsinit, dlinfo.dli_fname);
+                goto cleanup_checker_name;
+            }
+        } else {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                          "failed to get info about init hook \"%s\"",
+                          ngx_hsinit);
+            goto unload_and_exit;
+        }
+        if (ngx_hsinit_hook(&res, &len) != 0) {
             reslen.len = len;
             reslen.data = (u_char *) res;
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                          "failed to run init hook \"ngx_hsinit\": %V",
-                          &reslen);
+                          "failed to run init hook \"%s\": %V",
+                          ngx_hsinit, &reslen);
             ngx_free(res);
             goto unload_and_exit;
         }
     }
+
+cleanup_checker_name:
 
     if (checker_name.data != NULL) {
         ngx_pfree(cycle->pool, checker_name.data);

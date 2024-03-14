@@ -247,8 +247,8 @@ ngx_string(
 "    IO AUX_NGX.CUInt;\n\n"
 
 "#define NGX_EXPORT_INIT_HOOK(F) \\\n"
-"ngx_hsinit = aux_ngx_hs_init_hook (F); \\\n"
-"foreign export ccall ngx_hsinit :: \\\n"
+"ngx_hsinit_ = aux_ngx_hs_init_hook (F); \\\n"
+"foreign export ccall ngx_hsinit_ :: \\\n"
 "    AUX_NGX.Ptr AUX_NGX.CString -> AUX_NGX.Ptr AUX_NGX.CInt -> \\\n"
 "    IO AUX_NGX.CUInt;\n\n"
 

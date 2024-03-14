@@ -41,7 +41,7 @@ static const ngx_str_t  ghc_rtslib_thr_debug[2] = {
     ngx_string(" -lHSrts_thr_debug-ghc$(ghc --numeric-version)"),
     ngx_string(" -flink-rts -threaded -debug")
 };
-static const char* haskell_version_cmd = "ghc --numeric-version";
+static const char  *haskell_version_cmd = "ghc --numeric-version";
 
 
 char *

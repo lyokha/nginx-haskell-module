@@ -612,11 +612,15 @@ ngxExportServiceHook =
 -- the first run cannot guarantee the data has been written before the start of
 -- processing client requests.
 --
--- It is not possible to register more than one initialization hooks.
+-- It is not possible to load more than one initialization hook. The hook is
+-- only loaded if it has been declared in the target library, initialization
+-- hooks found in dependent libraries are ignored.
 --
 -- If required, data for the initialization hook can be passed in directive
 -- /haskell program_options/ and handled with 'System.Environment.getArgs'
 -- inside the hook.
+--
+-- @since 1.7.10
 ngxExportInitHook :: Name -> Q [Dec]
 ngxExportInitHook f =
     sequence
@@ -624,7 +628,7 @@ ngxExportInitHook f =
         ,funD nameF $ fBody [|initHook $(varE f)|]
         ,fExport fName nameF <$> typeF
         ]
-    where fName = "ngx_hsinit"
+    where fName = "ngx_hsinit_"
           nameF = mkName fName
           typeF = [t|InitHookImpl|]
 

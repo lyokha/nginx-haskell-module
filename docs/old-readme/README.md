@@ -1350,9 +1350,10 @@ requests. Note that *asynchronous* services that write global states on the
 first run cannot guarantee the data has been written before the start of
 processing client requests.
 
-The hook is exported by *NGX_EXPORT_INIT_HOOK* (or *ngxExportInitHook* in
-*modular* approach). It is not possible to register more than one initialization
-hooks.
+The initialization hook is exported by *NGX_EXPORT_INIT_HOOK* (or
+*ngxExportInitHook* in *modular* approach). It is not possible to load more than
+one initialization hook. The hook is only loaded if it has been declared in the
+target library, initialization hooks found in dependent libraries are ignored.
 
 If required, data for the initialization hook can be passed in directive
 *haskell program_options* and handled with *getArgs* inside the hook. For
@@ -1370,15 +1371,18 @@ level = unsafePerformIO $ newIORef Nothing
 
 initLevel :: IO ()
 initLevel = do
-    v : _ <- getArgs
+    _ : v : _ <- dropWhile (/= "-level") <$> getArgs
     let l = read v
     l `seq` writeIORef level (Just l)
 ngxExportInitHook 'initLevel
 ```
 
 ```nginx
-    haskell program_options 4;
+    haskell program_options -level 4;
 ```
+
+Note that the initialization hook gets run automatically, without the need for
+any Nginx directives to control it.
 
 C plugins with low level access to the Nginx request object
 -----------------------------------------------------------
@@ -1656,7 +1660,7 @@ Some facts about efficiency
       Strings returned by functions of types *Y_Y*, *IOY_Y* and all async
       handlers (i.e. by all functions that return lazy bytestrings except for
       content handlers) are copied into a single buffer, but only when
-      underlying lazy bytestrings have more than one chunks.
+      underlying lazy bytestrings have more than one chunk.
     + Lifetime of handlers' arguments of bytestring type in all variable and
       content handlers does not extend beyond current request's lifetime. It
       means that the arguments or their parts must not be saved in global

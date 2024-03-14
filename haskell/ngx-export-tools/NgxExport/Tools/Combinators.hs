@@ -115,6 +115,13 @@ voidHandler' = const . voidHandler
 -- can be accessed in the Haskell code via t'Data.IORef.IORef' data storage
 -- /storage_Conf_testLoadConf/.
 --
+-- Note that /voidService/ is still an /asynchronous/ service which means that
+-- the global data it loads may appear uninitialized in very early client
+-- requests. To ensure that the data gets loaded before processing client
+-- requests, consider using the /synchronous/ initialization hook
+-- 'NgxExport.ngxExportInitHook' as a distinct solution or in conjunction with
+-- /voidService/.
+--
 -- @since 1.2.3
 voidService :: a                            -- ^ Ignored configuration
             -> Bool                         -- ^ Ignored boolean value

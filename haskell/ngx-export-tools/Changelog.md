@@ -1,3 +1,7 @@
+### 1.2.3.2
+
+- Suggest the synchronous initialization hook in documentation on *voidService*.
+
 ### 1.2.3.1
 
 - Stick to the original polymorphic type signature of *voidHandler'* to avoid
