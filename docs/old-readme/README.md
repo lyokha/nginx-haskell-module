@@ -1352,8 +1352,9 @@ processing client requests.
 
 The initialization hook is exported by *NGX_EXPORT_INIT_HOOK* (or
 *ngxExportInitHook* in *modular* approach). It is not possible to load more than
-one initialization hook. The hook is only loaded if it has been declared in the
-target library, initialization hooks found in dependent libraries are ignored.
+one initialization hook. The hook is only loaded if it has been directly
+declared in the target library, initialization hooks found in dependent
+libraries are ignored.
 
 If required, data for the initialization hook can be passed in directive
 *haskell program_options* and handled with *getArgs* inside the hook. For

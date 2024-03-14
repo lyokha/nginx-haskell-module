@@ -540,7 +540,14 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
                 ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0,
                               "init hook \"%s\" was found in %s, ignored",
                               ngx_hsinit, dlinfo.dli_fname);
-                goto cleanup_checker_name;
+            } else if (ngx_hsinit_hook(&res, &len) != 0) {
+                reslen.len = len;
+                reslen.data = (u_char *) res;
+                ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                              "failed to run init hook \"%s\": %V",
+                              ngx_hsinit, &reslen);
+                ngx_free(res);
+                goto unload_and_exit;
             }
         } else {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
@@ -548,18 +555,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
                           ngx_hsinit);
             goto unload_and_exit;
         }
-        if (ngx_hsinit_hook(&res, &len) != 0) {
-            reslen.len = len;
-            reslen.data = (u_char *) res;
-            ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                          "failed to run init hook \"%s\": %V",
-                          ngx_hsinit, &reslen);
-            ngx_free(res);
-            goto unload_and_exit;
-        }
     }
-
-cleanup_checker_name:
 
     if (checker_name.data != NULL) {
         ngx_pfree(cycle->pool, checker_name.data);

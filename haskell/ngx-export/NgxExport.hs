@@ -599,7 +599,7 @@ ngxExportServiceHook :: Name -> Q [Dec]
 ngxExportServiceHook =
     ngxExportC 'IOYY 'IOYYSync 'ioyYWithFree
 
--- | Exports a function of type
+-- | Exports an action of type
 --
 -- @
 -- 'IO' ()
@@ -613,12 +613,12 @@ ngxExportServiceHook =
 -- processing client requests.
 --
 -- It is not possible to load more than one initialization hook. The hook is
--- only loaded if it has been declared in the target library, initialization
--- hooks found in dependent libraries are ignored.
+-- only loaded if it has been directly declared in the target library,
+-- initialization hooks found in dependent libraries are ignored.
 --
--- If required, data for the initialization hook can be passed in directive
--- /haskell program_options/ and handled with 'System.Environment.getArgs'
--- inside the hook.
+-- The hook is not controlled by Nginx directives. If required, data for the
+-- initialization hook can be passed in directive /haskell program_options/ and
+-- handled with 'System.Environment.getArgs' inside it.
 --
 -- @since 1.7.10
 ngxExportInitHook :: Name -> Q [Dec]
