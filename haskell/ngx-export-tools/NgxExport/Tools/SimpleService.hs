@@ -257,7 +257,7 @@ import           System.IO.Unsafe (unsafePerformIO)
 -- Note that the preloaded value gets evaluated inside the hook to spot any
 -- parse errors inplace before the start of processing client requests.
 --
--- ==== File /nginx.conf/
+-- ==== File /nginx.conf/: read data for storage_Int_testReadInt
 -- @
 --     haskell program_options __/--testReadInt/__ 800;
 --
