@@ -120,7 +120,7 @@ voidHandler' = const . voidHandler
 -- requests. To ensure that the data gets loaded before processing client
 -- requests, consider using the /synchronous/ initialization hook
 -- 'NgxExport.ngxExportInitHook' as a distinct solution or in conjunction with
--- /voidService/.
+-- other services.
 --
 -- @since 1.2.3
 voidService :: a                            -- ^ Ignored configuration

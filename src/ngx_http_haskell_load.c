@@ -28,7 +28,7 @@ static const ngx_str_t  haskell_module_type_checker_prefix =
 ngx_string("type_");
 static const ngx_str_t  haskell_module_ambiguity_checker_prefix =
 ngx_string("ambiguity_");
-static const char  *ngx_hsinit = "ngx_hsinit_";
+static const char  *ngx_hsinit_hook_name = "ngx_hsinit_";
 
 /* FIXME: installing signal handlers ("yes", which is default) makes a worker
  * defunct when sending SIGINT to it, disabling signal handlers by setting "no"
@@ -533,26 +533,26 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         }
     }
 
-    ngx_hsinit_hook = (init_hook_t) dlsym(mcf->dl_handle, ngx_hsinit);
+    ngx_hsinit_hook = (init_hook_t) dlsym(mcf->dl_handle, ngx_hsinit_hook_name);
     if (dlerror() == NULL) {
         if (dladdr(ngx_hsinit_hook, &dlinfo) != 0) {
             if (ngx_strcmp(dlinfo.dli_fname, mcf->lib_path.data) != 0) {
                 ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0,
                               "init hook \"%s\" was found in %s, ignored",
-                              ngx_hsinit, dlinfo.dli_fname);
+                              ngx_hsinit_hook_name, dlinfo.dli_fname);
             } else if (ngx_hsinit_hook(&res, &len) != 0) {
                 reslen.len = len;
                 reslen.data = (u_char *) res;
                 ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                               "failed to run init hook \"%s\": %V",
-                              ngx_hsinit, &reslen);
+                              ngx_hsinit_hook_name, &reslen);
                 ngx_free(res);
                 goto unload_and_exit;
             }
         } else {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                           "failed to get info about init hook \"%s\"",
-                          ngx_hsinit);
+                          ngx_hsinit_hook_name);
             goto unload_and_exit;
         }
     }
