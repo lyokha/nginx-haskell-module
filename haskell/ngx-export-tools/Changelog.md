@@ -1,6 +1,9 @@
 ### 1.2.3.2
 
-- Suggest the synchronous initialization hook in documentation on *voidService*.
+- Suggest the synchronous initialization hook *ngxExportInitHook* from
+  *ngx-export &ge; 1.7.10* in documentation on *voidService*.
+- Added an example of using *ngxExportInitHook* in conjunction with typed simple
+  services.
 
 ### 1.2.3.1
 

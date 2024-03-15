@@ -13,6 +13,7 @@ import           Data.Aeson
 import           Data.IORef
 import           Control.Monad
 import           GHC.Generics
+import           System.Environment
 
 test :: ByteString -> Bool -> IO L.ByteString
 test = const . return . L.fromStrict
@@ -96,4 +97,11 @@ testLoadConfStorage :: ByteString -> IO L.ByteString
 testLoadConfStorage = const $
     showAsLazyByteString <$> readIORef storage_Conf_testLoadConf
 ngxExportIOYY 'testLoadConfStorage
+
+initTestReadInt :: IO ()
+initTestReadInt = do
+    _ : v : _ <- dropWhile (/= "--testReadInt") <$> getArgs
+    let i = read v
+    i `seq` writeIORef storage_Int_testReadInt (Just i)
+ngxExportInitHook 'initTestReadInt
 

@@ -17,6 +17,9 @@ module NgxExport.Tools.SimpleService (
     -- * Exporters of simple services
     -- $description
 
+    -- *** Preloading storages of typed simple services
+    -- $preload
+
     -- * Exported data and functions
                                       ServiceMode (..)
                                      ,ngxExportSimpleService
@@ -104,7 +107,7 @@ import           System.IO.Unsafe (unsafePerformIO)
 --
 -- testConfStorage :: ByteString -> IO L.ByteString
 -- __/testConfStorage/__ = const $
---     showAsLazyByteString \<$\> readIORef __/storage_Conf_/__testReadConf
+--     showAsLazyByteString \<$\> readIORef __/storage_Conf_testReadConf/__
 -- 'ngxExportIOYY' \'testConfStorage
 --
 -- data ConfWithDelay = ConfWithDelay { delay :: 'TimeInterval'
@@ -228,6 +231,46 @@ import           System.IO.Unsafe (unsafePerformIO)
 -- >   hs_testReadConfJSON: ConfJSONCon1 56
 -- > Storages of service variables:
 -- >   hs_testConfStorage: Just (Conf 20)
+--
+-- $preload
+--
+-- Storages of typed simple services can be preloaded /synchronously/ with
+-- 'ngxExportInitHook'. This is useful if a storage gets accessed immediately
+-- after the start of processing client requests in a request handler which
+-- expects that the storage has already been initialized (for example, a request
+-- handler may unpack the storage with 'fromJust' without checking errors).
+--
+-- ==== File /test_tools.hs/: preload storage_Int_testReadInt
+-- @
+-- import           System.Environment
+--
+-- -- ...
+--
+-- initTestReadInt :: IO ()
+-- __/initTestReadInt/__ = do
+--     _ : v : _ \<- dropWhile (\/= \"__/--testReadInt/__\") \<$\> 'System.Environment.getArgs'
+--     let i = read v
+--     i \`seq\` writeIORef __/storage_Int_testReadInt/__ (Just i)
+-- 'ngxExportInitHook' \'initTestReadInt
+-- @
+--
+-- Note that the preloaded value gets evaluated inplace to spot parse errors
+-- before the start of processing client requests.
+--
+-- ==== File /nginx.conf/
+-- @
+--     haskell program_options __/--testReadInt/__ 800;
+--
+--     # ...
+--
+--     haskell_run_service __/simpleService_testReadInt/__
+--             $hs_testReadInt
+--             __/-/__;
+-- @
+--
+-- The preloaded value gets passed via directive /haskell program_options/.
+-- The value in the service declaration can be replaced by any lexeme as it
+-- won't be parsed. In this example, it was replaced by a dash.
 
 -- | Defines a sleeping strategy.
 data ServiceMode
