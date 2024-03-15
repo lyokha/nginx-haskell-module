@@ -254,8 +254,8 @@ import           System.IO.Unsafe (unsafePerformIO)
 -- 'ngxExportInitHook' \'initTestReadInt
 -- @
 --
--- Note that the preloaded value gets evaluated inplace to spot parse errors
--- before the start of processing client requests.
+-- Note that the preloaded value gets evaluated inside the hook to spot any
+-- parse errors inplace before the start of processing client requests.
 --
 -- ==== File /nginx.conf/
 -- @
@@ -268,9 +268,9 @@ import           System.IO.Unsafe (unsafePerformIO)
 --             __/-/__;
 -- @
 --
--- The preloaded value gets passed via directive /haskell program_options/.
--- The value in the service declaration can be replaced by any lexeme as it
--- won't be parsed. In this example, it was replaced by a dash.
+-- The preloaded value gets passed in directive /haskell program_options/. The
+-- value in the service declaration can be replaced by any lexeme as it won't
+-- be parsed. In this example, it was replaced by a dash.
 
 -- | Defines a sleeping strategy.
 data ServiceMode
