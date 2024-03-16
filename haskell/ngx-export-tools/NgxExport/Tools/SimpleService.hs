@@ -54,14 +54,27 @@ import           System.IO.Unsafe (unsafePerformIO)
 --
 -- This module implements a number of exporters for /simple services/. Here
 -- /simplicity/ means avoiding boilerplate code regarding to efficient reading
--- of typed configurations and timed restarts of services. All simple services
--- have type
+-- of typed configurations and timed restarts of services.
+--
+-- All simple services are classified as /untyped/ or /typed/. The untyped
+-- services have type
 --
 -- @
 -- 'ByteString' -> 'Prelude.Bool' -> 'IO' 'L.ByteString'
 -- @
 --
--- which corresponds to the type of usual services from module "NgxExport".
+-- which corresponds to the type of usual services from module "NgxExport". The
+-- typed services may have two different types:
+--
+-- @
+-- 'Read' a => a -> 'Prelude.Bool' -> 'IO' 'L.ByteString'
+-- @
+-- @
+-- t'Data.Aeson.FromJSON' a => a -> 'Prelude.Bool' -> 'IO' 'L.ByteString'
+-- @
+--
+-- The choice of a certain type of a typed service depends on the format in
+-- which the typed data will be passed from the Nginx configuration.
 --
 -- Below is a simple example.
 --
