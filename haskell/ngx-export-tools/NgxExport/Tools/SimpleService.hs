@@ -302,21 +302,14 @@ ngxExportSimpleService' f c m = do
         hasConf = isJust c
         (sNameC, typeC, readConf, unreadableConfMsg) =
             if hasConf
-                then let (tName, isJSON) = first nameBase $ fromJust c
-                     in (mkName $ "storage_" ++ tName ++ '_' : nameF
-                        -- FIXME: using base name of the type means that it is
-                        -- not possible to pass here qualified types from
-                        -- external modules. Using showName instead of nameBase
-                        -- won't help, as it adds static qualified names like
-                        -- GHC.Types.Int that can be unexpected in the context
-                        -- of the user's module scope, instead of adding the
-                        -- dynamic namespace (possibly not qualified) specified
-                        -- in the import clause of the user's module.
-                        ,conT $ mkName tName
+                then let ((tName, tNameBase), isJSON) =
+                             first (id &&& nameBase) $ fromJust c
+                     in (mkName $ "storage_" ++ tNameBase ++ '_' : nameF
+                        ,conT tName
                         ,if isJSON
                              then [|readFromByteStringAsJSON|]
                              else [|readFromByteString|]
-                        ,"Configuration " ++ tName ++ " is not readable"
+                        ,"Configuration " ++ tNameBase ++ " is not readable"
                         )
                 else undefined
         initConf =

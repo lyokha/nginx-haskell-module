@@ -1,3 +1,9 @@
+### 1.2.4
+
+- Use qualified names of custom types in the implementation of typed services.
+  This enables qualified imports of custom types in the module where the service
+  gets instantiated.
+
 ### 1.2.3.2
 
 - Suggest the synchronous initialization hook *ngxExportInitHook* from
