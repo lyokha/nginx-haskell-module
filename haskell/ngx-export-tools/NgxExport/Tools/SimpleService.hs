@@ -64,7 +64,8 @@ import           System.IO.Unsafe (unsafePerformIO)
 -- @
 --
 -- which corresponds to the type of usual services from module "NgxExport". The
--- typed services may have two different types:
+-- typed services are backed by functions from module "NgxExport.Tools.Read"
+-- and may have two different types:
 --
 -- @
 -- 'Read' a => a -> 'Prelude.Bool' -> 'IO' 'L.ByteString'
