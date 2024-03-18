@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell, TupleSections #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -299,11 +299,11 @@ ngxExportSimpleService' f c m = do
     fstRun <- newName "fstRun_"
     let nameF = nameBase f
         nameSsf = mkName $ "simpleService_" ++ nameF
-        hasConf = isJust c
+        (hasConf, conf) = maybe (False, undefined) (True ,) c
         (sNameC, typeC, readConf, unreadableConfMsg) =
             if hasConf
                 then let ((tName, tNameBase), isJSON) =
-                             first (id &&& nameBase) $ fromJust c
+                             first (id &&& nameBase) conf
                      in (mkName $ "storage_" ++ tNameBase ++ '_' : nameF
                         ,conT tName
                         ,if isJSON
