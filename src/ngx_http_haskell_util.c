@@ -278,3 +278,62 @@ ngx_http_haskell_consume_from_async_event_channel(ngx_fd_t fd)
     return res;
 }
 
+
+char *
+ngx_http_haskell_cf_read_file(ngx_conf_t *cf, ngx_str_t path, ngx_str_t *buf)
+{
+    ngx_file_info_t  file_info;
+    ngx_file_t       file;
+    size_t           file_size;
+
+    ngx_memzero(&file, sizeof(ngx_file_t));
+
+    file.name = path;
+    file.log = cf->log;
+
+    if (ngx_file_info(file.name.data, &file_info) == NGX_FILE_ERROR) {
+        ngx_conf_log_error(NGX_LOG_ERR, cf, ngx_errno,
+                           ngx_file_info_n " \"%V\" failed", &file.name);
+        return NGX_CONF_ERROR;
+    }
+
+    file_size = (size_t) ngx_file_size(&file_info);
+
+    if (file_size == 0) {
+        ngx_str_null(buf);
+        return NGX_CONF_OK;
+    }
+
+    file.fd = ngx_open_file(file.name.data,
+                               NGX_FILE_RDONLY, NGX_FILE_OPEN, 0);
+
+    if (file.fd == NGX_INVALID_FILE) {
+        ngx_conf_log_error(NGX_LOG_ERR, cf, ngx_errno,
+                           ngx_open_file_n " \"%V\" failed", &file.name);
+        return NGX_CONF_ERROR;
+    }
+
+    buf->data = ngx_pnalloc(cf->pool, file_size + 1);
+    if (buf->data == NULL) {
+        ngx_conf_log_error(NGX_LOG_ERR, cf, 0,
+                    "failed to allocate memory to read \"%V\"", &file.name);
+        return NGX_CONF_ERROR;
+    }
+
+    if (ngx_read_file(&file, buf->data, file_size, 0) == NGX_ERROR) {
+        ngx_conf_log_error(NGX_LOG_ERR, cf, ngx_errno,
+                           ngx_read_file_n " \"%V\" failed", &file.name);
+        return NGX_CONF_ERROR;
+    }
+
+    buf->data[file_size] = '\0';
+    buf->len = file_size;
+
+    if (ngx_close_file(file.fd) == NGX_FILE_ERROR) {
+        ngx_conf_log_error(NGX_LOG_ERR, cf, ngx_errno,
+                           ngx_close_file_n " \"%V\" failed", &file.name);
+    }
+
+    return NGX_CONF_OK;
+}
+

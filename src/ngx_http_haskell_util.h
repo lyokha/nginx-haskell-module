@@ -31,6 +31,8 @@ ngx_int_t ngx_http_haskell_open_async_event_channel(ngx_fd_t fd[2]);
 void ngx_http_haskell_close_async_event_channel(ngx_log_t *log, ngx_fd_t fd[2]);
 ssize_t ngx_http_haskell_signal_async_event_channel(ngx_fd_t fd);
 ssize_t ngx_http_haskell_consume_from_async_event_channel(ngx_fd_t fd);
+char *ngx_http_haskell_cf_read_file(ngx_conf_t *cf, ngx_str_t path,
+    ngx_str_t *buf);
 
 
 extern const ngx_uint_t ngx_http_haskell_module_use_eventfd_channel;

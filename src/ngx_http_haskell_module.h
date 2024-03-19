@@ -139,6 +139,7 @@ typedef struct {
     ngx_array_t                                rts_options;
     ngx_array_t                                program_options;
     ngx_str_t                                  lib_path;
+    ngx_array_t                                sysreads;
     ngx_array_t                                handlers;
     void                                      *dl_handle;
     void                                     (*hs_init)(int *, char ***);

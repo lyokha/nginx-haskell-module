@@ -80,6 +80,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
 #endif
     ngx_str_t                        checker_name = ngx_null_string;
     Dl_info                          dlinfo;
+    ngx_str_t                       *sysreads;
     char                            *res = NULL;
     CInt                             len = 0;
     ngx_str_t                        reslen;
@@ -554,6 +555,16 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
                           "failed to get info about init hook \"%s\"",
                           ngx_hsinit_hook_name);
             goto unload_and_exit;
+        }
+    }
+
+    sysreads = mcf->sysreads.elts;
+
+    for (i = 0; i < mcf->sysreads.nelts; i++) {
+        if (sysreads[i].len > 0) {
+            /* memzero sysreads as they may contain secrets */
+            ngx_memzero(sysreads[i].data, sysreads[i].len);
+            ngx_pfree(mcf->sysreads.pool, sysreads[i].data);
         }
     }
 

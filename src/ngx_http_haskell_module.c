@@ -387,6 +387,12 @@ ngx_http_haskell_create_main_conf(ngx_conf_t *cf)
         return NULL;
     }
 
+    if (ngx_array_init(&mcf->sysreads, cf->pool, 1,
+                       sizeof(ngx_str_t)) != NGX_OK)
+    {
+        return NULL;
+    }
+
     if (ngx_array_init(&mcf->handlers, cf->pool, 1,
                        sizeof(ngx_http_haskell_handler_t)) != NGX_OK)
     {
@@ -1149,6 +1155,8 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_uint_t                      has_threaded = 0, has_debug = 0;
     ngx_uint_t                      has_wrap_mode = 0;
     ngx_uint_t                      shift_modes;
+    ngx_str_t                      *sysread;
+    ngx_uint_t                      do_sysread = 0;
     char                          **options;
     ngx_http_variable_t            *v;
     ngx_int_t                       len;
@@ -1247,6 +1255,25 @@ ngx_http_haskell(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
         options = mcf->program_options.elts;
         for (i = 2; (ngx_uint_t) i < cf->args->nelts; i++) {
+            if (do_sysread) {
+                do_sysread = 0;
+                sysread = ngx_array_push(&mcf->sysreads);
+                if (sysread == NULL) {
+                    return NGX_CONF_ERROR;
+                }
+                if (ngx_http_haskell_cf_read_file(cf, value[i], sysread)
+                    != NGX_CONF_OK)
+                {
+                    return NGX_CONF_ERROR;
+                }
+                options[i - 2] = (char *) sysread->data;
+                continue;
+            }
+            if (value[i].len > 10
+                && ngx_strncmp(value[i].data, "--sysread:", 10) == 0)
+            {
+                do_sysread = 1;
+            }
             options[i - 2] = (char *) value[i].data;
         }
 
