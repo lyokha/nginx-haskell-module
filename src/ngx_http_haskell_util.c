@@ -304,8 +304,7 @@ ngx_http_haskell_cf_read_file(ngx_conf_t *cf, ngx_str_t path, ngx_str_t *buf)
         return NGX_CONF_OK;
     }
 
-    file.fd = ngx_open_file(file.name.data,
-                               NGX_FILE_RDONLY, NGX_FILE_OPEN, 0);
+    file.fd = ngx_open_file(file.name.data, NGX_FILE_RDONLY, NGX_FILE_OPEN, 0);
 
     if (file.fd == NGX_INVALID_FILE) {
         ngx_conf_log_error(NGX_LOG_ERR, cf, ngx_errno,
@@ -316,7 +315,8 @@ ngx_http_haskell_cf_read_file(ngx_conf_t *cf, ngx_str_t path, ngx_str_t *buf)
     buf->data = ngx_pnalloc(cf->pool, file_size + 1);
     if (buf->data == NULL) {
         ngx_conf_log_error(NGX_LOG_ERR, cf, 0,
-                    "failed to allocate memory to read \"%V\"", &file.name);
+                           "failed to allocate memory for reading \"%V\"",
+                           &file.name);
         return NGX_CONF_ERROR;
     }
 
