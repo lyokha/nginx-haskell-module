@@ -67,8 +67,11 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     char                            *dl_error;
     char                           **argv = NULL;
     int                              argc;
+    char                          ***prog_argv = NULL;
+    int                             *prog_argc;
+    char                            *arg_value;
     u_char                          *pid_value;
-    size_t                           pid_len;
+    size_t                           arg_len, pid_len;
     version_f_t                      version_f = NULL;
     CInt                             version[4], version_len;
     void                          (**exit_fn)(int);
@@ -81,6 +84,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     ngx_str_t                        checker_name = ngx_null_string;
     Dl_info                          dlinfo;
     ngx_str_t                       *sysreads;
+    ngx_uint_t                       do_sysread = 0;
     char                            *res = NULL;
     CInt                             len = 0;
     ngx_str_t                        reslen;
@@ -150,6 +154,24 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
                       "failed to load function \"hs_free_stable_ptr\": %s",
                       dl_error);
         goto dlclose_and_exit;
+    }
+
+    prog_argc = (int *) dlsym(mcf->dl_handle, "prog_argc");
+    dl_error = dlerror();
+    if (dl_error != NULL) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                      "failed to load ghc argc \"prog_argc\": %s",
+                      dl_error);
+        goto unload_and_exit;
+    }
+
+    prog_argv = (char ***) dlsym(mcf->dl_handle, "prog_argv");
+    dl_error = dlerror();
+    if (dl_error != NULL) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                      "failed to load ghc argv \"prog_argv\": %s",
+                      dl_error);
+        goto unload_and_exit;
     }
 
     mcf->terminate_async_task = (void (*)(HsStablePtr)) dlsym(mcf->dl_handle,
@@ -560,11 +582,25 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
 
     sysreads = mcf->sysreads.elts;
 
+    /* memzero sysreads as they may contain secrets */
     for (i = 0; i < mcf->sysreads.nelts; i++) {
         if (sysreads[i].len > 0) {
-            /* memzero sysreads as they may contain secrets */
             ngx_memzero(sysreads[i].data, sysreads[i].len);
             ngx_pfree(mcf->sysreads.pool, sysreads[i].data);
+        }
+    }
+
+    /* memzero ghc prog_argv elements exposing sysread data too */
+    for (i = 1; i < (ngx_uint_t) *prog_argc; i++) {
+        arg_value = (*prog_argv)[i];
+        if (do_sysread) {
+            do_sysread = 0;
+            arg_len = ngx_strlen(arg_value);
+            ngx_memzero(arg_value, arg_len);
+            continue;
+        }
+        if (ngx_strncmp(arg_value, "--sysread:", 10) == 0) {
+            do_sysread = 1;
         }
     }
 
