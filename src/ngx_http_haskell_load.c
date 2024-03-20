@@ -62,6 +62,7 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
     } ngx_http_haskell_handler_ambiguity_e;
 
     ngx_uint_t                       i;
+    ngx_int_t                        j;
     ngx_http_haskell_main_conf_t    *mcf;
     ngx_http_haskell_handler_t      *handlers;
     char                            *dl_error;
@@ -156,24 +157,6 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         goto dlclose_and_exit;
     }
 
-    prog_argc = (int *) dlsym(mcf->dl_handle, "prog_argc");
-    dl_error = dlerror();
-    if (dl_error != NULL) {
-        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                      "failed to load ghc argc \"prog_argc\": %s",
-                      dl_error);
-        goto unload_and_exit;
-    }
-
-    prog_argv = (char ***) dlsym(mcf->dl_handle, "prog_argv");
-    dl_error = dlerror();
-    if (dl_error != NULL) {
-        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                      "failed to load ghc argv \"prog_argv\": %s",
-                      dl_error);
-        goto unload_and_exit;
-    }
-
     mcf->terminate_async_task = (void (*)(HsStablePtr)) dlsym(mcf->dl_handle,
                                                     "ngxExportTerminateTask");
     dl_error = dlerror();
@@ -251,6 +234,24 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                       "failed to load function "
                       "\"ngxExportInstallSignalHandler\": %s", dl_error);
+        goto dlclose_and_exit;
+    }
+
+    prog_argc = (int *) dlsym(mcf->dl_handle, "prog_argc");
+    dl_error = dlerror();
+    if (dl_error != NULL) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                      "failed to find symbol \"prog_argc\": %s",
+                      dl_error);
+        goto dlclose_and_exit;
+    }
+
+    prog_argv = (char ***) dlsym(mcf->dl_handle, "prog_argv");
+    dl_error = dlerror();
+    if (dl_error != NULL) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                      "failed to find symbol \"prog_argv\": %s",
+                      dl_error);
         goto dlclose_and_exit;
     }
 
@@ -580,27 +581,32 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         }
     }
 
-    sysreads = mcf->sysreads.elts;
+    if (mcf->sysreads.nelts > 0) {
+        sysreads = mcf->sysreads.elts;
 
-    /* memzero sysreads as they may contain secrets */
-    for (i = 0; i < mcf->sysreads.nelts; i++) {
-        if (sysreads[i].len > 0) {
-            ngx_memzero(sysreads[i].data, sysreads[i].len);
-            ngx_pfree(mcf->sysreads.pool, sysreads[i].data);
+        /* memzero sysreads as they may contain secrets */
+        for (i = 0; i < mcf->sysreads.nelts; i++) {
+            if (sysreads[i].len > 0) {
+                ngx_memzero(sysreads[i].data, sysreads[i].len);
+                ngx_pfree(mcf->sysreads.pool, sysreads[i].data);
+                ngx_str_null(&sysreads[i]);
+            }
         }
-    }
 
-    /* memzero ghc prog_argv elements exposing sysread data too */
-    for (i = 1; i < (ngx_uint_t) *prog_argc; i++) {
-        arg_value = (*prog_argv)[i];
-        if (do_sysread) {
-            do_sysread = 0;
-            arg_len = ngx_strlen(arg_value);
-            ngx_memzero(arg_value, arg_len);
-            continue;
-        }
-        if (ngx_strncmp(arg_value, "--sysread:", 10) == 0) {
-            do_sysread = 1;
+        /* memzero ghc prog_argv elements which contain sysread data */
+        for (j = 1; j < *prog_argc; j++) {
+            arg_value = (*prog_argv)[j];
+            if (do_sysread) {
+                do_sysread = 0;
+                arg_len = ngx_strlen(arg_value);
+                if (arg_len > 0) {
+                    ngx_memzero(arg_value, arg_len);
+                }
+                continue;
+            }
+            if (ngx_strncmp(arg_value, "--sysread:", 10) == 0) {
+                do_sysread = 1;
+            }
         }
     }
 
