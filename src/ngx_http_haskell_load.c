@@ -84,8 +84,8 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
 #endif
     ngx_str_t                        checker_name = ngx_null_string;
     Dl_info                          dlinfo;
-    ngx_str_t                       *sysreads;
-    ngx_uint_t                       do_sysread = 0;
+    ngx_str_t                       *mreads;
+    ngx_uint_t                       do_mread = 0;
     char                            *res = NULL;
     CInt                             len = 0;
     ngx_str_t                        reslen;
@@ -581,31 +581,31 @@ ngx_http_haskell_load(ngx_cycle_t *cycle)
         }
     }
 
-    if (mcf->sysreads.nelts > 0) {
-        sysreads = mcf->sysreads.elts;
+    if (mcf->mreads.nelts > 0) {
+        mreads = mcf->mreads.elts;
 
-        /* memzero sysreads as they may contain secrets */
-        for (i = 0; i < mcf->sysreads.nelts; i++) {
-            if (sysreads[i].len > 0) {
-                ngx_memzero(sysreads[i].data, sysreads[i].len);
-                ngx_pfree(mcf->sysreads.pool, sysreads[i].data);
-                ngx_str_null(&sysreads[i]);
+        /* memzero mreads as they may contain secrets */
+        for (i = 0; i < mcf->mreads.nelts; i++) {
+            if (mreads[i].len > 0) {
+                ngx_memzero(mreads[i].data, mreads[i].len);
+                ngx_pfree(mcf->mreads.pool, mreads[i].data);
+                ngx_str_null(&mreads[i]);
             }
         }
 
-        /* memzero ghc prog_argv elements which contain sysread data */
+        /* memzero ghc's prog_argv elements which contain mread data */
         for (j = 1; j < *prog_argc; j++) {
             arg_value = (*prog_argv)[j];
-            if (do_sysread) {
-                do_sysread = 0;
+            if (do_mread) {
+                do_mread = 0;
                 arg_len = ngx_strlen(arg_value);
                 if (arg_len > 0) {
                     ngx_memzero(arg_value, arg_len);
                 }
                 continue;
             }
-            if (ngx_strncmp(arg_value, "--sysread:", 10) == 0) {
-                do_sysread = 1;
+            if (ngx_strncmp(arg_value, "--mread:", 8) == 0) {
+                do_mread = 1;
             }
         }
     }
