@@ -1385,6 +1385,16 @@ ngxExportInitHook 'initLevel
 Note that the initialization hook gets run automatically, without the need for
 any Nginx directives to control it.
 
+The initialization hook can be used in the *sysread* trick for passing
+sensitive data from the master process to worker processes. When directive
+*haskell program_options* contains arguments with prefix *--sysread:* followed
+by an argument with a path (e.g. *--sysread:ca /path/to/ca.crt*) then the master
+process will read the file found by the path and substitute its content in the
+second argument instead of the path. The data keeps alive during the call to the
+initialization hook and gets garbled afterwards. Note that the file content
+should preferably be an ascii text because a zero byte occurred in it will
+truncate data.
+
 C plugins with low level access to the Nginx request object
 -----------------------------------------------------------
 
