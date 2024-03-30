@@ -84,7 +84,6 @@ jobs:
           JSMN_REV: 25647e692c7906b96ffd2b05ca54c097948e879c
           UPCONF_MODULE_PATH: examples/dynamicUpstreams/nginx-upconf-module
         run: |
-          set -e
           cabal --version
           echo "$(ghc --version) "`
               `"[$(ghc --print-project-git-commit-id 2>/dev/null || echo '?')]"
@@ -156,5 +155,4 @@ jobs:
                   (cd dist/sdist &&
                   cabal v1-install --force-reinstalls "$SRC_TGZ")
           fi
-          set +e
 

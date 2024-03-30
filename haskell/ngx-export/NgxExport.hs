@@ -607,10 +607,10 @@ ngxExportServiceHook =
 --
 -- as a synchronous initialization hook.
 --
--- This can be used to initialize global data /synchronously/ before handling
--- client requests. Note that asynchronous services that write global data on
--- the first run cannot guarantee the data has been written before the start of
--- processing client requests.
+-- This can be used to initialize global data /synchronously/ before starting
+-- services and handling client requests. Note that asynchronous services that
+-- write global data on the first run cannot guarantee the data has been
+-- written before the start of processing client requests.
 --
 -- It is not possible to load more than one initialization hook. The hook is
 -- only loaded if it has been directly declared in the target library,
