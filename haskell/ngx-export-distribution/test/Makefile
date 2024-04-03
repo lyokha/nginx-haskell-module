@@ -35,15 +35,19 @@ ifeq ($(INPLACE),1)
 	  $(GHCENV)
 endif
 	sed -i 's/\(^package-id \)/--\1/' $(GHCENV)
-	runhaskell --ghc-arg=-package=base \
-		--ghc-arg=-package=$(PKGDISTR) Setup.hs configure \
-		--package-db=clear --package-db=global \
-		$$(sed -n 's/^\(package-db\)\s\+/--\1=/p' $(GHCENV)) \
-		--prefix=$(PREFIX)
 	nhm-tool deps $(PKGNAME) >> $(GHCENV)
 	runhaskell --ghc-arg=-package=base \
-		--ghc-arg=-package=$(PKGDISTR) Setup.hs build \
-		--ghc-options="$(SRC) -o $(LIB) -threaded"
+	  --ghc-arg=-package=$(PKGDISTR) Setup.hs configure \
+	  --package-db=clear --package-db=global \
+	  $$(sed -n 's/^\(package-db\)\s\+/--\1=/p' $(GHCENV)) \
+	  $$(sed -n 's/^package-id\s\+\(.*\)'` \
+	    `'\(-\([0-9]\+\.\)*[0-9]\+\($$\|-.*\)\)/'` \
+	    `'--dependency=\1=\1\2/p' \
+	    $(GHCENV)) \
+	  --prefix=$(PREFIX)
+	runhaskell --ghc-arg=-package=base \
+	  --ghc-arg=-package=$(PKGDISTR) Setup.hs build \
+	  --ghc-options="$(SRC) -o $(LIB) -threaded"
 
 install: $(DISTR)
 	install -d $(PREFIX)

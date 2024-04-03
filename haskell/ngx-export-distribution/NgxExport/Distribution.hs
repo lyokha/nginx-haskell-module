@@ -3,7 +3,7 @@
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  NgxExport.Distribution
--- Copyright   :  (c) Alexey Radkov 2021-2023
+-- Copyright   :  (c) Alexey Radkov 2021-2024
 -- License     :  BSD-style
 --
 -- Maintainer  :  alexey.radkov@gmail.com
@@ -133,7 +133,7 @@ import Data.Maybe
 -- configuration step (which will be interpreted as the prefix part of the
 -- /rpath/ by  /nhm-tool dist/) and explicit ghc option /-o/ at the build
 -- step which is as well used by /nhm-tool dist/ as the name of the target
--- library.
+-- library. To avoid complexity, bootstrap the project with /nhm-tool init/.
 
 -- $cabal-v1
 --
@@ -222,7 +222,7 @@ import Data.Maybe
 
 -- $deps-cabal-v2
 --
--- Nowadays, Cabal recommends building packages using /Nix-style local builds/.
+-- Nowadays, Cabal recommends building packages as /Nix-style local builds/.
 -- This means that dependent packages do not get installed in places known to
 -- GHC. However, they can be built inside GHC /package environments/. Let's
 -- build dependencies and put them in a package environment in the current
@@ -230,27 +230,16 @@ import Data.Maybe
 --
 -- > $ cabal install --lib --only-dependencies --package-env .
 --
+-- This command creates both the package environment and the /build plan/. We
+-- must tune the package environment by replacing existing /package-id/ records
+-- with precise direct dependencies of the target library. With
+-- [cabal-plan](https://hackage.haskell.org/package/cabal-plan), finding the
+-- direct dependencies in the cabal build plan is easy.
+--
 -- > $ sed -i 's/\(^package-id \)/--\1/' .ghc.environment.x86_64-linux-$(ghc --numeric-version)
 --
 -- This /sed/ command comments out all lines that start with word /package-id/
--- in file /.ghc.environment.x86_64-linux-9.6.2/ which has been created by the
--- first command. We will put all needed packages into this file after the next
--- step.
---
--- > $ ADD_CABAL_STORE=$(sed -n 's/^\(package-db\)\s\+/--\1=/p' .ghc.environment.x86_64-linux-$(ghc --numeric-version))
--- > $ runhaskell --ghc-arg=-package=base --ghc-arg=-package=ngx-export-distribution Setup.hs configure --package-db=clear --package-db=global $ADD_CABAL_STORE --prefix=/var/lib/nginx
---
--- Shell variable /$ADD_CABAL_STORE/ wraps all /package-db/ records found in the
--- GHC environment file into the list of options suitable for passing to the
--- /configure/ command. Normally, this list shall contain only one directory
--- /$HOME\/.cabal\/store\/ghc-$(ghc --numeric-version)\/package.db/ with all
--- packages ever built by /cabal v2-build/.
---
--- Before running the /configure/ command, we commented out all packages listed
--- in the GHC environment file. The build step requires linking the target
--- library against the direct dependencies and their dependencies in turn. With
--- [cabal-plan](https://hackage.haskell.org/package/cabal-plan), finding the
--- direct dependencies in the /cabal plan/ can be done automatically.
+-- in file /.ghc.environment.x86_64-linux-9.6.2/.
 --
 -- > $ nhm-tool deps ngx-distribution-test >> .ghc.environment.x86_64-linux-$(ghc --numeric-version)
 --
@@ -263,7 +252,18 @@ import Data.Maybe
 -- > package-id ngx-export-1.7.7.1-7f7a3d21f396899b6466d425218188ba097f7cc49638994748bb4e4828d9e354
 --
 -- will appear at the end of file /.ghc.environment.x86_64-linux-9.6.2/. This
--- shall expose the four dependent packages at the next step.
+-- shall expose the four dependent packages at the next steps.
+--
+-- > $ ADD_CABAL_STORE=$(sed -n 's/^\(package-db\)\s\+/--\1=/p' .ghc.environment.x86_64-linux-$(ghc --numeric-version))
+-- > $ ADD_DIRECT_DEPS=$(sed -n 's/^package-db\s\+\(.*\)\(-\([0-9]\+\.\)*[0-9]\+\($\|-.*\)\)/--dependency=\1=\1\2/p' .ghc.environment.x86_64-linux-$(ghc --numeric-version))
+-- > $ runhaskell --ghc-arg=-package=base --ghc-arg=-package=ngx-export-distribution Setup.hs configure --package-db=clear --package-db=global $ADD_CABAL_STORE $ADD_DIRECT_DEPS --prefix=/var/lib/nginx
+--
+-- Shell variable /$ADD_CABAL_STORE/ wraps all /package-db/ records found in the
+-- GHC environment file into the list of options suitable for passing to the
+-- /configure/ command. Normally, this list shall contain only one directory
+-- /$HOME\/.cabal\/store\/ghc-$(ghc --numeric-version)\/package.db/ with all
+-- packages ever built by /cabal v2-build/. Variable /$ADD_DIRECT_DEPS/ does
+-- similar job with /package-id/ records.
 --
 -- > $ runhaskell --ghc-arg=-package=base --ghc-arg=-package=ngx-export-distribution Setup.hs build --ghc-options="ngx_distribution_test.hs -o ngx_distribution_test.so -threaded"
 --
@@ -301,6 +301,14 @@ import Data.Maybe
 -- With ghc older than /9.0.1/, build with
 --
 -- > $ make LINKRTS=-lHSrts_thr-ghc$(ghc --numeric-version)
+--
+-- To delete intermediate build files, run
+--
+-- > $ make clean
+--
+-- or, to additionally delete the built artifact,
+--
+-- > $ make clean-all
 
 -- $drawbacks
 --

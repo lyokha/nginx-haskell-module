@@ -1,3 +1,12 @@
+### 0.5.2.0
+
+- Docs: suggest using precise direct dependencies at the configure step. This
+  should fix warnings *This package indirectly depends on multiple versions of
+  the same package* which used to print out very long lists of inconsistencies.
+  Additionally, this seems to speed up builds when there are multiple versions
+  of dependent packages in the Cabal store.
+- *nhm-tool*: implement the suggestion in *nhm-tool init*.
+
 ### 0.5.1.3
 
 - Refactored to avoid using *head* and *tail* as it triggers *x-partial*

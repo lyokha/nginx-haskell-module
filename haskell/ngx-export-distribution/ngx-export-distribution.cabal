@@ -1,5 +1,5 @@
 name:                       ngx-export-distribution
-version:                    0.5.1.3
+version:                    0.5.2.0
 synopsis:                   Build custom libraries for Nginx Haskell module
 description:                Build custom libraries for
         <https://github.com/lyokha/nginx-haskell-module Nginx Haskell module>.
@@ -10,7 +10,7 @@ extra-doc-files:            Changelog.md
 author:                     Alexey Radkov <alexey.radkov@gmail.com>
 maintainer:                 Alexey Radkov <alexey.radkov@gmail.com>
 stability:                  experimental
-copyright:                  2021-2023 Alexey Radkov
+copyright:                  2021-2024 Alexey Radkov
 category:                   Network
 build-type:                 Simple
 cabal-version:              1.20
@@ -39,6 +39,8 @@ executable nhm-tool
                           , parsec >= 3.0.0
 
   main-is:                  nhm-tool.hs
+
+  other-modules:            Paths_ngx_export_distribution
 
   ghc-options:             -Wall
 

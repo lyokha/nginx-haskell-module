@@ -23,6 +23,8 @@ import System.Directory
 import System.FilePath
 import System.Exit
 import System.IO
+import Data.Version (showVersion)
+import Paths_ngx_export_distribution (version)
 
 data DistData = DistData { distDataDir :: String
                          , distDataArchive :: String
@@ -63,12 +65,16 @@ data LddRec = LibHS String (Maybe FilePath)
 
 data HelpSection = HelpDist | HelpDeps | HelpInit deriving Eq
 
+progVersion :: String
+progVersion = "nhm-tool " ++ showVersion version
+
 usage :: Maybe HelpSection -> Bool -> IO ()
 usage section success = do
     when (isNothing section) $
-        putStrLn "nhm-tool: help building custom Haskell handlers for Nginx\n\
-                 \this is a tool from \
-                 \https://github.com/lyokha/nginx-haskell-module\n"
+        putStrLn $ progVersion ++
+            ": help building custom Haskell handlers for Nginx,\n\
+            \this is a tool from \
+            \https://github.com/lyokha/nginx-haskell-module\n"
     putStrLn "Usage:"
     when (isNothing section || section == Just HelpDist) $
         T.putStrLn $ T.concat ["\n\
@@ -107,9 +113,9 @@ usage section success = do
         ]
     when (isNothing section) $
         T.putStrLn "\n\
-        \  * nhm-tool [-h | -help | --help]\n\n\
-        \    show this help message and exit, applicable in sub-commands \
-        \as well"
+        \  * nhm-tool [-h | -help | --help | -v | -version | --version]\n\n\
+        \    show this help message or version and exit,\n\
+        \    help options are applicable in sub-commands as well"
     if success
         then exitSuccess
         else exitFailure
@@ -156,9 +162,10 @@ main = do
                          || initDataForce && initDataToStdout ->
                              usage (Just HelpInit) False
                        | otherwise -> cmdInit initData'
-        "-h" : args' -> usage Nothing $ null args'
-        "-help" : args' -> usage Nothing $ null args'
-        "--help" : args' -> usage Nothing $ null args'
+        [arg] | arg `elem` ["-h", "-help", "--help"] ->
+                  usage Nothing True
+              | arg `elem` ["-v", "-version", "--version"] ->
+                  putStrLn progVersion >> exitSuccess
         args' -> usage Nothing $ null args'
     where normalizeDistData dist@DistData {..} =
               dist { distDataTargetDir =
@@ -495,7 +502,7 @@ makefile InitData {..} = T.concat
      \\t  --package-db=clear --package-db=global \\\n\
      \\t  $$(sed -n 's/^\\(package-db\\)\\s\\+/--\\1=/p' $(GHCENV)) \\\n\
      \\t  $$(sed -n 's/^package-id\\s\\+\\(.*\\)'` \\\n\
-     \\t    `'\\(-\\([0-9]\\+\\.\\)*[0-9]\\+\\($$\\|-\\).*\\)/'` \\\n\
+     \\t    `'\\(-\\([0-9]\\+\\.\\)*[0-9]\\+\\($$\\|-.*\\)\\)/'` \\\n\
      \\t    `'--dependency=\\1=\\1\\2/p' \\\n\
      \\t    $(GHCENV)) \\\n\
      \\t  --prefix=$(PREFIX)\n\
