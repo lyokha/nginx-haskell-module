@@ -489,15 +489,19 @@ makefile InitData {..} = T.concat
      \$(DISTR): $(SRC)\n\
      \\tcabal install --lib --only-dependencies --package-env .\n\
      \\tsed -i 's/\\(^package-id \\)/--\\1/' $(GHCENV)\n\
-     \\trunhaskell --ghc-arg=-package=base \\\n\
-     \\t --ghc-arg=-package=$(PKGDISTR) Setup.hs configure \\\n\
-     \\t --package-db=clear --package-db=global \\\n\
-     \\t $$(sed -n 's/^\\(package-db\\)\\s\\+/--\\1=/p' $(GHCENV)) \\\n\
-     \\t --prefix=$(PREFIX)\n\
      \\tnhm-tool deps $(PKGNAME) >> $(GHCENV)\n\
      \\trunhaskell --ghc-arg=-package=base \\\n\
-     \\t --ghc-arg=-package=$(PKGDISTR) Setup.hs build \\\n\
-     \\t --ghc-options=\"$(SRC) -o $(LIB) $(LINKRTS)\"\n\
+     \\t  --ghc-arg=-package=$(PKGDISTR) Setup.hs configure \\\n\
+     \\t  --package-db=clear --package-db=global \\\n\
+     \\t  $$(sed -n 's/^\\(package-db\\)\\s\\+/--\\1=/p' $(GHCENV)) \\\n\
+     \\t  $$(sed -n 's/^package-id\\s\\+\\(.*\\)'` \\\n\
+     \\t    `'\\(-\\([0-9]\\+\\.\\)*[0-9]\\+\\($$\\|-\\).*\\)/'` \\\n\
+     \\t    `'--dependency=\\1=\\1\\2/p' \\\n\
+     \\t    $(GHCENV)) \\\n\
+     \\t  --prefix=$(PREFIX)\n\
+     \\trunhaskell --ghc-arg=-package=base \\\n\
+     \\t  --ghc-arg=-package=$(PKGDISTR) Setup.hs build \\\n\
+     \\t  --ghc-options=\"$(SRC) -o $(LIB) $(LINKRTS)\"\n\
      \\n\
      \install: $(DISTR)\n\
      \\tinstall -d $(PREFIX)\n\
