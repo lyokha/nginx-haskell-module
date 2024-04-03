@@ -4,7 +4,6 @@
 module Main where
 
 import Text.Parsec hiding (uncons)
-import Distribution.Simple.Program.Types
 import Distribution.Simple.Program
 import Distribution.Verbosity
 import Cabal.Plan

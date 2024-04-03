@@ -1,3 +1,7 @@
+### 0.5.2.1
+
+- Fix import modules after update to *Cabal* *3.10.3.0*.
+
 ### 0.5.2.0
 
 - Docs: suggest using precise direct dependencies at the configure step. This

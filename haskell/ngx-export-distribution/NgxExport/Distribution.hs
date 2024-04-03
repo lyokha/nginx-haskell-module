@@ -48,10 +48,7 @@ module NgxExport.Distribution (
 
 import Distribution.Simple hiding (defaultMain)
 import Distribution.Simple.LocalBuildInfo
-import Distribution.Simple.Program.Types
-import Distribution.Simple.Program.Builtin
-import Distribution.Simple.Program.Run
-import Distribution.Simple.Program.Db
+import Distribution.Simple.Program
 import Distribution.Simple.Setup
 import Distribution.Simple.Utils
 import Distribution.Types.PackageDescription
