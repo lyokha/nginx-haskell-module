@@ -10,6 +10,7 @@ MACHINE := $(shell uname -m)
 KERNEL := $(shell uname -s | tr A-Z a-z)
 
 PKGDISTR := ngx-export-distribution
+NHMTOOL := nhm-tool
 
 SRC := $(NAME).hs
 LIB := $(NAME).so
@@ -35,7 +36,10 @@ ifeq ($(INPLACE),1)
 	  $(GHCENV)
 endif
 	sed -i 's/\(^package-id \)/--\1/' $(GHCENV)
-	nhm-tool deps $(PKGNAME) >> $(GHCENV)
+	if ! command -v $(NHMTOOL) >/dev/null; then \
+	  PATH=$$(dirname $$(cabal list-bin $(PKGDISTR))):$$PATH; \
+	fi; \
+	$(NHMTOOL) deps $(PKGNAME) >> $(GHCENV); \
 	runhaskell --ghc-arg=-package=base \
 	  --ghc-arg=-package=$(PKGDISTR) Setup.hs configure \
 	  --package-db=clear --package-db=global \
@@ -44,7 +48,7 @@ endif
 	    `'\(-\([0-9]\+\.\)*[0-9]\+\($$\|-.*\)\)/'` \
 	    `'--dependency=\1=\1\2/p' \
 	    $(GHCENV)) \
-	  --prefix=$(PREFIX)
+	  --prefix=$(PREFIX); \
 	runhaskell --ghc-arg=-package=base \
 	  --ghc-arg=-package=$(PKGDISTR) Setup.hs build \
 	  --ghc-options="$(SRC) -o $(LIB) -threaded"

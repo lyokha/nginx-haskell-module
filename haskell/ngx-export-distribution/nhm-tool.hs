@@ -447,7 +447,7 @@ projectCabal InitData {..} = T.concat
     ["name:                       ", T.pack initDataProject, "\n\
      \version:                    0.1.0.0\n\
      \build-type:                 Custom\n\
-     \cabal-version:              1.24\n\
+     \cabal-version:              2.0\n\
      \\n\
      \custom-setup\n\
      \  setup-depends:            base >= 4.8 && < 5\n\
@@ -455,6 +455,7 @@ projectCabal InitData {..} = T.concat
      \\n\
      \library\n\
      \  default-language:         Haskell2010\n\
+     \  build-tool-depends:       ngx-export-distribution:nhm-tool\n\
      \  build-depends:            base >= 4.8 && < 5\n\
      \                          , ngx-export\n\
      \\n\
@@ -478,6 +479,7 @@ makefile InitData {..} = T.concat
      \KERNEL := $(shell uname -s | tr A-Z a-z)\n\
      \\n\
      \PKGDISTR := ngx-export-distribution\n\
+     \NHMTOOL := nhm-tool\n\
      \\n\
      \SRC := $(NAME).hs\n\
      \LIB := $(NAME).so\n\
@@ -495,7 +497,10 @@ makefile InitData {..} = T.concat
      \$(DISTR): $(SRC)\n\
      \\tcabal install --lib --only-dependencies --package-env .\n\
      \\tsed -i 's/\\(^package-id \\)/--\\1/' $(GHCENV)\n\
-     \\tnhm-tool deps $(PKGNAME) >> $(GHCENV)\n\
+     \\tif ! command -v $(NHMTOOL) >/dev/null; then \\\n\
+     \\t  PATH=$$(dirname $$(cabal list-bin $(PKGDISTR))):$$PATH; \\\n\
+     \\tfi; \\\n\
+     \\t$(NHMTOOL) deps $(PKGNAME) >> $(GHCENV); \\\n\
      \\trunhaskell --ghc-arg=-package=base \\\n\
      \\t  --ghc-arg=-package=$(PKGDISTR) Setup.hs configure \\\n\
      \\t  --package-db=clear --package-db=global \\\n\
@@ -504,7 +509,7 @@ makefile InitData {..} = T.concat
      \\t    `'\\(-\\([0-9]\\+\\.\\)*[0-9]\\+\\($$\\|-.*\\)\\)/'` \\\n\
      \\t    `'--dependency=\\1=\\1\\2/p' \\\n\
      \\t    $(GHCENV)) \\\n\
-     \\t  --prefix=$(PREFIX)\n\
+     \\t  --prefix=$(PREFIX); \\\n\
      \\trunhaskell --ghc-arg=-package=base \\\n\
      \\t  --ghc-arg=-package=$(PKGDISTR) Setup.hs build \\\n\
      \\t  --ghc-options=\"$(SRC) -o $(LIB) $(LINKRTS)\"\n\

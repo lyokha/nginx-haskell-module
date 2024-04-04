@@ -1,3 +1,11 @@
+### 0.5.2.2
+
+- *nhm-tool*: command *init* generates *Makefile* which searches *nhm-tool* via
+  *cabal list-bin ngx-export-distribution* if the tool cannot be found in known
+  directories. Generated cabal files require *cabal-version 2.0* because now
+  they use *build-tool-depends: ngx-export-distribution:nhm-tool* in the
+  library stanza.
+
 ### 0.5.2.1
 
 - Fix import modules after update to *Cabal* *3.10.3.0*.
