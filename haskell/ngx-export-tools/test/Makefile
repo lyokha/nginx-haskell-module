@@ -17,8 +17,7 @@ DISTR := $(PKGNAME)-$(PKGVER).tar.gz
 GHCVER := $(shell ghc --numeric-version)
 GHCENV := .ghc.environment.$(MACHINE)-$(KERNEL)-$(GHCVER)
 DEPLIBS := $(MACHINE)-$(KERNEL)-ghc-$(GHCVER)
-DISTDIR := dist
-DISTV2DIR := dist-newstyle
+BUILDDIR := dist-nhm
 
 INPLACE := $(shell grep -q '^packages:.*\.\./ngx-export-tools' \
                        cabal.project && echo 1 || echo 0)
@@ -26,19 +25,21 @@ INPLACE := $(shell grep -q '^packages:.*\.\./ngx-export-tools' \
 all: $(DISTR)
 
 $(DISTR): $(SRC)
-	cabal install --lib --only-dependencies --package-env .
+	cabal install --builddir="$(BUILDDIR)" --lib --only-dependencies \
+	  --package-env .
 ifeq ($(INPLACE),1)
-	cabal build ngx-export-tools
-	echo "package-db $$(pwd)/$(DISTV2DIR)/packagedb/ghc-$(GHCVER)" >> \
+	cabal build --builddir="$(BUILDDIR)" ngx-export-tools
+	echo "package-db $$(pwd)/$(BUILDDIR)/packagedb/ghc-$(GHCVER)" >> \
 	  $(GHCENV)
 endif
 	sed -i 's/\(^package-id \)/--\1/' $(GHCENV)
 	if ! command -v $(NHMTOOL) >/dev/null; then \
 	  PATH=$$(dirname $$(cabal list-bin $(PKGDISTR))):$$PATH; \
 	fi; \
-	$(NHMTOOL) deps $(PKGNAME) >> $(GHCENV); \
+	$(NHMTOOL) deps $(PKGNAME) -d "$(BUILDDIR)" >> $(GHCENV); \
 	runhaskell --ghc-arg=-package=base \
 	  --ghc-arg=-package=$(PKGDISTR) Setup.hs configure \
+	  --builddir="$(BUILDDIR)" \
 	  --package-db=clear --package-db=global \
 	  $$(sed -n 's/^\(package-db\)\s\+/--\1=/p' $(GHCENV)) \
 	  $$(sed -n 's/^package-id\s\+\(.*\)'` \
@@ -48,6 +49,7 @@ endif
 	  --prefix=$(PREFIX); \
 	runhaskell --ghc-arg=-package=base \
 	  --ghc-arg=-package=$(PKGDISTR) Setup.hs build \
+	  --builddir="$(BUILDDIR)" \
 	  --ghc-options="$(SRC) -o $(LIB) -ddump-splices $(LINKRTS)"
 
 install: $(DISTR)
@@ -57,7 +59,7 @@ install: $(DISTR)
 .PHONY: clean
 
 clean:
-	rm -rf $(DISTDIR) $(DISTV2DIR) $(DEPLIBS)
+	rm -rf $(BUILDDIR) $(DEPLIBS)
 	rm -f $(GHCENV) $(STUB) $(NAME).hi $(NAME).o
 	rm -f $(LIB)
 

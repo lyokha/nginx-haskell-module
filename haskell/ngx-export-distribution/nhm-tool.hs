@@ -39,7 +39,9 @@ data DistData = DistData { distDataDir :: String
 defaultDistDataDir :: String
 defaultDistDataDir = ".hslibs"
 
-data DepsData = DepsData { depsDataProject :: String
+data DepsData = DepsData { depsDataBuilddir :: String
+                         , depsDataProject :: String
+                         , depsDataWait :: Maybe ArgWait
                          , depsDataHelp :: Bool
                          }
 
@@ -96,9 +98,13 @@ usage section success = do
         ]
     when (isNothing section || section == Just HelpDeps) $
         T.putStrLn "\n\
-        \  * nhm-tool deps project-name\n\n\
+        \  * nhm-tool deps project-name [-d dir]\n\n\
         \    print all direct dependencies of 'project-name',\n\
-        \    the output is compatible with the format of GHC environment files"
+        \    the output is compatible with the format of GHC environment \
+        \files\n\n\
+        \    'dir' is the cabal build directory where the build plan is \
+        \located\n\
+        \      (default is dist-newstyle)"
     when (isNothing section || section == Just HelpInit) $
         T.putStrLn $ T.concat ["\n\
         \  * nhm-tool init [-p dir] [-no-threaded] [-f | -to-stdout] \
@@ -138,13 +144,14 @@ main = do
                        | otherwise -> cmdDist distData'
         "deps" : args' -> do
             let depsData = foldl parseDepsArg (Just defaultArgs) args'
-                defaultArgs = DepsData "" False
+                defaultArgs = DepsData "" "" Nothing False
             case depsData of
                 Nothing -> usage (Just HelpDeps) False
                 Just depsData'@DepsData {..} ->
                     if | depsDataHelp ->
                              usage (Just HelpDeps) $ length args' == 1
-                       | null depsDataProject ->
+                       | isJust depsDataWait
+                         || null depsDataProject ->
                              usage (Just HelpDeps) False
                        | otherwise -> cmdDeps depsData'
         "init" : args' -> do
@@ -221,12 +228,23 @@ parseDistArg (Just dist@DistData {..}) arg =
 parseDepsArg :: Maybe DepsData -> String -> Maybe DepsData
 parseDepsArg Nothing _ = Nothing
 parseDepsArg (Just deps@DepsData {..}) arg =
-    if | "-h" == arg || "-help" == arg || "--help" == arg ->
-             Just deps { depsDataHelp = True }
-       | "-" `isPrefixOf` arg -> Nothing
-       | null depsDataProject ->
-             Just deps { depsDataProject = arg }
-       | otherwise -> Nothing
+    case depsDataWait of
+        Nothing ->
+            let optLong = length arg > 2
+                optValue = drop 2 arg
+            in if | "-d" `isPrefixOf` arg ->
+                        if optLong
+                            then Just deps' { depsDataBuilddir = optValue }
+                            else Just deps' { depsDataWait = Just ArgWaitD }
+                  | "-h" == arg || "-help" == arg || "--help" == arg ->
+                        Just deps' { depsDataHelp = True }
+                  | "-" `isPrefixOf` arg -> Nothing
+                  | null depsDataProject ->
+                        Just deps' { depsDataProject = arg }
+                  | otherwise -> Nothing
+        Just ArgWaitD -> Just deps' { depsDataBuilddir = arg }
+        Just _ -> undefined
+        where deps' = deps { depsDataWait = Nothing }
 
 parseInitArg :: Maybe InitData -> String -> Maybe InitData
 parseInitArg Nothing _ = Nothing
@@ -376,7 +394,7 @@ parseLddOutput = flip parse "ldd" $ many $
 
 cmdDeps :: DepsData -> IO ()
 cmdDeps DepsData {..} = do
-    units <- pjUnits <$> findAndDecodePlanJson (ProjectRelativeToDir ".")
+    units <- pjUnits <$> findAndDecodePlanJson (builddir depsDataBuilddir)
     let comps = [ uComps
                 | Unit {..} <- M.elems units
                 , uType == UnitTypeLocal
@@ -393,6 +411,8 @@ cmdDeps DepsData {..} = do
                      ) S.empty comps
     forM_ (S.toList deps) $ \(UnitId unit) ->
         putStrLn $ "package-id " ++ T.unpack unit
+    where builddir "" = ProjectRelativeToDir "."
+          builddir dir = InBuildDir dir
 
 cmdInit :: InitData -> IO ()
 cmdInit init'@InitData {..} = do
@@ -489,20 +509,21 @@ makefile InitData {..} = T.concat
      \GHCVER := $(shell ghc --numeric-version)\n\
      \GHCENV := .ghc.environment.$(MACHINE)-$(KERNEL)-$(GHCVER)\n\
      \DEPLIBS := $(MACHINE)-$(KERNEL)-ghc-$(GHCVER)\n\
-     \DISTDIR := dist\n\
-     \DISTV2DIR := dist-newstyle\n\
+     \BUILDDIR := dist-nhm\n\
      \\n\
      \all: $(DISTR)\n\
      \\n\
      \$(DISTR): $(SRC)\n\
-     \\tcabal install --lib --only-dependencies --package-env .\n\
+     \\tcabal install --builddir=\"$(BUILDDIR)\" --lib --only-dependencies \\\n\
+     \\t  --package-env .\n\
      \\tsed -i 's/\\(^package-id \\)/--\\1/' $(GHCENV)\n\
      \\tif ! command -v $(NHMTOOL) >/dev/null; then \\\n\
      \\t  PATH=$$(dirname $$(cabal list-bin $(PKGDISTR))):$$PATH; \\\n\
      \\tfi; \\\n\
-     \\t$(NHMTOOL) deps $(PKGNAME) >> $(GHCENV); \\\n\
+     \\t$(NHMTOOL) deps $(PKGNAME) -d \"$(BUILDDIR)\" >> $(GHCENV); \\\n\
      \\trunhaskell --ghc-arg=-package=base \\\n\
      \\t  --ghc-arg=-package=$(PKGDISTR) Setup.hs configure \\\n\
+     \\t  --builddir=\"$(BUILDDIR)\" \\\n\
      \\t  --package-db=clear --package-db=global \\\n\
      \\t  $$(sed -n 's/^\\(package-db\\)\\s\\+/--\\1=/p' $(GHCENV)) \\\n\
      \\t  $$(sed -n 's/^package-id\\s\\+\\(.*\\)'` \\\n\
@@ -512,6 +533,7 @@ makefile InitData {..} = T.concat
      \\t  --prefix=$(PREFIX); \\\n\
      \\trunhaskell --ghc-arg=-package=base \\\n\
      \\t  --ghc-arg=-package=$(PKGDISTR) Setup.hs build \\\n\
+     \\t  --builddir=\"$(BUILDDIR)\" \\\n\
      \\t  --ghc-options=\"$(SRC) -o $(LIB) $(LINKRTS)\"\n\
      \\n\
      \install: $(DISTR)\n\
@@ -521,7 +543,7 @@ makefile InitData {..} = T.concat
      \.PHONY: clean\n\
      \\n\
      \clean:\n\
-     \\trm -rf $(DISTDIR) $(DISTV2DIR) $(DEPLIBS)\n\
+     \\trm -rf $(BUILDDIR) $(DEPLIBS)\n\
      \\trm -f $(GHCENV) $(STUB) $(NAME).hi $(NAME).o\n\
      \\trm -f $(LIB)\n\
      \\n\

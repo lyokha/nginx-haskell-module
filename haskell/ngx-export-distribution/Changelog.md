@@ -1,3 +1,9 @@
+### 0.5.3.0
+
+- *nhm-tool*: command *deps* now accepts option *-d* which expects the
+  *builddir* in terms of Cabal where the build plan is located, command *init*
+  now generates *Makefile* which builds all in directory *dist-nhm*.
+
 ### 0.5.2.2
 
 - *nhm-tool*: command *init* generates *Makefile* which searches *nhm-tool* via
