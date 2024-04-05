@@ -394,7 +394,10 @@ parseLddOutput = flip parse "ldd" $ many $
 
 cmdDeps :: DepsData -> IO ()
 cmdDeps DepsData {..} = do
-    units <- pjUnits <$> findAndDecodePlanJson (builddir depsDataBuilddir)
+    let buildDir = if null depsDataBuilddir
+                       then ProjectRelativeToDir "."
+                       else InBuildDir depsDataBuilddir
+    units <- pjUnits <$> findAndDecodePlanJson buildDir
     let comps = [ uComps
                 | Unit {..} <- M.elems units
                 , uType == UnitTypeLocal
@@ -411,8 +414,6 @@ cmdDeps DepsData {..} = do
                      ) S.empty comps
     forM_ (S.toList deps) $ \(UnitId unit) ->
         putStrLn $ "package-id " ++ T.unpack unit
-    where builddir "" = ProjectRelativeToDir "."
-          builddir dir = InBuildDir dir
 
 cmdInit :: InitData -> IO ()
 cmdInit init'@InitData {..} = do
