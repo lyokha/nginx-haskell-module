@@ -98,7 +98,7 @@ usage section success = do
         ]
     when (isNothing section || section == Just HelpDeps) $
         T.putStrLn "\n\
-        \  * nhm-tool deps project-name [-d dir]\n\n\
+        \  * nhm-tool deps [-d dir] project-name\n\n\
         \    print all direct dependencies of 'project-name',\n\
         \    the output is compatible with the format of GHC environment \
         \files\n\n\
