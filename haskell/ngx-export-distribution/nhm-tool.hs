@@ -30,9 +30,9 @@ data DistData = DistData { distDataDir :: String
                          , distDataTargetDir :: String
                          , distDataPatchOnly :: Bool
                          , distDataTargetLib :: String
-                         , distDataWait :: Maybe ArgWait
                          , distDataOwnVerbosity :: Verbosity
                          , distDataOtherVerbosity :: Verbosity
+                         , distDataWaitArg :: Maybe String
                          , distDataHelp :: Bool
                          }
 
@@ -41,7 +41,7 @@ defaultDistDataDir = ".hslibs"
 
 data DepsData = DepsData { depsDataBuilddir :: String
                          , depsDataProject :: String
-                         , depsDataWait :: Maybe ArgWait
+                         , depsDataWaitArg :: Maybe String
                          , depsDataHelp :: Bool
                          }
 
@@ -50,14 +50,12 @@ data InitData = InitData { initDataPrefix :: String
                          , initDataForce :: Bool
                          , initDataToStdout :: Bool
                          , initDataProject :: String
-                         , initDataWait :: Maybe ArgWait
+                         , initDataWaitArg :: Maybe String
                          , initDataHelp :: Bool
                          }
 
 defaultInitDataPrefix :: String
 defaultInitDataPrefix = "/var/lib/nginx"
-
-data ArgWait = ArgWaitA | ArgWaitD | ArgWaitT | ArgWaitP
 
 data LddRec = LibHS String (Maybe FilePath)
             | LibFFI String (Maybe FilePath)
@@ -132,13 +130,13 @@ main = do
         "dist" : args' -> do
             let distData = foldl parseDistArg (Just defaultArgs) args'
                 defaultArgs = DistData defaultDistDataDir "" "" False ""
-                    Nothing normal normal False
+                    normal normal Nothing False
             case distData of
                 Nothing -> usage (Just HelpDist) False
                 Just (normalizeDistData -> distData'@DistData {..}) ->
                     if | distDataHelp ->
                              usage (Just HelpDist) $ length args' == 1
-                       | isJust distDataWait
+                       | isJust distDataWaitArg
                          || null distDataTargetLib ->
                              usage (Just HelpDist) False
                        | otherwise -> cmdDist distData'
@@ -150,7 +148,7 @@ main = do
                 Just depsData'@DepsData {..} ->
                     if | depsDataHelp ->
                              usage (Just HelpDeps) $ length args' == 1
-                       | isJust depsDataWait
+                       | isJust depsDataWaitArg
                          || null depsDataProject ->
                              usage (Just HelpDeps) False
                        | otherwise -> cmdDeps depsData'
@@ -163,7 +161,7 @@ main = do
                 Just initData'@InitData {..} ->
                     if | initDataHelp ->
                              usage (Just HelpInit) $ length args' == 1
-                       | isJust initDataWait
+                       | isJust initDataWaitArg
                          || null initDataProject
                          || initDataForce && initDataToStdout ->
                              usage (Just HelpInit) False
@@ -189,22 +187,21 @@ main = do
 parseDistArg :: Maybe DistData -> String -> Maybe DistData
 parseDistArg Nothing _ = Nothing
 parseDistArg (Just dist@DistData {..}) arg =
-    case distDataWait of
+    case distDataWaitArg of
         Nothing ->
-            let optLong = length arg > 2
-                optValue = drop 2 arg
-            in if | "-d" `isPrefixOf` arg ->
-                        if optLong
-                            then Just dist' { distDataDir = optValue }
-                            else Just dist { distDataWait = Just ArgWaitD }
-                  | "-t" `isPrefixOf` arg ->
-                        if optLong
-                            then Just dist' { distDataTargetDir = optValue }
-                            else Just dist { distDataWait = Just ArgWaitT }
-                  | "-a" `isPrefixOf` arg ->
-                        if optLong
-                            then Just dist' { distDataArchive = optValue }
-                            else Just dist { distDataWait = Just ArgWaitA }
+            let (opt, value) = splitAt 2 arg
+            in if | "-d" == opt ->
+                        if null value
+                            then Just dist { distDataWaitArg = Just opt }
+                            else Just dist' { distDataDir = value }
+                  | "-t" == opt ->
+                        if null value
+                            then Just dist { distDataWaitArg = Just opt }
+                            else Just dist' { distDataTargetDir = value }
+                  | "-a" == opt ->
+                        if null value
+                            then Just dist { distDataWaitArg = Just opt }
+                            else Just dist' { distDataArchive = value }
                   | "-p" == arg ->
                         Just dist' { distDataPatchOnly = True }
                   | "-v" == arg ->
@@ -219,44 +216,42 @@ parseDistArg (Just dist@DistData {..}) arg =
                   | null distDataTargetLib ->
                         Just dist' { distDataTargetLib = arg }
                   | otherwise -> Nothing
-        Just ArgWaitD -> Just dist' { distDataDir = arg }
-        Just ArgWaitT -> Just dist' { distDataTargetDir = arg }
-        Just ArgWaitA -> Just dist' { distDataArchive = arg }
+        Just "-d" -> Just dist' { distDataDir = arg }
+        Just "-t" -> Just dist' { distDataTargetDir = arg }
+        Just "-a" -> Just dist' { distDataArchive = arg }
         Just _ -> undefined
-        where dist' = dist { distDataWait = Nothing }
+        where dist' = dist { distDataWaitArg = Nothing }
 
 parseDepsArg :: Maybe DepsData -> String -> Maybe DepsData
 parseDepsArg Nothing _ = Nothing
 parseDepsArg (Just deps@DepsData {..}) arg =
-    case depsDataWait of
+    case depsDataWaitArg of
         Nothing ->
-            let optLong = length arg > 2
-                optValue = drop 2 arg
-            in if | "-d" `isPrefixOf` arg ->
-                        if optLong
-                            then Just deps' { depsDataBuilddir = optValue }
-                            else Just deps' { depsDataWait = Just ArgWaitD }
+            let (opt, value) = splitAt 2 arg
+            in if | "-d" == opt ->
+                        if null value
+                            then Just deps { depsDataWaitArg = Just opt }
+                            else Just deps' { depsDataBuilddir = value }
                   | "-h" == arg || "-help" == arg || "--help" == arg ->
                         Just deps' { depsDataHelp = True }
                   | "-" `isPrefixOf` arg -> Nothing
                   | null depsDataProject ->
                         Just deps' { depsDataProject = arg }
                   | otherwise -> Nothing
-        Just ArgWaitD -> Just deps' { depsDataBuilddir = arg }
+        Just "-d" -> Just deps' { depsDataBuilddir = arg }
         Just _ -> undefined
-        where deps' = deps { depsDataWait = Nothing }
+        where deps' = deps { depsDataWaitArg = Nothing }
 
 parseInitArg :: Maybe InitData -> String -> Maybe InitData
 parseInitArg Nothing _ = Nothing
 parseInitArg (Just init'@InitData {..}) arg =
-    case initDataWait of
+    case initDataWaitArg of
         Nothing ->
-            let optLong = length arg > 2
-                optValue = drop 2 arg
-            in if | "-p" `isPrefixOf` arg ->
-                        if optLong
-                            then Just init'' { initDataPrefix = optValue }
-                            else Just init' { initDataWait = Just ArgWaitP }
+            let (opt, value) = splitAt 2 arg
+            in if | "-p" == opt ->
+                        if null value
+                            then Just init' { initDataWaitArg = Just opt }
+                            else Just init'' { initDataPrefix = value }
                   | "-no-threaded" == arg ->
                         Just init'' { initDataNoThreaded = True }
                   | "-f" == arg ->
@@ -269,9 +264,9 @@ parseInitArg (Just init'@InitData {..}) arg =
                   | null initDataProject ->
                         Just init'' { initDataProject = arg }
                   | otherwise -> Nothing
-        Just ArgWaitP -> Just init'' { initDataPrefix = arg }
+        Just "-p" -> Just init'' { initDataPrefix = arg }
         Just _ -> undefined
-        where init'' = init' { initDataWait = Nothing }
+        where init'' = init' { initDataWaitArg = Nothing }
 
 cmdDist :: DistData -> IO ()
 cmdDist DistData {..} = do
