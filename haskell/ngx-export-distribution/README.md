@@ -216,7 +216,7 @@ shall expose the four dependent packages at the next steps.
 
 ```ShellSession
 $ ADD_CABAL_STORE=$(sed -n 's/^\(package-db\)\s\+/--\1=/p' .ghc.environment.x86_64-linux-$(ghc --numeric-version))
-$ ADD_DIRECT_DEPS=$(sed -n 's/^package-db\s\+\(.*\)\(-\([0-9]\+\.\)*[0-9]\+\($\|-.*\)\)/--dependency=\1=\1\2/p' .ghc.environment.x86_64-linux-$(ghc --numeric-version))
+$ ADD_DIRECT_DEPS=$(sed -n 's/^package-id\s\+\(.*\)\(-\([0-9]\+\.\)*[0-9]\+\($\|-.*\)\)/--dependency=\1=\1\2/p' .ghc.environment.x86_64-linux-$(ghc --numeric-version))
 $ runhaskell --ghc-arg=-package=base --ghc-arg=-package=ngx-export-distribution Setup.hs configure --package-db=clear --package-db=global $ADD_CABAL_STORE $ADD_DIRECT_DEPS --prefix=/var/lib/nginx
 ```
 
