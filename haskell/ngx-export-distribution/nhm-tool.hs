@@ -191,17 +191,17 @@ parseDistArg (Just dist@DistData {..}) arg =
         Nothing ->
             let (opt, value) = splitAt 2 arg
             in if | "-d" == opt ->
-                        if null value
-                            then Just dist { distDataWaitArg = Just opt }
-                            else Just dist' { distDataDir = value }
+                        Just $ if null value
+                                   then dist { distDataWaitArg = Just opt }
+                                   else dist' { distDataDir = value }
                   | "-t" == opt ->
-                        if null value
-                            then Just dist { distDataWaitArg = Just opt }
-                            else Just dist' { distDataTargetDir = value }
+                        Just $ if null value
+                                   then dist { distDataWaitArg = Just opt }
+                                   else dist' { distDataTargetDir = value }
                   | "-a" == opt ->
-                        if null value
-                            then Just dist { distDataWaitArg = Just opt }
-                            else Just dist' { distDataArchive = value }
+                        Just $ if null value
+                                   then dist { distDataWaitArg = Just opt }
+                                   else dist' { distDataArchive = value }
                   | "-p" == arg ->
                         Just dist' { distDataPatchOnly = True }
                   | "-v" == arg ->
@@ -210,12 +210,14 @@ parseDistArg (Just dist@DistData {..}) arg =
                         Just dist' { distDataOwnVerbosity = verbose
                                    , distDataOtherVerbosity = verbose
                                    }
-                  | "-h" == arg || "-help" == arg || "--help" == arg ->
+                  | (`elem` ["-h", "-help", "--help"]) arg ->
                         Just dist' { distDataHelp = True }
-                  | "-" `isPrefixOf` arg -> Nothing
+                  | Just '-' == (fst <$> uncons arg) ->
+                        Nothing
                   | null distDataTargetLib ->
                         Just dist' { distDataTargetLib = arg }
-                  | otherwise -> Nothing
+                  | otherwise ->
+                        Nothing
         Just "-d" -> Just dist' { distDataDir = arg }
         Just "-t" -> Just dist' { distDataTargetDir = arg }
         Just "-a" -> Just dist' { distDataArchive = arg }
@@ -229,15 +231,17 @@ parseDepsArg (Just deps@DepsData {..}) arg =
         Nothing ->
             let (opt, value) = splitAt 2 arg
             in if | "-d" == opt ->
-                        if null value
-                            then Just deps { depsDataWaitArg = Just opt }
-                            else Just deps' { depsDataBuilddir = value }
-                  | "-h" == arg || "-help" == arg || "--help" == arg ->
+                        Just $ if null value
+                                   then deps { depsDataWaitArg = Just opt }
+                                   else deps' { depsDataBuilddir = value }
+                  | (`elem` ["-h", "-help", "--help"]) arg ->
                         Just deps' { depsDataHelp = True }
-                  | "-" `isPrefixOf` arg -> Nothing
+                  | Just '-' == (fst <$> uncons arg) ->
+                        Nothing
                   | null depsDataProject ->
                         Just deps' { depsDataProject = arg }
-                  | otherwise -> Nothing
+                  | otherwise ->
+                        Nothing
         Just "-d" -> Just deps' { depsDataBuilddir = arg }
         Just _ -> undefined
         where deps' = deps { depsDataWaitArg = Nothing }
@@ -249,21 +253,23 @@ parseInitArg (Just init'@InitData {..}) arg =
         Nothing ->
             let (opt, value) = splitAt 2 arg
             in if | "-p" == opt ->
-                        if null value
-                            then Just init' { initDataWaitArg = Just opt }
-                            else Just init'' { initDataPrefix = value }
+                        Just $ if null value
+                                   then init' { initDataWaitArg = Just opt }
+                                   else init'' { initDataPrefix = value }
                   | "-no-threaded" == arg ->
                         Just init'' { initDataNoThreaded = True }
                   | "-f" == arg ->
                         Just init'' { initDataForce = True }
                   | "-to-stdout" == arg ->
                         Just init'' { initDataToStdout = True }
-                  | "-h" == arg || "-help" == arg || "--help" == arg ->
+                  | (`elem` ["-h", "-help", "--help"]) arg ->
                         Just init'' { initDataHelp = True }
-                  | "-" `isPrefixOf` arg -> Nothing
+                  | Just '-' == (fst <$> uncons arg) ->
+                        Nothing
                   | null initDataProject ->
                         Just init'' { initDataProject = arg }
-                  | otherwise -> Nothing
+                  | otherwise ->
+                        Nothing
         Just "-p" -> Just init'' { initDataPrefix = arg }
         Just _ -> undefined
         where init'' = init' { initDataWaitArg = Nothing }
