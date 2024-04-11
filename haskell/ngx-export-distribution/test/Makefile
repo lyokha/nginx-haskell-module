@@ -38,6 +38,8 @@ endif
 	sed -i 's/\(^package-id \)/--\1/' $(GHCENV)
 	if ! command -v $(NHMTOOL) >/dev/null; then \
 	  PATH=$$(dirname $$(cabal list-bin $(PKGDISTR))):$$PATH; \
+	  echo $$PATH; \
+	  export PATH; \
 	fi; \
 	$(NHMTOOL) deps $(PKGNAME) -d "$(BUILDDIR)" >> $(GHCENV); \
 	runhaskell --ghc-arg=-package=base \
