@@ -890,7 +890,7 @@ request body handler returns its result in a *lazy* bytestring like normal
 asynchronous handlers. It is possible to declare multiple request body handlers
 and mix them with other asynchronous handlers within a whole hierarchy of levels
 (formed by *server*, *location* and *location-if* clauses). Below is an example
-from [test/tsung/nginx-async.conf](test/tsung/nginx-async.conf).
+from [test/tsung/nginx-async.conf](../../test/tsung/nginx-async.conf).
 
 ```haskell
 reqBody = const . return
@@ -1840,8 +1840,8 @@ of unpredictable depth is a bad solution *per se* because they may leak space
 while tracking exceptions on the top level.
 
 <a name="fntk2"><sup>**2**</sup></a>&nbsp; For initialization / cleanup flow,
-*single-shot services* from [ngx-export-tools](haskell/ngx-export-tools/) is a
-better solution.
+*single-shot services* from [ngx-export-tools](../../haskell/ngx-export-tools/)
+is a better solution.
 
 Some facts about foreign functions that may block
 -------------------------------------------------
@@ -1904,7 +1904,7 @@ Troubleshooting
   *``--global``* is now deprecated in *cabal*. A better way is to create a
   dedicated directory (say */var/lib/nginx/x86_64-linux-ghc-8.6.1/*), grant
   public access to it, and then collect there all dependent libraries and patch
-  the target library using utility [hslibdeps](utils/README.md). In the
+  the target library using utility [hslibdeps](../../utils/README.md). In the
   standalone approach, the target library gets compiled when nginx master
   process starts, and to give it access to the dependent haskell libraries, you
   can use directive *haskell ghc_extra_options*.
