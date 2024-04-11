@@ -45,7 +45,7 @@ The output is compatible with format of *GHC environment* files.
 ### nhm-init
 
 > [!NOTE]
-> This utility is obsoleted by utility *nhm-tool* which is shipped with
+> This utility was obsoleted by utility *nhm-tool* which is shipped with
 > package *ngx-export-distribution*.
 
 Bootstraps environment to build custom Haskell handlers. Running
