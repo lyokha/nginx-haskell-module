@@ -26,7 +26,8 @@ $(DISTR): $(SRC)
 	  --package-env .
 	sed -i 's/\(^package-id \)/--\1/' $(GHCENV)
 	if ! command -v $(NHMTOOL) >/dev/null; then \
-	  PATH=$$(dirname $$(cabal list-bin $(PKGDISTR))):$$PATH; \
+	  PATH=$$(dirname \
+	    $$(cabal list-bin $(PKGDISTR) --builddir="$(BUILDDIR)")):$$PATH; \
 	fi; \
 	$(NHMTOOL) deps $(PKGNAME) -d "$(BUILDDIR)" >> $(GHCENV); \
 	runhaskell --ghc-arg=-package=base \

@@ -1,3 +1,10 @@
+### 0.5.3.1
+
+- *nhm-tool*: pass option *--builddir="&dollar;(BUILDDIR)"* to command *cabal
+  list-bin* in generated *Makefile*. This fixes builds when package
+  *ngx-export-distribution* is being built inplace and *nhm-tool* hasn't been
+  explicitly installed.
+
 ### 0.5.3.0
 
 - *nhm-tool*: command *deps* now accepts option *-d* which expects the
