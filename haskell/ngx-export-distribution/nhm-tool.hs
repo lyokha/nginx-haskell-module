@@ -278,11 +278,11 @@ cmdDist :: DistData -> IO ()
 cmdDist DistData {..} = do
     let pdb = emptyProgramDb
         patchelf = simpleProgram "patchelf"
-        ldd = simpleProgram "ldd"
     (patchelf', pdb') <- requireProgram distDataOtherVerbosity patchelf pdb
     if distDataPatchOnly
         then patchTargetLib patchelf'
         else do
+            let ldd = simpleProgram "ldd"
             (ldd', pdb'') <- requireProgram distDataOtherVerbosity ldd pdb'
             putStrLn' "---> Collecting libraries"
             lddOut <- getProgramOutput distDataOtherVerbosity
@@ -295,12 +295,13 @@ cmdDist DistData {..} = do
                     (tar', _) <- requireProgram distDataOtherVerbosity
                         tarProgram pdb''
                     collectLibs recs lddOut
-                    unless (null distDataTargetDir) $ putStrLn' ""
-                    patchTargetLib patchelf'
-                    putStrLn' ""
-                    archiveLibs tar'
-    where patchTargetLib patchelf' =
-              unless (null distDataTargetDir) $ do
+                    unless (null distDataTargetDir) $
+                        putStrLn' "" >> patchTargetLib patchelf'
+                    unless (null distDataArchive) $
+                        putStrLn' "" >> archiveLibs tar'
+    where patchTargetLib patchelf'
+              | null distDataTargetDir = return ()
+              | otherwise = do
                   putStrLn' $ "---> Patching " ++ distDataTargetLib
                   patchelfOut <- getProgramOutput distDataOtherVerbosity
                       patchelf' ["--print-rpath", distDataTargetLib]
@@ -349,8 +350,9 @@ cmdDist DistData {..} = do
                                      show (M.keys recsLibHSNotFound) ++
                                          " were not found in\n" ++ lddOut
                               exitFailure
-          archiveLibs tar' =
-              unless (null distDataArchive) $ do
+          archiveLibs tar'
+              | null distDataArchive = return ()
+              | otherwise = do
                   putStrLn' "---> Archiving artifacts"
                   tarOut <- getProgramOutput distDataOtherVerbosity tar'
                       ["czvf"

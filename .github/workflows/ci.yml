@@ -155,4 +155,10 @@ jobs:
                   (cd dist/sdist &&
                   cabal v1-install --force-reinstalls "$SRC_TGZ")
           fi
+          cd -
+          cd haskell/ngx-export-distribution/test
+          sed -i 's/^packages:.*/'`
+                `'& ..\/ngx-distribution-test.cabal '`
+                `'..\/..\/ngx-export\/ngx-export.cabal/' cabal.project
+          make
 
