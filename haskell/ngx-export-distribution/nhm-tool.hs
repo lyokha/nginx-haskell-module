@@ -521,8 +521,12 @@ makefile InitData {..} = T.concat
      \\tcabal install --builddir=\"$(BUILDDIR)\" --lib --only-dependencies \\\n\
      \\t  --package-env .\n\
      \\tsed -i 's/\\(^package-id \\)/--\\1/' $(GHCENV)\n\
-     \\tif ! command -v $(NHMTOOL) >/dev/null; then \\\n\
-     \\t  PATH=$$(dirname $$(cabal list-bin $(PKGDISTR))):$$PATH; \\\n\
+     \\tif test \"$(NHMTOOL)\" = nhm-tool && ! command -v nhm-tool >/dev/null; \
+     \\\\n\
+     \\tthen \\\n\
+     \\t  PATH=$$(dirname \\\n\
+     \\t    $$(cabal list-bin $(PKGDISTR) --builddir=\"$(BUILDDIR)\")):\
+     \$$PATH; \\\n\
      \\tfi; \\\n\
      \\t$(NHMTOOL) deps $(PKGNAME) -d \"$(BUILDDIR)\" >> $(GHCENV); \\\n\
      \\trunhaskell --ghc-arg=-package=base \\\n\

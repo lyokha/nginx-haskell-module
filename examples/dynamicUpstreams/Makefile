@@ -25,7 +25,8 @@ $(DISTR): $(SRC)
 	cabal install --builddir="$(BUILDDIR)" --lib --only-dependencies \
 	  --package-env .
 	sed -i 's/\(^package-id \)/--\1/' $(GHCENV)
-	if ! command -v $(NHMTOOL) >/dev/null; then \
+	if test "$(NHMTOOL)" = nhm-tool && ! command -v nhm-tool >/dev/null; \
+	then \
 	  PATH=$$(dirname \
 	    $$(cabal list-bin $(PKGDISTR) --builddir="$(BUILDDIR)")):$$PATH; \
 	fi; \

@@ -1,3 +1,8 @@
+### 0.5.3.2
+
+- *nhm-tool*: actually apply changes from *0.5.3.1*, they were not applied due
+  to an oversight.
+
 ### 0.5.3.1
 
 - *nhm-tool*: pass option *--builddir="&dollar;(BUILDDIR)"* to command *cabal
