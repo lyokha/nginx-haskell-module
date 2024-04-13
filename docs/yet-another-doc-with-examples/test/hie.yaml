@@ -1,4 +1,4 @@
 cradle:
-  bios:
-    shell: make
+  direct:
+    arguments: ["-Wall", "-O2"]
 

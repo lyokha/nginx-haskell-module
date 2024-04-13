@@ -50,6 +50,7 @@ data InitData = InitData { initDataPrefix :: String
                          , initDataForce :: Bool
                          , initDataToStdout :: Bool
                          , initDataProject :: String
+                         , initDataGhcOptions :: [String]
                          , initDataWaitArg :: Maybe String
                          , initDataHelp :: Bool
                          }
@@ -155,7 +156,7 @@ main = do
         "init" : args' -> do
             let initData = foldl parseInitArg (Just defaultArgs) args'
                 defaultArgs = InitData defaultInitDataPrefix False False False
-                    "" Nothing False
+                    "" ["-Wall", "-O2"] Nothing False
             case initData of
                 Nothing -> usage (Just HelpInit) False
                 Just initData'@InitData {..} ->
@@ -484,7 +485,7 @@ projectCabal InitData {..} = T.concat
      \  build-depends:            base >= 4.8 && < 5\n\
      \                          , ngx-export\n\
      \\n\
-     \  ghc-options:             -Wall -O2\n"
+     \  ghc-options:             ", T.pack $ unwords initDataGhcOptions, "\n"
     ,if initDataNoThreaded
          then ""
          else
@@ -572,8 +573,10 @@ projectHs InitData {..} = T.concat
     ]
 
 hieYaml :: InitData -> Text
-hieYaml = const
-    "cradle:\n\
-    \  bios:\n\
-    \    shell: make\n"
+hieYaml InitData {..} = T.concat
+    ["cradle:\n\
+     \  direct:\n\
+     \    arguments: ["
+    ,T.pack $ intercalate ", " $ map show initDataGhcOptions, "]\n"
+    ]
 
