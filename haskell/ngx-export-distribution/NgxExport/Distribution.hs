@@ -276,13 +276,13 @@ import Data.Maybe
 -- > $ nhm-tool init project-name
 --
 -- produces files /cabal.project/, /Setup.hs/, /project-name.cabal/, /Makefile/,
--- and /project_name.hs/. If any of the former four files exist, add option /-f/
--- to override them.
+-- /project_name.hs/, and /hie.yaml/. If any of the files exist, add option /-f/
+-- to override them. File /project_name.hs/ is not overridable.
 --
--- Note that the root Haskell source file is /project_name.hs/ where
--- /project_name/ is /project-name/ with all dashes replaced by underscores. If
--- the source code will depend on packages other than /base/ and /ngx-export/,
--- add them into /project-name.cabal/ manually.
+-- Note that the Haskell source file is /project_name.hs/ where /project_name/
+-- is /project-name/ with all dashes replaced by underscores. If the source code
+-- will depend on packages other than /base/ and /ngx-export/, add them into
+-- /project-name.cabal/ manually.
 --
 -- By default, the target library will be linked against the threaded Haskell
 -- RTS library. To link against the base RTS library, add option /-no-threaded/.

@@ -1,3 +1,8 @@
+### 0.5.4.0
+
+- *nhm-tool*: command *init* now generates file *hie.yaml* for using with
+  *haskell-language-server* when working with the Haskell source file(s).
+
 ### 0.5.3.2
 
 - *nhm-tool*: actually apply changes from *0.5.3.1*, they were not applied due

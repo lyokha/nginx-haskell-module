@@ -428,6 +428,7 @@ cmdInit init'@InitData {..} = do
                  ,projectHs init'
                  ,False
                  )
+                ,("hie.yaml", hieYaml init', True)
                 ]
     forM_ files $
         if initDataToStdout
@@ -569,4 +570,10 @@ projectHs InitData {..} = T.concat
                     ) "" $ '_' : initDataProject
     ," where\n\n"
     ]
+
+hieYaml :: InitData -> Text
+hieYaml = const
+    "cradle:\n\
+    \  bios:\n\
+    \    shell: make\n"
 
