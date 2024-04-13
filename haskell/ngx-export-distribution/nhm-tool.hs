@@ -517,21 +517,22 @@ makefile InitData {..} = T.concat
      \DEPLIBS := $(MACHINE)-$(KERNEL)-ghc-$(GHCVER)\n\
      \BUILDDIR := dist-nhm\n\
      \\n\
+     \.PHONY: all env clean\n\
+     \\n\
      \all: $(DISTR)\n\
      \\n\
-     \$(DISTR): $(SRC)\n\
+     \env: $(GHCENV)\n\
+     \\n\
+     \$(GHCENV): cabal.project $(PKGNAME).cabal\n\
      \\tcabal install --builddir=\"$(BUILDDIR)\" --lib --only-dependencies \\\n\
      \\t  --package-env .\n\
-     \\tsed -i 's/\\(^package-id \\)/--\\1/' $(GHCENV)\n\
-     \\tif test \"$(NHMTOOL)\" = nhm-tool && ! command -v nhm-tool >/dev/null; \
-     \\\\n\
-     \\tthen \\\n\
-     \\t  PATH=$$(dirname \\\n\
-     \\t    $$(cabal list-bin $(PKGDISTR) --builddir=\"$(BUILDDIR)\")):\
-     \$$PATH; \\\n\
-     \\tfi; \\\n\
-     \\t$(NHMTOOL) deps $(PKGNAME) -d \"$(BUILDDIR)\" >> $(GHCENV); \\\n\
-     \\trunhaskell --ghc-arg=-package=base \\\n\
+     \\tsed -i 's/\\(^package-id \\)/--\\1/' $(GHCENV)\n",
+     updatePath,
+     "\t$(NHMTOOL) deps $(PKGNAME) -d \"$(BUILDDIR)\" >> $(GHCENV)\n\
+     \\n\
+     \$(DISTR): $(GHCENV) $(SRC)\n",
+     updatePath,
+     "\trunhaskell --ghc-arg=-package=base \\\n\
      \\t  --ghc-arg=-package=$(PKGDISTR) Setup.hs configure \\\n\
      \\t  --builddir=\"$(BUILDDIR)\" \\\n\
      \\t  --package-db=clear --package-db=global \\\n\
@@ -550,8 +551,6 @@ makefile InitData {..} = T.concat
      \\tinstall -d $(PREFIX)\n\
      \\ttar xf $(DISTR) -C $(PREFIX) --no-same-owner\n\
      \\n\
-     \.PHONY: clean\n\
-     \\n\
      \clean:\n\
      \\trm -rf $(BUILDDIR) $(DEPLIBS)\n\
      \\trm -f $(GHCENV) $(STUB) $(NAME).hi $(NAME).o\n\
@@ -560,6 +559,14 @@ makefile InitData {..} = T.concat
      \clean-all: clean\n\
      \\trm -f $(DISTR)\n"
     ]
+    where updatePath =
+              "\tif test \"$(NHMTOOL)\" = nhm-tool && ! command -v nhm-tool \
+              \>/dev/null; \\\n\
+              \\tthen \\\n\
+              \\t  PATH=$$(dirname \\\n\
+              \\t    $$(cabal list-bin $(PKGDISTR) \
+              \--builddir=\"$(BUILDDIR)\")):$$PATH; \\\n\
+              \\tfi; \\\n"
 
 projectHs :: InitData -> Text
 projectHs InitData {..} = T.concat

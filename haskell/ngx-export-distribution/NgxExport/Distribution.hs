@@ -306,6 +306,13 @@ import Data.Maybe
 -- or, to additionally delete the built artifact,
 --
 -- > $ make clean-all
+--
+-- To just create the GHC environment, run
+--
+-- > $ make env
+--
+-- This is enough to start editing the Haskell source file in an editor which
+-- has support for the /Haskell Language Server/.
 
 -- $drawbacks
 --

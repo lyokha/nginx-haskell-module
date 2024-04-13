@@ -1,7 +1,9 @@
 ### 0.5.4.0
 
 - *nhm-tool*: command *init* now generates file *hie.yaml* for using with
-  *haskell-language-server* when working with the Haskell source file(s).
+  *haskell-language-server* when editing the Haskell source file(s). The
+  generated *Makefile* skips configuration of the GHC environment if this can
+  be omitted.
 
 ### 0.5.3.2
 

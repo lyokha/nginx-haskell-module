@@ -284,6 +284,15 @@ or, to additionally delete the built artifact,
 $ make clean-all
 ```
 
+To just create the GHC environment, run
+
+```ShellSession
+$ make env
+```
+
+This is enough to start editing the Haskell source file in an editor which
+has support for the *Haskell Language Server*.
+
 ##### Drawbacks
 
 With all the building approaches shown above, the following list of drawbacks
