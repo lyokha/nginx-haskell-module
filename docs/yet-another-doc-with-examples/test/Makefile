@@ -27,9 +27,13 @@ INPLACE := $(shell grep -q '^packages:.*\(\.\./\)\{3\}haskell/$(PKGNGXEXPORT)' \
 
 NGX_HOME := .
 
+.PHONY: all env clean
+
 all: $(DISTR)
 
-$(DISTR): $(SRC) $(CPLUG).o
+env: $(GHCENV)
+
+$(GHCENV): cabal.project $(PKGNAME).cabal
 	cabal install --builddir="$(BUILDDIR)" --lib --only-dependencies \
 	  --package-env .
 ifeq ($(INPLACE),1)
@@ -43,7 +47,14 @@ endif
 	  PATH=$$(dirname \
 	    $$(cabal list-bin $(PKGDISTR) --builddir="$(BUILDDIR)")):$$PATH; \
 	fi; \
-	$(NHMTOOL) deps $(PKGNAME) -d "$(BUILDDIR)" >> $(GHCENV); \
+	$(NHMTOOL) deps $(PKGNAME) -d "$(BUILDDIR)" >> $(GHCENV)
+
+$(DISTR): $(GHCENV) $(SRC) $(CPLUG).o
+	if test "$(NHMTOOL)" = nhm-tool && ! command -v nhm-tool >/dev/null; \
+	then \
+	  PATH=$$(dirname \
+	    $$(cabal list-bin $(PKGDISTR) --builddir="$(BUILDDIR)")):$$PATH; \
+	fi; \
 	runhaskell --ghc-arg=-package=base \
 	  --ghc-arg=-package=$(PKGDISTR) Setup.hs configure \
 	  --builddir="$(BUILDDIR)" \
@@ -69,8 +80,6 @@ $(CPLUG).o: $(CPLUG).c
 install: $(DISTR)
 	install -d $(PREFIX)
 	tar xf $(DISTR) -C $(PREFIX) --no-same-owner
-
-.PHONY: clean
 
 clean:
 	rm -rf $(BUILDDIR) $(DEPLIBS)

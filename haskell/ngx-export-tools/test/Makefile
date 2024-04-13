@@ -22,9 +22,13 @@ BUILDDIR := dist-nhm
 INPLACE := $(shell grep -q '^packages:.*\.\./ngx-export-tools' \
                        cabal.project && echo 1 || echo 0)
 
+.PHONY: all env clean
+
 all: $(DISTR)
 
-$(DISTR): $(SRC)
+env: $(GHCENV)
+
+$(GHCENV): cabal.project $(PKGNAME).cabal
 	cabal install --builddir="$(BUILDDIR)" --lib --only-dependencies \
 	  --package-env .
 ifeq ($(INPLACE),1)
@@ -38,7 +42,14 @@ endif
 	  PATH=$$(dirname \
 	    $$(cabal list-bin $(PKGDISTR) --builddir="$(BUILDDIR)")):$$PATH; \
 	fi; \
-	$(NHMTOOL) deps $(PKGNAME) -d "$(BUILDDIR)" >> $(GHCENV); \
+	$(NHMTOOL) deps $(PKGNAME) -d "$(BUILDDIR)" >> $(GHCENV)
+
+$(DISTR): $(SRC)
+	if test "$(NHMTOOL)" = nhm-tool && ! command -v nhm-tool >/dev/null; \
+	then \
+	  PATH=$$(dirname \
+	    $$(cabal list-bin $(PKGDISTR) --builddir="$(BUILDDIR)")):$$PATH; \
+	fi; \
 	runhaskell --ghc-arg=-package=base \
 	  --ghc-arg=-package=$(PKGDISTR) Setup.hs configure \
 	  --builddir="$(BUILDDIR)" \
@@ -57,8 +68,6 @@ endif
 install: $(DISTR)
 	install -d $(PREFIX)
 	tar xf $(DISTR) -C $(PREFIX) --no-same-owner
-
-.PHONY: clean
 
 clean:
 	rm -rf $(BUILDDIR) $(DEPLIBS)

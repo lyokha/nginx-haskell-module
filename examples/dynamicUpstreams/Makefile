@@ -19,9 +19,13 @@ GHCENV := .ghc.environment.$(MACHINE)-$(KERNEL)-$(GHCVER)
 DEPLIBS := $(MACHINE)-$(KERNEL)-ghc-$(GHCVER)
 BUILDDIR := dist-nhm
 
+.PHONY: all env clean
+
 all: $(DISTR)
 
-$(DISTR): $(SRC)
+env: $(GHCENV)
+
+$(GHCENV): cabal.project $(PKGNAME).cabal
 	cabal install --builddir="$(BUILDDIR)" --lib --only-dependencies \
 	  --package-env .
 	sed -i 's/\(^package-id \)/--\1/' $(GHCENV)
@@ -30,7 +34,14 @@ $(DISTR): $(SRC)
 	  PATH=$$(dirname \
 	    $$(cabal list-bin $(PKGDISTR) --builddir="$(BUILDDIR)")):$$PATH; \
 	fi; \
-	$(NHMTOOL) deps $(PKGNAME) -d "$(BUILDDIR)" >> $(GHCENV); \
+	$(NHMTOOL) deps $(PKGNAME) -d "$(BUILDDIR)" >> $(GHCENV)
+
+$(DISTR): $(GHCENV) $(SRC)
+	if test "$(NHMTOOL)" = nhm-tool && ! command -v nhm-tool >/dev/null; \
+	then \
+	  PATH=$$(dirname \
+	    $$(cabal list-bin $(PKGDISTR) --builddir="$(BUILDDIR)")):$$PATH; \
+	fi; \
 	runhaskell --ghc-arg=-package=base \
 	  --ghc-arg=-package=$(PKGDISTR) Setup.hs configure \
 	  --builddir="$(BUILDDIR)" \
@@ -49,8 +60,6 @@ $(DISTR): $(SRC)
 install: $(DISTR)
 	install -d $(PREFIX)
 	tar xf $(DISTR) -C $(PREFIX) --no-same-owner
-
-.PHONY: clean
 
 clean:
 	rm -rf $(BUILDDIR) $(DEPLIBS)
