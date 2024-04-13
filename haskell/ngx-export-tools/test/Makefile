@@ -44,7 +44,7 @@ endif
 	fi; \
 	$(NHMTOOL) deps $(PKGNAME) -d "$(BUILDDIR)" >> $(GHCENV)
 
-$(DISTR): $(SRC)
+$(DISTR): $(GHCENV) $(SRC)
 	if test "$(NHMTOOL)" = nhm-tool && ! command -v nhm-tool >/dev/null; \
 	then \
 	  PATH=$$(dirname \
