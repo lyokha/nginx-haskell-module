@@ -303,11 +303,11 @@ import Data.Maybe
 --
 -- > $ make clean
 --
--- or, to additionally delete the built artifact,
+-- or, to additionally delete the GHC environment file and the built artifact,
 --
 -- > $ make clean-all
 --
--- To just create the GHC environment, run
+-- To just create the GHC package environment, run
 --
 -- > $ make env
 --

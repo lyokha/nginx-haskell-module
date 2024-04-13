@@ -278,13 +278,13 @@ To delete intermediate build files, run
 $ make clean
 ```
 
-or, to additionally delete the built artifact,
+or, to additionally delete the GHC environment file and the built artifact,
 
 ```ShellSession
 $ make clean-all
 ```
 
-To just create the GHC environment, run
+To just create the GHC package environment, run
 
 ```ShellSession
 $ make env

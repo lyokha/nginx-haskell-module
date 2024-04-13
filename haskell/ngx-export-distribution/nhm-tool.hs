@@ -553,11 +553,11 @@ makefile InitData {..} = T.concat
      \\n\
      \clean:\n\
      \\trm -rf $(BUILDDIR) $(DEPLIBS)\n\
-     \\trm -f $(GHCENV) $(STUB) $(NAME).hi $(NAME).o\n\
+     \\trm -f $(STUB) $(NAME).hi $(NAME).o\n\
      \\trm -f $(LIB)\n\
      \\n\
      \clean-all: clean\n\
-     \\trm -f $(DISTR)\n"
+     \\trm -f $(GHCENV) $(DISTR)\n"
     ]
     where updatePath =
               "\tif test \"$(NHMTOOL)\" = nhm-tool && ! command -v nhm-tool \

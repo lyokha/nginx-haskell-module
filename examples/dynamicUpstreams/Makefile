@@ -63,9 +63,9 @@ install: $(DISTR)
 
 clean:
 	rm -rf $(BUILDDIR) $(DEPLIBS)
-	rm -f $(GHCENV) $(STUB) $(NAME).hi $(NAME).o
+	rm -f $(STUB) $(NAME).hi $(NAME).o
 	rm -f $(LIB)
 
 clean-all: clean
-	rm -f $(DISTR)
+	rm -f $(GHCENV) $(DISTR)
 
