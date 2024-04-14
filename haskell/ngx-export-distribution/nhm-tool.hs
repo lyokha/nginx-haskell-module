@@ -509,8 +509,13 @@ makefile InitData {..} = T.concat
      \\n\
      \SRC := $(NAME).hs\n\
      \LIB := $(NAME).so\n\
-     \STUB := $(NAME)_stub.h\n\
      \DISTR := $(PKGNAME)-$(PKGVER).tar.gz\n\
+     \\n\
+     \OBJS := $(SRC:.hs=.o)\n\
+     \HIOBJS := $(SRC:.hs=.hi)\n\
+     \DYNOBJS := $(SRC:.hs=.dyn_o)\n\
+     \DYNHIOBJS := $(SRC:.hs=.dyn_hi)\n\
+     \STUBS := $(SRC:.hs=_stub.h)\n\
      \\n\
      \GHCVER := $(shell ghc --numeric-version)\n\
      \GHCENV := .ghc.environment.$(MACHINE)-$(KERNEL)-$(GHCVER)\n\
@@ -553,7 +558,7 @@ makefile InitData {..} = T.concat
      \\n\
      \clean:\n\
      \\trm -rf $(BUILDDIR) $(DEPLIBS)\n\
-     \\trm -f $(STUB) $(NAME).hi $(NAME).o\n\
+     \\trm -f $(OBJS) $(HIOBJS) $(DYNOBJS) $(DYNHIOBJS) $(STUBS)\n\
      \\trm -f $(LIB)\n\
      \\n\
      \clean-all: clean\n\

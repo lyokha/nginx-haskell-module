@@ -313,6 +313,13 @@ import Data.Maybe
 --
 -- This is enough to start editing the Haskell source file in an editor which
 -- has support for the /Haskell Language Server/.
+--
+-- If you want to add more Haskell source files, add their names into variable
+-- /SRC/ in /Makefile/. If the root Haskell source file depends on modules from
+-- other source files, add their names (or module names) into the list of
+-- arguments in file /hie.yaml/. This is required for the Haskell Language
+-- Server to work correctly. Note also that in this case the names of the files
+-- must be equal to the names of the modules these files provide.
 
 -- $drawbacks
 --

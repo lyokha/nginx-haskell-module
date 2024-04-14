@@ -11,8 +11,13 @@ NHMTOOL := nhm-tool
 
 SRC := $(NAME).hs
 LIB := $(NAME).so
-STUB := $(NAME)_stub.h
 DISTR := $(PKGNAME)-$(PKGVER).tar.gz
+
+OBJS := $(SRC:.hs=.o)
+HIOBJS := $(SRC:.hs=.hi)
+DYNOBJS := $(SRC:.hs=.dyn_o)
+DYNHIOBJS := $(SRC:.hs=.dyn_hi)
+STUBS := $(SRC:.hs=_stub.h)
 
 GHCVER := $(shell ghc --numeric-version)
 GHCENV := .ghc.environment.$(MACHINE)-$(KERNEL)-$(GHCVER)
@@ -71,7 +76,7 @@ install: $(DISTR)
 
 clean:
 	rm -rf $(BUILDDIR) $(DEPLIBS)
-	rm -f $(STUB) $(NAME).hi $(NAME).o
+	rm -f $(OBJS) $(HIOBJS) $(DYNOBJS) $(DYNHIOBJS) $(STUBS)
 	rm -f $(LIB)
 
 clean-all: clean
