@@ -517,25 +517,31 @@ makefile InitData {..} = T.concat
      \DYNHIOBJS := $(SRC:.hs=.dyn_hi)\n\
      \STUBS := $(SRC:.hs=_stub.h)\n\
      \\n\
-     \GHCVER := $(shell ghc --numeric-version)\n\
+     \GHC := ghc\n\
+     \CABAL := cabal\n\
+     \GHCVER := $(shell $(GHC) --numeric-version)\n\
      \GHCENV := .ghc.environment.$(MACHINE)-$(KERNEL)-$(GHCVER)\n\
      \DEPLIBS := $(MACHINE)-$(KERNEL)-ghc-$(GHCVER)\n\
      \BUILDDIR := dist-nhm\n\
+     \SETUPCONFIG := $(BUILDDIR)/setup-config\n\
      \\n\
-     \.PHONY: all env clean\n\
+     \.PHONY: all env config install clean clean-all\n\
      \\n\
      \all: $(DISTR)\n\
      \\n\
      \env: $(GHCENV)\n\
      \\n\
+     \config: $(SETUPCONFIG)\n\
+     \\n\
      \$(GHCENV): cabal.project $(PKGNAME).cabal\n\
-     \\tcabal install --builddir=\"$(BUILDDIR)\" --lib --only-dependencies \\\n\
+     \\t$(CABAL) install --builddir=\"$(BUILDDIR)\" --lib --only-dependencies \
+     \\\\n\
      \\t  --package-env .\n\
      \\tsed -i 's/\\(^package-id \\)/--\\1/' $(GHCENV)\n",
      updatePath,
      "\t$(NHMTOOL) deps $(PKGNAME) -d \"$(BUILDDIR)\" >> $(GHCENV)\n\
      \\n\
-     \$(DISTR): $(GHCENV) $(SRC)\n",
+     \$(SETUPCONFIG): $(GHCENV)\n",
      updatePath,
      "\trunhaskell --ghc-arg=-package=base \\\n\
      \\t  --ghc-arg=-package=$(PKGDISTR) Setup.hs configure \\\n\
@@ -546,8 +552,11 @@ makefile InitData {..} = T.concat
      \\t    `'\\(-\\([0-9]\\+\\.\\)*[0-9]\\+\\($$\\|-.*\\)\\)/'` \\\n\
      \\t    `'--dependency=\\1=\\1\\2/p' \\\n\
      \\t    $(GHCENV)) \\\n\
-     \\t  --prefix=$(PREFIX); \\\n\
-     \\trunhaskell --ghc-arg=-package=base \\\n\
+     \\t  --prefix=$(PREFIX)\n\
+     \\n\
+     \$(DISTR): $(SETUPCONFIG) $(SRC)\n",
+     updatePath,
+     "\trunhaskell --ghc-arg=-package=base \\\n\
      \\t  --ghc-arg=-package=$(PKGDISTR) Setup.hs build \\\n\
      \\t  --builddir=\"$(BUILDDIR)\" \\\n\
      \\t  --ghc-options=\"$(SRC) -o $(LIB) $(LINKRTS)\"\n\
@@ -557,20 +566,20 @@ makefile InitData {..} = T.concat
      \\ttar xf $(DISTR) -C $(PREFIX) --no-same-owner\n\
      \\n\
      \clean:\n\
-     \\trm -rf $(BUILDDIR) $(DEPLIBS)\n\
+     \\trm -rf $(DEPLIBS)\n\
      \\trm -f $(OBJS) $(HIOBJS) $(DYNOBJS) $(DYNHIOBJS) $(STUBS)\n\
      \\trm -f $(LIB)\n\
      \\n\
      \clean-all: clean\n\
+     \\trm -rf $(BUILDDIR)\n\
      \\trm -f $(GHCENV) $(DISTR)\n"
     ]
     where updatePath =
               "\tif test \"$(NHMTOOL)\" = nhm-tool && ! command -v nhm-tool \
               \>/dev/null; \\\n\
               \\tthen \\\n\
-              \\t  PATH=$$(dirname \\\n\
-              \\t    $$(cabal list-bin $(PKGDISTR) \
-              \--builddir=\"$(BUILDDIR)\")):$$PATH; \\\n\
+              \\t  PATH=$$(dirname $$($(CABAL) list-bin $(PKGDISTR) \\\n\
+              \\t    --builddir=\"$(BUILDDIR)\")):$$PATH; \\\n\
               \\tfi; \\\n"
 
 projectHs :: InitData -> Text

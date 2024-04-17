@@ -278,7 +278,8 @@ To delete intermediate build files, run
 $ make clean
 ```
 
-or, to additionally delete the GHC environment file and the built artifact,
+or, to additionally delete the GHC environment file, the Cabal build directory,
+and the built artifact,
 
 ```ShellSession
 $ make clean-all

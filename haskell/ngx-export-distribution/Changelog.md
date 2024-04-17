@@ -1,3 +1,9 @@
+### 0.5.4.1
+
+- *nhm-tool*: add a new target *make config* in generated *Makefile*: this
+  should make rebuilds faster, introduce variables *GHC* and *CABAL* for
+  commands *ghc* and *cabal*.
+
 ### 0.5.4.0
 
 - *nhm-tool*: command *init* now generates file *hie.yaml* for using with

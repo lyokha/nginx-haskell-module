@@ -20,10 +20,13 @@ DYNOBJS := $(SRC:.hs=.dyn_o)
 DYNHIOBJS := $(SRC:.hs=.dyn_hi)
 STUBS := $(SRC:.hs=_stub.h)
 
-GHCVER := $(shell ghc --numeric-version)
+GHC := ghc
+CABAL := cabal
+GHCVER := $(shell $(GHC) --numeric-version)
 GHCENV := .ghc.environment.$(MACHINE)-$(KERNEL)-$(GHCVER)
 DEPLIBS := $(MACHINE)-$(KERNEL)-ghc-$(GHCVER)
 BUILDDIR := dist-nhm
+SETUPCONFIG := $(BUILDDIR)/setup-config
 
 PKGNGXEXPORT := ngx-export
 
@@ -32,33 +35,35 @@ INPLACE := $(shell grep -q '^packages:.*\(\.\./\)\{3\}haskell/$(PKGNGXEXPORT)' \
 
 NGX_HOME := .
 
-.PHONY: all env clean
+.PHONY: all env config install clean clean-all
 
 all: $(DISTR)
 
 env: $(GHCENV)
 
+config: $(SETUPCONFIG)
+
 $(GHCENV): cabal.project $(PKGNAME).cabal
-	cabal install --builddir="$(BUILDDIR)" --lib --only-dependencies \
+	$(CABAL) install --builddir="$(BUILDDIR)" --lib --only-dependencies \
 	  --package-env .
 ifeq ($(INPLACE),1)
-	cabal build --builddir="$(BUILDDIR)" $(PKGNGXEXPORT)
+	$(CABAL) build --builddir="$(BUILDDIR)" $(PKGNGXEXPORT)
 	echo "package-db $$(pwd)/$(BUILDDIR)/packagedb/ghc-$(GHCVER)" >> \
 	  $(GHCENV)
 endif
 	sed -i 's/\(^package-id \)/--\1/' $(GHCENV)
 	if test "$(NHMTOOL)" = nhm-tool && ! command -v nhm-tool >/dev/null; \
 	then \
-	  PATH=$$(dirname \
-	    $$(cabal list-bin $(PKGDISTR) --builddir="$(BUILDDIR)")):$$PATH; \
+	  PATH=$$(dirname $$($(CABAL) list-bin $(PKGDISTR) \
+	    --builddir="$(BUILDDIR)")):$$PATH; \
 	fi; \
 	$(NHMTOOL) deps $(PKGNAME) -d "$(BUILDDIR)" >> $(GHCENV)
 
-$(DISTR): $(GHCENV) $(SRC) $(CPLUG).o
+$(SETUPCONFIG): $(GHCENV)
 	if test "$(NHMTOOL)" = nhm-tool && ! command -v nhm-tool >/dev/null; \
 	then \
-	  PATH=$$(dirname \
-	    $$(cabal list-bin $(PKGDISTR) --builddir="$(BUILDDIR)")):$$PATH; \
+	  PATH=$$(dirname $$($(CABAL) list-bin $(PKGDISTR) \
+	    --builddir="$(BUILDDIR)")):$$PATH; \
 	fi; \
 	runhaskell --ghc-arg=-package=base \
 	  --ghc-arg=-package=$(PKGDISTR) Setup.hs configure \
@@ -69,7 +74,14 @@ $(DISTR): $(GHCENV) $(SRC) $(CPLUG).o
 	    `'\(-\([0-9]\+\.\)*[0-9]\+\($$\|-.*\)\)/'` \
 	    `'--dependency=\1=\1\2/p' \
 	    $(GHCENV)) \
-	  --prefix=$(PREFIX); \
+	  --prefix=$(PREFIX)
+
+$(DISTR): $(SETUPCONFIG) $(SRC) $(CPLUG).o
+	if test "$(NHMTOOL)" = nhm-tool && ! command -v nhm-tool >/dev/null; \
+	then \
+	  PATH=$$(dirname $$($(CABAL) list-bin $(PKGDISTR) \
+	    --builddir="$(BUILDDIR)")):$$PATH; \
+	fi; \
 	runhaskell --ghc-arg=-package=base \
 	  --ghc-arg=-package=$(PKGDISTR) Setup.hs build \
 	  --builddir="$(BUILDDIR)" \
@@ -87,10 +99,11 @@ install: $(DISTR)
 	tar xf $(DISTR) -C $(PREFIX) --no-same-owner
 
 clean:
-	rm -rf $(BUILDDIR) $(DEPLIBS)
+	rm -rf $(DEPLIBS)
 	rm -f $(OBJS) $(HIOBJS) $(DYNOBJS) $(DYNHIOBJS) $(STUBS)
 	rm -f $(LIB)
 
 clean-all: clean
-	rm -f $(GHCENV) $(DISTR)
+	rm -rf $(BUILDDIR)
+	rm -f $(GHCENV) $(DISTR) $(CPLUG).o
 
