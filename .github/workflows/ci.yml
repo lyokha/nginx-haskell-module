@@ -160,7 +160,7 @@ jobs:
           sed -i 's/^packages:.*/'`
                 `'& ..\/ngx-export-distribution.cabal '`
                 `'..\/..\/ngx-export\/ngx-export.cabal/' cabal.project
-          sed -i 's/\(^\tcabal build --builddir="\$(BUILDDIR)" \)\$(PKGDISTR)/'`
-                `'&\n\1ngx-export/' Makefile
+          sed -i 's/\(^\t\$(CABAL) build --builddir="\$(BUILDDIR)" \)'`
+                `'\$(PKGDISTR)/&\n\1ngx-export/' Makefile
           make
 
