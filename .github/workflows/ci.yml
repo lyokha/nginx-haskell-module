@@ -120,14 +120,10 @@ jobs:
           TOPDIR="$(pwd)"
           cd test
           cd t-github-ci
-          if echo "GHCVER" | grep -q '^8\.'
-          then
+          echo "$GHCVER" | grep -q '^8\.' &&
               LINKRTS="LINKRTS=-lHSrts_thr-ghc$(ghc --numeric-version)"
-          else
-              LINKRTS=
-          fi
-          make PREFIX="$TOPDIR/var/lib/nginx" "$LINKRTS"
-          make PREFIX="$TOPDIR/var/lib/nginx" "$LINKRTS" install
+          make PREFIX="$TOPDIR/var/lib/nginx" $LINKRTS
+          make PREFIX="$TOPDIR/var/lib/nginx" $LINKRTS install
           cd -
 
           sed -i "s'\\/var\\/lib\\/nginx'$TOPDIR&'" t-github-ci/basic.t
