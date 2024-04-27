@@ -9,26 +9,22 @@ jobs:
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       matrix:
-        ghc: ['8.2', '8.4', '8.6', '8.8', '8.10', '9.0', '9.2', '9.4']
+        ghc: ['8.2', '8.4', '8.6', '8.8']
         cabal: ['3.8']
-        nginx: ['']
+        nginx: [1.18.0]
         experimental: [false]
         include:
           - ghc: '9.8'
-            cabal: '3.10'
-            nginx: ''
-            experimental: false
-          - ghc: '9.8'
-            cabal: '3.10'
+            cabal: head
             nginx: head
             experimental: true
           - ghc: '9.8'
             cabal: '3.10'
-            nginx: 1.24.0
-            experimental: false
-          - ghc: '9.6'
+            nginx: freenginx-head
+            experimental: true
+          - ghc: '9.8'
             cabal: '3.10'
-            nginx: ''
+            nginx: 1.26.0
             experimental: false
           - ghc: '9.6'
             cabal: '3.10'
@@ -50,18 +46,6 @@ jobs:
             cabal: '3.8'
             nginx: 1.20.2
             experimental: false
-          - ghc: '8.8'
-            cabal: '3.8'
-            nginx: 1.18.0
-            experimental: false
-          - ghc: '8.6'
-            cabal: '3.8'
-            nginx: 1.16.1
-            experimental: false
-          - ghc: '9.8'
-            cabal: '3.10'
-            nginx: freenginx-head
-            experimental: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -71,8 +55,7 @@ jobs:
           ghc-version: ${{ matrix.ghc }}
           cabal-version: ${{ matrix.cabal }}
       - name: Install prove
-        if: matrix.nginx != ''
-        uses: perl-actions/install-with-cpanm@v1.5
+        uses: perl-actions/install-with-cpanm@v1.6
         with:
           install: "Test::Nginx"
           tests: false
@@ -87,80 +70,57 @@ jobs:
           cabal --version
           echo "$(ghc --version) "`
               `"[$(ghc --print-project-git-commit-id 2>/dev/null || echo '?')]"
-          if echo "$CABALVER" | grep -q '^3\.[0-5]\.'
+          cabal update
+
+          if [ "$NGXVER" = head ]
           then
-              cabal v1-update
+              git clone https://github.com/nginx/nginx.git nginx-head
+          elif [ "$NGXVER" = freenginx-head ]
+          then
+              hg clone http://freenginx.org/hg/nginx nginx-freenginx-head
           else
-              cabal v2-update
+              wget http://nginx.org/download/nginx-${NGXVER}.tar.gz &&
+                  tar xzvf nginx-${NGXVER}.tar.gz
           fi
+
+          sudo wget -P /usr/include \
+              https://raw.githubusercontent.com/zserge/jsmn/$JSMN_REV/jsmn.h
+          git clone https://github.com/openresty/echo-nginx-module.git
+
           cd haskell/ngx-export
-          cabal v1-install --only-dependencies
-          if [ -n "$NGXVER" ]
-          then
-              cd -
-              if [ "$NGXVER" = head ]
-              then
-                  git clone https://github.com/nginx/nginx.git nginx-head
-              elif [ "$NGXVER" = freenginx-head ]
-              then
-                  hg clone http://freenginx.org/hg/nginx nginx-freenginx-head
-              else
-                  wget http://nginx.org/download/nginx-${NGXVER}.tar.gz &&
-                      tar xzvf nginx-${NGXVER}.tar.gz
-              fi
-              sudo wget -P /usr/include \
-                  https://raw.githubusercontent.com/zserge/jsmn/$JSMN_REV/jsmn.h
-              git clone https://github.com/openresty/echo-nginx-module.git
-              cabal v1-install cpphs regex-pcre-builtin aeson bytestring safe
-              cd -
-          else
-              cd -
-              cd haskell/ngx-export-tools
-              cabal v1-install --only-dependencies
-              cd -
-              cd haskell/ngx-export
-          fi
-          cabal v1-configure
-          cabal v1-build
-          cabal v2-sdist --builddir=dist
-          SRC_TGZ=$(cabal info . | awk '{print $2; exit}').tar.gz &&
-              (cd dist/sdist && cabal v1-install --force-reinstalls "$SRC_TGZ")
-          if [ -n "$NGXVER" ]
-          then
-              cd -
-              cd nginx-${NGXVER}/
-              if [ "$NGXVER" = head ] || [ "$NGXVER" = freenginx-head ]
-              then
-                  NGX_CONFIGURE=./auto/configure
-              else
-                  NGX_CONFIGURE=./configure
-              fi
-              $NGX_CONFIGURE --add-module=.. \
-                             --add-module=../aliases \
-                             --add-module=../$UPCONF_MODULE_PATH \
-                             --add-module=../echo-nginx-module
-              make -j2
-              export PATH="$(pwd)/objs:$PATH"
-              cd -
-              cd test
-              export PATH="$HOME/.cabal/bin:$PATH"
-              prove -r t-travis
-          else
-              cd -
-              cd haskell/ngx-export-tools
-              cabal v1-configure
-              cabal v1-build
-              cabal v2-sdist --builddir=dist
-              SRC_TGZ=$(cabal info . | awk '{print $2; exit}').tar.gz &&
-                  (cd dist/sdist &&
-                  cabal v1-install --force-reinstalls "$SRC_TGZ")
-          fi
+          cabal build
+          cabal sdist
           cd -
-          cd haskell/ngx-export-distribution/test
-          sed -i 's/^packages:.*/'`
-                `'& ..\/ngx-export-distribution.cabal '`
-                `'..\/..\/ngx-export\/ngx-export.cabal/' cabal.project
-          sed -i 's/\(^\t\$(CABAL) build --builddir="\$(BUILDDIR)" \)'`
-                `'\$(PKGDISTR)/&\n\1ngx-export/' Makefile
+          cd haskell/ngx-export-tools
+          echo 'packages: ../ngx-export/ngx-export.cabal' > cabal.project
+          cabal build
+          cabal sdist
+          cd -
+          cd haskell/ngx-export-distribution
+          cabal build
+          cabal sdist
+          cd -
+
+          cd nginx-${NGXVER}/
+          if [ "$NGXVER" = head ] || [ "$NGXVER" = freenginx-head ]
+          then
+              NGX_CONFIGURE=./auto/configure
+          else
+              NGX_CONFIGURE=./configure
+          fi
+          $NGX_CONFIGURE --add-module=.. \
+                         --add-module=../aliases \
+                         --add-module=../$UPCONF_MODULE_PATH \
+                         --add-module=../echo-nginx-module
+          make -j2
+          export PATH="$(pwd)/objs:$PATH"
+          cd -
+
+          cd test
+          cd t-github-ci
           make
+          sudo make install
+          cd -
+
+          prove -r t-github-ci
 
