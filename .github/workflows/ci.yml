@@ -9,10 +9,10 @@ jobs:
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       matrix:
-        ghc: ['8.2', '8.4', '8.6', '8.8']
+        ghc: ['8.4', '8.6', '8.8']
         cabal: ['3.8']
         nginx: [1.18.0]
-        experimental: [true]
+        experimental: [false]
         include:
           - ghc: '9.8'
             cabal: head
