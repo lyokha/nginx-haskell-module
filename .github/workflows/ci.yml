@@ -92,7 +92,8 @@ jobs:
           cabal sdist
           cd -
           cd haskell/ngx-export-tools
-          echo 'packages: ../ngx-export/ngx-export.cabal' > cabal.project
+          echo 'packages: ngx-export-tools.cabal '`
+              `'../ngx-export/ngx-export.cabal' > cabal.project
           cabal build
           cabal sdist
           cd -
