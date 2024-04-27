@@ -12,7 +12,7 @@ jobs:
         ghc: ['8.2', '8.4', '8.6', '8.8']
         cabal: ['3.8']
         nginx: [1.18.0]
-        experimental: [false]
+        experimental: [true]
         include:
           - ghc: '9.8'
             cabal: head
