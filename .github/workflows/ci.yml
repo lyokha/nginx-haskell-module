@@ -117,11 +117,13 @@ jobs:
           export PATH="$(pwd)/objs:$PATH"
           cd -
 
+          TOPDIR="$(pwd)"
           cd test
           cd t-github-ci
-          make PREFIX=/github/home/var/lib/nginx
-          make PREFIX=/github/home/var/lib/nginx install
+          make PREFIX="$TOPDIR/var/lib/nginx"
+          make PREFIX="$TOPDIR/var/lib/nginx" install
           cd -
 
+          sed -i "s'\\/var\\/lib\\/nginx'$TOPDIR&'" t-github-ci/basic.t
           prove -r t-github-ci
 
