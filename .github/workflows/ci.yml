@@ -119,8 +119,8 @@ jobs:
 
           cd test
           cd t-github-ci
-          make
-          sudo make install
+          make PREFIX=/github/home/var/lib/nginx
+          make PREFIX=/github/home/var/lib/nginx install
           cd -
 
           prove -r t-github-ci

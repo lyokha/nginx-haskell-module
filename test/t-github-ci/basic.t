@@ -12,7 +12,7 @@ __DATA__
 
 === TEST 1: toUpper
 --- http_config
-    haskell load /var/lib/nginx/test_github_ci.so';
+    haskell load /github/home/var/lib/nginx/test_github_ci.so;
 --- config
     location /toUpper {
         haskell_run toUpper $hs_a $arg_a;
