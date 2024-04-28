@@ -1,7 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE MagicHash, ViewPatterns, FlexibleInstances, TupleSections #-}
 
-module TestGithubCi where
+module TestBasic where
 
 import           NgxExport
 import qualified Data.Char as C

@@ -1,4 +1,4 @@
-name:                       test-github-ci
+name:                       test-basic
 version:                    0.1.0.0
 build-type:                 Custom
 cabal-version:              2.0

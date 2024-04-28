@@ -1,4 +1,4 @@
-NAME := test_github_ci
+NAME := test_basic
 PKGNAME := $(subst _,-,$(NAME))
 PKGVER := 0.1.0.0
 

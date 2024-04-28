@@ -6,7 +6,7 @@
 
 dist/
 dist-newstyle/
-/test/**/servroot/
+/test/t/servroot/
 .hslibs/
 
 /haskell/ngx-export-distribution/test/*.tar.gz
