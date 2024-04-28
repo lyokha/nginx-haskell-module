@@ -9,6 +9,7 @@ Tests require Perl module *Test::Nginx::Socket*.
 $ cd t
 $ make
 $ sudo make install
+$ cd -
 ```
 
 ##### Run tests

@@ -39,46 +39,47 @@
     probabilities must be 100 -->
 
     <!-- files to be created with
-         mkdir -p /usr/local/webdata/static     # if needed
-         touch /usr/local/webdata/static/content-empty.txt
-         echo -n A > /usr/local/webdata/static/content-1byte.txt
-         ./gen_files.pl -n1 -s50; mv test1.data /usr/local/webdata/static/content-small.txt
-         ./gen_files.pl -n1 -s100k; mv test1.data /usr/local/webdata/static/content-large.txt
-         ./gen_files.pl -n1 -s1M; mv test1.data /usr/local/webdata/static/content-huge.txt
+         STATIC_DIR=/var/lib/nginx/test/tsung/static
+         sudo install -d $STATIC_DIR
+         sudo touch $STATIC_DIR/content-empty.txt
+         sudo sh -c "echo -n A > $STATIC_DIR/content-1byte.txt"
+         ./gen_files.pl -n1 -s50; sudo mv test1.data $STATIC_DIR/content-small.txt
+         ./gen_files.pl -n1 -s100k; sudo mv test1.data $STATIC_DIR/content-large.txt
+         ./gen_files.pl -n1 -s1M; sudo mv test1.data $STATIC_DIR/content-huge.txt
     calculate their md5sum and put it into the corresponding match tags -->
 
     <sessions>
-        <session name="content-empty" probability="10" type="ts_http">
+        <session name="content-empty" probability="16" type="ts_http">
             <request>
                 <match do="continue" when="match" skip_headers="http" apply_to_content='ts_digest:md5hex'>d41d8cd98f00b204e9800998ecf8427e</match>
                 <http url="/static/content-empty.txt" method="GET" version="1.0"/>
             </request>
         </session>
-        <session name="content-1byte" probability="18" type="ts_http">
+        <session name="content-1byte" probability="16" type="ts_http">
             <request>
                 <match do="continue" when="match" skip_headers="http" apply_to_content='ts_digest:md5hex'>7fc56270e7a70fa81a5935b72eacbe29</match>
                 <http url="/static/content-1byte.txt" method="GET" version="1.0"/>
             </request>
         </session>
-        <session name="content-small" probability="18" type="ts_http">
+        <session name="content-small" probability="16" type="ts_http">
             <request>
-                <match do="continue" when="match" skip_headers="http" apply_to_content='ts_digest:md5hex'>c0141f34dd44c8ef543d069eea28ea86</match>
+                <match do="continue" when="match" skip_headers="http" apply_to_content='ts_digest:md5hex'>fcff3e6b75d187c6c4292592ab6054d4</match>
                 <http url="/static/content-small.txt" method="GET" version="1.0"/>
             </request>
         </session>
-        <session name="content-large" probability="18" type="ts_http">
+        <session name="content-large" probability="16" type="ts_http">
             <request>
-                <match do="continue" when="match" skip_headers="http" apply_to_content='ts_digest:md5hex'>ae953d0a6999e879b6c15dc776f220c4</match>
+                <match do="continue" when="match" skip_headers="http" apply_to_content='ts_digest:md5hex'>645a54117e3f4f32fb9196f30a7daba4</match>
                 <http url="/static/content-large.txt" method="GET" version="1.0"/>
             </request>
         </session>
-        <session name="content-huge" probability="18" type="ts_http">
+        <session name="content-huge" probability="16" type="ts_http">
             <request>
-                <match do="continue" when="match" skip_headers="http" apply_to_content='ts_digest:md5hex'>b53415b8f1f0adf7c49768e25d84c556</match>
+                <match do="continue" when="match" skip_headers="http" apply_to_content='ts_digest:md5hex'>b5f5c39227127e4295b34bf4ec003fc4</match>
                 <http url="/static/content-huge.txt" method="GET" version="1.0"/>
             </request>
         </session>
-        <session name="content-not-found" probability="18" type="ts_http">
+        <session name="content-not-found" probability="20" type="ts_http">
             <request>
                 <match do="continue" when="match" skip_headers="http">File not found</match>
                 <http url="/static/content-not-found.txt" method="GET" version="1.0"/>
