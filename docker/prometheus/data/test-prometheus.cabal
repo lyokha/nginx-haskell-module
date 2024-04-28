@@ -1,0 +1,20 @@
+name:                       test-prometheus
+version:                    0.1.0.0
+build-type:                 Custom
+cabal-version:              2.0
+
+custom-setup
+  setup-depends:            base >= 4.8 && < 5
+                          , ngx-export-distribution
+
+library
+  default-language:         Haskell2010
+  build-tool-depends:       ngx-export-distribution:nhm-tool
+  build-depends:            base >= 4.8 && < 5
+                          , ngx-export-tools-extra
+
+  ghc-options:             -Wall -O2
+
+  if impl(ghc >= 9.0.1)
+    ghc-options:           -threaded
+

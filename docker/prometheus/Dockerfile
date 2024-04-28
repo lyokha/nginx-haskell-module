@@ -3,15 +3,14 @@ ARG BASE_IMAGE_TAG=latest
 FROM lyokha/nginx-haskell-module:$BASE_IMAGE_TAG
 
 COPY data/test-prometheus.conf /opt/nginx/conf/nginx.conf
-COPY data/test-prometheus.hs /build/test-prometheus.hs
+COPY data/test_prometheus.hs /build/test_prometheus.hs
+COPY data/Makefile /build/Makefile
+COPY data/Setup.hs /build/Setup.hs
+COPY data/test-prometheus.cabal /build/test-prometheus.cabal
+COPY data/cabal.project /build/cabal.project
+COPY data/hie.yaml /build/hie.yaml
 
-RUN cd /build                                        && \
-    ghc -Wall -O2 -dynamic -shared -fPIC -flink-rts -threaded \
-            -lngx_healthcheck_plugin -lngx_log_plugin         \
-            test-prometheus.hs -o test-prometheus.so && \
-    mv test-prometheus.so /var/lib/nginx             && \
-    cd ..                                            && \
-    rm -rf /build
+RUN (cd /build; make install) && rm -rf /build
 
 CMD ["/opt/nginx/sbin/nginx", "-g", "daemon off;"]
 

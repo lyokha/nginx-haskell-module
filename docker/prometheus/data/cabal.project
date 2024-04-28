@@ -1,0 +1,7 @@
+packages: test-prometheus.cabal
+
+-- FIXME: the following constraints mitigate transient inconsistencies on
+-- Hackage!
+constraints: filepath < 1.5
+
+

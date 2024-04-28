@@ -87,8 +87,20 @@ different Haskell handlers and Nginx configuration. Say, we want to test custom
 Prometheus metrics available with *nginx-custom-counters-module* and
 [*ngx-export-tools-extra*](https://github.com/lyokha/ngx-export-tools-extra).
 
-Below are Dockerfile and files *test-prometheus.hs* and *test-prometheus.conf*
-put in sub-directory *data/*.
+Let's first bootstrap a new project using *nhm-tool* from package
+[*ngx-export-distribution*](https://hackage.haskell.org/package/ngx-export-distribution).
+in directory *data/*.
+
+```ShellSession
+$ nhm-tool init test-prometheus
+```
+
+This command will create files *data/test-prometheus.cabal*,
+*data/test_prometheus.hs*, *data/cabal.project*, *data/Makefile* and others. We
+shall tune some of them.
+
+Below are Dockerfile and files *data/test_prometheus.hs*,
+*data/test-prometheus.cabal*, and *data/test-prometheus.conf*.
 
 ##### *Dockerfile*
 
@@ -98,20 +110,19 @@ ARG BASE_IMAGE_TAG=latest
 FROM lyokha/nginx-haskell-module:$BASE_IMAGE_TAG
 
 COPY data/test-prometheus.conf /opt/nginx/conf/nginx.conf
-COPY data/test-prometheus.hs /build/test-prometheus.hs
+COPY data/test_prometheus.hs /build/test_prometheus.hs
+COPY data/Makefile /build/Makefile
+COPY data/Setup.hs /build/Setup.hs
+COPY data/test-prometheus.cabal /build/test-prometheus.cabal
+COPY data/cabal.project /build/cabal.project
+COPY data/hie.yaml /build/hie.yaml
 
-RUN cd /build                                        && \
-    ghc -Wall -O2 -dynamic -shared -fPIC -flink-rts -threaded \
-            -lngx_healthcheck_plugin -lngx_log_plugin         \
-            test-prometheus.hs -o test-prometheus.so && \
-    mv test-prometheus.so /var/lib/nginx             && \
-    cd ..                                            && \
-    rm -rf /build
+RUN (cd /build; make install) && rm -rf /build
 
 CMD ["/opt/nginx/sbin/nginx", "-g", "daemon off;"]
 ```
 
-##### *test-prometheus.hs*
+##### *data/test_prometheus.hs*
 
 ```haskell
 module DockerTestPrometheus where
@@ -119,11 +130,29 @@ module DockerTestPrometheus where
 import NgxExport.Tools.Prometheus ()
 ```
 
-The basic docker image already contains the required Haskell package
-*ngx-export-tools-extra*. It may happen that the custom Haskell code requires
-modules from packages not installed in the basic image: in this case `cabal
-v1-update && cabal v1-install <list-of-required-packages>` must be put inside
-the RUN recipe of the Dockerfile.
+##### *data/test-prometheus.cabal*
+
+```cabal
+name:                       test-prometheus
+version:                    0.1.0.0
+build-type:                 Custom
+cabal-version:              2.0
+
+custom-setup
+  setup-depends:            base >= 4.8 && < 5
+                          , ngx-export-distribution
+
+library
+  default-language:         Haskell2010
+  build-tool-depends:       ngx-export-distribution:nhm-tool
+  build-depends:            base >= 4.8 && < 5
+                          , ngx-export-tools-extra
+
+  ghc-options:             -Wall -O2
+
+  if impl(ghc >= 9.0.1)
+    ghc-options:           -threaded
+```
 
 ##### *test-prometheus.conf*
 
@@ -143,7 +172,7 @@ http {
     error_log           /tmp/nginx-test-haskell-error.log info;
     access_log          /tmp/nginx-test-haskell-access.log;
 
-    haskell load /var/lib/nginx/test-prometheus.so;
+    haskell load /var/lib/nginx/test_prometheus.so;
 
     haskell_run_service simpleService_prometheusConf $hs_prometheus_conf
             'PrometheusConf

@@ -1,0 +1,5 @@
+-- note that ngx-export will be taken from Hackage;
+-- to build ngx-export locally, add
+-- ../../../haskell/ngx-export/ngx-export.cabal to packages
+packages: test.cabal
+
