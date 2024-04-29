@@ -4,4 +4,3 @@ packages: test-prometheus.cabal
 -- Hackage!
 constraints: filepath < 1.5
 
-

@@ -86,3 +86,4 @@ clean:
 clean-all: clean
 	rm -rf $(BUILDDIR)
 	rm -f $(GHCENV) $(DISTR)
+

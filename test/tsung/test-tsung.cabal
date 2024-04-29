@@ -22,3 +22,4 @@ library
 
   if impl(ghc >= 9.0.1)
     ghc-options:           -threaded
+
