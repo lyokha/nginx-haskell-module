@@ -1,5 +1,5 @@
-{-# LANGUAGE TemplateHaskell, StandaloneDeriving #-}
-{-# LANGUAGE FlexibleInstances, TypeSynonymInstances #-}
+{-# LANGUAGE DerivingVia, StandaloneDeriving, FlexibleInstances #-}
+{-# OPTIONS_GHC -Wno-orphans -fconstraint-solver-iterations=0 #-}
 
 -- A tool for generating sample objects of various types in GHCi
 --
@@ -26,7 +26,8 @@ module LMRObjGen where
 import           LabeledMediaRouter
 
 import           Test.QuickCheck
-import           Data.DeriveTH
+import           Test.QuickCheck.Arbitrary.Generic
+import           GHC.Generics
 
 import qualified Text.Pretty.Simple as PP
 import           Data.Aeson
@@ -51,13 +52,16 @@ instance {-# OVERLAPS #-} Arbitrary String where
         replicateM l $ elements $
             ['0' .. '9'] ++ ['a' .. 'z'] ++ ['A' .. 'Z'] ++ "_-."
 
-derive makeArbitrary ''Possession
-derive makeArbitrary ''Mode
-derive makeArbitrary ''BackendData
-derive makeArbitrary ''LabelData
-derive makeArbitrary ''Op
-derive makeArbitrary ''BackendStatus
-derive makeArbitrary ''Msg
+deriving via GenericArbitrary Possession instance Arbitrary Possession
+deriving via GenericArbitrary Mode instance Arbitrary Mode
+deriving via GenericArbitrary BackendData instance Arbitrary BackendData
+deriving via GenericArbitrary LabelData instance Arbitrary LabelData
+deriving instance Generic Op
+deriving via GenericArbitrary Op instance Arbitrary Op
+deriving instance Generic BackendStatus
+deriving via GenericArbitrary BackendStatus instance Arbitrary BackendStatus
+deriving instance Generic Msg
+deriving via GenericArbitrary Msg instance Arbitrary Msg
 
 pPrint :: Show a => a -> IO ()
 pPrint = PP.pPrint

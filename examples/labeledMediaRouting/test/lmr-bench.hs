@@ -1,10 +1,11 @@
 {-# LANGUAGE DeriveGeneric, StandaloneDeriving, RecordWildCards #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 -- A tool for benchmarking encoding and decoding of data Msg,
 -- it tests Read/Show and JSON Aeson encode/decode.
 --
--- Compile:
--- ghc --make -O2 lmr-bench.hs ../lmr.hs
+-- Build:
+-- make -C.. bench
 --
 -- Run:
 -- ./lmr-bench -o lmr-bench.html
@@ -53,6 +54,7 @@ instance Show PSMsg where
 --   |  encode  |  msgo       :: Msg (or PSMsg)  |  C8L.ByteString  |
 --   |  decode  |  msgs, msgb :: C8.ByteString   |  (Maybe) Msg     |
 
+main :: IO ()
 main = defaultMain
     [ bench "Show encode" $
         whnf    (C8L.pack . show)                               msgo

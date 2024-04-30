@@ -3,10 +3,10 @@ See details
 
 Additional remarks.
 
-- Nginx directive *error_page* inevitably substitutes *HTTP* *POST* method for
-  *GET*. This is basically not acceptable for *write* requests as they
-  presumably must be *POSTed*. Fortunately, original *HTTP* methods can be
-  restored with directive *proxy_method* when needed.
+- Nginx directive *error_page* forcibly replaces *HTTP* method with *GET*. This
+  is basically not acceptable for *write* requests as they presumably must be
+  *POSTed*. Fortunately, original *HTTP* methods can be restored with directive
+  *proxy_method* when needed.
 
 - The *Read*/*Show* serialization that used in *getMsg* proved to be very slow
   due to expensive *ByteString* to *String* unpacking when *reading* into data.

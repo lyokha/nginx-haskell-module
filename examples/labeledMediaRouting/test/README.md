@@ -1,9 +1,9 @@
 #### Benchmarking various serialization approaches using Criterion
 
-##### Compile
+##### Build
 
 ```ShellSession
-$ ghc --make -O2 lmr-bench.hs ../lmr.hs
+$ make -C.. bench
 ```
 
 ##### Run
@@ -16,11 +16,10 @@ $ ./lmr-bench -o lmr-bench.html
 
 ```ShellSession
 $ ghci -fobject-code lmr-objgen.hs ../lmr.hs
-GHCi, version 8.4.2: http://www.haskell.org/ghc/  :? for help
-Loaded GHCi configuration from /home/lyokha/.ghci
-[1 of 2] Compiling LabeledMediaRouter ( ../lmr.hs, ../lmr.o )
-[2 of 2] Compiling LMRObjGen        ( lmr-objgen.hs, lmr-objgen.o )
-Ok, two modules loaded.
+Loaded package environment from ...
+GHCi, version 9.6.2: https://www.haskell.org/ghc/  :? for help
+Loaded GHCi configuration from ...
+Ok, two modules loaded
 Prelude LMRObjGen> import LabeledMediaRouter
 Prelude LabeledMediaRouter LMRObjGen> d <- genCollectedData 3
 Prelude LabeledMediaRouter LMRObjGen> pPrint d

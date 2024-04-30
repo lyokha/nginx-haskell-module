@@ -1,16 +1,15 @@
 {-# LANGUAGE TemplateHaskell, DeriveGeneric, ScopedTypeVariables #-}
 {-# LANGUAGE ViewPatterns, PatternSynonyms, TupleSections, NumDecimals #-}
 
--- ghc -O2 -dynamic -shared -fPIC -flink-rts -threaded \
---   lmr.hs -o /var/lib/nginx/lmr.so -fforce-recomp
+-- Build and install:
+-- make
+-- sudo make install
 --
--- for making eventlog:
--- ghc -O2 -dynamic -shared -fPIC -flink-rts -threaded -debug \
---   lmr.hs -o /var/lib/nginx/lmr.so -fforce-recomp -eventlog
---
--- and put in nginx.conf lines (first in main clause, second in http clause)
--- working_directory /tmp;
--- haskell rts_options -l;
+-- For making eventlog:
+-- 1. add options -debug -eventlog into ghc-options in lmr.cabal,
+-- 2. put in nginx.conf lines (first in main clause, second in http clause)
+--      working_directory /tmp;
+--      haskell rts_options -l;
 
 module LabeledMediaRouter where
 
@@ -37,6 +36,7 @@ import           Data.Aeson
 import           GHC.Generics
 import           Safe
 
+pattern GroupFailed :: (Int, Int, Maybe Destination)
 pattern GroupFailed = (0, 0, Nothing)
 
 type Label = String
@@ -138,11 +138,15 @@ blInterval :: IORef Int
 blInterval = unsafePerformIO $ newIORef 60
 {-# NOINLINE blInterval #-}
 
+getResponse :: String -> (Request -> IO (Response C8L.ByteString)) ->
+    IO C8L.ByteString
 getResponse url = fmap responseBody . (parseRequest url >>=)
 
+httpManager :: Manager
 httpManager = unsafePerformIO $ newManager defaultManagerSettings
 {-# NOINLINE httpManager #-}
 
+getUrl :: String -> IO C8L.ByteString
 getUrl url = getResponse url $ flip httpLbs httpManager
 
 both :: Arrow a => a b c -> a (b, b) (c, c)
@@ -190,6 +194,7 @@ mkRRRoutes = bothKleisli $ mapM $ mapM $ mapM $
 fromRRRoutes :: (RRRoutes, RRRoutes) -> (Routes, Routes)
 fromRRRoutes = both $ M.map $ M.map $ M.map fst
 
+queryEndpoints :: C8.ByteString -> Bool -> IO C8L.ByteString
 queryEndpoints (C8.unpack -> conf) firstRun = do
     let Conf (toSec -> upd) (toSec -> bl) (url, own) (purl, remote) =
             readDef (Conf (Hr 24) (Min 1) ("", []) ("", [])) conf
@@ -243,12 +248,16 @@ queryEndpoints (C8.unpack -> conf) firstRun = do
           toSec (MinSec (m, s)) = 60 * m + s
 ngxExportServiceIOYY 'queryEndpoints
 
+readMsg :: C8.ByteString -> Msg
 readMsg = readDef (Msg Read "" "" 0 0 0 0 "" NotReadable) . C8.unpack
 
+writeMsg :: Msg -> IO C8L.ByteString
 writeMsg = return . C8L.pack . show
 
+writeFinalMsg :: Msg -> IO C8L.ByteString
 writeFinalMsg m = writeMsg m { backend = "STOP", status = NonExistent }
 
+getMsg :: C8.ByteString -> IO C8L.ByteString
 getMsg (readMsg -> m@Msg { status = NotReadable }) =
     writeFinalMsg m
 getMsg (readMsg -> m@(Msg op hnt label seqn key start idx b st)) = do
@@ -318,29 +327,37 @@ getMsg (readMsg -> m@(Msg op hnt label seqn key start idx b st)) = do
               mapM_ (modifyIORef' blacklist . M.delete) . fst
 ngxExportIOYY 'getMsg
 
+getOwnBackends :: C8.ByteString -> IO C8L.ByteString
 getOwnBackends = const $
     encode . fromMaybe M.empty . M.lookup Own <$> readIORef allBackends
 ngxExportIOYY 'getOwnBackends
 
+getBlacklist :: C8.ByteString -> IO C8L.ByteString
 getBlacklist = const $
     encode <$> readIORef blacklist
 ngxExportIOYY 'getBlacklist
 
+getSeqn :: C8.ByteString -> C8L.ByteString
 getSeqn = C8L.pack . show . seqn . readMsg
 ngxExportYY 'getSeqn
 
+getKey :: C8.ByteString -> C8L.ByteString
 getKey = C8L.pack . show . key . readMsg
 ngxExportYY 'getKey
 
+getStart :: C8.ByteString -> C8L.ByteString
 getStart = C8L.pack . show . start . readMsg
 ngxExportYY 'getStart
 
+getIdx :: C8.ByteString -> C8L.ByteString
 getIdx = C8L.pack . show . idx . readMsg
 ngxExportYY 'getIdx
 
+getBackend :: C8.ByteString -> C8L.ByteString
 getBackend = C8L.pack . backend . readMsg
 ngxExportYY 'getBackend
 
+getStatus :: C8.ByteString -> C8L.ByteString
 getStatus = C8L.pack . show . status . readMsg
 ngxExportYY 'getStatus
 

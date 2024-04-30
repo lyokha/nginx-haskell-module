@@ -1,4 +1,4 @@
-NAME := upconf
+NAME := conditional_routing
 PKGNAME := $(subst _,-,$(NAME))
 PKGVER := 0.1.0.0
 

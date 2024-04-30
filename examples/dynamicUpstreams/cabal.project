@@ -1,2 +1,2 @@
-packages: upconf.cabal
+packages: upconf.cabal ../../haskell/ngx-export/ngx-export.cabal
 
