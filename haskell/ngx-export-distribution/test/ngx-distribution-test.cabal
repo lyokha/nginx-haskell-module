@@ -17,3 +17,6 @@ library
 
   ghc-options:             -Wall -O2 -no-keep-hi-files -no-keep-o-files
 
+  if impl(ghc >= 9.0.1)
+    ghc-options:           -threaded
+

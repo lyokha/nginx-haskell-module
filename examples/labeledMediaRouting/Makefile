@@ -26,6 +26,7 @@ GHC := ghc
 CABAL := cabal
 GHCVER := $(shell $(GHC) --numeric-version)
 GHCENV := .ghc.environment.$(MACHINE)-$(KERNEL)-$(GHCVER)
+GHCENVLNK := .ghc.environment.lnk
 DEPLIBS := $(MACHINE)-$(KERNEL)-ghc-$(GHCVER)
 BUILDDIR := dist-nhm
 SETUPCONFIG := $(BUILDDIR)/setup-config
@@ -34,7 +35,7 @@ SETUPCONFIG := $(BUILDDIR)/setup-config
 
 all: env $(DISTR)
 
-env: $(GHCENV) $(TESTDIR)/$(GHCENV) $(TESTDIR)/LabeledMediaRouter.hs
+env: $(GHCENVLNK) $(TESTDIR)/$(GHCENV) $(TESTDIR)/LabeledMediaRouter.hs
 
 config: $(SETUPCONFIG)
 
@@ -54,13 +55,17 @@ $(GHCENV): cabal.project $(PKGNAME).cabal
 	fi; \
 	$(NHMTOOL) deps $(PKGNAME) -d "$(BUILDDIR)" >> $(GHCENV)
 
+$(GHCENVLNK): $(GHCENV)
+	ln -sf $(GHCENV) $(GHCENVLNK)
+	(cd test; ln -sf ../$(GHCENV) $(GHCENVLNK))
+
 $(TESTDIR)/$(GHCENV): $(GHCENV)
 	cp -u $(GHCENV) $(TESTDIR)
 
 $(TESTDIR)/LabeledMediaRouter.hs:
 	(cd $(TESTDIR); ln -s ../lmr.hs LabeledMediaRouter.hs)
 
-$(SETUPCONFIG): $(GHCENV)
+$(SETUPCONFIG): $(GHCENVLNK)
 	if test "$(NHMTOOL)" = nhm-tool && ! command -v nhm-tool >/dev/null; \
 	then \
 	  PATH=$$(dirname $$($(CABAL) list-bin $(PKGDISTR) \
@@ -102,6 +107,6 @@ clean:
 
 clean-all: clean
 	rm -rf $(BUILDDIR)
-	rm -f $(GHCENV) $(DISTR) $(BENCH)
+	rm -f $(GHCENV) $(GHCENVLNK) test/$(GHCENVLNK) $(DISTR) $(BENCH)
 	rm -f $(TESTDIR)/$(GHCENV) $(TESTDIR)/LabeledMediaRouter.hs
 

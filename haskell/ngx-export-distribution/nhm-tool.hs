@@ -521,6 +521,7 @@ makefile InitData {..} = T.concat
      \CABAL := cabal\n\
      \GHCVER := $(shell $(GHC) --numeric-version)\n\
      \GHCENV := .ghc.environment.$(MACHINE)-$(KERNEL)-$(GHCVER)\n\
+     \GHCENVLNK := ", ghcEnvLnk, "\n\
      \DEPLIBS := $(MACHINE)-$(KERNEL)-ghc-$(GHCVER)\n\
      \BUILDDIR := dist-nhm\n\
      \SETUPCONFIG := $(BUILDDIR)/setup-config\n\
@@ -529,7 +530,7 @@ makefile InitData {..} = T.concat
      \\n\
      \all: $(DISTR)\n\
      \\n\
-     \env: $(GHCENV)\n\
+     \env: $(GHCENVLNK)\n\
      \\n\
      \config: $(SETUPCONFIG)\n\
      \\n\
@@ -541,7 +542,10 @@ makefile InitData {..} = T.concat
      updatePath,
      "\t$(NHMTOOL) deps $(PKGNAME) -d \"$(BUILDDIR)\" >> $(GHCENV)\n\
      \\n\
-     \$(SETUPCONFIG): $(GHCENV)\n",
+     \$(GHCENVLNK): $(GHCENV)\n\
+     \\tln -sf $(GHCENV) $(GHCENVLNK)\n\
+     \\n\
+     \$(SETUPCONFIG): $(GHCENVLNK)\n",
      updatePath,
      "\trunhaskell --ghc-arg=-package=base \\\n\
      \\t  --ghc-arg=-package=$(PKGDISTR) Setup.hs configure \\\n\
@@ -572,7 +576,7 @@ makefile InitData {..} = T.concat
      \\n\
      \clean-all: clean\n\
      \\trm -rf $(BUILDDIR)\n\
-     \\trm -f $(GHCENV) $(DISTR)\n"
+     \\trm -f $(GHCENV) $(GHCENVLNK) $(DISTR)\n"
     ]
     where updatePath =
               "\tif test \"$(NHMTOOL)\" = nhm-tool && ! command -v nhm-tool \
@@ -596,8 +600,21 @@ projectHs InitData {..} = T.concat
 hieYaml :: InitData -> Text
 hieYaml InitData {..} = T.concat
     ["cradle:\n\
-     \  direct:\n\
-     \    arguments: ["
-    ,T.pack $ intercalate ", " $ map show initDataGhcOptions, "]\n"
+     \  bios:\n\
+     \    shell: |\n\
+     \        if [ -L ", ghcEnvLnk, " ]\n\
+     \            then\n\
+     \                echo -e \""
+    ,T.replace "-" "\\x2d" $ T.pack $ intercalate "\\n" initDataGhcOptions
+    ,"\" > $HIE_BIOS_OUTPUT\n\
+     \            else\n\
+     \                echo -n \"Ghc environment file wasn't found, \"`\n\
+     \                       `\"run \\\"make env\\\" and restart \
+     \language server.\" >&2\n\
+     \                exit 1\n\
+     \        fi"
     ]
+
+ghcEnvLnk :: Text
+ghcEnvLnk = ".ghc.environment.lnk"
 

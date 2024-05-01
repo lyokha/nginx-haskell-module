@@ -1,4 +1,13 @@
 cradle:
-  direct:
-    arguments: ["-Wall", "-O2", "LabeledMediaRouter.hs"]
+  bios:
+    shell: |
+        if [ -L .ghc.environment.lnk ]
+            then
+                echo -e "\x2dWall\n\x2dO2\nLabeledMediaRouter.hs" > \
+                    $HIE_BIOS_OUTPUT
+            else
+                echo -n "Ghc environment file wasn't found, "`
+                       `"run \"make env\" and restart language server." >&2
+                exit 1
+        fi
 

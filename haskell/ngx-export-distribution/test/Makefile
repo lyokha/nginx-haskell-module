@@ -1,6 +1,3 @@
-# Build and install dependencies in local GHC environment with v2-install,
-# then build the library and create a tarball with all dependent libraries
-
 NAME := ngx_distribution_test
 PKGNAME := $(subst _,-,$(NAME))
 PKGVER := 0.1.0.0
@@ -26,6 +23,7 @@ GHC := ghc
 CABAL := cabal
 GHCVER := $(shell $(GHC) --numeric-version)
 GHCENV := .ghc.environment.$(MACHINE)-$(KERNEL)-$(GHCVER)
+GHCENVLNK := .ghc.environment.lnk
 DEPLIBS := $(MACHINE)-$(KERNEL)-ghc-$(GHCVER)
 BUILDDIR := dist-nhm
 SETUPCONFIG := $(BUILDDIR)/setup-config
@@ -37,7 +35,7 @@ INPLACE := $(shell grep -q '^packages:.*\.\./$(PKGDISTR)' \
 
 all: $(DISTR)
 
-env: $(GHCENV)
+env: $(GHCENVLNK)
 
 config: $(SETUPCONFIG)
 
@@ -57,7 +55,10 @@ endif
 	fi; \
 	$(NHMTOOL) deps $(PKGNAME) -d "$(BUILDDIR)" >> $(GHCENV)
 
-$(SETUPCONFIG): $(GHCENV)
+$(GHCENVLNK): $(GHCENV)
+	ln -sf $(GHCENV) $(GHCENVLNK)
+
+$(SETUPCONFIG): $(GHCENVLNK)
 	if test "$(NHMTOOL)" = nhm-tool && ! command -v nhm-tool >/dev/null; \
 	then \
 	  PATH=$$(dirname $$($(CABAL) list-bin $(PKGDISTR) \
@@ -83,7 +84,7 @@ $(DISTR): $(SETUPCONFIG) $(SRC)
 	runhaskell --ghc-arg=-package=base \
 	  --ghc-arg=-package=$(PKGDISTR) Setup.hs build \
 	  --builddir="$(BUILDDIR)" \
-	  --ghc-options="$(SRC) -o $(LIB) -threaded"
+	  --ghc-options="$(SRC) -o $(LIB) $(LINKRTS)"
 
 install: $(DISTR)
 	install -d $(PREFIX)
@@ -96,5 +97,5 @@ clean:
 
 clean-all: clean
 	rm -rf $(BUILDDIR)
-	rm -f $(GHCENV) $(DISTR)
+	rm -f $(GHCENV) $(GHCENVLNK) $(DISTR)
 
