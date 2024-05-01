@@ -9,9 +9,9 @@ jobs:
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       matrix:
-        ghc: ['8.4', '8.6', '8.8']
+        ghc: ['8.6', '8.8', '8.10']
         cabal: ['3.8']
-        nginx: [1.18.0]
+        nginx: [1.20.2]
         experimental: [false]
         include:
           - ghc: '9.8'
@@ -41,10 +41,6 @@ jobs:
           - ghc: '9.0'
             cabal: '3.8'
             nginx: 1.22.1
-            experimental: false
-          - ghc: '8.10'
-            cabal: '3.8'
-            nginx: 1.20.2
             experimental: false
     steps:
       - name: Checkout
@@ -126,6 +122,6 @@ jobs:
           make PREFIX="$TOPDIR/var/lib/nginx" $LINKRTS install
           cd -
 
-          sed -i "s'\\/var\\/lib\\/nginx'$TOPDIR&'" t/basic.t
+          sed -i "s'/var/lib/nginx'$TOPDIR&'" t/basic.t
           prove t/basic.t
 
