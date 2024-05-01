@@ -32,9 +32,9 @@ SETUPCONFIG := $(BUILDDIR)/setup-config
 
 .PHONY: all env config install clean clean-all bench
 
-all: $(DISTR)
+all: env $(DISTR)
 
-env: $(GHCENV)
+env: $(GHCENV) $(TESTDIR)/$(GHCENV) $(TESTDIR)/LabeledMediaRouter.hs
 
 config: $(SETUPCONFIG)
 
@@ -53,7 +53,11 @@ $(GHCENV): cabal.project $(PKGNAME).cabal
 	    --builddir="$(BUILDDIR)")):$$PATH; \
 	fi; \
 	$(NHMTOOL) deps $(PKGNAME) -d "$(BUILDDIR)" >> $(GHCENV)
+
+$(TESTDIR)/$(GHCENV): $(GHCENV)
 	cp -u $(GHCENV) $(TESTDIR)
+
+$(TESTDIR)/LabeledMediaRouter.hs:
 	(cd $(TESTDIR); ln -s ../lmr.hs LabeledMediaRouter.hs)
 
 $(SETUPCONFIG): $(GHCENV)
