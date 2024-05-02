@@ -1,13 +1,20 @@
 cradle:
   bios:
     shell: |
-        if [ -L .ghc.environment.lnk ]
-            then
-                echo -e "\x2dWall\n\x2dO2\nLabeledMediaRouter.hs" > \
-                    $HIE_BIOS_OUTPUT
-            else
-                echo -n "Ghc environment file wasn't found, "`
-                       `"run \"make env\" and restart language server." >&2
-                exit 1
-        fi
+      if [ -L .ghc.environment.lnk ]
+      then
+          echo -e "\x2dWall\n\x2dO2" > $HIE_BIOS_OUTPUT
+          for file in $(find * -name '[A-Z]*.hs')
+          do
+              if grep -q "^\s*module $(echo $file |
+                  sed 's/^\(.*\)\..*/\1/;s/\//./g')" $file
+              then
+                  echo $file >> $HIE_BIOS_OUTPUT
+              fi
+          done
+      else
+          echo -n "Ghc environment file wasn't found, "`
+                 `"run \"make env\" and restart language server." >&2
+          exit 1
+      fi
 

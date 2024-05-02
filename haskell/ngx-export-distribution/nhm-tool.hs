@@ -602,17 +602,25 @@ hieYaml InitData {..} = T.concat
     ["cradle:\n\
      \  bios:\n\
      \    shell: |\n\
-     \        if [ -L ", ghcEnvLnk, " ]\n\
-     \            then\n\
-     \                echo -e \""
+     \      if [ -L ", ghcEnvLnk, " ]\n\
+     \      then\n\
+     \          echo -e \""
     ,T.replace "-" "\\x2d" $ T.pack $ intercalate "\\n" initDataGhcOptions
     ,"\" > $HIE_BIOS_OUTPUT\n\
-     \            else\n\
-     \                echo -n \"Ghc environment file wasn't found, \"`\n\
-     \                       `\"run \\\"make env\\\" and restart \
+     \          for file in $(find * -name '[A-Z]*.hs')\n\
+     \          do\n\
+     \              if grep -q \"^\\s*module $(echo $file |\n\
+     \                  sed 's/^\\(.*\\)\\..*/\\1/;s/\\//./g')\" $file\n\
+     \              then\n\
+     \                  echo $file >> $HIE_BIOS_OUTPUT\n\
+     \              fi\n\
+     \          done\n\
+     \      else\n\
+     \          echo -n \"Ghc environment file wasn't found, \"`\n\
+     \                 `\"run \\\"make env\\\" and restart \
      \language server.\" >&2\n\
-     \                exit 1\n\
-     \        fi"
+     \          exit 1\n\
+     \      fi\n"
     ]
 
 ghcEnvLnk :: Text
