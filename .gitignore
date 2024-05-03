@@ -7,6 +7,8 @@
 dist/
 dist-newstyle/
 /test/t/servroot/
+/test/tsung/manager.conf
+/test/tsung/snmpm_config_db
 .hslibs/
 
 /haskell/ngx-export-distribution/test/*.tar.gz
