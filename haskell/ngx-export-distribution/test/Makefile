@@ -39,7 +39,8 @@ env: $(GHCENVLNK)
 
 config: $(SETUPCONFIG)
 
-$(GHCENV): cabal.project $(PKGNAME).cabal
+$(GHCENVLNK): cabal.project $(PKGNAME).cabal
+	rm -f $(GHCENVLNK)
 	$(CABAL) install --builddir="$(BUILDDIR)" --lib --only-dependencies \
 	  --package-env .
 ifeq ($(INPLACE),1)
@@ -54,8 +55,6 @@ endif
 	    --builddir="$(BUILDDIR)")):$$PATH; \
 	fi; \
 	$(NHMTOOL) deps $(PKGNAME) -d "$(BUILDDIR)" >> $(GHCENV)
-
-$(GHCENVLNK): $(GHCENV)
 	ln -sf $(GHCENV) $(GHCENVLNK)
 
 $(SETUPCONFIG): $(GHCENVLNK)

@@ -294,12 +294,12 @@ $ make env
 This is enough to start editing the Haskell source file in an editor which
 has support for the *Haskell Language Server*.
 
-If you want to add more Haskell source files, add their names into variable
-*SRC* in *Makefile*. If the root Haskell source file depends on modules from
-other source files, add their names (or module names) into the list of
-arguments in file *hie.yaml*. This is required for the Haskell Language
-Server to work correctly. Note also that in this case the names of the files
-must be equal to the names of the modules these files provide.
+If you want to add more Haskell source files, follow the naming convention
+described in the *GHC User's Guide* in section
+[The search path](https://ghc.gitlab.haskell.org/ghc/doc/users_guide/separate_compilation.html#search-path).
+In this case, no changes in *hie.yaml* are required. But it makes sense to
+add the new source files into variable *SRC* in *Makefile* to let *make*
+track them too.
 
 ##### Drawbacks
 

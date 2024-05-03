@@ -534,15 +534,14 @@ makefile InitData {..} = T.concat
      \\n\
      \config: $(SETUPCONFIG)\n\
      \\n\
-     \$(GHCENV): cabal.project $(PKGNAME).cabal\n\
+     \$(GHCENVLNK): cabal.project $(PKGNAME).cabal\n\
+     \\trm -f $(GHCENVLNK)\n\
      \\t$(CABAL) install --builddir=\"$(BUILDDIR)\" --lib --only-dependencies \
      \\\\n\
      \\t  --package-env .\n\
      \\tsed -i 's/\\(^package-id \\)/--\\1/' $(GHCENV)\n",
      updatePath,
      "\t$(NHMTOOL) deps $(PKGNAME) -d \"$(BUILDDIR)\" >> $(GHCENV)\n\
-     \\n\
-     \$(GHCENVLNK): $(GHCENV)\n\
      \\tln -sf $(GHCENV) $(GHCENVLNK)\n\
      \\n\
      \$(SETUPCONFIG): $(GHCENVLNK)\n",

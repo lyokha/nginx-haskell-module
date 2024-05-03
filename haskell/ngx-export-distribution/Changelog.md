@@ -2,7 +2,8 @@
 
 - *nhm-tool*: use cradle *bios* in generated *hie.yaml*. The bios shell script
   returns an error message with advice to run *make env* if GHC environment
-  file (technically, a symbolic link to this file) is missing.
+  file (technically, a symbolic link to this file) is missing. It also loads
+  extra source files automatically if they follow the GHC naming convention.
 
 ### 0.5.4.1
 

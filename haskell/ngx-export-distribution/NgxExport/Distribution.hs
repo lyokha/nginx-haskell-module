@@ -318,7 +318,9 @@ import Data.Maybe
 -- If you want to add more Haskell source files, follow the naming convention
 -- described in the /GHC User's Guide/ in section
 -- [The search path](https://ghc.gitlab.haskell.org/ghc/doc/users_guide/separate_compilation.html#search-path).
--- In this case, no changes in /Makefile/ or /hie.yaml/ are required.
+-- In this case, no changes in /hie.yaml/ are required. But it makes sense to
+-- add the new source files into variable /SRC/ in /Makefile/ to let /make/
+-- track them too.
 
 -- $drawbacks
 --

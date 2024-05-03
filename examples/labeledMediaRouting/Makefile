@@ -41,7 +41,8 @@ config: $(SETUPCONFIG)
 
 bench: $(BENCH)
 
-$(GHCENV): cabal.project $(PKGNAME).cabal
+$(GHCENVLNK): cabal.project $(PKGNAME).cabal
+	rm -f $(GHCENVLNK)
 	$(CABAL) install --builddir="$(BUILDDIR)" --lib --only-dependencies \
 	  --package-env .
 	$(CABAL) build --builddir="$(BUILDDIR)" ngx-export
@@ -54,12 +55,10 @@ $(GHCENV): cabal.project $(PKGNAME).cabal
 	    --builddir="$(BUILDDIR)")):$$PATH; \
 	fi; \
 	$(NHMTOOL) deps $(PKGNAME) -d "$(BUILDDIR)" >> $(GHCENV)
-
-$(GHCENVLNK): $(GHCENV)
-	ln -sf $(GHCENV) $(GHCENVLNK)
 	(cd test; ln -sf ../$(GHCENV) $(GHCENVLNK))
+	ln -sf $(GHCENV) $(GHCENVLNK)
 
-$(TESTDIR)/$(GHCENV): $(GHCENV)
+$(TESTDIR)/$(GHCENV): $(GHCENVLNK)
 	cp -u $(GHCENV) $(TESTDIR)
 
 $(TESTDIR)/LabeledMediaRouter.hs:
