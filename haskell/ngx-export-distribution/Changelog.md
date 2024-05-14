@@ -1,3 +1,9 @@
+### 0.5.4.3
+
+- *nhm-tool*: fix the bios shell script in generated *hie.yaml* for environments
+  where */bin/sh* is the classic *Bourne Shell* rather than a link to
+  */bin/bash*, more improvements hinted by *ShellCheck*. 
+
 ### 0.5.4.2
 
 - *nhm-tool*: use cradle *bios* in generated *hie.yaml*. The bios shell script

@@ -603,20 +603,21 @@ hieYaml InitData {..} = T.concat
      \    shell: |\n\
      \      if [ -L ", ghcEnvLnk, " ]\n\
      \      then\n\
-     \          echo -e \""
-    ,T.replace "-" "\\x2d" $ T.pack $ intercalate "\\n" initDataGhcOptions
-    ,"\" > $HIE_BIOS_OUTPUT\n\
-     \          for file in $(find * -name '[A-Z]*.hs')\n\
-     \          do\n\
-     \              if grep -q \"^\\s*module $(echo $file |\n\
-     \                  sed 's/^\\(.*\\)\\..*/\\1/;s/\\//./g')\" $file\n\
+     \          printf \""
+    ,T.replace "-" "\\055" $ T.pack $ intercalate "\\n" initDataGhcOptions
+    ,"\\n\" > \"$HIE_BIOS_OUTPUT\"\n\
+     \          find . -name '[A-Z]*.hs' -exec sh -c '\n\
+     \              file=$(echo \"$1\" | cut -c 3-)\n\
+     \              if grep -q \"^\\s*module $(echo \"$file\" |\n\
+     \                  sed '\\''s/^\\(.*\\)\\..*/\\1/;s/\\//./g'\\'')\" \
+     \\"$file\"\n\
      \              then\n\
-     \                  echo $file >> $HIE_BIOS_OUTPUT\n\
+     \                  echo \"$file\" >> \"$HIE_BIOS_OUTPUT\"\n\
      \              fi\n\
-     \          done\n\
+     \          ' sh {} \\;\n\
      \      else\n\
-     \          echo -n \"Ghc environment file wasn't found, \"`\n\
-     \                 `\"run \\\"make env\\\" and restart \
+     \          echo \"Ghc environment file wasn't found, \"`\n\
+     \              `\"run \\\"make env\\\" and restart \
      \language server.\" >&2\n\
      \          exit 1\n\
      \      fi\n"
