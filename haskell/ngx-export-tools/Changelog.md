@@ -1,3 +1,7 @@
+### 1.2.4.1
+
+- Remove dependency on package *safe*.
+
 ### 1.2.4
 
 - Use qualified names of custom types in the implementation of typed services.

@@ -3,7 +3,7 @@
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  NgxExport.Tools.Read
--- Copyright   :  (c) Alexey Radkov 2018-2022
+-- Copyright   :  (c) Alexey Radkov 2018-2024
 -- License     :  BSD-style
 --
 -- Maintainer  :  alexey.radkov@gmail.com
@@ -35,7 +35,7 @@ import qualified Data.ByteString.Char8 as C8
 import           Data.Aeson
 import           Data.Proxy
 import           Control.Arrow
-import           Safe
+import           Text.Read
 
 -- $description
 --
@@ -179,7 +179,7 @@ class FromByteString a where
 
 instance Read a => FromByteString (Readable a) where
     type WrappedT (Readable a) = a
-    fromByteString = const $ readMay . C8.unpack
+    fromByteString = const $ readMaybe . C8.unpack
 
 instance FromJSON a => FromByteString (ReadableAsJSON a) where
     type WrappedT (ReadableAsJSON a) = a
