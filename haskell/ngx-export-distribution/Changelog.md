@@ -1,8 +1,8 @@
 ### 0.5.4.3
 
-- *nhm-tool*: fix the bios shell script in generated *hie.yaml* for environments
-  where */bin/sh* is the classic *Bourne Shell* rather than a link to
-  */bin/bash*, more improvements hinted by *ShellCheck*. 
+- *nhm-tool*: fix bios shell script in generated *hie.yaml* for environments
+  where */bin/sh* is not a link to */bin/bash* but rather the classic *Bourne
+  Shell* or *dash* like in Ubuntu. More improvements hinted by *ShellCheck*.
 
 ### 0.5.4.2
 
