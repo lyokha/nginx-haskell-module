@@ -59,7 +59,7 @@ python-dateutil==2.8.2
     #   pandas
 pytz==2023.3
     # via pandas
-requests==2.31.0
+requests==2.32.0
     # via sphinx
 scipy==1.11.1
     # via -r requirements.in
