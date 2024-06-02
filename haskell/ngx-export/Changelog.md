@@ -1,3 +1,8 @@
+### 1.7.10.1
+
+- Use *DerivingStrategies* in the exception types.
+- Minor stylistic updates.
+
 ### 1.7.10
 
 - Added exporter *ngxExportInitHook* which can be used for writing global data

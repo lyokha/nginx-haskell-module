@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP, TemplateHaskell, ForeignFunctionInterface #-}
+{-# LANGUAGE DerivingStrategies, GeneralizedNewtypeDeriving, DeriveAnyClass #-}
 {-# LANGUAGE ViewPatterns, PatternSynonyms, TupleSections, LambdaCase #-}
 
 -----------------------------------------------------------------------------
@@ -244,14 +245,14 @@ do
     sequence $
         [sigD tName [t|NgxExport -> IO CInt|]
         ,funD tName $
-             map (\(fst -> c, i) ->
-                    clause [conP c [wildP]] (normalB [|return i|]) []
-                 ) (zip tCons [1 ..] :: [((Name, Type), Int)])
+             zipWith (\(c, _) i ->
+                         clause [conP c [wildP]] (normalB [|return i|]) []
+                     ) tCons [1 :: Int ..]
         ,sigD aName [t|NgxExportTypeAmbiguityTag -> IO CInt|]
         ,funD aName $
-             map (\(c, i) ->
-                    clause [conP c []] (normalB [|return i|]) []
-                 ) (zip aCons [0 ..] :: [(Name, Int)])
+             zipWith (\c i ->
+                         clause [conP c []] (normalB [|return i|]) []
+                     ) aCons [0 :: Int ..]
         ]
         ++
         map (\(c, t) -> tySynD (mkName $ nameBase c) [] $ return t) tCons
@@ -633,16 +634,14 @@ ngxExportInitHook f =
           typeF = [t|InitHookImpl|]
 
 data ServiceHookInterrupt = ServiceHookInterrupt
+    deriving anyclass Exception
 
-instance Exception ServiceHookInterrupt
 instance Show ServiceHookInterrupt where
     show = const "Service was interrupted by a service hook"
 
 newtype ServiceSomeInterrupt = ServiceSomeInterrupt String
-
-instance Exception ServiceSomeInterrupt
-instance Show ServiceSomeInterrupt where
-    show (ServiceSomeInterrupt s) = s
+    deriving anyclass Exception
+    deriving newtype Show
 
 -- | Terminates the worker process.
 --
@@ -654,11 +653,8 @@ instance Show ServiceSomeInterrupt where
 -- @since 1.6.2
 newtype TerminateWorkerProcess =
     TerminateWorkerProcess String  -- ^ Contains the message to log
-    deriving Eq
-
-instance Exception TerminateWorkerProcess
-instance Show TerminateWorkerProcess where
-    show (TerminateWorkerProcess s) = s
+    deriving anyclass Exception
+    deriving newtype (Show, Eq)
 
 -- | Restarts the worker process.
 --
@@ -668,11 +664,8 @@ instance Show TerminateWorkerProcess where
 -- @since 1.6.3
 newtype RestartWorkerProcess =
     RestartWorkerProcess String  -- ^ Contains the message to log
-    deriving Eq
-
-instance Exception RestartWorkerProcess
-instance Show RestartWorkerProcess where
-    show (RestartWorkerProcess s) = s
+    deriving anyclass Exception
+    deriving newtype (Show, Eq)
 
 -- | Signals that the worker process is exiting.
 --
@@ -698,9 +691,9 @@ instance Exception WorkerProcessIsExiting where
 -- @since 1.6.3
 data FinalizeHTTPRequest =
     FinalizeHTTPRequest Int (Maybe String)  -- ^ Contains HTTP status and body
+    deriving anyclass Exception
     deriving Eq
 
-instance Exception FinalizeHTTPRequest
 instance Show FinalizeHTTPRequest where
     show (FinalizeHTTPRequest _ (Just s)) = s
     show (FinalizeHTTPRequest _ Nothing) = ""
@@ -810,20 +803,20 @@ safeYYHandler = handle $ \e ->
 safeAsyncYYHandler :: IO (L.ByteString, (CUInt, Bool)) ->
     IO (L.ByteString, (CUInt, Bool))
 safeAsyncYYHandler = handle $ \e ->
-    return (C8L.pack $ show e,
-            (case fromException e of
+    return (C8L.pack $ show e
+           ,(case fromException e of
                 Just ServiceHookInterrupt -> 2
                 _ -> case fromException e of
-                    Just (TerminateWorkerProcess _) -> 3
+                    Just TerminateWorkerProcess {} -> 3
                     _ -> case fromException e of
-                        Just (RestartWorkerProcess _) -> 4
+                        Just RestartWorkerProcess {} -> 4
                         _ -> case fromException e of
-                            Just (FinalizeHTTPRequest st (Just _)) ->
+                            Just (FinalizeHTTPRequest st Just {}) ->
                                 0x80000000 .|. fromIntegral st
                             Just (FinalizeHTTPRequest st Nothing) ->
                                 0xC0000000 .|. fromIntegral st
                             _ -> case fromException e of
-                                Just (ServiceSomeInterrupt _) -> 5
+                                Just ServiceSomeInterrupt {} -> 5
                                 _ -> 1
             ,case asyncExceptionFromException e of
                 Just WorkerProcessIsExiting -> True

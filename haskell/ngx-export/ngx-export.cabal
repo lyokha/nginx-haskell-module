@@ -1,5 +1,5 @@
 name:                       ngx-export
-version:                    1.7.10
+version:                    1.7.10.1
 synopsis:                   Helper module for Nginx Haskell module
 description:                Helper module for
         <https://github.com/lyokha/nginx-haskell-module Nginx Haskell module>.
