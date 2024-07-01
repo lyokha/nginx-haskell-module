@@ -75,8 +75,8 @@ In brief:
     ```
 
    to bootstrap build environment. This command produces files *cabal.project*,
-   *Setup.hs*, *my-project.cabal*, *Makefile*, and *my_project.hs* in the
-   current directory.
+   *Setup.hs*, *my-project.cabal*, *Makefile*, *my_project.hs*, and *hie.yaml*
+   in the current directory.
 2. Put whatever Haskell code and exporters into *my_project.hs*.
 3. Build and (optionally) install the target library.
 
