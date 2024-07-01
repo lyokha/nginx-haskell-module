@@ -18,10 +18,14 @@ jobs:
             cabal: head
             nginx: head
             experimental: true
-          - ghc: '9.8'
+          - ghc: '9.10'
             cabal: '3.10'
             nginx: freenginx-head
             experimental: true
+          - ghc: '9.10'
+            cabal: '3.12'
+            nginx: 1.26.1
+            experimental: false
           - ghc: '9.8'
             cabal: '3.10'
             nginx: 1.26.1
@@ -51,7 +55,7 @@ jobs:
           ghc-version: ${{ matrix.ghc }}
           cabal-version: ${{ matrix.cabal }}
       - name: Install prove
-        uses: perl-actions/install-with-cpanm@v1.6
+        uses: perl-actions/install-with-cpanm@v1.7
         with:
           install: "Test::Nginx"
           tests: false

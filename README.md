@@ -22,7 +22,7 @@ Server. Supported types of custom handlers include
 - content handlers,
 - POST request handlers.
 
-Besides the module itself, there is a number of Haskell packages which help to
+Besides the module itself, there are a number of Haskell packages which help to
 solve typical higher-level tasks. See the
 [*list of batteries included*](#list-of-batteries-included).
 
