@@ -33,3 +33,9 @@ $ cabal v1-install ngx-export
 $ cabal build
 ```
 
+The module can be loaded in the *REPL* with
+
+```ShellSession
+$ cabal repl --repl-options=-fobject-code
+```
+

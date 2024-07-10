@@ -1,4 +1,4 @@
-##### Aliases
+#### Aliases
 
 This module declares handy aliases for common patterns built of directives from
 Nginx Haskell module. The alias directives and their translations are listed in
@@ -21,7 +21,7 @@ expressions.
 
 No directive from this module requires loading a Haskell library.
 
-##### Build
+#### Build
 
 To build the module, add option
 `--add-module=/path/to/nginx-haskell-module/aliases` after option
