@@ -1,5 +1,5 @@
 name:                       ngx-export-distribution
-version:                    0.5.4.3
+version:                    0.5.4.4
 synopsis:                   Build custom libraries for Nginx Haskell module
 description:                Build custom libraries for
         <https://github.com/lyokha/nginx-haskell-module Nginx Haskell module>.

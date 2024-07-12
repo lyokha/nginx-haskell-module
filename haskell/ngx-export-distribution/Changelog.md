@@ -1,3 +1,7 @@
+### 0.5.4.4
+
+- *nhm-tool*: use default directory *.hslibs* if *distDataDir* was passed empty.
+
 ### 0.5.4.3
 
 - *nhm-tool*: fix bios shell script in generated *hie.yaml* for environments

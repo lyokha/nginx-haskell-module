@@ -172,18 +172,17 @@ main = do
               | arg `elem` ["-v", "-version", "--version"] ->
                   putStrLn progVersion >> exitSuccess
         args' -> usage Nothing $ null args'
-    where normalizeDistData dist@DistData {..} =
-              dist { distDataTargetDir =
-                         if distDataTargetDir == "-"
-                             then ""
-                             else distDataTargetDir
-                   , distDataArchive =
-                         if distDataArchive == "-"
-                             then ""
-                             else distDataArchive
-                   , distDataPatchOnly =
-                         distDataDir == "-" || distDataPatchOnly
-                   }
+    where normalizeDistData dist@DistData { distDataDir = "-" } =
+              normalizeDistData dist { distDataDir = defaultDistDataDir
+                                     , distDataPatchOnly = True
+                                     }
+          normalizeDistData dist@DistData { distDataArchive = "-" } =
+              normalizeDistData dist { distDataArchive = "" }
+          normalizeDistData dist@DistData { distDataTargetDir = "-" } =
+              normalizeDistData dist { distDataTargetDir = "" }
+          normalizeDistData dist@DistData { distDataDir = "" } =
+              normalizeDistData dist { distDataDir = defaultDistDataDir }
+          normalizeDistData dist = dist
 
 parseDistArg :: Maybe DistData -> String -> Maybe DistData
 parseDistArg Nothing _ = Nothing
@@ -431,11 +430,10 @@ cmdInit init'@InitData {..} = do
                  )
                 ,("hie.yaml", hieYaml init', True)
                 ]
-    forM_ files $
+    forM_ files $ \(name, file, overridable) ->
         if initDataToStdout
-            then \(name, file, _) ->
-                printHeader (name ++ "\n") >> T.putStrLn file
-            else \(name, file, overridable) -> do
+            then printHeader (name ++ "\n") >> T.putStrLn file
+            else do
                 exists <- doesFileExist name
                 if exists
                     then if initDataForce && overridable
