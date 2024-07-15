@@ -1,5 +1,6 @@
 ### 0.5.4.4
 
+- Refactor function *buildSharedLib* in module *NgxExport.Distribution*.
 - *nhm-tool*: use default directory *.hslibs* if *distDataDir* was passed empty.
 
 ### 0.5.4.3

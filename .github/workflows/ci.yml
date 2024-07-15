@@ -27,7 +27,7 @@ jobs:
             nginx: 1.26.1
             experimental: false
           - ghc: '9.8'
-            cabal: '3.10'
+            cabal: '3.12'
             nginx: 1.26.1
             experimental: false
           - ghc: '9.6'
@@ -35,7 +35,7 @@ jobs:
             nginx: 1.24.0
             experimental: false
           - ghc: '9.4'
-            cabal: '3.8'
+            cabal: '3.10'
             nginx: 1.24.0
             experimental: false
           - ghc: '9.2'

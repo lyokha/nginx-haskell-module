@@ -58,7 +58,6 @@ import Distribution.Verbosity
 import Distribution.Pretty
 import System.Directory
 import System.FilePath
-import Control.Arrow
 import Control.Monad
 import Data.Maybe
 
@@ -356,26 +355,28 @@ buildSharedLib :: Verbosity                         -- ^ Verbosity level
                -> BuildFlags                        -- ^ Build flags
                -> IO FilePath
 buildSharedLib verbosity desc lbi flags = do
-    let configGhcOptions =
-            maybe [] (map ("ghc", )) $
-                lookup GHC $ perCompilerFlavorToList $
-                    options $ libBuildInfo $ fromJust $ library desc
+    let configGhcOptions = fromMaybe [] $
+            lookup GHC $ perCompilerFlavorToList $
+                options $ libBuildInfo $ fromJust $ library desc
         lib = fst $
-            foldl (\a@(r, _) (prog, v) ->
-                if prog /= "ghc" || isJust r
-                    then a
-                    else foldl (\a'@(r', ready) v' ->
-                                    if isJust r'
-                                        then a'
-                                        else if v' == "-o"
-                                                 then (Nothing, True)
-                                                 else if ready
-                                                          then (Just v', False)
-                                                          else (Nothing, False)
-                               ) a v
-                  ) (Nothing, False) $
-                      buildProgramArgs flags ++
-                          map (second pure) configGhcOptions
+            foldl (\a@(r, _) v ->
+                      case r of
+                          Nothing ->
+                              foldl (\a'@(r', ready) v' ->
+                                        case r' of
+                                            Nothing | v' == "-o" -> libReady
+                                                    | ready -> libFound v'
+                                                    | otherwise -> libNotFound
+                                            _ -> a'
+                                    ) libNotFound v
+                          _ -> a
+                  ) libNotFound [concatMap snd $ filter (("ghc" ==) . fst) $
+                                     buildProgramArgs flags
+                                ,configGhcOptions
+                                ]
+        libNotFound = (Nothing, False)
+        libReady = (Nothing, True)
+        libFound = (, False) . Just
         (lib', extraGhcOptions) =
             maybe (let name = unPackageName $ pkgName $ package desc
                        nameSo = name <.> "so"
@@ -390,11 +391,12 @@ buildSharedLib verbosity desc lbi flags = do
         _ -> return ()
     ghcP <- fst <$> requireProgram verbosity ghcProgram (withPrograms lbi)
     let libGhcOptions = ["-dynamic", "-shared", "-fPIC"]
-        libGhcOptions' = if programVersion ghcP >= Just (mkVersion [9, 0, 1])
-                             then "-flink-rts" : libGhcOptions
-                             else libGhcOptions
+        libGhcOptions'
+            | programVersion ghcP >= Just (mkVersion [9, 0, 1]) =
+                "-flink-rts" : libGhcOptions
+            | otherwise = libGhcOptions
         ghcR = programInvocation ghcP $
-            libGhcOptions' ++ map snd configGhcOptions ++ extraGhcOptions
+            libGhcOptions' ++ configGhcOptions ++ extraGhcOptions
     runProgramInvocation verbosity ghcR
     return lib'
 
