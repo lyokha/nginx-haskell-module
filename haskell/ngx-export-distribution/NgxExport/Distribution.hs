@@ -391,12 +391,12 @@ buildSharedLib verbosity desc lbi flags = do
         _ -> return ()
     ghcP <- fst <$> requireProgram verbosity ghcProgram (withPrograms lbi)
     let libGhcOptions = ["-dynamic", "-shared", "-fPIC"]
-        libGhcOptions'
+        linkRtsOption
             | programVersion ghcP >= Just (mkVersion [9, 0, 1]) =
-                "-flink-rts" : libGhcOptions
-            | otherwise = libGhcOptions
-        ghcR = programInvocation ghcP $
-            libGhcOptions' ++ configGhcOptions ++ extraGhcOptions
+                ["-flink-rts"]
+            | otherwise = []
+        ghcR = programInvocation ghcP $ libGhcOptions ++
+            linkRtsOption ++ configGhcOptions ++ extraGhcOptions
     runProgramInvocation verbosity ghcR
     return lib'
 
@@ -422,15 +422,18 @@ patchAndCollectDependentLibs :: Verbosity           -- ^ Verbosity level
                              -> LocalBuildInfo      -- ^ Local build info
                              -> IO ()
 patchAndCollectDependentLibs verbosity lib desc lbi = do
-    let dir = maybe "unspecified-abi" fromPathTemplate $ lookup AbiVar $
+    let verbosityArg v | v == silent = []
+                       | v == normal = ["-v"]
+                       | otherwise = ["-vv"]
+        dir = maybe "unspecified-abi" fromPathTemplate $ lookup AbiVar $
             abiTemplateEnv (compilerInfo $ compiler lbi) $ hostPlatform lbi
         rpathArg = maybe [] (("-t" :) . pure . (</> dir) . fromPathTemplate) $
             flagToMaybe $ prefix $ configInstallDirs $ configFlags lbi
         dirArg = ["-d", dir]
         archiveArg = ["-a", prettyShow $ package desc]
     nhmToolP <- fst <$> requireProgram verbosity nhmTool (withPrograms lbi)
-    let nhmToolR = programInvocation nhmToolP $
-            "dist" : lib : "-v" : rpathArg ++ dirArg ++ archiveArg
+    let nhmToolR = programInvocation nhmToolP $ "dist" : lib :
+            verbosityArg verbosity ++ rpathArg ++ dirArg ++ archiveArg
     runProgramInvocation verbosity nhmToolR
 
 -- | Build hooks.

@@ -1,2 +1,5 @@
-packages: test-basic.cabal ../../haskell/ngx-export/ngx-export.cabal
+packages:
+  test-basic.cabal
+  ../../haskell/ngx-export/ngx-export.cabal
+  ../../haskell/ngx-export-distribution/ngx-export-distribution.cabal
 

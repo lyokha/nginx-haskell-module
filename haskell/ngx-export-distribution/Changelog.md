@@ -1,6 +1,9 @@
-### 0.5.4.4
+### 0.5.5.0
 
 - Refactor function *buildSharedLib* in module *NgxExport.Distribution*.
+- Adjust verbosity levels in *nhm-tool* based on levels passed in *cabal* or
+  *Setup.hs* (*-v0* &rarr; nothing, *-v1* or nothing &rarr; *-v*, other &rarr;
+  *-vv*).
 - *nhm-tool*: use default directory *.hslibs* if *distDataDir* was passed empty.
 
 ### 0.5.4.3
