@@ -424,10 +424,10 @@ patchAndCollectDependentLibs :: Verbosity           -- ^ Verbosity level
 patchAndCollectDependentLibs verbosity lib desc lbi = do
     let dir = maybe "unspecified-abi" fromPathTemplate $ lookup AbiVar $
             abiTemplateEnv (compilerInfo $ compiler lbi) $ hostPlatform lbi
-        dirArg = "-d" : [dir]
         rpathArg = maybe [] (("-t" :) . pure . (</> dir) . fromPathTemplate) $
             flagToMaybe $ prefix $ configInstallDirs $ configFlags lbi
-        archiveArg = "-a" : [prettyShow $ package desc]
+        dirArg = ["-d", dir]
+        archiveArg = ["-a", prettyShow $ package desc]
     nhmToolP <- fst <$> requireProgram verbosity nhmTool (withPrograms lbi)
     let nhmToolR = programInvocation nhmToolP $
             "dist" : lib : "-v" : rpathArg ++ dirArg ++ archiveArg
