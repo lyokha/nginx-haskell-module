@@ -39,6 +39,7 @@ $(GHCENV): cabal.project $(PKGNAME).cabal
 	$(CABAL) install --builddir="$(BUILDDIR)" --lib --only-dependencies \
 	  --package-env .
 	$(CABAL) build --builddir="$(BUILDDIR)" ngx-export
+	$(CABAL) build --builddir="$(BUILDDIR)" $(PKGDISTR)
 	echo "package-db $$(pwd)/$(BUILDDIR)/packagedb/ghc-$(GHCVER)" >> \
 	  $(GHCENV)
 	sed -i 's/\(^package-id \)/--\1/' $(GHCENV)
