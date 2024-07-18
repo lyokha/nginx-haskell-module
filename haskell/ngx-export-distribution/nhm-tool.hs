@@ -445,8 +445,8 @@ cmdInit init'@InitData {..} = do
                     else T.writeFile name file
     where replace from to = foldr (\v -> ((if v == from then to else v) :)) ""
           printHeader header = do
-              isTerm <- hIsTerminalDevice stdout
-              if isTerm
+              isANSITerm <- hSupportsANSI stdout
+              if isANSITerm
                   then do
                       setSGR [SetColor Foreground Dull Blue
                              ,SetUnderlining SingleUnderline

@@ -1,3 +1,8 @@
+### 0.5.5.1
+
+- *nhm-tool*: test if *stdout* is connected to an ANSI terminal when executing
+  command *init -to-stdout* with color highlighting.
+
 ### 0.5.5.0
 
 - Refactor function *buildSharedLib* in module *NgxExport.Distribution*.
