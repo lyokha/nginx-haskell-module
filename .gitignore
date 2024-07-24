@@ -6,6 +6,7 @@
 
 dist/
 dist-newstyle/
+dist-nhm/
 /test/t/servroot/
 /test/tsung/manager.conf
 /test/tsung/snmpm_config_db
