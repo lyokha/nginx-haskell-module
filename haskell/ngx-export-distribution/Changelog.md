@@ -1,5 +1,7 @@
-### 0.5.5.1
+### 0.5.6.0
 
+- *nhm-tool*: Cabal *3.12* generates paths with *Project Unit Id* for GHC
+  *9.10* which affects the *clean* rule in generated *Makefile*.
 - *nhm-tool*: test if *stdout* is connected to an ANSI terminal when executing
   command *init -to-stdout* with color highlighting.
 
