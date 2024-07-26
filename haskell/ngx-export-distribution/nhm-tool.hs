@@ -520,10 +520,8 @@ makefile InitData {..} = T.concat
      \GHCVER := $(shell $(GHC) --numeric-version)\n\
      \CABALVER := $(shell $(CABAL) --numeric-version)\n\
      \GHCPUID := $(shell \\\n\
-     \    if test `echo $(CABALVER) 3.12 | sed 's/ /\\n/' | \\\n\
-     \          sort -V | head -1` = 3.12 && \\\n\
-     \       test `echo $(GHCVER) 9.10 | sed 's/ /\\n/' | \\\n\
-     \          sort -V | head -1` = 9.10; \\\n\
+     \    if printf '3.12\\n$(CABALVER)' | sort -VC && \\\n\
+     \       printf '9.10\\n$(GHCVER)' | sort -VC; \\\n\
      \    then ghcpuid=`$(GHC) --info | sed -n \\\n\
      \             's/^.*\\x28\"Project Unit Id\",\"\\(.*\\)\"\\x29.*$$/\
      \\\1/ip'`; \\\n\
