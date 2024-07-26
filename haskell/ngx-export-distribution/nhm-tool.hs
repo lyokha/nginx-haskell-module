@@ -519,21 +519,20 @@ makefile InitData {..} = T.concat
      \CABAL := cabal\n\
      \GHCVER := $(shell $(GHC) --numeric-version)\n\
      \CABALVER := $(shell $(CABAL) --numeric-version)\n\
-     \GHCPUID := $(shell if test `echo $(CABALVER) 3.12 | sed 's/ /\\n/' | \\\n\
-     \                         sort -V | head -1` = 3.12 && \\\n\
-     \                      test `echo $(GHCVER) 9.10 | sed 's/ /\\n/' | \\\n\
-     \                         sort -V | head -1` = 9.10; \\\n\
-     \                   then ghcpuid=`$(GHC) --info | \\\n\
-     \                            grep -i '\"Project Unit Id\"' | head -1 | \
-     \\\\n\
-     \                            sed 's/.\\+,\"\\(.\\+\\)\"\\x29$$/\\1/'`; \
-     \\\\n\
-     \                       if test -z \"$$ghcpuid\"; \\\n\
-     \                       then echo \"ghc-$(GHCVER)\"; \\\n\
-     \                       else echo \"$$ghcpuid\"; \\\n\
-     \                       fi; \\\n\
-     \                   else echo \"ghc-$(GHCVER)\"; \\\n\
-     \                   fi)\n\
+     \GHCPUID := $(shell \\\n\
+     \    if test `echo $(CABALVER) 3.12 | sed 's/ /\\n/' | \\\n\
+     \          sort -V | head -1` = 3.12 && \\\n\
+     \       test `echo $(GHCVER) 9.10 | sed 's/ /\\n/' | \\\n\
+     \          sort -V | head -1` = 9.10; \\\n\
+     \    then ghcpuid=`$(GHC) --info | sed -n \\\n\
+     \             's/^.*\\x28\"Project Unit Id\",\"\\(.*\\)\"\\x29.*$$/\
+     \\\1/ip'`; \\\n\
+     \        if test -z \"$$ghcpuid\"; \\\n\
+     \        then echo \"ghc-$(GHCVER)\"; \\\n\
+     \        else echo \"$$ghcpuid\"; \\\n\
+     \        fi; \\\n\
+     \    else echo \"ghc-$(GHCVER)\"; \\\n\
+     \    fi)\n\
      \GHCENV := .ghc.environment.$(MACHINE)-$(KERNEL)-$(GHCVER)\n\
      \GHCENVLNK := ", ghcEnvLnk, "\n\
      \DEPLIBS := $(MACHINE)-$(KERNEL)-$(GHCPUID)\n\

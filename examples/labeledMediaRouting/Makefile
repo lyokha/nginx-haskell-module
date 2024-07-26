@@ -26,19 +26,19 @@ GHC := ghc
 CABAL := cabal
 GHCVER := $(shell $(GHC) --numeric-version)
 CABALVER := $(shell $(CABAL) --numeric-version)
-GHCPUID := $(shell if test `echo $(CABALVER) 3.12 | sed 's/ /\n/' | \
-                         sort -V | head -1` = 3.12 && \
-                      test `echo $(GHCVER) 9.10 | sed 's/ /\n/' | \
-                         sort -V | head -1` = 9.10; \
-                   then ghcpuid=`$(GHC) --info | \
-                            grep -i '"Project Unit Id"' | head -1 | \
-                            sed 's/.\+,"\(.\+\)"\x29$$/\1/'`; \
-                       if test -z "$$ghcpuid"; \
-                       then echo "ghc-$(GHCVER)"; \
-                       else echo "$$ghcpuid"; \
-                       fi; \
-                   else echo "ghc-$(GHCVER)"; \
-                   fi)
+GHCPUID := $(shell \
+    if test `echo $(CABALVER) 3.12 | sed 's/ /\n/' | \
+          sort -V | head -1` = 3.12 && \
+       test `echo $(GHCVER) 9.10 | sed 's/ /\n/' | \
+          sort -V | head -1` = 9.10; \
+    then ghcpuid=`$(GHC) --info | sed -n \
+             's/^.*\x28"Project Unit Id","\(.*\)"\x29.*$$/\1/ip'`; \
+        if test -z "$$ghcpuid"; \
+        then echo "ghc-$(GHCVER)"; \
+        else echo "$$ghcpuid"; \
+        fi; \
+    else echo "ghc-$(GHCVER)"; \
+    fi)
 GHCENV := .ghc.environment.$(MACHINE)-$(KERNEL)-$(GHCVER)
 GHCENVLNK := .ghc.environment.lnk
 DEPLIBS := $(MACHINE)-$(KERNEL)-$(GHCPUID)
