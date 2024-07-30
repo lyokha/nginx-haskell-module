@@ -39,11 +39,15 @@ data DistData = DistData { distDataDir :: String
 defaultDistDataDir :: String
 defaultDistDataDir = ".hslibs"
 
-data DepsData = DepsData { depsDataBuilddir :: String
-                         , depsDataProject :: String
-                         , depsDataWaitArg :: Maybe String
-                         , depsDataHelp :: Bool
+data PlanData = PlanData { planDataBuilddir :: String
+                         , planDataQuery :: Maybe PlanDataQuery
+                         , planDataWaitArg :: Maybe String
+                         , planDataWaitProjectName :: Bool
+                         , planDataHelp :: Bool
                          }
+
+data PlanDataQuery = PlanDataQueryDeps String
+                   | PlanDataQueryAbi
 
 data InitData = InitData { initDataPrefix :: String
                          , initDataNoThreaded :: Bool
@@ -63,7 +67,7 @@ data LddRec = LibHS String (Maybe FilePath)
             | LibOther String (Maybe FilePath)
             deriving Show
 
-data HelpSection = HelpDist | HelpDeps | HelpInit deriving Eq
+data HelpSection = HelpDist | HelpPlan | HelpDeps | HelpInit deriving Eq
 
 progVersion :: String
 progVersion = "nhm-tool " ++ showVersion version
@@ -95,15 +99,21 @@ usage section success = do
         \    special value '-' for 'dir', 'target_dir', and 'ar' resets them\n\
         \      (with -d- being equivalent to -p)"
         ]
-    when (isNothing section || section == Just HelpDeps) $
+    when (isNothing section || section `elem` map Just [HelpPlan, HelpDeps]) $
         T.putStrLn "\n\
-        \  * nhm-tool deps [-d dir] project-name\n\n\
-        \    print all direct dependencies of 'project-name',\n\
-        \    the output is compatible with the format of GHC environment \
-        \files\n\n\
+        \  * nhm-tool plan [-d dir] [deps project-name | abi]\n\n\
+        \    print build plan or its derivatives:\n\
+        \    'deps' print all direct dependencies of 'project-name',\n\
+        \      the output is compatible with the format of GHC environment \
+        \files\n\
+        \    'abi' print 'Arch-Os-CompilerId' bundle in GHC style\n\n\
         \    'dir' is the cabal build directory where the build plan is \
         \located\n\
         \      (default is dist-newstyle)"
+    when (isNothing section || section == Just HelpDeps) $
+        T.putStrLn "\n\
+        \  * nhm-tool deps [-d dir] project-name\n\n\
+        \    synonym for 'nhm-tool plan [-d dir] deps project-name'"
     when (isNothing section || section == Just HelpInit) $
         T.putStrLn $ T.concat ["\n\
         \  * nhm-tool init [-p dir] [-no-threaded] [-f | -to-stdout] \
@@ -141,18 +151,30 @@ main = do
                          || null distDataTargetLib ->
                              usage (Just HelpDist) False
                        | otherwise -> cmdDist distData'
+        "plan" : args' -> do
+            let planData = foldl parsePlanArg (Just defaultArgs) args'
+                defaultArgs = PlanData "" Nothing Nothing False False
+            case planData of
+                Nothing -> usage (Just HelpPlan) False
+                Just planData'@PlanData {..} ->
+                    if | planDataHelp ->
+                             usage (Just HelpPlan) $ length args' == 1
+                       | isJust planDataWaitArg
+                         || planDataWaitProjectName ->
+                             usage (Just HelpPlan) False
+                       | otherwise -> cmdPlan planData'
         "deps" : args' -> do
-            let depsData = foldl parseDepsArg (Just defaultArgs) args'
-                defaultArgs = DepsData "" "" Nothing False
-            case depsData of
+            let planData = foldl parsePlanArg (Just defaultArgs) args'
+                defaultArgs = PlanData "" Nothing Nothing True False
+            case planData of
                 Nothing -> usage (Just HelpDeps) False
-                Just depsData'@DepsData {..} ->
-                    if | depsDataHelp ->
+                Just planData'@PlanData {..} ->
+                    if | planDataHelp ->
                              usage (Just HelpDeps) $ length args' == 1
-                       | isJust depsDataWaitArg
-                         || null depsDataProject ->
+                       | isJust planDataWaitArg
+                         || planDataWaitProjectName ->
                              usage (Just HelpDeps) False
-                       | otherwise -> cmdDeps depsData'
+                       | otherwise -> cmdPlan planData'
         "init" : args' -> do
             let initData = foldl parseInitArg (Just defaultArgs) args'
                 defaultArgs = InitData defaultInitDataPrefix False False False
@@ -224,27 +246,36 @@ parseDistArg (Just dist@DistData {..}) arg =
         Just _ -> undefined
         where dist' = dist { distDataWaitArg = Nothing }
 
-parseDepsArg :: Maybe DepsData -> String -> Maybe DepsData
-parseDepsArg Nothing _ = Nothing
-parseDepsArg (Just deps@DepsData {..}) arg =
-    case depsDataWaitArg of
+parsePlanArg :: Maybe PlanData -> String -> Maybe PlanData
+parsePlanArg Nothing _ = Nothing
+parsePlanArg (Just plan@PlanData {..}) arg =
+    case planDataWaitArg of
         Nothing ->
             let (opt, value) = splitAt 2 arg
-            in if | "-d" == opt ->
+            in if | "deps" == arg && not hasDataQuery ->
+                        Just plan' { planDataWaitProjectName = True }
+                  | "abi" == arg && not hasDataQuery ->
+                        Just plan' { planDataQuery = Just PlanDataQueryAbi }
+                  | "-d" == opt ->
                         Just $ if null value
-                                   then deps { depsDataWaitArg = Just opt }
-                                   else deps' { depsDataBuilddir = value }
+                                   then plan { planDataWaitArg = Just opt }
+                                   else plan' { planDataBuilddir = value }
                   | (`elem` ["-h", "-help", "--help"]) arg ->
-                        Just deps' { depsDataHelp = True }
+                        Just plan' { planDataHelp = True }
                   | Just '-' == (fst <$> uncons arg) ->
                         Nothing
-                  | null depsDataProject ->
-                        Just deps' { depsDataProject = arg }
+                  | planDataWaitProjectName ->
+                        Just plan''
+                            { planDataQuery = Just $ PlanDataQueryDeps arg }
                   | otherwise ->
                         Nothing
-        Just "-d" -> Just deps' { depsDataBuilddir = arg }
+        Just "-d" -> Just plan' { planDataBuilddir = arg }
         Just _ -> undefined
-        where deps' = deps { depsDataWaitArg = Nothing }
+        where plan' = plan { planDataWaitArg = Nothing }
+              plan'' = plan { planDataWaitArg = Nothing
+                            , planDataWaitProjectName = False
+                            }
+              hasDataQuery = isJust planDataQuery || planDataWaitProjectName
 
 parseInitArg :: Maybe InitData -> String -> Maybe InitData
 parseInitArg Nothing _ = Nothing
@@ -395,28 +426,38 @@ parseLddOutput = flip parse "ldd" $ many $
           sep = spaces1 *> string "=>" *> spaces1
           spaces1 = skipMany1 space
 
-cmdDeps :: DepsData -> IO ()
-cmdDeps DepsData {..} = do
-    let buildDir = if null depsDataBuilddir
+cmdPlan :: PlanData -> IO ()
+cmdPlan PlanData {..} = do
+    let buildDir = if null planDataBuilddir
                        then ProjectRelativeToDir "."
-                       else InBuildDir depsDataBuilddir
-    units <- pjUnits <$> findAndDecodePlanJson buildDir
-    let comps = [ uComps
-                | Unit {..} <- M.elems units
-                , uType == UnitTypeLocal
-                , let uPkgName = (\(PkgId (PkgName name) _) -> name) uPId
-                , uPkgName == T.pack depsDataProject
-                ]
-    when (null comps) $ do
-        hPutStrLn stderr $ "Failed to find plan for " ++ depsDataProject
-        exitFailure
-    let deps = foldl (\a curComps ->
-                          let libComps = M.filterWithKey
-                                  (const . (== CompNameLib)) curComps
-                          in M.foldr S.union a $ M.map ciLibDeps libComps
-                     ) S.empty comps
-    forM_ (S.toList deps) $ \(UnitId unit) ->
-        putStrLn $ "package-id " ++ T.unpack unit
+                       else InBuildDir planDataBuilddir
+    path <- findPlanJson buildDir
+    case planDataQuery of
+        Nothing ->
+            readFile path >>= putStrLn
+        Just (PlanDataQueryDeps proj) -> do
+            units <- pjUnits <$> decodePlanJson path
+            let comps = [ uComps
+                        | Unit {..} <- M.elems units
+                        , uType == UnitTypeLocal
+                        , let uPkgName = (\(PkgId (PkgName pkg) _) -> pkg) uPId
+                        , uPkgName == T.pack proj
+                        ]
+            when (null comps) $ do
+                hPutStrLn stderr $ "Failed to find plan for " ++ proj
+                exitFailure
+            let deps = foldl (\a curComps ->
+                                  let libComps = M.filterWithKey
+                                          (const . (== CompNameLib)) curComps
+                                  in M.foldr S.union a $
+                                      M.map ciLibDeps libComps
+                             ) S.empty comps
+            forM_ (S.toList deps) $ \(UnitId unit) ->
+                putStrLn $ "package-id " ++ T.unpack unit
+        Just PlanDataQueryAbi -> do
+            PlanJson {..} <- decodePlanJson path
+            T.putStrLn $
+                T.intercalate "-" [pjArch, pjOs, dispPkgId pjCompilerId]
 
 cmdInit :: InitData -> IO ()
 cmdInit init'@InitData {..} = do

@@ -1,3 +1,8 @@
+### 0.6.0.0
+
+- *nhm-tool*: add command *plan* to print the build plan or its derivatives.
+  Command *deps* is now a synonym for command *plan deps*.
+
 ### 0.5.6.0
 
 - *nhm-tool*: Cabal *3.12* generates paths with *Project Unit Id* for GHC
