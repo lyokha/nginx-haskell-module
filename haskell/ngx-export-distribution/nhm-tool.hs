@@ -244,7 +244,7 @@ parseDistArg (Just dist@DistData {..}) arg =
         Just "-t" -> Just dist' { distDataTargetDir = arg }
         Just "-a" -> Just dist' { distDataArchive = arg }
         Just _ -> undefined
-        where dist' = dist { distDataWaitArg = Nothing }
+    where dist' = dist { distDataWaitArg = Nothing }
 
 parsePlanArg :: Maybe PlanData -> String -> Maybe PlanData
 parsePlanArg Nothing _ = Nothing
@@ -265,17 +265,16 @@ parsePlanArg (Just plan@PlanData {..}) arg =
                   | Just '-' == (fst <$> uncons arg) ->
                         Nothing
                   | planDataWaitProjectName ->
-                        Just plan''
-                            { planDataQuery = Just $ PlanDataQueryDeps arg }
+                        Just plan'
+                            { planDataQuery = Just $ PlanDataQueryDeps arg
+                            , planDataWaitProjectName = False
+                            }
                   | otherwise ->
                         Nothing
         Just "-d" -> Just plan' { planDataBuilddir = arg }
         Just _ -> undefined
-        where plan' = plan { planDataWaitArg = Nothing }
-              plan'' = plan { planDataWaitArg = Nothing
-                            , planDataWaitProjectName = False
-                            }
-              hasDataQuery = isJust planDataQuery || planDataWaitProjectName
+    where plan' = plan { planDataWaitArg = Nothing }
+          hasDataQuery = isJust planDataQuery || planDataWaitProjectName
 
 parseInitArg :: Maybe InitData -> String -> Maybe InitData
 parseInitArg Nothing _ = Nothing
@@ -303,7 +302,7 @@ parseInitArg (Just init'@InitData {..}) arg =
                         Nothing
         Just "-p" -> Just init'' { initDataPrefix = arg }
         Just _ -> undefined
-        where init'' = init' { initDataWaitArg = Nothing }
+    where init'' = init' { initDataWaitArg = Nothing }
 
 cmdDist :: DistData -> IO ()
 cmdDist DistData {..} = do
@@ -330,29 +329,27 @@ cmdDist DistData {..} = do
                         putStrLn' "" >> patchTargetLib patchelf'
                     unless (null distDataArchive) $
                         putStrLn' "" >> archiveLibs tar'
-    where patchTargetLib patchelf'
-              | null distDataTargetDir = return ()
-              | otherwise = do
-                  putStrLn' $ "---> Patching " ++ distDataTargetLib
-                  patchelfOut <- getProgramOutput distDataOtherVerbosity
-                      patchelf' ["--print-rpath", distDataTargetLib]
-                  case parsePatchelfRpathOutput patchelfOut of
-                      Left err -> do
-                          hPutStrLn stderr $ show err ++ " in\n" ++ patchelfOut
-                          exitFailure
-                      Right paths -> do
-                          unless (distDataTargetDir `elem` paths) $
-                              runProgram distDataOtherVerbosity patchelf'
-                                  ["--set-rpath"
-                                  ,distDataTargetDir ++ ':' : patchelfOut
-                                  ,distDataTargetLib
-                                  ]
-                          patchelfOut' <- getProgramOutput
-                              distDataOtherVerbosity
-                                  patchelf' ["--print-rpath"
-                                            ,distDataTargetLib
-                                            ]
-                          putStrLnTrim patchelfOut'
+    where patchTargetLib patchelf' = unless (null distDataTargetDir) $ do
+              putStrLn' $ "---> Patching " ++ distDataTargetLib
+              patchelfOut <- getProgramOutput distDataOtherVerbosity
+                  patchelf' ["--print-rpath", distDataTargetLib]
+              case parsePatchelfRpathOutput patchelfOut of
+                  Left err -> do
+                      hPutStrLn stderr $ show err ++ " in\n" ++ patchelfOut
+                      exitFailure
+                  Right paths -> do
+                      unless (distDataTargetDir `elem` paths) $
+                          runProgram distDataOtherVerbosity patchelf'
+                              ["--set-rpath"
+                              ,distDataTargetDir ++ ':' : patchelfOut
+                              ,distDataTargetLib
+                              ]
+                      patchelfOut' <- getProgramOutput
+                          distDataOtherVerbosity
+                              patchelf' ["--print-rpath"
+                                        ,distDataTargetLib
+                                        ]
+                      putStrLnTrim patchelfOut'
           collectLibs recs lddOut = do
               let recsLibHS = M.fromList $
                       mapMaybe (\case
@@ -381,17 +378,15 @@ cmdDist DistData {..} = do
                                      show (M.keys recsLibHSNotFound) ++
                                          " were not found in\n" ++ lddOut
                               exitFailure
-          archiveLibs tar'
-              | null distDataArchive = return ()
-              | otherwise = do
-                  putStrLn' "---> Archiving artifacts"
-                  tarOut <- getProgramOutput distDataOtherVerbosity tar'
-                      ["czvf"
-                      ,distDataArchive <.> ".tar.gz"
-                      ,distDataTargetLib
-                      ,distDataDir
-                      ]
-                  putStrLnTrim tarOut
+          archiveLibs tar' = unless (null distDataArchive) $ do
+              putStrLn' "---> Archiving artifacts"
+              tarOut <- getProgramOutput distDataOtherVerbosity tar'
+                  ["czvf"
+                  ,distDataArchive <.> ".tar.gz"
+                  ,distDataTargetLib
+                  ,distDataDir
+                  ]
+              putStrLnTrim tarOut
           putStrLn' = when (distDataOwnVerbosity == verbose) . putStrLn
           putStrLnTrim = putStrLn' . trimEnd '\n'
           trimEnd end = fst . foldr (\v a@(vs, skipped) ->
