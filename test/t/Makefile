@@ -60,7 +60,7 @@ $(GHCENV): cabal.project $(PKGNAME).cabal
 	  PATH=$$(dirname $$($(CABAL) list-bin $(PKGDISTR) \
 	    --builddir="$(BUILDDIR)")):$$PATH; \
 	fi; \
-	$(NHMTOOL) plan api -d "$(BUILDDIR)"
+	$(NHMTOOL) plan abi -d "$(BUILDDIR)"
 	$(NHMTOOL) plan -d "$(BUILDDIR)"
 	$(NHMTOOL) deps $(PKGNAME) -d "$(BUILDDIR)" >> $(GHCENV)
 
