@@ -2,6 +2,8 @@
 
 - *nhm-tool*: add command *plan* to print the build plan or its derivatives.
   Command *deps* is now a synonym for command *plan deps*.
+- *nhm-tool*: generate more secure *Makefile* with variables surrounded by
+  commas in shell parts.
 
 ### 0.5.6.0
 

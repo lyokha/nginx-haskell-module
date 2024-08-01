@@ -545,11 +545,11 @@ makefile InitData {..} = T.concat
      \LIB := $(NAME).so\n\
      \DISTR := $(PKGNAME)-$(PKGVER).tar.gz\n\
      \\n\
-     \OBJS := $(SRC:.hs=.o)\n\
-     \HIOBJS := $(SRC:.hs=.hi)\n\
-     \DYNOBJS := $(SRC:.hs=.dyn_o)\n\
-     \DYNHIOBJS := $(SRC:.hs=.dyn_hi)\n\
-     \STUBS := $(SRC:.hs=_stub.h)\n\
+     \override OBJS := $(SRC:.hs=.o)\n\
+     \override HIOBJS := $(SRC:.hs=.hi)\n\
+     \override DYNOBJS := $(SRC:.hs=.dyn_o)\n\
+     \override DYNHIOBJS := $(SRC:.hs=.dyn_hi)\n\
+     \override STUBS := $(SRC:.hs=_stub.h)\n\
      \\n\
      \GHC := ghc\n\
      \CABAL := cabal\n\
@@ -582,53 +582,53 @@ makefile InitData {..} = T.concat
      \config: $(SETUPCONFIG)\n\
      \\n\
      \$(GHCENVLNK): cabal.project $(PKGNAME).cabal\n\
-     \\trm -f $(GHCENVLNK)\n\
+     \\trm -f \"$(GHCENVLNK)\"\n\
      \\t$(CABAL) install --builddir=\"$(BUILDDIR)\" --lib --only-dependencies \
      \\\\n\
      \\t  --package-env .\n\
-     \\tsed -i 's/\\(^package-id \\)/--\\1/' $(GHCENV)\n",
+     \\tsed -i 's/\\(^package-id \\)/--\\1/' \"$(GHCENV)\"\n",
      updatePath,
-     "\t$(NHMTOOL) deps $(PKGNAME) -d \"$(BUILDDIR)\" >> $(GHCENV)\n\
-     \\tln -sf $(GHCENV) $(GHCENVLNK)\n\
+     "\t$(NHMTOOL) deps \"$(PKGNAME)\" -d \"$(BUILDDIR)\" >> \"$(GHCENV)\"\n\
+     \\tln -sf \"$(GHCENV)\" \"$(GHCENVLNK)\"\n\
      \\n\
      \$(SETUPCONFIG): $(GHCENVLNK)\n",
      updatePath,
      "\trunhaskell --ghc-arg=-package=base \\\n\
-     \\t  --ghc-arg=-package=$(PKGDISTR) Setup.hs configure \\\n\
+     \\t  --ghc-arg=-package=\"$(PKGDISTR)\" Setup.hs configure \\\n\
      \\t  --builddir=\"$(BUILDDIR)\" \\\n\
      \\t  --package-db=clear --package-db=global \\\n\
-     \\t  $$(sed -n 's/^\\(package-db\\)\\s\\+/--\\1=/p' $(GHCENV)) \\\n\
+     \\t  $$(sed -n 's/^\\(package-db\\)\\s\\+/--\\1=/p' \"$(GHCENV)\") \\\n\
      \\t  $$(sed -n 's/^package-id\\s\\+\\(.*\\)'` \\\n\
      \\t    `'\\(-\\([0-9]\\+\\.\\)*[0-9]\\+\\($$\\|-.*\\)\\)/'` \\\n\
      \\t    `'--dependency=\\1=\\1\\2/p' \\\n\
-     \\t    $(GHCENV)) \\\n\
-     \\t  --prefix=$(PREFIX)\n\
+     \\t    \"$(GHCENV)\") \\\n\
+     \\t  --prefix=\"$(PREFIX)\"\n\
      \\n\
      \$(DISTR): $(SETUPCONFIG) $(SRC)\n",
      updatePath,
      "\trunhaskell --ghc-arg=-package=base \\\n\
-     \\t  --ghc-arg=-package=$(PKGDISTR) Setup.hs build \\\n\
+     \\t  --ghc-arg=-package=\"$(PKGDISTR)\" Setup.hs build \\\n\
      \\t  --builddir=\"$(BUILDDIR)\" \\\n\
      \\t  --ghc-options=\"$(SRC) -o $(LIB) $(LINKRTS)\"\n\
      \\n\
      \install: $(DISTR)\n\
-     \\tinstall -d $(PREFIX)\n\
-     \\ttar xf $(DISTR) -C $(PREFIX) --no-same-owner\n\
+     \\tinstall -d \"$(PREFIX)\"\n\
+     \\ttar xf \"$(DISTR)\" -C \"$(PREFIX)\" --no-same-owner\n\
      \\n\
      \clean:\n\
-     \\trm -rf $(DEPLIBS)\n\
+     \\trm -rf \"$(DEPLIBS)\"\n\
      \\trm -f $(OBJS) $(HIOBJS) $(DYNOBJS) $(DYNHIOBJS) $(STUBS)\n\
-     \\trm -f $(LIB)\n\
+     \\trm -f \"$(LIB)\"\n\
      \\n\
      \clean-all: clean\n\
-     \\trm -rf $(BUILDDIR)\n\
-     \\trm -f $(GHCENV) $(GHCENVLNK) $(DISTR)\n"
+     \\trm -rf \"$(BUILDDIR)\"\n\
+     \\trm -f \"$(GHCENV)\" \"$(GHCENVLNK)\" \"$(DISTR)\"\n"
     ]
     where updatePath =
               "\tif test \"$(NHMTOOL)\" = nhm-tool && ! command -v nhm-tool \
               \>/dev/null; \\\n\
               \\tthen \\\n\
-              \\t  PATH=$$(dirname $$($(CABAL) list-bin $(PKGDISTR) \\\n\
+              \\t  PATH=$$(dirname $$($(CABAL) list-bin \"$(PKGDISTR)\" \\\n\
               \\t    --builddir=\"$(BUILDDIR)\")):$$PATH; \\\n\
               \\tfi; \\\n"
 
