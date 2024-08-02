@@ -69,6 +69,9 @@ data LddRec = LibHS String (Maybe FilePath)
 
 data HelpSection = HelpDist | HelpPlan | HelpDeps | HelpInit deriving Eq
 
+replaceChar :: Char -> Char -> String -> String
+replaceChar from to = map $ \v -> if v == from then to else v
+
 progVersion :: String
 progVersion = "nhm-tool " ++ showVersion version
 
@@ -306,50 +309,40 @@ parseInitArg (Just init'@InitData {..}) arg =
 
 cmdDist :: DistData -> IO ()
 cmdDist DistData {..} = do
-    let pdb = emptyProgramDb
-        patchelf = simpleProgram "patchelf"
-    (patchelf', pdb') <- requireProgram distDataOtherVerbosity patchelf pdb
+    patchelf <- requireProgram' $ simpleProgram "patchelf"
     if distDataPatchOnly
-        then patchTargetLib patchelf'
+        then patchTargetLib patchelf
         else do
-            let ldd = simpleProgram "ldd"
-            (ldd', pdb'') <- requireProgram distDataOtherVerbosity ldd pdb'
+            ldd <- requireProgram' $ simpleProgram "ldd"
             putStrLn' "---> Collecting libraries"
-            lddOut <- getProgramOutput distDataOtherVerbosity
-                ldd' [distDataTargetLib]
+            lddOut <- getProgramOutput' ldd [distDataTargetLib]
             case parseLddOutput lddOut of
                 Left err -> do
                     hPutStrLn stderr $ show err ++ " in\n" ++ lddOut
                     exitFailure
                 Right recs -> do
-                    (tar', _) <- requireProgram distDataOtherVerbosity
-                        tarProgram pdb''
+                    tar' <- requireProgram' tarProgram
                     collectLibs recs lddOut
                     unless (null distDataTargetDir) $
-                        putStrLn' "" >> patchTargetLib patchelf'
+                        putStrLn' "" >> patchTargetLib patchelf
                     unless (null distDataArchive) $
                         putStrLn' "" >> archiveLibs tar'
-    where patchTargetLib patchelf' = unless (null distDataTargetDir) $ do
+    where patchTargetLib patchelf = unless (null distDataTargetDir) $ do
               putStrLn' $ "---> Patching " ++ distDataTargetLib
-              patchelfOut <- getProgramOutput distDataOtherVerbosity
-                  patchelf' ["--print-rpath", distDataTargetLib]
+              let printRpath = getProgramOutput'
+                      patchelf ["--print-rpath", distDataTargetLib]
+              patchelfOut <- printRpath
               case parsePatchelfRpathOutput patchelfOut of
                   Left err -> do
                       hPutStrLn stderr $ show err ++ " in\n" ++ patchelfOut
                       exitFailure
                   Right paths -> do
-                      unless (distDataTargetDir `elem` paths) $
-                          runProgram distDataOtherVerbosity patchelf'
-                              ["--set-rpath"
-                              ,distDataTargetDir ++ ':' : patchelfOut
-                              ,distDataTargetLib
-                              ]
-                      patchelfOut' <- getProgramOutput
-                          distDataOtherVerbosity
-                              patchelf' ["--print-rpath"
-                                        ,distDataTargetLib
-                                        ]
-                      putStrLnTrim patchelfOut'
+                      unless (distDataTargetDir `elem` paths) $ runProgram'
+                          patchelf ["--set-rpath"
+                                   ,distDataTargetDir ++ ':' : patchelfOut
+                                   ,distDataTargetLib
+                                   ]
+                      printRpath >>= putStrLnTrim
           collectLibs recs lddOut = do
               let recsLibHS = M.fromList $
                       mapMaybe (\case
@@ -380,20 +373,19 @@ cmdDist DistData {..} = do
                               exitFailure
           archiveLibs tar' = unless (null distDataArchive) $ do
               putStrLn' "---> Archiving artifacts"
-              tarOut <- getProgramOutput distDataOtherVerbosity tar'
-                  ["czvf"
-                  ,distDataArchive <.> ".tar.gz"
-                  ,distDataTargetLib
-                  ,distDataDir
-                  ]
+              tarOut <- getProgramOutput'
+                  tar' ["czvf"
+                       ,distDataArchive <.> ".tar.gz"
+                       ,distDataTargetLib
+                       ,distDataDir
+                       ]
               putStrLnTrim tarOut
+          requireProgram' = fmap fst .
+              flip (requireProgram distDataOtherVerbosity) emptyProgramDb
+          getProgramOutput' = getProgramOutput distDataOtherVerbosity
+          runProgram' = runProgram distDataOtherVerbosity
           putStrLn' = when (distDataOwnVerbosity == verbose) . putStrLn
-          putStrLnTrim = putStrLn' . trimEnd '\n'
-          trimEnd end = fst . foldr (\v a@(vs, skipped) ->
-                                         if skipped || v /= end
-                                             then (v : vs, True)
-                                             else a
-                                    ) ("", False)
+          putStrLnTrim = putStrLn' . dropWhileEnd (== '\n')
 
 parsePatchelfRpathOutput :: String -> Either ParseError [String]
 parsePatchelfRpathOutput =
@@ -460,7 +452,7 @@ cmdInit init'@InitData {..} = do
                 ,("Setup.hs", setupHs init', True)
                 ,(initDataProject ++ ".cabal", projectCabal init', True)
                 ,("Makefile", makefile init', True)
-                ,(replace '-' '_' initDataProject ++ ".hs"
+                ,(replaceChar '-' '_' initDataProject ++ ".hs"
                  ,projectHs init'
                  ,False
                  )
@@ -479,8 +471,7 @@ cmdInit init'@InitData {..} = do
                                      then useForceMsg name
                                      else existsMsg name
                     else T.writeFile name file
-    where replace from to = foldr (\v -> ((if v == from then to else v) :)) ""
-          printHeader header = do
+    where printHeader header = do
               isANSITerm <- hSupportsANSI stdout
               if isANSITerm
                   then do
@@ -530,7 +521,7 @@ projectCabal InitData {..} = T.concat
 
 makefile :: InitData -> Text
 makefile InitData {..} = T.concat
-    ["NAME := ", T.replace "-" "_" $ T.pack initDataProject, "\n\
+    ["NAME := ", T.pack $ replaceChar '-' '_' initDataProject, "\n\
      \PKGNAME := $(subst _,-,$(NAME))\n\
      \PKGVER := 0.1.0.0\n\
      \\n\
