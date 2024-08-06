@@ -1904,7 +1904,8 @@ Troubleshooting
   *``--global``* is now deprecated in *cabal*. A better way is to create a
   dedicated directory (say */var/lib/nginx/x86_64-linux-ghc-8.6.1/*), grant
   public access to it, and then collect there all dependent libraries and patch
-  the target library using utility [hslibdeps](../../utils/README.md). In the
+  the target library with utility
+  [nhm-tool](../../haskell/ngx-export-distribution/README.md). In the
   standalone approach, the target library gets compiled when nginx master
   process starts, and to give it access to the dependent haskell libraries, you
   can use directive *haskell ghc_extra_options*.
