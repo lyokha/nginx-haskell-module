@@ -320,6 +320,14 @@ import Data.Maybe
 -- In this case, no changes in /hie.yaml/ are required. But it makes sense to
 -- add the new source files into variable /SRC/ in /Makefile/ to let /make/
 -- track them too.
+--
+-- To load the Haskell source file in the Haskell REPL, create the GHC package
+-- environment by running /make/ or /make env/ and then run
+--
+-- > $ ghci -fobject-code project_name.hs
+--
+-- Option /-fobject-code/ is required for export declarations of handlers like
+-- /incCnt/ which involve using foreign function interface.
 
 -- $drawbacks
 --
