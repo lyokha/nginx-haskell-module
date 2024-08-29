@@ -119,8 +119,6 @@ ngx_http_upconf_get_round_robin_peer(ngx_peer_connection_t *pc, void *data)
     rrp = peer_data->rrp;
     peers = rrp->peers;
 
-    pc->name = peers->name;
-
     ngx_http_upstream_rr_peers_wlock(peers);
 
     if (peers->number > peer_data->number && peers->number > 8) {
@@ -168,6 +166,7 @@ ngx_http_upconf_get_round_robin_peer(ngx_peer_connection_t *pc, void *data)
 
     pc->sockaddr = &peer_data->sockaddr;
     pc->socklen = peer->socklen;
+    pc->name = &peer->name;
 
     peer->conns++;
 

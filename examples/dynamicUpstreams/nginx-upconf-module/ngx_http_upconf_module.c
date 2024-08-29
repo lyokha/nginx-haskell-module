@@ -809,7 +809,7 @@ ngx_http_upconf_update_shm_zone(ngx_http_request_t *r, ngx_str_t *zone_name,
     ngx_url_t                            u;
     struct sockaddr                     *sockaddr;
     socklen_t                            socklen;
-    ngx_str_t                            hostname;
+    ngx_str_t                            hostname = ngx_null_string;
     ngx_http_upconf_server_data_t       *server_data;
     ngx_array_t                          shm_cleanup_data;
     ngx_http_upconf_shm_cleanup_data_t  *shm_cleanup_data_elts;
@@ -928,8 +928,7 @@ ngx_http_upconf_update_shm_zone(ngx_http_request_t *r, ngx_str_t *zone_name,
         shm_cleanup_data_elts[i].peer = peer;
 
         peer->name = u.url;
-        peer->server = server_data[i].host.len == 0 ? u.url :
-                server_data[i].host;
+        peer->server = hostname.len == 0 ? u.url : hostname;
         peer->sockaddr = sockaddr;
         peer->socklen = socklen;
         peer->weight = server_data[i].weight;

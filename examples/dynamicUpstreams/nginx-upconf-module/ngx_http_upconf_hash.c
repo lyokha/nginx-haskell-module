@@ -584,8 +584,6 @@ ngx_http_upstream_get_chash_peer(ngx_peer_connection_t *pc, void *data)
 
     ngx_http_upstream_rr_peers_wlock(peers);
 
-    pc->name = peers->name;
-
     if (peers->number > peer_data->number && peers->number > 8) {
         /* hp->rrp.tried storage capacity is not big enough for new servers! */
         ngx_http_upstream_rr_peers_unlock(peers);
@@ -674,6 +672,7 @@ found:
 
     pc->sockaddr = &peer_data->sockaddr;
     pc->socklen = best->socklen;
+    pc->name = &best->name;
 
     best->conns++;
 
