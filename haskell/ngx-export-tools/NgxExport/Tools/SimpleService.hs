@@ -3,7 +3,7 @@
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  NgxExport.Tools.SimpleService
--- Copyright   :  (c) Alexey Radkov 2018-2023
+-- Copyright   :  (c) Alexey Radkov 2018-2024
 -- License     :  BSD-style
 --
 -- Maintainer  :  alexey.radkov@gmail.com
@@ -17,7 +17,7 @@ module NgxExport.Tools.SimpleService (
     -- * Exporters of simple services
     -- $description
 
-    -- *** Preloading storages of typed simple services
+    -- *** Preloading storages of persistent typed services
     -- $preload
 
     -- * Exported data and functions
@@ -149,10 +149,10 @@ import           System.IO.Unsafe (unsafePerformIO)
 --
 -- Here five simple services of various types are defined: /test/,
 -- /testReadInt/, /testReadConf/, /testReadConfWithDelay/, and
--- /testReadConfJSON/. /Typed/ services hold 'IORef' /storages/ to save their
--- configurations for faster access in future iterations. The name of a storage
--- consists of the name of its type and the name of the service connected by an
--- underscore and prefixed as a whole word with __/storage_/__.
+-- /testReadConfJSON/. /Persistent typed/ services hold 'IORef' /storages/ to
+-- save their configurations for faster access in future iterations. The name of
+-- a storage consists of the name of its type and the name of the service
+-- connected by an underscore and prefixed as a whole word with __/storage_/__.
 --
 -- As soon as all the services in the example merely echo their configurations
 -- into their service variables, they must sleep for a while between iterations.
@@ -163,7 +163,7 @@ import           System.IO.Unsafe (unsafePerformIO)
 -- * No sleeps between iterations (@'PersistentService' Nothing@)
 -- * /Single-shot/ services (@'SingleShotService'@)
 --
--- In this contrived example the most efficient sleeping strategy is a
+-- In this contrived example, the most efficient sleeping strategy is a
 -- single-shot service because data is not altered during the runtime. A
 -- single-shot service runs exactly two times during the lifetime of a worker
 -- process: the first run (when the second argument of the service, i.e. the
@@ -249,15 +249,18 @@ import           System.IO.Unsafe (unsafePerformIO)
 -- > Storages of service variables:
 -- >   hs_testConfStorage: Just (Conf 20)
 --
--- In this example typed services have a single instance running. But if there
--- were multiple instances of a single typed service, we would have a problem.
--- Remember how the configuration storage name gets built: it is parameterized
--- by the name of the type and the name of the service. This means that multiple
--- instances of a single typed service share a single configuration.
+-- In this example, persistent typed services had a single instance running. But
+-- if there had been multiple instances of a single persistent typed service, we
+-- would have had a problem. Remember that the name of the configuration storage
+-- is made up of the names of the type and the service. This means that multiple
+-- instances of a single persistent typed service share a single configuration
+-- in the runtime which is not what is normally expected. Exporters
+-- 'ngxExportSimpleServiceTyped'' and 'ngxExportSimpleServiceTypedAsJSON'' do
+-- not store configurations and are preferable in such cases.
 --
 -- $preload
 --
--- Storages of typed simple services can be preloaded /synchronously/ with
+-- Storages of persistent typed services can be preloaded /synchronously/ with
 -- 'ngxExportInitHook'. This is useful if a storage gets accessed immediately
 -- after the start of processing client requests in a request handler which
 -- expects that the storage has already been initialized (for example, a request
@@ -302,6 +305,10 @@ data ServiceMode
     -- | Single-shot service
     | SingleShotService
 
+isPersistentMode :: ServiceMode -> Bool
+isPersistentMode (PersistentService _) = True
+isPersistentMode _ = False
+
 ngxExportSimpleService' :: Name -> Maybe (Name, (Bool, Bool)) -> ServiceMode ->
     Q [Dec]
 ngxExportSimpleService' f c m = do
@@ -310,39 +317,42 @@ ngxExportSimpleService' f c m = do
     let nameF = nameBase f
         nameSsf = mkName $ "simpleService_" ++ nameF
         (hasConf, conf) = maybe (False, undefined) (True ,) c
-        (sNameC, typeC, (readStore, writeStore), readConf, unreadableConfMsg) =
-            if hasConf
-                then let ((tName, tNameBase), (isJSON, storeConf)) =
-                             first (id &&& nameBase) conf
-                         sName = mkName $
-                             "storage_" ++ tNameBase ++ '_' : nameF
-                         storage = varE sName
-                     in (sName
-                        ,conT tName
-                        ,if storeConf
-                             then ([|readIORef $(storage)|]
-                                  ,[|writeIORef $(storage)|]
-                                  )
-                             else ([|return Nothing|]
-                                  ,[|const $ return ()|]
-                                  )
-                        ,if isJSON
-                             then [|readFromByteStringAsJSON|]
-                             else [|readFromByteString|]
-                        ,"Configuration " ++ tNameBase ++ " is not readable"
-                        )
-                else undefined
+        (sNameC, typeC, makeStorage, (readStorage, writeStorage),
+            readConf, unreadableConfMsg) =
+                if hasConf
+                    then let ((tName, tNameBase), (isJSON, storeConf)) =
+                                 first (id &&& nameBase) conf
+                             storeConf' = storeConf && isPersistentMode m
+                             sName = mkName $
+                                 "storage_" ++ tNameBase ++ '_' : nameF
+                             storage = varE sName
+                         in (sName
+                            ,conT tName
+                            ,storeConf'
+                            ,if storeConf'
+                                 then ([|readIORef $(storage)|]
+                                      ,[|writeIORef $(storage)|]
+                                      )
+                                 else ([|return Nothing|]
+                                      ,[|const $ return ()|]
+                                      )
+                            ,if isJSON
+                                 then [|readFromByteStringAsJSON|]
+                                 else [|readFromByteString|]
+                            ,"Configuration " ++ tNameBase ++ " is not readable"
+                            )
+                    else undefined
         initConf =
             let eConfBs = varE confBs
             in if hasConf
-                   then [|$(readStore) >>=
+                   then [|$(readStorage) >>=
                               maybe (do
                                          let conf_data__ =
                                                  $(readConf) $(eConfBs)
                                          when (isNothing conf_data__) $
                                              terminateWorkerProcess
                                                  unreadableConfMsg
-                                         $(writeStore) conf_data__
+                                         $(writeStorage) conf_data__
                                          return conf_data__
                                     ) (return . Just)
                         |]
@@ -375,7 +385,7 @@ ngxExportSimpleService' f c m = do
                        )
     concat <$> sequence
         [sequence $
-            (if hasConf
+            (if hasConf && makeStorage
                  then [sigD sNameC [t|IORef (Maybe $(typeC))|]
                       ,funD sNameC
                           [clause []
@@ -424,13 +434,14 @@ ngxExportSimpleService f =
 -- with specified name and service mode.
 --
 -- The service expects an object of a custom type implementing an instance of
--- 'Read' at its first argument. For the sake of efficiency, this object gets
--- deserialized into a global 'IORef' data storage on the first service run to
--- be further accessed directly from this storage. The storage can be accessed
--- from elsewhere by a name comprised of the name of the custom type and the
--- name of the service connected by an underscore and prefixed as a whole word
--- with __/storage_/__. The stored data is wrapped in a 'Maybe' container which
--- contains 'Nothing' until the initialization on the first service run.
+-- 'Read' at its first argument. For the sake of efficiency, when the service
+-- mode is a 'PersistentService', this object gets deserialized into a global
+-- 'IORef' data storage on the first service run to be further accessed directly
+-- from this storage. The storage can be accessed from elsewhere by a name
+-- comprised of the name of the custom type and the name of the service
+-- connected by an underscore and prefixed as a whole word with __/storage_/__.
+-- The stored data is wrapped in a 'Maybe' container which contains 'Nothing'
+-- until the initialization on the first service run.
 --
 -- When reading of the custom object fails on the first service run, the
 -- service terminates the worker process by calling 'terminateWorkerProcess'
@@ -452,13 +463,13 @@ ngxExportSimpleServiceTyped f c =
 --
 -- The service expects an object of a custom type implementing an instance of
 -- t'Data.Aeson.FromJSON' at its first argument. For the sake of efficiency,
--- this object gets deserialized into a global 'IORef' data storage on the first
--- service run to be further accessed directly from this storage. The storage
--- can be accessed from elsewhere by a name comprised of the name of the custom
--- type and the name of the service connected by an underscore and prefixed as a
--- whole word with __/storage_/__. The stored data is wrapped in a 'Maybe'
--- container which contains 'Nothing' until the initialization on the first
--- service run.
+-- when the service mode is a 'PersistentService', this object gets deserialized
+-- into a global 'IORef' data storage on the first service run to be further
+-- accessed directly from this storage. The storage can be accessed from
+-- elsewhere by a name comprised of the name of the custom type and the name of
+-- the service connected by an underscore and prefixed as a whole word with
+-- __/storage_/__. The stored data is wrapped in a 'Maybe' container which
+-- contains 'Nothing' until the initialization on the first service run.
 --
 -- When reading of the custom object fails on the first service run, the
 -- service terminates the worker process by calling 'terminateWorkerProcess'
@@ -470,6 +481,18 @@ ngxExportSimpleServiceTypedAsJSON :: Name         -- ^ Name of the service
 ngxExportSimpleServiceTypedAsJSON f c =
     ngxExportSimpleService' f $ Just (c, (True, True))
 
+-- | Exports a simple service of type
+--
+-- @
+-- 'Read' a => a -> 'Prelude.Bool' -> 'IO' 'L.ByteString'
+-- @
+--
+-- with specified name and service mode.
+--
+-- This exporter is similar to 'ngxExportSimpleServiceTyped' except it does not
+-- store data in a global storage for persistent services. Use this exporter
+-- when multiple instances of the service with different configurations are
+-- required.
 ngxExportSimpleServiceTyped' :: Name         -- ^ Name of the service
                              -> Name         -- ^ Name of the custom type
                              -> ServiceMode  -- ^ Service mode
@@ -477,6 +500,18 @@ ngxExportSimpleServiceTyped' :: Name         -- ^ Name of the service
 ngxExportSimpleServiceTyped' f c =
     ngxExportSimpleService' f $ Just (c, (False, False))
 
+-- | Exports a simple service of type
+--
+-- @
+-- t'Data.Aeson.FromJSON' a => a -> 'Prelude.Bool' -> 'IO' 'L.ByteString'
+-- @
+--
+-- with specified name and service mode.
+--
+-- This exporter is similar to 'ngxExportSimpleServiceTypedAsJSON' except it
+-- does not store data in a global storage for persistent services. Use this
+-- exporter when multiple instances of the service with different configurations
+-- are required.
 ngxExportSimpleServiceTypedAsJSON' :: Name         -- ^ Name of the service
                                    -> Name         -- ^ Name of the custom type
                                    -> ServiceMode  -- ^ Service mode

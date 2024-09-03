@@ -1,3 +1,14 @@
+### 1.2.5
+
+- Add new exporters of typed simple services *ngxExportSimpleServiceTyped'* and
+  *ngxExportSimpleServiceTypedAsJSON'* which do not store configurations.
+  Consider using them when multiple instances of a single persistent service
+  are required.
+- Single-shot simple services do no longer store configurations too. This
+  ensures their safety when running multiple instances of them.
+- Add *rareService* declaration which can be used with *voidService* instead of
+  *SingleShotService*.
+
 ### 1.2.4.1
 
 - Remove dependency on package *safe*.

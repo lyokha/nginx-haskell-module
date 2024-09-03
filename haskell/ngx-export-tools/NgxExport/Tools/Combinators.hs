@@ -19,11 +19,14 @@ module NgxExport.Tools.Combinators (
                                     voidHandler
                                    ,voidHandler'
                                    ,voidService
+                                   ,rareService
     -- * Split services
                                    ,module NgxExport.Tools.SplitService
                                    ) where
 
+import           NgxExport.Tools.SimpleService
 import           NgxExport.Tools.SplitService
+import           NgxExport.Tools.TimeInterval
 
 import qualified Data.ByteString.Lazy as L
 
@@ -49,8 +52,8 @@ import qualified Data.ByteString.Lazy as L
 --     mapConcurrently_ getUrl upconf
 --     return L.empty
 --
--- 'NgxExport.Tools.SimpleService.ngxExportSimpleServiceTyped' \'signalUpconf \'\'Upconf $
---     'NgxExport.Tools.SimpleService.PersistentService' Nothing
+-- 'ngxExportSimpleServiceTyped' \'signalUpconf \'\'Upconf $
+--     'PersistentService' Nothing
 -- @
 --
 -- returns an empty bytestring which is not used in a meaningful way, therefore
@@ -108,7 +111,7 @@ voidHandler' = const . voidHandler
 -- testLoadConf :: Conf -> t'NgxExport.Tools.Types.NgxExportService'
 -- testLoadConf = __/voidService/__
 --
--- 'NgxExport.Tools.SimpleService.ngxExportSimpleServiceTyped' \'testLoadConf \'\'Conf 'NgxExport.Tools.SimpleService.SingleShotService'
+-- 'ngxExportSimpleServiceTyped' \'testLoadConf \'\'Conf 'rareService'
 -- @
 --
 -- gets loaded by service /testLoadConf/ from the Nginx configuration, then it
@@ -127,4 +130,13 @@ voidService :: a                            -- ^ Ignored configuration
             -> Bool                         -- ^ Ignored boolean value
             -> IO L.ByteString
 voidService = const $ voidHandler' $ return ()
+
+-- | A rare service mode.
+--
+-- A service that sleeps most of the time. Use this convenient declaration for
+-- loading global data from the Nginx configuration with 'voidService'. Services
+-- with a more natural 'SingleShotService' strategy do not create storages and
+-- thus cannot be used for this purpose.
+rareService :: ServiceMode
+rareService = PersistentService $ Just $ Hr 24
 
