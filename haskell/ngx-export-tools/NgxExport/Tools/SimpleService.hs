@@ -493,6 +493,8 @@ ngxExportSimpleServiceTypedAsJSON f c =
 -- store data in a global storage for persistent services. Use this exporter
 -- when multiple instances of the service with different configurations are
 -- required.
+--
+-- @since 1.2.5
 ngxExportSimpleServiceTyped' :: Name         -- ^ Name of the service
                              -> Name         -- ^ Name of the custom type
                              -> ServiceMode  -- ^ Service mode
@@ -512,6 +514,8 @@ ngxExportSimpleServiceTyped' f c =
 -- does not store data in a global storage for persistent services. Use this
 -- exporter when multiple instances of the service with different configurations
 -- are required.
+--
+-- @since 1.2.5
 ngxExportSimpleServiceTypedAsJSON' :: Name         -- ^ Name of the service
                                    -> Name         -- ^ Name of the custom type
                                    -> ServiceMode  -- ^ Service mode

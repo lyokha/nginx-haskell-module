@@ -137,6 +137,8 @@ voidService = const $ voidHandler' $ return ()
 -- loading global data from the Nginx configuration with 'voidService'. Services
 -- with a more natural 'SingleShotService' strategy do not create storages and
 -- thus cannot be used for this purpose.
+--
+-- @since 1.2.5
 rareService :: ServiceMode
 rareService = PersistentService $ Just $ Hr 24
 
