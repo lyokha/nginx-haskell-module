@@ -43,6 +43,11 @@ testConfStorage = const $
     showAsLazyByteString <$> readIORef storage_Conf_testReadConf
 ngxExportIOYY 'testConfStorage
 
+testReadConfNoStore :: Conf -> Bool -> IO L.ByteString
+testReadConfNoStore = testReadConf
+ngxExportSimpleServiceTyped' 'testReadConfNoStore ''Conf $
+    PersistentService $ Just $ Sec 10
+
 data ConfWithDelay = ConfWithDelay { delay :: TimeInterval
                                    , value :: Int
                                    } deriving (Read, Show)

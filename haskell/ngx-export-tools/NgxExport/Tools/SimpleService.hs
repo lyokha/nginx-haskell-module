@@ -25,6 +25,8 @@ module NgxExport.Tools.SimpleService (
                                      ,ngxExportSimpleService
                                      ,ngxExportSimpleServiceTyped
                                      ,ngxExportSimpleServiceTypedAsJSON
+                                     ,ngxExportSimpleServiceTyped'
+                                     ,ngxExportSimpleServiceTypedAsJSON'
     -- * Type declarations
                                      ,NgxExportService
     -- * Re-exported data constructors from /Foreign.C/
@@ -161,16 +163,17 @@ import           System.IO.Unsafe (unsafePerformIO)
 -- * No sleeps between iterations (@'PersistentService' Nothing@)
 -- * /Single-shot/ services (@'SingleShotService'@)
 --
--- In this toy example the most efficient sleeping strategy is a single-shot
--- service because data is not altered during runtime. A single-shot service
--- runs exactly two times during the lifetime of a worker process: the first
--- run (when the second argument of the service, i.e. the /first-run/ flag, is
--- /True/) is immediately followed by the second run (when the /first-run/ flag
--- is /False/). On the second run the service handler is used as an exception
--- handler when the service is shutting down after the 'WorkerProcessIsExiting'
--- exception has been thrown. Accordingly, a single-shot handler can be used
--- for allocation of some global resources (when the first-run flag is /True/),
--- and cleaning them up (when the first-run flag is /False/).
+-- In this contrived example the most efficient sleeping strategy is a
+-- single-shot service because data is not altered during the runtime. A
+-- single-shot service runs exactly two times during the lifetime of a worker
+-- process: the first run (when the second argument of the service, i.e. the
+-- /first-run/ flag, is /True/) is immediately followed by the second run (when
+-- the /first-run/ flag is /False/). On the second run the service handler is
+-- used as an exception handler when the service is shutting down after the
+-- 'WorkerProcessIsExiting' exception has been thrown. Accordingly, a
+-- single-shot handler can be used for allocation of some global resources
+-- (when the /first-run/ flag is /True/), and cleaning them up (when the
+-- /first-run/ flag is /False/).
 --
 -- Notice that service /testReadConfWithDelay/ manages time delays on its own,
 -- therefore it uses /no-sleeps/ strategy @'PersistentService' Nothing@.
@@ -246,6 +249,12 @@ import           System.IO.Unsafe (unsafePerformIO)
 -- > Storages of service variables:
 -- >   hs_testConfStorage: Just (Conf 20)
 --
+-- In this example typed services have a single instance running. But if there
+-- were multiple instances of a single typed service, we would have a problem.
+-- Remember how the configuration storage name gets built: it is parameterized
+-- by the name of the type and the name of the service. This means that multiple
+-- instances of a single typed service share a single configuration.
+--
 -- $preload
 --
 -- Storages of typed simple services can be preloaded /synchronously/ with
@@ -293,19 +302,30 @@ data ServiceMode
     -- | Single-shot service
     | SingleShotService
 
-ngxExportSimpleService' :: Name -> Maybe (Name, Bool) -> ServiceMode -> Q [Dec]
+ngxExportSimpleService' :: Name -> Maybe (Name, (Bool, Bool)) -> ServiceMode ->
+    Q [Dec]
 ngxExportSimpleService' f c m = do
     confBs <- newName "confBs_"
     fstRun <- newName "fstRun_"
     let nameF = nameBase f
         nameSsf = mkName $ "simpleService_" ++ nameF
         (hasConf, conf) = maybe (False, undefined) (True ,) c
-        (sNameC, typeC, readConf, unreadableConfMsg) =
+        (sNameC, typeC, (readStore, writeStore), readConf, unreadableConfMsg) =
             if hasConf
-                then let ((tName, tNameBase), isJSON) =
+                then let ((tName, tNameBase), (isJSON, storeConf)) =
                              first (id &&& nameBase) conf
-                     in (mkName $ "storage_" ++ tNameBase ++ '_' : nameF
+                         sName = mkName $
+                             "storage_" ++ tNameBase ++ '_' : nameF
+                         storage = varE sName
+                     in (sName
                         ,conT tName
+                        ,if storeConf
+                             then ([|readIORef $(storage)|]
+                                  ,[|writeIORef $(storage)|]
+                                  )
+                             else ([|return Nothing|]
+                                  ,[|const $ return ()|]
+                                  )
                         ,if isJSON
                              then [|readFromByteStringAsJSON|]
                              else [|readFromByteString|]
@@ -315,19 +335,17 @@ ngxExportSimpleService' f c m = do
         initConf =
             let eConfBs = varE confBs
             in if hasConf
-                   then let storage = varE sNameC
-                        in [|readIORef $(storage) >>=
-                                 maybe
-                                     (do
-                                          let conf_data__ =
-                                                  $(readConf) $(eConfBs)
-                                          when (isNothing conf_data__) $
-                                              terminateWorkerProcess
-                                                  unreadableConfMsg
-                                          writeIORef $(storage) conf_data__
-                                          return conf_data__
-                                     ) (return . Just)
-                           |]
+                   then [|$(readStore) >>=
+                              maybe (do
+                                         let conf_data__ =
+                                                 $(readConf) $(eConfBs)
+                                         when (isNothing conf_data__) $
+                                             terminateWorkerProcess
+                                                 unreadableConfMsg
+                                         $(writeStore) conf_data__
+                                         return conf_data__
+                                    ) (return . Just)
+                        |]
                    else [|return $ Just $(eConfBs)|]
         (waitTime, runService) =
             let eF = varE f
@@ -422,7 +440,7 @@ ngxExportSimpleServiceTyped :: Name         -- ^ Name of the service
                             -> ServiceMode  -- ^ Service mode
                             -> Q [Dec]
 ngxExportSimpleServiceTyped f c =
-    ngxExportSimpleService' f $ Just (c, False)
+    ngxExportSimpleService' f $ Just (c, (False, True))
 
 -- | Exports a simple service of type
 --
@@ -450,5 +468,19 @@ ngxExportSimpleServiceTypedAsJSON :: Name         -- ^ Name of the service
                                   -> ServiceMode  -- ^ Service mode
                                   -> Q [Dec]
 ngxExportSimpleServiceTypedAsJSON f c =
-    ngxExportSimpleService' f $ Just (c, True)
+    ngxExportSimpleService' f $ Just (c, (True, True))
+
+ngxExportSimpleServiceTyped' :: Name         -- ^ Name of the service
+                             -> Name         -- ^ Name of the custom type
+                             -> ServiceMode  -- ^ Service mode
+                             -> Q [Dec]
+ngxExportSimpleServiceTyped' f c =
+    ngxExportSimpleService' f $ Just (c, (False, False))
+
+ngxExportSimpleServiceTypedAsJSON' :: Name         -- ^ Name of the service
+                                   -> Name         -- ^ Name of the custom type
+                                   -> ServiceMode  -- ^ Service mode
+                                   -> Q [Dec]
+ngxExportSimpleServiceTypedAsJSON' f c =
+    ngxExportSimpleService' f $ Just (c, (True, False))
 
