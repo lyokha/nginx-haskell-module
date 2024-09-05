@@ -96,7 +96,7 @@ ngxExportYY 'testReadConfWithRPtrJSONHandler
 testLoadConf :: Conf -> Bool -> IO L.ByteString
 testLoadConf = voidService
 
-ngxExportSimpleServiceTyped 'testLoadConf ''Conf rareService
+ngxExportSimpleServiceTyped 'testLoadConf ''Conf restartPromptly
 
 testLoadConfStorage :: ByteString -> IO L.ByteString
 testLoadConfStorage = const $

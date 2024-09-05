@@ -20,6 +20,7 @@ module NgxExport.Tools.Combinators (
                                    ,voidHandler'
                                    ,voidService
                                    ,rareService
+                                   ,restartPromptly
     -- * Split services
                                    ,module NgxExport.Tools.SplitService
                                    ) where
@@ -29,6 +30,7 @@ import           NgxExport.Tools.SplitService
 import           NgxExport.Tools.TimeInterval
 
 import qualified Data.ByteString.Lazy as L
+import           Control.Monad
 
 -- $description
 --
@@ -100,6 +102,11 @@ voidHandler' = const . voidHandler
 
 -- | A void service which does nothing and returns an empty 'L.ByteString'.
 --
+-- The service is implemented as a /split/ service in terms of module
+-- "NgxExport.Tools.SplitService". On the first iteration the service returns
+-- immediately, on the next iteration it sleeps until the worker process
+-- terminates it during the shutdown.
+--
 -- This can be used for loading global data from the Nginx configuration in a
 -- more concise and declarative way.
 --
@@ -111,20 +118,16 @@ voidHandler' = const . voidHandler
 -- testLoadConf :: Conf -> t'NgxExport.Tools.Types.NgxExportService'
 -- testLoadConf = __/voidService/__
 --
--- 'ngxExportSimpleServiceTyped' \'testLoadConf \'\'Conf 'rareService'
+-- 'ngxExportSimpleServiceTyped' \'testLoadConf \'\'Conf 'restartPromptly'
 -- @
 --
 -- gets loaded by service /testLoadConf/ from the Nginx configuration, then it
 -- can be accessed in the Haskell code via t'Data.IORef.IORef' data storage
 -- /storage_Conf_testLoadConf/.
 --
--- Declaration 'rareService' is a /persistent/ service mode in terms of module
--- "NgxExport.Tools.SimpleService". This means that if the data storage content
--- gets replaced by /Nothing/ in the code then it will be reset to the original
--- value on the next iteration of the service. Avoid replacing the data storage
--- by /Nothing/. A more natural 'SingleShotService' mode cannot be used for
--- loading global data from the Nginx configuration because it does not
--- maintain data storages.
+-- Declaration of 'restartPromptly' establishes a /persistent/ service mode
+-- without delay. The short iteration at the start of the service can be used
+-- for calling a /service update hook/.
 --
 -- Note that /voidService/ is still an /asynchronous/ service which means that
 -- the global data it loads may appear uninitialized in very early client
@@ -137,14 +140,25 @@ voidHandler' = const . voidHandler
 voidService :: a                            -- ^ Ignored configuration
             -> Bool                         -- ^ Ignored boolean value
             -> IO L.ByteString
-voidService = const $ voidHandler' $ return ()
+voidService = splitService (const $ return L.empty) $
+    const $ forever $ threadDelaySec $ toSec $ Hr 24
 
--- | A rare service mode.
+-- | A persistent service which waits for 24 hours before restart.
 --
--- A service that sleeps most of the time. Use this convenient declaration for
--- loading global data from the Nginx configuration with 'voidService'.
+-- This declaration had been recommended for using with 'voidService' until the
+-- latter was reimplemented as a split service. Nevertheless, it still can be
+-- used for this purpose.
 --
 -- @since 1.2.5
 rareService :: ServiceMode
 rareService = PersistentService $ Just $ Hr 24
+
+-- | A persistent service which restarts immediately.
+--
+-- This convenient declaration can be used for loading global data from the
+-- Nginx configuration with 'voidService'.
+--
+-- @since 1.2.6
+restartPromptly :: ServiceMode
+restartPromptly = PersistentService Nothing
 

@@ -1,3 +1,12 @@
+### 1.2.6
+
+- Service *voidService* was reimplemented as a *split* service with the first
+  iteration being very short and the next iteration being as long as the whole
+  lifetime of the worker process. This implementation addresses the problem of
+  deliberate altering loaded data in the code.
+- Add *restartPromptly* declaration to replace *rareService* which was
+  recommended to use with *voidService* in the previous release.
+
 ### 1.2.5
 
 - Add new exporters of typed simple services *ngxExportSimpleServiceTyped'* and
