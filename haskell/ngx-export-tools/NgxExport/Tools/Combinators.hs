@@ -100,8 +100,8 @@ voidHandler' = const . voidHandler
 
 -- | A void service which does nothing and returns an empty 'L.ByteString'.
 --
--- This can be useful for loading global data from the Nginx configuration in
--- a more concise and declarative way.
+-- This can be used for loading global data from the Nginx configuration in a
+-- more concise and declarative way.
 --
 -- For example, if data /Conf/ in
 --
@@ -117,6 +117,14 @@ voidHandler' = const . voidHandler
 -- gets loaded by service /testLoadConf/ from the Nginx configuration, then it
 -- can be accessed in the Haskell code via t'Data.IORef.IORef' data storage
 -- /storage_Conf_testLoadConf/.
+--
+-- Declaration 'rareService' is a /persistent/ service mode in terms of module
+-- "NgxExport.Tools.SimpleService". This means that if the data storage content
+-- gets replaced by /Nothing/ in the code then it will be reset to the original
+-- value on the next iteration of the service. Avoid replacing the data storage
+-- by /Nothing/. A more natural 'SingleShotService' mode cannot be used for
+-- loading global data from the Nginx configuration because it does not
+-- maintain data storages.
 --
 -- Note that /voidService/ is still an /asynchronous/ service which means that
 -- the global data it loads may appear uninitialized in very early client
@@ -134,9 +142,7 @@ voidService = const $ voidHandler' $ return ()
 -- | A rare service mode.
 --
 -- A service that sleeps most of the time. Use this convenient declaration for
--- loading global data from the Nginx configuration with 'voidService'. Services
--- with a more natural 'SingleShotService' strategy do not create storages and
--- thus cannot be used for this purpose.
+-- loading global data from the Nginx configuration with 'voidService'.
 --
 -- @since 1.2.5
 rareService :: ServiceMode
