@@ -5,7 +5,9 @@
   lifetime of the worker process. This implementation addresses the problem of
   deliberate altering loaded data in the code.
 - Add *restartPromptly* declaration to replace *rareService* which was
-  recommended to use with *voidService* in the previous release.
+  recommended to use with *voidService* in the previous release. Note, however,
+  that use of *rareService* is still valid for loading global data with
+  *voidService*.
 
 ### 1.2.5
 

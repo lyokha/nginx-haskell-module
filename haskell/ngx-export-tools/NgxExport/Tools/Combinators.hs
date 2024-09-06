@@ -153,7 +153,7 @@ voidService = splitService (const $ return L.empty) $
 rareService :: ServiceMode
 rareService = PersistentService $ Just $ Hr 24
 
--- | A persistent service which restarts immediately.
+-- | A persistent service which restarts without delay.
 --
 -- This convenient declaration can be used for loading global data from the
 -- Nginx configuration with 'voidService'.
