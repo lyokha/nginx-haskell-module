@@ -140,8 +140,8 @@ voidHandler' = const . voidHandler
 voidService :: a                            -- ^ Ignored configuration
             -> Bool                         -- ^ Ignored boolean value
             -> IO L.ByteString
-voidService = splitService (const $ return L.empty) $
-    const $ forever $ threadDelaySec $ toSec $ Hr 24
+voidService = splitService (voidHandler' $ return ()) $
+    voidHandler' $ forever $ threadDelaySec $ toSec $ Hr 24
 
 -- | A persistent service which waits for 24 hours before restart.
 --

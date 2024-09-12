@@ -305,98 +305,88 @@ data ServiceMode
     -- | Single-shot service
     | SingleShotService
 
-isPersistentMode :: ServiceMode -> Bool
-isPersistentMode (PersistentService _) = True
-isPersistentMode _ = False
+type TypedConf = (Name, (Bool, Bool))  -- (tName, (isJSON, storeConf))
 
-ngxExportSimpleService' :: Name -> Maybe (Name, (Bool, Bool)) -> ServiceMode ->
-    Q [Dec]
+ngxExportSimpleService' :: Name -> Maybe TypedConf -> ServiceMode -> Q [Dec]
 ngxExportSimpleService' f c m = do
     confBs <- newName "confBs_"
     fstRun <- newName "fstRun_"
     let nameF = nameBase f
         nameSsf = mkName $ "simpleService_" ++ nameF
-        (hasConf, conf) = maybe (False, undefined) (True ,) c
-        (sNameC, typeC, makeStorage, (readStorage, writeStorage),
-            readConf, unreadableConfMsg) =
-                if hasConf
-                    then let ((tName, tNameBase), (isJSON, storeConf)) =
-                                 first (id &&& nameBase) conf
-                             storeConf' = storeConf && isPersistentMode m
-                             sName = mkName $
-                                 "storage_" ++ tNameBase ++ '_' : nameF
-                             storage = varE sName
-                         in (sName
-                            ,conT tName
-                            ,storeConf'
-                            ,if storeConf'
-                                 then ([|readIORef $(storage)|]
-                                      ,[|writeIORef $(storage)|]
-                                      )
-                                 else ([|return Nothing|]
-                                      ,[|const $ return ()|]
-                                      )
-                            ,if isJSON
-                                 then [|readFromByteStringAsJSON|]
-                                 else [|readFromByteString|]
-                            ,"Configuration " ++ tNameBase ++ " is not readable"
-                            )
-                    else undefined
+        maybeWithConf noConf conf = maybe noConf conf c
+        ((makeStorage, readStorage, writeStorage), readConf, badConfMsg) =
+            maybeWithConf undefined $ \conf ->
+                let ((tName, tNameBase), (isJSON, storeConf)) =
+                        first (id &&& nameBase) conf
+                    storeConf' = case m of
+                                     PersistentService _ -> storeConf
+                                     _ -> False
+                    sName = mkName $ "storage_" ++ tNameBase ++ '_' : nameF
+                    makeStorage' =
+                        [sigD sName [t|IORef (Maybe $(conT tName))|]
+                        ,funD sName
+                            [clause []
+                                (normalB [|unsafePerformIO $ newIORef Nothing|])
+                                []
+                            ]
+                        ,pragInlD sName NoInline FunLike AllPhases
+                        ]
+                    storage = varE sName
+                in (if storeConf'
+                        then (makeStorage'
+                             ,[|readIORef $(storage)|]
+                             ,[|writeIORef $(storage)|]
+                             )
+                        else ([]
+                             ,[|return Nothing|]
+                             ,[|const $ return ()|]
+                             )
+                   ,if isJSON
+                        then [|readFromByteStringAsJSON|]
+                        else [|readFromByteString|]
+                   ,"Configuration " ++ tNameBase ++ " is not readable"
+                   )
+        eConfBs = varE confBs
         initConf =
-            let eConfBs = varE confBs
-            in if hasConf
-                   then [|$(readStorage) >>=
-                              maybe (do
-                                         let conf_data__ =
-                                                 $(readConf) $(eConfBs)
-                                         when (isNothing conf_data__) $
-                                             terminateWorkerProcess
-                                                 unreadableConfMsg
-                                         $(writeStorage) conf_data__
-                                         return conf_data__
-                                    ) (return . Just)
-                        |]
-                   else [|return $ Just $(eConfBs)|]
+            maybeWithConf [|return $ Just $(eConfBs)|] $ const
+                [|$(readStorage) >>=
+                      maybe (do
+                                 let conf_data__ = $(readConf) $(eConfBs)
+                                 when (isNothing conf_data__) $
+                                     terminateWorkerProcess badConfMsg
+                                 $(writeStorage) conf_data__
+                                 return conf_data__
+                            ) (return . Just)
+                |]
+        eF = varE f
+        eFstRun = varE fstRun
+        runPersistentService = [|flip $(eF) $(eFstRun)|]
         (waitTime, runService) =
-            let eF = varE f
-                eFstRun = varE fstRun
-                runPersistentService = [|flip $(eF) $(eFstRun)|]
-            in case m of
-                   PersistentService (Just t) ->
-                       ([|const $ unless $(eFstRun) $ threadDelaySec $ toSec t|]
-                       ,runPersistentService
-                       )
-                   PersistentService Nothing ->
-                       ([|const $ return ()|]
-                       ,runPersistentService
-                       )
-                   SingleShotService ->
-                       ([|\conf_data__ -> unless $(eFstRun) $
-                              handle
-                                  (const $ void $ $(eF) conf_data__ False ::
-                                      WorkerProcessIsExiting -> IO ()
-                                  ) $ forever $ threadDelaySec $ toSec $ Hr 24
-                        |]
-                       ,[|\conf_data__ ->
-                              if $(eFstRun)
-                                  then $(eF) conf_data__ True
-                                  else return L.empty
-                        |]
-                       )
+            case m of
+                PersistentService (Just t) ->
+                    ([|const $ unless $(eFstRun) $ threadDelaySec $ toSec t|]
+                    ,runPersistentService
+                    )
+                PersistentService Nothing ->
+                    ([|const $ return ()|]
+                    ,runPersistentService
+                    )
+                SingleShotService ->
+                    ([|\conf_data__ -> unless $(eFstRun) $
+                           handle
+                               (const $ void $ $(eF) conf_data__ False ::
+                                   WorkerProcessIsExiting -> IO ()
+                               ) $ forever $ threadDelaySec $ toSec $ Hr 24
+                     |]
+                    ,[|\conf_data__ ->
+                           if $(eFstRun)
+                               then $(eF) conf_data__ True
+                               else return L.empty
+                     |]
+                    )
     concat <$> sequence
         [sequence $
-            (if hasConf && makeStorage
-                 then [sigD sNameC [t|IORef (Maybe $(typeC))|]
-                      ,funD sNameC
-                          [clause []
-                              (normalB [|unsafePerformIO $ newIORef Nothing|])
-                              []
-                          ]
-                      ,pragInlD sNameC NoInline FunLike AllPhases
-                      ]
-                 else []
-            )
-            ++
+            maybeWithConf [] (const makeStorage) ++
             [sigD nameSsf [t|ByteString -> Bool -> IO L.ByteString|]
             ,funD nameSsf
                 [clause [varP confBs, varP fstRun]

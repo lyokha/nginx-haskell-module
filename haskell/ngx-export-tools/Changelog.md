@@ -1,3 +1,8 @@
+### 1.2.6.1
+
+- Reimplement parts of *voidService* in terms of *voidHandler'*.
+- Refactor *ngxExportSimpleService'*.
+
 ### 1.2.6
 
 - Service *voidService* was reimplemented as a *split* service with the first
