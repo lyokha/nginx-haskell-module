@@ -313,51 +313,54 @@ ngxExportSimpleService' f c m = do
     fstRun <- newName "fstRun_"
     let nameF = nameBase f
         nameSsf = mkName $ "simpleService_" ++ nameF
+        eConfBs = varE confBs
         maybeWithConf noConf conf = maybe noConf conf c
-        ((makeStorage, readStorage, writeStorage), readConf, badConfMsg) =
-            maybeWithConf undefined $ \conf ->
+        (makeStorage, initConf) =
+            maybeWithConf ([], [|return $ Just $(eConfBs)|]) $ \conf ->
                 let ((tName, tNameBase), (isJSON, storeConf)) =
                         first (id &&& nameBase) conf
-                    storeConf' = case m of
-                                     PersistentService _ -> storeConf
-                                     _ -> False
+                    storeConf' =
+                        case m of
+                            PersistentService _ -> storeConf
+                            _ -> False
                     sName = mkName $ "storage_" ++ tNameBase ++ '_' : nameF
-                    makeStorage' =
-                        [sigD sName [t|IORef (Maybe $(conT tName))|]
-                        ,funD sName
-                            [clause []
-                                (normalB [|unsafePerformIO $ newIORef Nothing|])
-                                []
-                            ]
-                        ,pragInlD sName NoInline FunLike AllPhases
-                        ]
-                    storage = varE sName
+                    eStorage = varE sName
+                    (readStorage, writeStorage) =
+                        if storeConf'
+                            then ([|readIORef $(eStorage)|]
+                                 ,[|writeIORef $(eStorage)|]
+                                 )
+                            else ([|return Nothing|]
+                                 ,[|const $ return ()|]
+                                 )
+                    readConf =
+                        if isJSON
+                            then [|readFromByteStringAsJSON|]
+                            else [|readFromByteString|]
+                    noReadConfMsg =
+                        "Configuration " ++ tNameBase ++ " is not readable"
                 in (if storeConf'
-                        then (makeStorage'
-                             ,[|readIORef $(storage)|]
-                             ,[|writeIORef $(storage)|]
-                             )
-                        else ([]
-                             ,[|return Nothing|]
-                             ,[|const $ return ()|]
-                             )
-                   ,if isJSON
-                        then [|readFromByteStringAsJSON|]
-                        else [|readFromByteString|]
-                   ,"Configuration " ++ tNameBase ++ " is not readable"
+                        then [sigD sName [t|IORef (Maybe $(conT tName))|]
+                             ,funD sName
+                                 [clause []
+                                     (normalB
+                                         [|unsafePerformIO $ newIORef Nothing|]
+                                     )
+                                     []
+                                 ]
+                             ,pragInlD sName NoInline FunLike AllPhases
+                             ]
+                        else []
+                   ,[|$(readStorage) >>=
+                          maybe (do
+                                     let conf_data__ = $(readConf) $(eConfBs)
+                                     when (isNothing conf_data__) $
+                                         terminateWorkerProcess noReadConfMsg
+                                     $(writeStorage) conf_data__
+                                     return conf_data__
+                                ) (return . Just)
+                    |]
                    )
-        eConfBs = varE confBs
-        initConf =
-            maybeWithConf [|return $ Just $(eConfBs)|] $ const
-                [|$(readStorage) >>=
-                      maybe (do
-                                 let conf_data__ = $(readConf) $(eConfBs)
-                                 when (isNothing conf_data__) $
-                                     terminateWorkerProcess badConfMsg
-                                 $(writeStorage) conf_data__
-                                 return conf_data__
-                            ) (return . Just)
-                |]
         eF = varE f
         eFstRun = varE fstRun
         runPersistentService = [|flip $(eF) $(eFstRun)|]
@@ -386,7 +389,7 @@ ngxExportSimpleService' f c m = do
                     )
     concat <$> sequence
         [sequence $
-            maybeWithConf [] (const makeStorage) ++
+            makeStorage ++
             [sigD nameSsf [t|ByteString -> Bool -> IO L.ByteString|]
             ,funD nameSsf
                 [clause [varP confBs, varP fstRun]
