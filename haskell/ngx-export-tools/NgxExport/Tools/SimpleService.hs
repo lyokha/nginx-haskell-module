@@ -310,13 +310,10 @@ type TypedConf = (Name, (Bool, Bool))  -- (tName, (isJSON, storeConf))
 ngxExportSimpleService' :: Name -> Maybe TypedConf -> ServiceMode -> Q [Dec]
 ngxExportSimpleService' f c m = do
     confBs <- newName "confBs_"
-    fstRun <- newName "fstRun_"
     let nameF = nameBase f
-        nameSsf = mkName $ "simpleService_" ++ nameF
         eConfBs = varE confBs
-        maybeWithConf noConf conf = maybe noConf conf c
         (makeStorage, initConf) =
-            maybeWithConf ([], [|return $ Just $(eConfBs)|]) $ \conf ->
+            flip (maybe ([], [|return $ Just $(eConfBs)|])) c $ \conf ->
                 let ((tName, tNameBase), (isJSON, storeConf)) =
                         first (id &&& nameBase) conf
                     storeConf' =
@@ -361,6 +358,8 @@ ngxExportSimpleService' f c m = do
                                 ) (return . Just)
                     |]
                    )
+    fstRun <- newName "fstRun_"
+    let nameSsf = mkName $ "simpleService_" ++ nameF
         eF = varE f
         eFstRun = varE fstRun
         runPersistentService = [|flip $(eF) $(eFstRun)|]
@@ -393,11 +392,12 @@ ngxExportSimpleService' f c m = do
             [sigD nameSsf [t|ByteString -> Bool -> IO L.ByteString|]
             ,funD nameSsf
                 [clause [varP confBs, varP fstRun]
-                    (normalB [|do
-                                   conf_data_ <- fromJust <$> $(initConf)
-                                   $(waitTime) conf_data_
-                                   $(runService) conf_data_
-                             |]
+                    (normalB
+                        [|do
+                              conf_data_ <- fromJust <$> $(initConf)
+                              $(waitTime) conf_data_
+                              $(runService) conf_data_
+                        |]
                     )
                     []
                 ]
