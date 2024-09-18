@@ -834,10 +834,17 @@ isIOError :: Errno -> IOError -> Bool
 isIOError (Errno e) = (Just e ==) . ioe_errno
 {-# INLINE isIOError #-}
 
+-- up to ghc 8.0, rts timers used SIGALRM which might cause interrupts in C
+-- function calls, as this is no longer the case since then, this check is
+-- rather redundant
 isEINTR :: IOError -> Bool
 isEINTR = isIOError eINTR
 {-# INLINE isEINTR #-}
 
+-- fcntl() with F_SETLKW can detect deadlocks which are not a big problem when
+-- a thread attempts to acquire a single lock and has no other tasks, so we
+-- check this to ignore; note that fcntl() with F_OFD_SETLKW does not check
+-- deadlocks so we prefer this implementation in getBestLockImpl
 isEDEADLK :: IOError -> Bool
 isEDEADLK = isIOError eDEADLK
 {-# INLINE isEDEADLK #-}
@@ -952,9 +959,10 @@ asyncIOYY f x (I n) fd (I fdlk) active (ToBool efd) (ToBool fstRun) =
                    if isEINTR e
                        then return (False, False)
                        else do
-                           -- wait some time to avoid fastly repeated calls;
-                           -- threadDelay is interruptible even in exception
-                           -- handlers
+                           -- wait some time to avoid fastly repeated calls
+                           -- (e.g. on deadlocks detected by fcntl() with
+                           -- F_SETLKW); note that threadDelay is interruptible
+                           -- in exception handlers
                            exiting <- (threadDelay 500000 >> return False)
                                `catches`
                                [E.Handler $ return . (== WorkerProcessIsExiting)
