@@ -100,7 +100,7 @@ import           Text.Read
 -- 'NgxExport.ngxExportYY' \'testReadConfWithRPtrJSONHandler
 -- @
 --
--- Here five Haskell handlers are defined: /testReadIntHandler/,
+-- Here, five Haskell handlers are defined: /testReadIntHandler/,
 -- /testReadConfHandler/, /testReadConfJSONHandler/,
 -- /testReadConfWithRPtrHandler/, and /testReadConfWithRPtrJSONHandler/. Four
 -- of them are /synchronous/ and one is /asynchronous/ for the sake of variety.
@@ -141,10 +141,10 @@ import           Text.Read
 --                     \'{\"tag\":\"Unknown\"}\';
 --             haskell_run __/testReadConfWithRPtrHandler/__
 --                     $hs_testReadConfWithRPtrHandler
---                     \'${_r_ptr}Conf 21\';
+--                     \'__/${_r_ptr}/__Conf 21\';
 --             haskell_run __/testReadConfWithRPtrJSONHandler/__
 --                     $hs_testReadConfWithRPtrJSONHandler
---                     \'$_r_ptr
+--                     \'__/$_r_ptr/__
 --                      {\"tag\":\"ConfJSONCon1\", \"contents\":4}
 --                     \';
 --
@@ -160,6 +160,18 @@ import           Text.Read
 -- }
 -- @
 --
+-- Handlers that read the pointer to the Nginx request object can also be
+-- written in a fancy style as shown below.
+--
+-- @
+--             haskell_run __/testReadConfWithRPtrHandler(r)/__
+--                     $hs_testReadConfWithRPtrHandler
+--                     \'Conf 21\';
+--             haskell_run __/testReadConfWithRPtrJSONHandler(r)/__
+--                     $hs_testReadConfWithRPtrJSONHandler
+--                     \'{\"tag\":\"ConfJSONCon1\", \"contents\":4}\';
+-- @
+--
 -- ==== A simple test
 -- > $ curl 'http://localhost:8010/'
 -- > Handler variables:
@@ -169,6 +181,10 @@ import           Text.Read
 -- >   hs_testReadConfJSONHandlerBadInput: Nothing
 -- >   hs_testReadConfWithRPtrHandler: (0x00000000016fc790,Just (Conf 21))
 -- >   hs_testReadConfWithRPtrJSONHandler: (0x00000000016fc790,Just (ConfJSONCon1 4))
+--
+-- Note that /non-latin/ Unicode characters read in constructors of custom types
+-- get truncated. Particularly, this means that string literals containing such
+-- characters will be garbled.
 
 data Readable a
 data ReadableAsJSON a
@@ -202,20 +218,20 @@ readFromByteStringAsJSON = fromByteString (Proxy :: Proxy (ReadableAsJSON a))
 -- | Reads a pointer to the Nginx request object followed by an object of
 --   a custom type implementing an instance of 'Read' from a 'ByteString'.
 --
--- Throws an exception if unmarshalling of the request pointer fails. In the
--- second element of the tuple returns 'Nothing' if reading of the custom
--- object fails. Notice that the value of the returned request pointer is not
--- checked against /NULL/.
+-- Throws an exception if unmarshalling of the request pointer fails. Returns
+-- 'Nothing' in the second element of the tuple if reading of the custom object
+-- fails. Notice that the value of the returned request pointer is not checked
+-- against /NULL/.
 readFromByteStringWithRPtr :: Read a => ByteString -> (Ptr (), Maybe a)
 readFromByteStringWithRPtr = ngxRequestPtr &&& readFromByteString . skipRPtr
 
 -- | Reads a pointer to the Nginx request object followed by an object of
 --   a custom type implementing an instance of 'FromJSON' from a 'ByteString'.
 --
--- Throws an exception if unmarshalling of the request pointer fails. In the
--- second element of the tuple returns 'Nothing' if decoding of the custom
--- object fails. Notice that the value of the returned request pointer is not
--- checked against /NULL/.
+-- Throws an exception if unmarshalling of the request pointer fails. Returns
+-- 'Nothing' in the second element of the tuple if decoding of the custom object
+-- fails. Notice that the value of the returned request pointer is not checked
+-- against /NULL/.
 readFromByteStringWithRPtrAsJSON :: FromJSON a =>
     ByteString -> (Ptr (), Maybe a)
 readFromByteStringWithRPtrAsJSON =
