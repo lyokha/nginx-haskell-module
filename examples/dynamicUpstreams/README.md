@@ -20,9 +20,11 @@ a response.
      ,{"addr": "127.0.0.1:8040", "weight": 2}
      ],
   "utest_hash":
-     [{"addr": "127.0.0.1:8020" ,"max_fails": 2, "fail_timeout": 60}
+     [{"addr": "127.0.0.1:8020", "host": "my.server:8020"
+      ,"max_fails": 2, "fail_timeout": 60
+      }
      ,{"addr": "127.0.0.1:8030", "host": "my.server:8030"}
-     ,{"addr": "127.0.0.1:8040"}
+     ,{"addr": "127.0.0.1:8040", "host": "my.server:8040"}
      ]
 }
 ```
@@ -36,9 +38,9 @@ The *upconf* module is mostly adopted from the *dynamic upstreams module* and
 provides three directives.
 
 - *upconf* ``$var`` &mdash; Installs a content handler to read value of the
-  ``$var`` and update the upstreams listed in it. Allowed at the *location*
-  configuration level. It corresponds to directive *dynamic_upstream* from the
-  dynamic upstream module but gets data from a variable.
+  ``$var`` and update the upstreams listed in it. Corresponds to directive
+  *dynamic_upstream* from the dynamic upstream module but gets data from a
+  variable. Allowed at the *location* configuration level.
 
 - *upconf_round_robin* &mdash; Installs safe callbacks for round robin load
   balancing in dynamic upstreams. This directive is mandatory in upstreams
@@ -46,7 +48,8 @@ provides three directives.
 
 - *upconf_hash* ``$var`` ``consistent`` &mdash; An alternative to
   *upconf_round_robin*. Expects an expression to calculate a *hash* value for
-  searching the target server. Allowed at the *upstream* configuration level.
+  searching the target server. Requires all servers to be tagged by a *host*
+  value to work properly. Allowed at the *upstream* configuration level.
 
 As soon as *upconf* must parse a *JSON* object, the module requires an external
 library [*jsmn*](http://github.com/zserge/jsmn) for that. The *hash*
@@ -75,12 +78,12 @@ $ curl 'http://localhost:8010/'
 [30890] In 8030
 $ curl 'http://localhost:8010/'
 [30890] In 8040
-$ curl 'http://localhost:8010/hash?$a=hello'
-[30890] In 8030
-$ curl 'http://localhost:8010/hash?$a=hello'
-[30890] In 8030
-$ curl 'http://localhost:8010/hash?$a=hello'
-[30890] In 8030
+$ curl 'http://localhost:8010/hash?a=hello'
+[30890] In 8020
+$ curl 'http://localhost:8010/hash?a=hello'
+[30890] In 8020
+$ curl 'http://localhost:8010/hash?a=hello'
+[30890] In 8020
 ```
 
 Then you can add or remove backends in *nginx-upconf-backends.conf* and

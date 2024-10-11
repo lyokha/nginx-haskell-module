@@ -3,6 +3,7 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
+#include <ngx_http.h>
 
 
 ngx_int_t ngx_http_upconf_init_round_robin(ngx_conf_t *cf,

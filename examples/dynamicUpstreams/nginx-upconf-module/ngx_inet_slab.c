@@ -8,9 +8,7 @@
  * Copyright (C) Nginx, Inc.
  */
 
-
-#include <ngx_config.h>
-#include <ngx_core.h>
+#include "ngx_inet_slab.h"
 
 
 static ngx_int_t ngx_parse_unix_domain_url(ngx_slab_pool_t *pool, ngx_url_t *u);
@@ -706,3 +704,4 @@ ngx_inet_resolve_host_slab(ngx_slab_pool_t *pool, ngx_url_t *u)
 }
 
 #endif /* NGX_HAVE_GETADDRINFO && NGX_HAVE_INET6 */
+

@@ -8,13 +8,9 @@
  * Copyright (C) Nginx, Inc.
  */
 
-
-#include <ngx_config.h>
-#include <ngx_core.h>
-#include <ngx_http.h>
-
 #include "ngx_http_upconf_hash.h"
 #include "ngx_http_upconf_module.h"
+#include "ngx_http_upconf_round_robin.h"
 
 
 typedef struct {

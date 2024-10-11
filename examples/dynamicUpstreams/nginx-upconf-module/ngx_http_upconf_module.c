@@ -18,8 +18,6 @@
  */
 
 #include <ngx_config.h>
-#include <ngx_core.h>
-#include <ngx_http.h>
 
 
 #if (NGX_HTTP_UPSTREAM_ZONE)
@@ -29,6 +27,7 @@
 
 #include "ngx_inet_slab.h"
 #include "ngx_http_upconf_module.h"
+#include "ngx_http_upconf_round_robin.h"
 
 
 typedef struct {
@@ -1234,7 +1233,6 @@ ngx_int_t ngx_http_upconf_hash_init_zone(ngx_shm_zone_t *shm_zone, void *data)
 
     return NGX_OK;
 }
-
 
 #endif
 
