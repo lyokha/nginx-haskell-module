@@ -393,31 +393,28 @@ parsePatchelfRpathOutput =
     where colon = ':'
 
 parseLddOutput :: String -> Either ParseError [LddRec]
-parseLddOutput = flip parse "ldd" $ many $
-    spaces *>
-    (try (toLddRec <$>
-              manyTill anyChar' sep <*>
-                  ((Just .) . (:) <$> char '/' <*> right
-                   <|> Nothing <$ string "not found"
-                  )
-         )
-     <|> try ((`LibOther` Nothing) <$> right)
-     <|> (`LibOther` Nothing) <$> manyTill anyChar' (sep *> addr *> newline)
-    )
-    where toLddRec lib | "libHS" `isPrefixOf` lib = LibHS lib
+parseLddOutput = flip parse "ldd" $ manyLines $
+    try (toLddRec <$>
+             anyCharsTill arrow <*>
+                 ((Just .) . (:) <$> char '/' <*> right
+                  <|> Nothing <$ string "not found"
+                 )
+        )
+    <|> (`LibOther` Nothing) <$> (try right <|> anyCharsTill (arrow *> addr))
+    where manyLines = many . (spaces *>) . (<* newline)
+          toLddRec lib | "libHS" `isPrefixOf` lib = LibHS lib
                        | "libffi.so" `isPrefixOf` lib = LibFFI lib
                        | otherwise = LibOther lib
-          right = manyTill anyChar' $ spaces1 *> addr *> newline
+          anyCharsTill = manyTill $ satisfy (/= '\n')
+          right = anyCharsTill $ spaces1 *> addr
           addr = string "(0x" *> many1 hexDigit *> char ')'
-          anyChar' = satisfy (/= '\n')
-          sep = spaces1 *> string "=>" *> spaces1
+          arrow = spaces1 *> string "=>" *> spaces1
           spaces1 = skipMany1 space
 
 cmdPlan :: PlanData -> IO ()
 cmdPlan PlanData {..} = do
-    let buildDir = if null planDataBuilddir
-                       then ProjectRelativeToDir "."
-                       else InBuildDir planDataBuilddir
+    let buildDir | null planDataBuilddir = ProjectRelativeToDir "."
+                 | otherwise = InBuildDir planDataBuilddir
     path <- findPlanJson buildDir
     case planDataQuery of
         Nothing ->

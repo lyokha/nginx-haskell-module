@@ -1,3 +1,8 @@
+### 0.6.0.1
+
+- *nhm-tool*: refactor parsing of *ldd* output, previously it could fail in rare
+  cases when there were any not found libraries in the list.
+
 ### 0.6.0.0
 
 - *nhm-tool*: add command *plan* to print the build plan or its derivatives.
