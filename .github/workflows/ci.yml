@@ -14,16 +14,20 @@ jobs:
         nginx: [1.20.2]
         experimental: [false]
         include:
-          - ghc: '9.10'
+          - ghc: '9.12'
             cabal: head
             nginx: head
             experimental: true
-          - ghc: '9.10'
-            cabal: '3.10'
+          - ghc: '9.12'
+            cabal: '3.14'
             nginx: freenginx-head
             experimental: true
+          - ghc: '9.12'
+            cabal: '3.14'
+            nginx: 1.26.2
+            experimental: true
           - ghc: '9.10'
-            cabal: '3.12'
+            cabal: '3.14'
             nginx: 1.26.2
             experimental: false
           - ghc: '9.8'
