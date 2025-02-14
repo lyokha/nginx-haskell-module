@@ -118,16 +118,15 @@ bytestring*. The last handler from the table is *impure* or *effectful*, and it
 returns a *lazy bytestring* wrapped in *IO Monad*.
 
 There are two kinds of exporters which differ only in their implementations.
-The first kind --- *camel-cased* exporters --- is implemented by means of
-*Template Haskell*, the other kind --- exporters in braces, as they are shown
-in the table --- is implemented using *CPP macros*. Both of them provide *FFI*
-declarations for functions they export, but the camel-cased exporters are
-available only from a separate Haskell module [*ngx-export*], which can be
+The first kind &mdash; *camel-cased* exporters &mdash; is implemented by means
+of *Template Haskell*, the other kind &mdash; exporters in braces, as they are
+shown in the table &mdash; is implemented using *CPP macros*. Both of them
+provide *FFI* declarations for functions they export, but the camel-cased
+exporters are available only from a separate Haskell module
+[*ngx-export*](https://hackage.haskell.org/package/ngx-export), which can be
 downloaded and installed by *cabal*, whereas the CPP exporters are implemented
 inside the *nginx-haskell-module* in so-called *standalone* approach, where
 custom Haskell declarations get wrapped inside common Haskell code.
-
-  [*ngx-export*]: https://hackage.haskell.org/package/ngx-export
 
 ## Examples
 
