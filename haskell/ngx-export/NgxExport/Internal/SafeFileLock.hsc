@@ -23,42 +23,41 @@ import GHC.IO.Device
 
 fcntlOfdSetlkw :: CInt
 #ifdef F_OFD_SETLKW
-fcntlOfdSetlkw = (#const F_OFD_SETLKW)
+fcntlOfdSetlkw = #const F_OFD_SETLKW
 #else
 fcntlOfdSetlkw = 38
 #endif
 
 fcntlOfdGetlk :: CInt
 #ifdef F_OFD_SETLKW
-fcntlOfdGetlk = (#const F_OFD_GETLK)
+fcntlOfdGetlk = #const F_OFD_GETLK
 #else
 fcntlOfdGetlk = 36
 #endif
 
 fcntlSetlkw :: CInt
-fcntlSetlkw = (#const F_SETLKW)
+fcntlSetlkw = #const F_SETLKW
 
 -- functions below were mostly adopted from System.Posix.IO.Common
 
-mode2Int :: SeekMode -> CInt
-mode2Int AbsoluteSeek = (#const SEEK_SET)
-mode2Int RelativeSeek = (#const SEEK_CUR)
-mode2Int SeekFromEnd  = (#const SEEK_END)
+mode2CShort :: SeekMode -> CShort
+mode2CShort AbsoluteSeek = #const SEEK_SET
+mode2CShort RelativeSeek = #const SEEK_CUR
+mode2CShort SeekFromEnd  = #const SEEK_END
 
-lockReq2Int :: LockRequest -> CShort
-lockReq2Int ReadLock  = (#const F_RDLCK)
-lockReq2Int WriteLock = (#const F_WRLCK)
-lockReq2Int Unlock    = (#const F_UNLCK)
+lockReq2CShort :: LockRequest -> CShort
+lockReq2CShort ReadLock  = #const F_RDLCK
+lockReq2CShort WriteLock = #const F_WRLCK
+lockReq2CShort Unlock    = #const F_UNLCK
 
 allocaLock :: FileLock -> (Ptr CFLock -> IO a) -> IO a
 allocaLock (lockreq, mode, start, len) io =
-  allocaBytes (#const sizeof(struct flock)) $ \p -> do
-    (#poke struct flock, l_type)   p (lockReq2Int lockreq :: CShort)
-    (#poke struct flock, l_whence) p (fromIntegral (mode2Int mode) :: CShort)
-    (#poke struct flock, l_start)  p start
-    (#poke struct flock, l_len)    p len
-    (#poke struct flock, l_pid)    p (0 :: CPid)
-    io p
+    allocaBytes (#size struct flock) $ \p -> do
+        (#poke struct flock, l_type)   p $ lockReq2CShort lockreq
+        (#poke struct flock, l_whence) p $ mode2CShort mode
+        (#poke struct flock, l_start)  p start
+        (#poke struct flock, l_len)    p len
+        io p
 
 writeLock :: FileLock
 writeLock = (WriteLock, AbsoluteSeek, 0, 0)
@@ -68,13 +67,13 @@ foreign import ccall interruptible "HsBase.h fcntl"
 
 -- interruptible version of waitToSetLock as defined in System.Posix.IO
 safeWaitToSetLock :: Fd -> CInt -> IO ()
-safeWaitToSetLock (Fd fd) cmd = allocaLock writeLock $ \p_flock ->
-    throwErrnoIfMinus1_ "safeWaitToSetLock" $ safe_c_fcntl_lock fd cmd p_flock
+safeWaitToSetLock (Fd fd) cmd = allocaLock writeLock $
+    throwErrnoIfMinus1_ "safeWaitToSetLock" . safe_c_fcntl_lock fd cmd
 
 -- returns fcntlOfdSetlkw if OFD locks are available, or fcntlSetlkw otherwise
 getBestLockImpl :: Fd -> IO CInt
-getBestLockImpl (Fd fd) = allocaLock writeLock $ \p_flock -> do
-    res <- c_fcntl_lock fd fcntlOfdGetlk p_flock
+getBestLockImpl (Fd fd) = allocaLock writeLock $ \pFlock -> do
+    res <- c_fcntl_lock fd fcntlOfdGetlk pFlock
     if res == -1
         then do
             errno <- getErrno

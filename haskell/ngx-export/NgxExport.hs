@@ -153,6 +153,10 @@ data NgxExportTypeAmbiguityTag = Unambiguous
 
 data NgxStrType = NgxStrType CSize CString
 
+-- BEWARE: we do not peek inside Nginx struct ngx_str_t meaning to avoid
+-- dependency on Nginx C source code, it should be ok as long as ngx_str_t
+-- won't change from release to release, we also assume that ngx_str_t is
+-- properly aligned
 instance Storable NgxStrType where
     alignment = const $ max (alignment (undefined :: CSize))
                             (alignment (undefined :: CString))
