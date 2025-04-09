@@ -189,16 +189,16 @@ import           Text.Read
 data Readable a
 data ReadableAsJSON a
 
+type family WrappedTypeOf a where
+    WrappedTypeOf (_ a) = a
+
 class FromByteString a where
-    type WrappedT a
-    fromByteString :: Proxy a -> ByteString -> Maybe (WrappedT a)
+    fromByteString :: Proxy a -> ByteString -> Maybe (WrappedTypeOf a)
 
 instance Read a => FromByteString (Readable a) where
-    type WrappedT (Readable a) = a
     fromByteString = const $ readMaybe . C8.unpack
 
 instance FromJSON a => FromByteString (ReadableAsJSON a) where
-    type WrappedT (ReadableAsJSON a) = a
     fromByteString = const decodeStrict
 
 -- | Reads an object of a custom type implementing an instance of 'Read'

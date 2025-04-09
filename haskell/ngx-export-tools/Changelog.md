@@ -1,3 +1,8 @@
+### 1.2.6.2
+
+- In module *NgxExport.Tools.Read*, compute the wrapped type of data *Readable*
+  and *ReadableAsJSON* in a closed type family *WrappedTypeOf*.
+
 ### 1.2.6.1
 
 - Reimplement parts of *voidService* in terms of *voidHandler'*.
