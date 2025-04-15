@@ -1,3 +1,7 @@
+### 1.7.10.2
+
+- Minor improvements in module *NgxExport.Internal.SafeFileLock*.
+
 ### 1.7.10.1
 
 - Use *DerivingStrategies* in the exception types.

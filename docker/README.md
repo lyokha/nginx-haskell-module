@@ -5,6 +5,8 @@ This docker image contains Nginx built with *nginx-haskell-module*,
 [*nginx-upconf-module*](../examples/dynamicUpstreams/),
 [*nginx-custom-counters-module*](https://github.com/lyokha/nginx-custom-counters-module),
 [*nginx-combined-upstreams-module*](https://github.com/lyokha/nginx-combined-upstreams-module),
+[*nginx-easy-context*](https://github.com/lyokha/nginx-easy-context),
+[*nginx-proxy-peer-host*](https://github.com/lyokha/nginx-proxy-peer-host),
 [*echo-nginx-module*](https://github.com/openresty/echo-nginx-module), and
 plugins [*nginx-healthcheck-plugin*](https://github.com/lyokha/nginx-healthcheck-plugin)
 and [*nginx-log-plugin*](https://github.com/lyokha/nginx-log-plugin). For

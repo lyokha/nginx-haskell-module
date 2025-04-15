@@ -24,15 +24,15 @@ jobs:
             experimental: true
           - ghc: '9.12'
             cabal: '3.14'
-            nginx: 1.26.2
+            nginx: 1.26.3
             experimental: true
           - ghc: '9.10'
             cabal: '3.14'
-            nginx: 1.26.2
+            nginx: 1.26.3
             experimental: false
           - ghc: '9.8'
             cabal: '3.12'
-            nginx: 1.26.2
+            nginx: 1.26.3
             experimental: false
           - ghc: '9.6'
             cabal: '3.10'
