@@ -82,7 +82,7 @@ $ docker rm test-yadwe
 test-yadwe
 ```
 
-To run the container with a customized *nginx.conf*, mount the file with option
+To run the container with a custom *nginx.conf*, mount the file with option
 *-v*.
 
 ```ShellSession
