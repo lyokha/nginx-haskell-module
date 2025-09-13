@@ -82,6 +82,13 @@ $ docker rm test-yadwe
 test-yadwe
 ```
 
+To run the container with a customized *nginx.conf*, mount the file with option
+*-v*.
+
+```ShellSession
+$ docker run --name test-yadwe --network host -v ./nginx.conf:/opt/nginx/conf/nginx.conf -d lyokha/nginx-haskell-module
+```
+
 #### Building custom docker images
 
 The basic docker image can be used to spin off another docker image with
