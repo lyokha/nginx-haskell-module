@@ -1,3 +1,8 @@
+### 0.6.0.2
+
+- *nhm-tool*: GHC's *Project Unit Id* must be considered in Cabal *3.12* and
+  newer and GHC *9.8* and newer.
+
 ### 0.6.0.1
 
 - *nhm-tool*: refactor parsing of *ldd* output, previously it could fail in rare

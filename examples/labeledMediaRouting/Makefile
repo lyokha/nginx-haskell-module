@@ -28,7 +28,7 @@ GHCVER := $(shell $(GHC) --numeric-version)
 CABALVER := $(shell $(CABAL) --numeric-version)
 GHCPUID := $(shell \
     if printf '3.12\n$(CABALVER)' | sort -VC && \
-       printf '9.10\n$(GHCVER)' | sort -VC; \
+       printf '9.8\n$(GHCVER)' | sort -VC; \
     then ghcpuid=`$(GHC) --info | sed -n \
              's/^.*\x28"Project Unit Id","\(.*\)"\x29.*$$/\1/ip'`; \
         if test -z "$$ghcpuid"; \

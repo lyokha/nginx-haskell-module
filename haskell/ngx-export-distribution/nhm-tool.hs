@@ -545,7 +545,7 @@ makefile InitData {..} = T.concat
      \CABALVER := $(shell $(CABAL) --numeric-version)\n\
      \GHCPUID := $(shell \\\n\
      \    if printf '3.12\\n$(CABALVER)' | sort -VC && \\\n\
-     \       printf '9.10\\n$(GHCVER)' | sort -VC; \\\n\
+     \       printf '9.8\\n$(GHCVER)' | sort -VC; \\\n\
      \    then ghcpuid=`$(GHC) --info | sed -n \\\n\
      \             's/^.*\\x28\"Project Unit Id\",\"\\(.*\\)\"\\x29.*$$/\
      \\\1/ip'`; \\\n\
