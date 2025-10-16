@@ -19,11 +19,11 @@ jobs:
             nginx: head
             experimental: true
           - ghc: '9.12'
-            cabal: '3.14'
+            cabal: '3.16'
             nginx: freenginx-head
             experimental: true
           - ghc: '9.12'
-            cabal: '3.14'
+            cabal: '3.16'
             nginx: 1.28.0
             experimental: false
           - ghc: '9.10'
