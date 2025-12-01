@@ -20,7 +20,7 @@ docutils==0.18.1
     # via
     #   sphinx
     #   sphinx-rtd-theme
-fonttools==4.43.0
+fonttools==4.61.0
     # via matplotlib
 idna==3.7
     # via requests
