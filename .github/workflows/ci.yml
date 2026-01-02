@@ -14,17 +14,21 @@ jobs:
         nginx: [1.22.1]
         experimental: [false]
         include:
-          - ghc: '9.12'
+          - ghc: '9.14'
             cabal: head
             nginx: head
             experimental: true
-          - ghc: '9.12'
+          - ghc: '9.14'
             cabal: '3.16'
             nginx: freenginx-head
             experimental: true
+          - ghc: '9.14'
+            cabal: '3.16'
+            nginx: 1.28.1
+            experimental: true
           - ghc: '9.12'
             cabal: '3.16'
-            nginx: 1.28.0
+            nginx: 1.28.1
             experimental: false
           - ghc: '9.10'
             cabal: '3.14'
@@ -48,7 +52,7 @@ jobs:
             experimental: false
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Install GHC and Cabal
         uses: haskell-actions/setup@v2
         with:
