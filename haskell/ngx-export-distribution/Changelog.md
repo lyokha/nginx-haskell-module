@@ -2,6 +2,8 @@
 
 - *nhm-tool*: GHC's *Project Unit Id* must be considered in Cabal *3.12* and
   newer and GHC *9.8* and newer.
+- *nhm-tool*: pass GHC option *-package-env* explicitly because Cabal *3.16*
+  strives to hide custom GHC environments.
 
 ### 0.6.0.1
 

@@ -597,7 +597,8 @@ makefile InitData {..} = T.concat
      "\trunhaskell --ghc-arg=-package=base \\\n\
      \\t  --ghc-arg=-package=\"$(PKGDISTR)\" Setup.hs build \\\n\
      \\t  --builddir=\"$(BUILDDIR)\" \\\n\
-     \\t  --ghc-options=\"$(SRC) -o $(LIB) $(LINKRTS)\"\n\
+     \\t  --ghc-options=\"$(SRC) -o $(LIB) -package-env $(GHCENVLNK) \
+     \$(LINKRTS)\"\n\
      \\n\
      \install: $(DISTR)\n\
      \\tinstall -d \"$(PREFIX)\"\n\

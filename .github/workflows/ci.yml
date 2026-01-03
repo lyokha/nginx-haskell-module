@@ -65,7 +65,7 @@ jobs:
           install: "Test::Nginx"
           tests: false
 
-      - name: Build Nginx module
+      - name: Build Nginx modules
         env:
           NGXVER: ${{ matrix.nginx }}
           JSMN_REV: 25647e692c7906b96ffd2b05ca54c097948e879c
@@ -100,7 +100,7 @@ jobs:
           make -j2
           echo "$(pwd)/objs" >> "$GITHUB_PATH"
 
-      - name: Build Haskell module
+      - name: Build Haskell modules
         run: |
           cabal --version
           echo "$(ghc --version) "`
@@ -120,7 +120,7 @@ jobs:
           cabal build
           cabal sdist
 
-      - name: Run tests
+      - name: Build and run tests
         env:
           GHCVER: ${{ matrix.ghc }}
           TOPDIR: ${{ github.workspace }}

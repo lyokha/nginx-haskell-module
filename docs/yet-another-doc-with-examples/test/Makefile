@@ -97,7 +97,8 @@ $(DISTR): $(SETUPCONFIG) $(SRC) $(CPLUG).o
 	runhaskell --ghc-arg=-package=base \
 	  --ghc-arg=-package=$(PKGDISTR) Setup.hs build \
 	  --builddir="$(BUILDDIR)" \
-	  --ghc-options="$(CPLUG).o $(SRC) -o $(LIB) -ddump-splices $(LINKRTS)"
+	  --ghc-options="$(CPLUG).o $(SRC) -o $(LIB) -package-env $(GHCENV) "` \
+	    `"-ddump-splices $(LINKRTS)"
 
 $(CPLUG).o: $(CPLUG).c
 	gcc -O2 -fPIC -c $(CPLUG).c -o $(CPLUG).o \
