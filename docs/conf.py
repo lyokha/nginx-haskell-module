@@ -1,6 +1,6 @@
 project = u'nginx-haskell-module'
 author = u'Alexey Radkov'
-copyright = u'2015-2025, Alexey Radkov'
+copyright = u'2015-2026, Alexey Radkov'
 
 version = '3.4.3'
 

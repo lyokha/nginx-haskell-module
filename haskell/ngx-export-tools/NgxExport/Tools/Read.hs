@@ -3,7 +3,7 @@
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  NgxExport.Tools.Read
--- Copyright   :  (c) Alexey Radkov 2018-2025
+-- Copyright   :  (c) Alexey Radkov 2018-2026
 -- License     :  BSD-style
 --
 -- Maintainer  :  alexey.radkov@gmail.com
