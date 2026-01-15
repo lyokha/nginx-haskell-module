@@ -25,7 +25,7 @@ import qualified Data.ByteString.Lazy as L
 -- @
 -- type Upconf = [Text]
 --
--- signalUpconf :: Upconf -> 'Bool' -> 'IO' 'L.ByteString'
+-- signalUpconf :: Upconf -> 'Bool' -> 'IO' t'L.ByteString'
 -- signalUpconf = 'NgxExport.Tools.Combinators.voidHandler'' . mapConcurrently_ getUrl
 --
 -- 'NgxExport.Tools.SimpleService.ngxExportSimpleServiceTyped' \'signalUpconf \'\'Upconf $

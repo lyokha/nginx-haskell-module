@@ -12,20 +12,23 @@ jobs:
         ghc: ['8.8', '8.10', '9.0']
         cabal: ['3.10']
         nginx: [1.22.1]
-        experimental: [false]
         include:
+          - experimental: false
           - ghc: '9.14'
             cabal: head
             nginx: head
             experimental: true
+            allownewer: true
           - ghc: '9.14'
             cabal: '3.16'
             nginx: freenginx-head
             experimental: true
+            allownewer: true
           - ghc: '9.14'
             cabal: '3.16'
             nginx: 1.28.1
             experimental: true
+            allownewer: true
           - ghc: '9.12'
             cabal: '3.16'
             nginx: 1.28.1
@@ -101,23 +104,26 @@ jobs:
           echo "$(pwd)/objs" >> "$GITHUB_PATH"
 
       - name: Build Haskell modules
+        env:
+          ALLOW_NEWER:
+            ${{ matrix.allownewer == 'true' && '--allow-newer=all' || '' }}
         run: |
           cabal --version
           echo "$(ghc --version) "`
               `"[$(ghc --print-project-git-commit-id 2>/dev/null || echo '?')]"
 
           cd haskell/ngx-export
-          cabal build
+          cabal build $ALLOW_NEWER
           cabal sdist
           cd -
           cd haskell/ngx-export-tools
           echo 'packages: ngx-export-tools.cabal '`
               `'../ngx-export/ngx-export.cabal' > cabal.project
-          cabal build
+          cabal build $ALLOW_NEWER
           cabal sdist
           cd -
           cd haskell/ngx-export-distribution
-          cabal build
+          cabal build $ALLOW_NEWER
           cabal sdist
 
       - name: Build and run tests
@@ -127,6 +133,10 @@ jobs:
         run: |
           cd test
           cd t
+          if [ "${{ matrix.allownewer }}" = true ]
+          then
+              echo "allow-newer: all" >> cabal.project
+          fi
           echo "$GHCVER" | grep -q '^8\.' &&
               LINKRTS="LINKRTS=-lHSrts_thr-ghc$(ghc --numeric-version)"
           make PREFIX="$TOPDIR/var/lib/nginx" $LINKRTS

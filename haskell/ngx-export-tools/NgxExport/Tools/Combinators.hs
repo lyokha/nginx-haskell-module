@@ -37,10 +37,10 @@ import           Control.Monad
 -- A set of functions to combine effectful actions for building handlers and
 -- services tuned for special purposes.
 
--- | Runs an effectful computation and then returns an empty 'L.ByteString'.
+-- | Runs an effectful computation and then returns an empty t'L.ByteString'.
 --
 -- This function saves printing the final @return L.empty@ action in handlers
--- that return unused or empty 'L.ByteString'.
+-- that return unused or empty t'L.ByteString'.
 --
 -- For example, service /signalUpconf/ being used as an
 -- [/update callback/](https://github.com/lyokha/nginx-haskell-module#update-callbacks)
@@ -73,7 +73,7 @@ voidHandler :: IO a                         -- ^ Target computation
             -> IO L.ByteString
 voidHandler = (>> return L.empty)
 
--- | Runs an effectful computation and then returns an empty 'L.ByteString'.
+-- | Runs an effectful computation and then returns an empty t'L.ByteString'.
 --
 -- The same as 'voidHandler' except it accepts an additional value which is
 -- ignored. Implemented as
@@ -100,7 +100,7 @@ voidHandler' :: IO a                        -- ^ Target computation
              -> IO L.ByteString
 voidHandler' = const . voidHandler
 
--- | A void service which does nothing and returns an empty 'L.ByteString'.
+-- | A void service which does nothing and returns an empty t'L.ByteString'.
 --
 -- The service is implemented as a /split/ service in terms of module
 -- "NgxExport.Tools.SplitService". On the first iteration the service returns

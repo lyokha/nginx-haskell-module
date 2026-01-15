@@ -663,8 +663,8 @@ newtype TerminateWorkerProcess =
 
 -- | Restarts the worker process.
 --
--- The same as 'TerminateWorkerProcess', except that a new worker process shall
--- be spawned by the Nginx master process in place of the current one.
+-- The same as t'TerminateWorkerProcess', except that a new worker process
+-- shall be spawned by the Nginx master process in place of the current one.
 --
 -- @since 1.6.3
 newtype RestartWorkerProcess =

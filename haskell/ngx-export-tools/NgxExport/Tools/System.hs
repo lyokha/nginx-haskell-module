@@ -45,7 +45,7 @@ import           System.Posix.Types
 -- | Terminates the Nginx worker process from a Haskell service.
 --
 -- Nginx master process shall /not/ spawn a new worker process thereafter. This
--- function throws exception 'TerminateWorkerProcess', and therefore terminates
+-- function throws exception t'TerminateWorkerProcess', and therefore terminates
 -- the worker process effectively only from a Haskell service.
 terminateWorkerProcess :: String -> IO a
 terminateWorkerProcess = throwIO . TerminateWorkerProcess
@@ -53,7 +53,7 @@ terminateWorkerProcess = throwIO . TerminateWorkerProcess
 -- | Restarts the Nginx worker process from a Haskell service.
 --
 -- Nginx master process shall spawn a new worker process after termination of
--- the current one. This function throws exception 'RestartWorkerProcess', and
+-- the current one. This function throws exception t'RestartWorkerProcess', and
 -- therefore terminates the worker process effectively only from a Haskell
 -- service.
 restartWorkerProcess :: String -> IO a
@@ -62,13 +62,13 @@ restartWorkerProcess = throwIO . RestartWorkerProcess
 -- | Finalizes the current HTTP request from a Haskell asynchronous variable
 --   handler.
 --
--- This function throws exception 'FinalizeHTTPRequest', and therefore
+-- This function throws exception t'FinalizeHTTPRequest', and therefore
 -- terminates the HTTP request effectively only from a Haskell asynchronous
 -- variable handler.
 finalizeHTTPRequest :: Int -> Maybe String -> IO a
 finalizeHTTPRequest = (throwIO .) . FinalizeHTTPRequest
 
--- | Checks that a generic exception is of type 'WorkerProcessIsExiting'.
+-- | Checks that a generic exception is of type t'WorkerProcessIsExiting'.
 --
 -- This can be useful to check quickly in an exception handler whether a
 -- Haskell service has been interrupted because the worker process is exiting.
