@@ -105,8 +105,7 @@ jobs:
 
       - name: Build Haskell modules
         env:
-          ALLOW_NEWER:
-            ${{ matrix.allownewer == 'true' && '--allow-newer=all' || '' }}
+          ALLOW_NEWER: ${{ matrix.allownewer && '--allow-newer=all' || '' }}
         run: |
           cabal --version
           echo "$(ghc --version) "`
