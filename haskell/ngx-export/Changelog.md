@@ -1,3 +1,7 @@
+### 1.7.11
+
+- Minor internal improvement, drop *LambdaCase* extension in module *NgxExport*.
+
 ### 1.7.10.2
 
 - Minor improvements in module *NgxExport.Internal.SafeFileLock*.

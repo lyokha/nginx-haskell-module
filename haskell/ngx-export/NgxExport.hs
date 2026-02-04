@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP, TemplateHaskell, ForeignFunctionInterface #-}
 {-# LANGUAGE DerivingStrategies, GeneralizedNewtypeDeriving, DeriveAnyClass #-}
-{-# LANGUAGE ViewPatterns, PatternSynonyms, TupleSections, LambdaCase #-}
+{-# LANGUAGE ViewPatterns, PatternSynonyms, TupleSections #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -239,14 +239,8 @@ do
     TyConI (DataD _ _ _ _ aCs _) <- reify ''NgxExportTypeAmbiguityTag
     let tName = mkName "exportType"
         aName = mkName "exportTypeAmbiguity"
-        tCons = map (\case
-                         NormalC con [(_, typ)] -> (con, typ)
-                         _ -> undefined
-                    ) tCs
-        aCons = map (\case
-                         NormalC con [] -> con
-                         _ -> undefined
-                    ) aCs
+        tCons = [(con, typ) | NormalC con [(_, typ)] <- tCs]
+        aCons = [con | NormalC con [] <- aCs]
     sequence $
         [sigD tName [t|NgxExport -> IO CInt|]
         ,funD tName $
