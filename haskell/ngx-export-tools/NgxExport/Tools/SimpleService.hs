@@ -62,7 +62,7 @@ import           System.IO.Unsafe (unsafePerformIO)
 -- services have type
 --
 -- @
--- t'ByteString' -> 'Prelude.Bool' -> 'IO' t'L.ByteString'
+-- 'ByteString' -> 'Prelude.Bool' -> 'IO' 'L.ByteString'
 -- @
 --
 -- which corresponds to the type of usual services from module "NgxExport". The
@@ -70,10 +70,10 @@ import           System.IO.Unsafe (unsafePerformIO)
 -- and may have two different types:
 --
 -- @
--- 'Read' a => a -> 'Prelude.Bool' -> 'IO' t'L.ByteString'
+-- 'Read' a => a -> 'Prelude.Bool' -> 'IO' 'L.ByteString'
 -- @
 -- @
--- t'Data.Aeson.FromJSON' a => a -> 'Prelude.Bool' -> 'IO' t'L.ByteString'
+-- t'Data.Aeson.FromJSON' a => a -> 'Prelude.Bool' -> 'IO' 'L.ByteString'
 -- @
 --
 -- The choice of a certain type of a typed service depends on the format in
@@ -408,7 +408,7 @@ ngxExportSimpleService' f c m = do
 -- | Exports a simple service of type
 --
 -- @
--- t'ByteString' -> 'Prelude.Bool' -> 'IO' t'L.ByteString'
+-- 'ByteString' -> 'Prelude.Bool' -> 'IO' 'L.ByteString'
 -- @
 --
 -- with specified name and service mode.
@@ -421,7 +421,7 @@ ngxExportSimpleService f =
 -- | Exports a simple service of type
 --
 -- @
--- 'Read' a => a -> 'Prelude.Bool' -> 'IO' t'L.ByteString'
+-- 'Read' a => a -> 'Prelude.Bool' -> 'IO' 'L.ByteString'
 -- @
 --
 -- with specified name and service mode.
@@ -449,7 +449,7 @@ ngxExportSimpleServiceTyped f c =
 -- | Exports a simple service of type
 --
 -- @
--- t'Data.Aeson.FromJSON' a => a -> 'Prelude.Bool' -> 'IO' t'L.ByteString'
+-- t'Data.Aeson.FromJSON' a => a -> 'Prelude.Bool' -> 'IO' 'L.ByteString'
 -- @
 --
 -- with specified name and service mode.
@@ -477,7 +477,7 @@ ngxExportSimpleServiceTypedAsJSON f c =
 -- | Exports a simple service of type
 --
 -- @
--- 'Read' a => a -> 'Prelude.Bool' -> 'IO' t'L.ByteString'
+-- 'Read' a => a -> 'Prelude.Bool' -> 'IO' 'L.ByteString'
 -- @
 --
 -- with specified name and service mode.
@@ -498,7 +498,7 @@ ngxExportSimpleServiceTyped' f c =
 -- | Exports a simple service of type
 --
 -- @
--- t'Data.Aeson.FromJSON' a => a -> 'Prelude.Bool' -> 'IO' t'L.ByteString'
+-- t'Data.Aeson.FromJSON' a => a -> 'Prelude.Bool' -> 'IO' 'L.ByteString'
 -- @
 --
 -- with specified name and service mode.

@@ -202,21 +202,21 @@ instance FromJSON a => FromByteString (ReadableAsJSON a) where
     fromByteString = const decodeStrict
 
 -- | Reads an object of a custom type implementing an instance of 'Read'
---   from a t'ByteString'.
+--   from a 'ByteString'.
 --
 -- Returns 'Nothing' if reading fails.
 readFromByteString :: Read a => ByteString -> Maybe a
 readFromByteString = fromByteString (Proxy :: Proxy (Readable a))
 
 -- | Reads an object of a custom type implementing an instance of 'FromJSON'
---   from a t'ByteString'.
+--   from a 'ByteString'.
 --
 -- Returns 'Nothing' if reading fails.
 readFromByteStringAsJSON :: FromJSON a => ByteString -> Maybe a
 readFromByteStringAsJSON = fromByteString (Proxy :: Proxy (ReadableAsJSON a))
 
 -- | Reads a pointer to the Nginx request object followed by an object of
---   a custom type implementing an instance of 'Read' from a t'ByteString'.
+--   a custom type implementing an instance of 'Read' from a 'ByteString'.
 --
 -- Throws an exception if unmarshalling of the request pointer fails. Returns
 -- 'Nothing' in the second element of the tuple if reading of the custom object
@@ -226,7 +226,7 @@ readFromByteStringWithRPtr :: Read a => ByteString -> (Ptr (), Maybe a)
 readFromByteStringWithRPtr = ngxRequestPtr &&& readFromByteString . skipRPtr
 
 -- | Reads a pointer to the Nginx request object followed by an object of
---   a custom type implementing an instance of 'FromJSON' from a t'ByteString'.
+--   a custom type implementing an instance of 'FromJSON' from a 'ByteString'.
 --
 -- Throws an exception if unmarshalling of the request pointer fails. Returns
 -- 'Nothing' in the second element of the tuple if decoding of the custom object
@@ -238,7 +238,7 @@ readFromByteStringWithRPtrAsJSON =
     ngxRequestPtr &&& readFromByteStringAsJSON . skipRPtr
 
 -- | Skips the number of bytes equal to the size of a pointer from the beginning
---   of a t'ByteString'.
+--   of a 'ByteString'.
 --
 -- This can be useful to drop a pointer to the Nginx request object passed at
 -- the beginning of a handler's argument.
