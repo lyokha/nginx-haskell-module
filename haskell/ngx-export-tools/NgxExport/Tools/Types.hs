@@ -16,7 +16,7 @@ module NgxExport.Tools.Types (
                               NgxExportService
                              ) where
 
-import qualified Data.ByteString.Lazy as L
+import           Data.ByteString.Lazy (LazyByteString)
 
 -- | Allows writing fancier declarations of services.
 --
@@ -25,7 +25,7 @@ import qualified Data.ByteString.Lazy as L
 -- @
 -- type Upconf = [Text]
 --
--- signalUpconf :: Upconf -> Bool -> IO L.ByteString
+-- signalUpconf :: Upconf -> Bool -> IO LazyByteString
 -- signalUpconf = 'NgxExport.Tools.Combinators.voidHandler'' . mapConcurrently_ getUrl
 --
 -- 'NgxExport.Tools.SimpleService.ngxExportSimpleServiceTyped' \'signalUpconf \'\'Upconf $
@@ -41,5 +41,5 @@ import qualified Data.ByteString.Lazy as L
 --
 -- @since 1.2.2
 type NgxExportService = Bool               -- ^ First-run flag
-                     -> IO L.ByteString
+                     -> IO LazyByteString
 

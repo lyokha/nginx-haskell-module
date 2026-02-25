@@ -30,6 +30,7 @@ import           NgxExport.Tools.SplitService
 import           NgxExport.Tools.TimeInterval
 
 import qualified Data.ByteString.Lazy as L
+import           Data.ByteString.Lazy (LazyByteString)
 import           Control.Monad
 
 -- $description
@@ -37,10 +38,10 @@ import           Control.Monad
 -- A set of functions to combine effectful actions for building handlers and
 -- services tuned for special purposes.
 
--- | Runs an effectful computation and then returns an empty 'L.ByteString'.
+-- | Runs an effectful computation and then returns an empty 'LazyByteString'.
 --
 -- This function saves printing the final @return L.empty@ action in handlers
--- that return unused or empty 'L.ByteString'.
+-- that return unused or empty 'LazyByteString'.
 --
 -- For example, service /signalUpconf/ being used as an
 -- [/update callback/](https://github.com/lyokha/nginx-haskell-module#update-callbacks)
@@ -70,10 +71,10 @@ import           Control.Monad
 --
 -- @since 1.2.0
 voidHandler :: IO a                         -- ^ Target computation
-            -> IO L.ByteString
+            -> IO LazyByteString
 voidHandler = (>> return L.empty)
 
--- | Runs an effectful computation and then returns an empty 'L.ByteString'.
+-- | Runs an effectful computation and then returns an empty 'LazyByteString'.
 --
 -- The same as 'voidHandler' except it accepts an additional value which is
 -- ignored. Implemented as
@@ -97,10 +98,10 @@ voidHandler = (>> return L.empty)
 -- @since 1.2.1
 voidHandler' :: IO a                        -- ^ Target computation
              -> b                           -- ^ Ignored value
-             -> IO L.ByteString
+             -> IO LazyByteString
 voidHandler' = const . voidHandler
 
--- | A void service which does nothing and returns an empty 'L.ByteString'.
+-- | A void service which does nothing and returns an empty 'LazyByteString'.
 --
 -- The service is implemented as a /split/ service in terms of module
 -- "NgxExport.Tools.SplitService". On the first iteration the service returns
@@ -139,7 +140,7 @@ voidHandler' = const . voidHandler
 -- @since 1.2.3
 voidService :: a                            -- ^ Ignored configuration
             -> Bool                         -- ^ Ignored boolean value
-            -> IO L.ByteString
+            -> IO LazyByteString
 voidService = splitService (voidHandler' $ return ()) $
     voidHandler' $ forever $ threadDelaySec $ toSec $ Hr 24
 

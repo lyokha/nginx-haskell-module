@@ -26,6 +26,7 @@ module NgxExport.Tools.SplitService (
 import           NgxExport.Tools.Types (NgxExportService)
 
 import qualified Data.ByteString.Lazy as L
+import           Data.ByteString.Lazy (LazyByteString)
 
 -- $description
 --
@@ -37,17 +38,17 @@ import qualified Data.ByteString.Lazy as L
 -- When used as a single-shot service (in terms of module
 -- "NgxExport.Tools.SimpleService"), the second action only runs on exit of a
 -- worker process, and therefore can be used as a cleanup handler.
-splitService :: (a -> IO L.ByteString)  -- ^ Ignition service
-             -> (a -> IO L.ByteString)  -- ^ Deferred service
-             -> a                       -- ^ Configuration
+splitService :: (a -> IO LazyByteString)  -- ^ Ignition service
+             -> (a -> IO LazyByteString)  -- ^ Deferred service
+             -> a                         -- ^ Configuration
              -> NgxExportService
 splitService is ds c fstRun
     | fstRun = is c
     | otherwise = ds c
 
 -- | Sets an action as an ignition service.
-ignitionService :: (a -> IO L.ByteString)  -- ^ Ignition service
-                -> a                       -- ^ Configuration
+ignitionService :: (a -> IO LazyByteString)  -- ^ Ignition service
+                -> a                         -- ^ Configuration
                 -> NgxExportService
 ignitionService is = splitService is $ const $ return L.empty
 
@@ -56,8 +57,8 @@ ignitionService is = splitService is $ const $ return L.empty
 -- When used as a single-shot service (in terms of module
 -- "NgxExport.Tools.SimpleService"), the action only runs on exit of a worker
 -- process, and therefore can be used as a cleanup handler.
-deferredService :: (a -> IO L.ByteString)  -- ^ Deferred service
-                -> a                       -- ^ Configuration
+deferredService :: (a -> IO LazyByteString)  -- ^ Deferred service
+                -> a                         -- ^ Configuration
                 -> NgxExportService
 deferredService = splitService $ const $ return L.empty
 

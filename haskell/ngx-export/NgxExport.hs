@@ -93,8 +93,10 @@ import           Control.Concurrent.Async
 import           GHC.IO.Exception (ioe_errno)
 import           Data.IORef
 import qualified Data.ByteString as B
+import           Data.ByteString (ByteString)
 import qualified Data.ByteString.Unsafe as B
 import qualified Data.ByteString.Lazy as L
+import           Data.ByteString.Lazy (LazyByteString)
 import qualified Data.ByteString.Lazy.Internal as L
 import qualified Data.ByteString.Lazy.Char8 as C8L
 import           Data.Binary.Put
@@ -117,17 +119,17 @@ pattern ToBool b <- (toBool -> b)
 
 -- | The /4-tuple/ contains
 --   /(content, content-type, HTTP-status, response-headers)/.
-type ContentHandlerResult = (L.ByteString, B.ByteString, Int, HTTPHeaders)
+type ContentHandlerResult = (LazyByteString, ByteString, Int, HTTPHeaders)
 
 -- | The /3-tuple/ contains /(content, content-type, HTTP-status)/.
 --
 -- Both the /content/ and the /content-type/ are supposed to be referring to
 -- low-level string literals that do not need to be freed upon an HTTP request
 -- termination and must not be garbage-collected in the Haskell RTS.
-type UnsafeContentHandlerResult = (B.ByteString, B.ByteString, Int)
+type UnsafeContentHandlerResult = (ByteString, ByteString, Int)
 
 -- | A list of HTTP headers comprised of /name-value/ pairs.
-type HTTPHeaders = [(B.ByteString, B.ByteString)]
+type HTTPHeaders = [(ByteString, ByteString)]
 
 data NgxExport = SS              (String -> String)
                | SSS             (String -> String -> String)
@@ -135,15 +137,15 @@ data NgxExport = SS              (String -> String)
                | BS              (String -> Bool)
                | BSS             (String -> String -> Bool)
                | BLS             ([String] -> Bool)
-               | YY              (B.ByteString -> L.ByteString)
-               | BY              (B.ByteString -> Bool)
-               | IOYY            (B.ByteString -> Bool -> IO L.ByteString)
-               | IOYYY           (L.ByteString -> B.ByteString ->
-                                     IO L.ByteString)
-               | Handler         (B.ByteString -> ContentHandlerResult)
-               | UnsafeHandler   (B.ByteString -> UnsafeContentHandlerResult)
-               | AsyncHandler    (B.ByteString -> IO ContentHandlerResult)
-               | AsyncHandlerRB  (L.ByteString -> B.ByteString ->
+               | YY              (ByteString -> LazyByteString)
+               | BY              (ByteString -> Bool)
+               | IOYY            (ByteString -> Bool -> IO LazyByteString)
+               | IOYYY           (LazyByteString -> ByteString ->
+                                     IO LazyByteString)
+               | Handler         (ByteString -> ContentHandlerResult)
+               | UnsafeHandler   (ByteString -> UnsafeContentHandlerResult)
+               | AsyncHandler    (ByteString -> IO ContentHandlerResult)
+               | AsyncHandlerRB  (LazyByteString -> ByteString ->
                                      IO ContentHandlerResult)
 
 data NgxExportTypeAmbiguityTag = Unambiguous
@@ -191,14 +193,14 @@ type BLSImpl =
 
 type YYImpl =
     CString -> CInt -> Ptr (Ptr NgxStrType) -> Ptr CInt ->
-    Ptr (StablePtr L.ByteString) -> IO CUInt
+    Ptr (StablePtr LazyByteString) -> IO CUInt
 
 type BYImpl =
     CString -> CInt -> Ptr CString -> Ptr CInt -> IO CUInt
 
 type AsyncIOCommonImpl =
     Ptr (Ptr NgxStrType) -> Ptr CInt ->
-    Ptr CUInt -> Ptr (StablePtr L.ByteString) -> IO (StablePtr (Async ()))
+    Ptr CUInt -> Ptr (StablePtr LazyByteString) -> IO (StablePtr (Async ()))
 
 type AsyncIOYYImpl =
     CString -> CInt -> CInt -> CInt ->
@@ -210,13 +212,13 @@ type AsyncIOYYYImpl =
 
 type HandlerImpl =
     CString -> CInt -> Ptr (Ptr NgxStrType) -> Ptr CInt ->
-    Ptr CString -> Ptr CSize -> Ptr (StablePtr B.ByteString) -> Ptr CInt ->
-    Ptr (Ptr NgxStrType) -> Ptr CInt -> Ptr (StablePtr L.ByteString) ->
-    Ptr (StablePtr L.ByteString) -> IO CUInt
+    Ptr CString -> Ptr CSize -> Ptr (StablePtr ByteString) -> Ptr CInt ->
+    Ptr (Ptr NgxStrType) -> Ptr CInt -> Ptr (StablePtr LazyByteString) ->
+    Ptr (StablePtr LazyByteString) -> IO CUInt
 
 type DefHandlerImpl =
     CString -> CInt -> Ptr (Ptr NgxStrType) -> Ptr CInt ->
-    Ptr CString -> Ptr (StablePtr L.ByteString) -> IO CUInt
+    Ptr CString -> Ptr (StablePtr LazyByteString) -> IO CUInt
 
 type UnsafeHandlerImpl =
     CString -> CInt -> Ptr CString -> Ptr CSize ->
@@ -224,8 +226,8 @@ type UnsafeHandlerImpl =
 
 type AsyncHandlerImpl =
     CString -> CInt -> CInt -> CUInt ->
-    Ptr CString -> Ptr CSize -> Ptr (StablePtr B.ByteString) -> Ptr CInt ->
-    Ptr (Ptr NgxStrType) -> Ptr CInt -> Ptr (StablePtr L.ByteString) ->
+    Ptr CString -> Ptr CSize -> Ptr (StablePtr ByteString) -> Ptr CInt ->
+    Ptr (Ptr NgxStrType) -> Ptr CInt -> Ptr (StablePtr LazyByteString) ->
     AsyncIOCommonImpl
 
 type AsyncHandlerRBImpl =
@@ -457,7 +459,7 @@ ngxExportBLS =
 -- | Exports a function of type
 --
 -- @
--- 'B.ByteString' -> 'L.ByteString'
+-- 'ByteString' -> 'LazyByteString'
 -- @
 --
 -- for using in directive __/haskell_run/__.
@@ -468,7 +470,7 @@ ngxExportYY =
 -- | Exports a function of type
 --
 -- @
--- 'B.ByteString' -> 'Bool'
+-- 'ByteString' -> 'Bool'
 -- @
 --
 -- for using in directive __/haskell_run/__.
@@ -479,7 +481,7 @@ ngxExportBY =
 -- | Exports a function of type
 --
 -- @
--- 'B.ByteString' -> 'IO' 'L.ByteString'
+-- 'ByteString' -> 'IO' 'LazyByteString'
 -- @
 --
 -- for using in directive __/haskell_run/__.
@@ -490,7 +492,7 @@ ngxExportIOYY =
 -- | Exports a function of type
 --
 -- @
--- 'B.ByteString' -> 'IO' 'L.ByteString'
+-- 'ByteString' -> 'IO' 'LazyByteString'
 -- @
 --
 -- for using in directive __/haskell_run_async/__.
@@ -501,7 +503,7 @@ ngxExportAsyncIOYY =
 -- | Exports a function of type
 --
 -- @
--- 'L.ByteString' -> 'B.ByteString' -> 'IO' 'L.ByteString'
+-- 'LazyByteString' -> 'ByteString' -> 'IO' 'LazyByteString'
 -- @
 --
 -- for using in directive __/haskell_run_async_on_request_body/__.
@@ -515,7 +517,7 @@ ngxExportAsyncOnReqBody =
 -- | Exports a function of type
 --
 -- @
--- 'B.ByteString' -> 'Bool' -> 'IO' 'L.ByteString'
+-- 'ByteString' -> 'Bool' -> 'IO' 'LazyByteString'
 -- @
 --
 -- for using in directives __/haskell_run_service/__ and
@@ -530,7 +532,7 @@ ngxExportServiceIOYY =
 -- | Exports a function of type
 --
 -- @
--- 'B.ByteString' -> 'ContentHandlerResult'
+-- 'ByteString' -> 'ContentHandlerResult'
 -- @
 --
 -- for using in directives __/haskell_content/__ and
@@ -542,7 +544,7 @@ ngxExportHandler =
 -- | Exports a function of type
 --
 -- @
--- 'B.ByteString' -> 'L.ByteString'
+-- 'ByteString' -> 'LazyByteString'
 -- @
 --
 -- for using in directives __/haskell_content/__ and
@@ -554,7 +556,7 @@ ngxExportDefHandler =
 -- | Exports a function of type
 --
 -- @
--- 'B.ByteString' -> 'UnsafeContentHandlerResult'
+-- 'ByteString' -> 'UnsafeContentHandlerResult'
 -- @
 --
 -- for using in directive __/haskell_unsafe_content/__.
@@ -565,7 +567,7 @@ ngxExportUnsafeHandler =
 -- | Exports a function of type
 --
 -- @
--- 'B.ByteString' -> 'IO' 'ContentHandlerResult'
+-- 'ByteString' -> 'IO' 'ContentHandlerResult'
 -- @
 --
 -- for using in directive __/haskell_async_content/__.
@@ -576,7 +578,7 @@ ngxExportAsyncHandler =
 -- | Exports a function of type
 --
 -- @
--- 'L.ByteString' -> 'B.ByteString' -> 'IO' 'ContentHandlerResult'
+-- 'LazyByteString' -> 'ByteString' -> 'IO' 'ContentHandlerResult'
 -- @
 --
 -- for using in directive __/haskell_async_content_on_request_body/__.
@@ -590,7 +592,7 @@ ngxExportAsyncHandlerOnReqBody =
 -- | Exports a function of type
 --
 -- @
--- 'B.ByteString' -> 'IO' 'L.ByteString'
+-- 'ByteString' -> 'IO' 'LazyByteString'
 -- @
 --
 -- for using in directives __/haskell_service_hook/__ and
@@ -716,14 +718,14 @@ peekNgxStringArrayLen f x = sequence .
     (CStringLen -> IO String) -> Ptr NgxStrType -> Int ->
         IO [String] #-}
 {-# SPECIALIZE INLINE peekNgxStringArrayLen ::
-    (CStringLen -> IO B.ByteString) -> Ptr NgxStrType -> Int ->
-        IO [B.ByteString] #-}
+    (CStringLen -> IO ByteString) -> Ptr NgxStrType -> Int ->
+        IO [ByteString] #-}
 
 peekNgxStringArrayLenLS :: Ptr NgxStrType -> Int -> IO [String]
 peekNgxStringArrayLenLS =
     peekNgxStringArrayLen peekCStringLen
 
-peekNgxStringArrayLenY :: Ptr NgxStrType -> Int -> IO L.ByteString
+peekNgxStringArrayLenY :: Ptr NgxStrType -> Int -> IO LazyByteString
 peekNgxStringArrayLenY =
     (fmap L.fromChunks .) . peekNgxStringArrayLen B.unsafePackCStringLen
 
@@ -734,7 +736,7 @@ pokeCStringLen x n p s = poke p x >> poke s n
 {-# SPECIALIZE INLINE pokeCStringLen ::
     CString -> CSize -> Ptr CString -> Ptr CSize -> IO () #-}
 
-toBuffers :: L.ByteString -> Ptr NgxStrType -> IO (Ptr NgxStrType, Int)
+toBuffers :: LazyByteString -> Ptr NgxStrType -> IO (Ptr NgxStrType, Int)
 toBuffers L.Empty _ =
     return (nullPtr, 0)
 toBuffers (L.Chunk s L.Empty) p | p /= nullPtr = do
@@ -754,15 +756,15 @@ toBuffers s _ = do
                         return $ off + 1
                     ) (return 0) s
 
-pokeLazyByteString :: L.ByteString ->
-    Ptr (Ptr NgxStrType) -> Ptr CInt -> Ptr (StablePtr L.ByteString) -> IO ()
+pokeLazyByteString :: LazyByteString ->
+    Ptr (Ptr NgxStrType) -> Ptr CInt -> Ptr (StablePtr LazyByteString) -> IO ()
 pokeLazyByteString s p pl spd = do
     pv <- peek p
     PtrLen t l <- toBuffers s pv
     when (l /= 1 || pv == nullPtr) (poke p t) >> poke pl l
     when (t /= nullPtr) $ newStablePtr s >>= poke spd
 
-pokeContentTypeAndStatus :: B.ByteString ->
+pokeContentTypeAndStatus :: ByteString ->
     Ptr CString -> Ptr CSize -> Ptr CInt -> CInt -> IO CSize
 pokeContentTypeAndStatus ct pct plct pst st = do
     PtrLen sct lct <- B.unsafeUseAsCStringLen ct return
@@ -770,7 +772,7 @@ pokeContentTypeAndStatus ct pct plct pst st = do
     return lct
 
 peekRequestBodyChunks :: Ptr NgxStrType -> Ptr NgxStrType -> Int ->
-    IO L.ByteString
+    IO LazyByteString
 peekRequestBodyChunks tmpf b m =
     if tmpf /= nullPtr
         then do
@@ -780,9 +782,9 @@ peekRequestBodyChunks tmpf b m =
             L.length c `seq` return c
         else peekNgxStringArrayLenY b m
 
-pokeAsyncHandlerData :: B.ByteString -> Ptr CString -> Ptr CSize ->
-    Ptr (StablePtr B.ByteString) -> Ptr CInt -> CInt -> HTTPHeaders ->
-    Ptr (Ptr NgxStrType) -> Ptr CInt -> Ptr (StablePtr L.ByteString) -> IO ()
+pokeAsyncHandlerData :: ByteString -> Ptr CString -> Ptr CSize ->
+    Ptr (StablePtr ByteString) -> Ptr CInt -> CInt -> HTTPHeaders ->
+    Ptr (Ptr NgxStrType) -> Ptr CInt -> Ptr (StablePtr LazyByteString) -> IO ()
 pokeAsyncHandlerData ct pct plct spct pst st rhs prhs plrhs sprhs = do
     lct <- pokeContentTypeAndStatus ct pct plct pst st
     when (lct > 0) $ newStablePtr ct >>= poke spct
@@ -794,13 +796,13 @@ safeHandler p pl = handle $ \e -> do
     pokeCStringLen x l p pl
     return 1
 
-safeYYHandler :: IO (L.ByteString, CUInt) -> IO (L.ByteString, CUInt)
+safeYYHandler :: IO (LazyByteString, CUInt) -> IO (LazyByteString, CUInt)
 safeYYHandler = handle $ \e ->
     return (C8L.pack $ show (e :: SomeException), 1)
 {-# INLINE safeYYHandler #-}
 
-safeAsyncYYHandler :: IO (L.ByteString, (CUInt, Bool)) ->
-    IO (L.ByteString, (CUInt, Bool))
+safeAsyncYYHandler :: IO (LazyByteString, (CUInt, Bool)) ->
+    IO (LazyByteString, (CUInt, Bool))
 safeAsyncYYHandler = handle $ \e ->
     return (C8L.pack $ show e
            ,(case fromException e of
@@ -824,7 +826,7 @@ safeAsyncYYHandler = handle $ \e ->
            )
 {-# INLINE safeAsyncYYHandler #-}
 
-fromHTTPHeaders :: HTTPHeaders -> L.ByteString
+fromHTTPHeaders :: HTTPHeaders -> LazyByteString
 fromHTTPHeaders = L.fromChunks . foldr (\(a, b) -> (z a :) . (z b :)) []
     where z s | B.null s = B.singleton 0
               | otherwise = s
@@ -879,7 +881,7 @@ yY f x (I n) p pl spd = do
     pokeLazyByteString s p pl spd
     return r
 
-ioyYCommon :: (CStringLen -> IO B.ByteString) -> IOYY -> YYImpl
+ioyYCommon :: (CStringLen -> IO ByteString) -> IOYY -> YYImpl
 ioyYCommon pack f x (I n) p pl spd = do
     (s, r) <- safeYYHandler $ do
         s <- pack (x, n) >>= flip f False
@@ -893,13 +895,13 @@ ioyY = ioyYCommon B.unsafePackCStringLen
 ioyYWithFree :: IOYY -> YYImpl
 ioyYWithFree = ioyYCommon B.unsafePackMallocCStringLen
 
-asyncIOFlag1b :: B.ByteString
+asyncIOFlag1b :: ByteString
 asyncIOFlag1b = L.toStrict $ runPut $ putWord8 1
 
-asyncIOFlag8b :: B.ByteString
+asyncIOFlag8b :: ByteString
 asyncIOFlag8b = L.toStrict $ runPut $ putWord64host 1
 
-asyncIOCommon :: IO (L.ByteString, Bool) -> CInt -> Bool -> AsyncIOCommonImpl
+asyncIOCommon :: IO (LazyByteString, Bool) -> CInt -> Bool -> AsyncIOCommonImpl
 asyncIOCommon a (I fd) efd p pl pr spd = mask_ $
     async
     (do

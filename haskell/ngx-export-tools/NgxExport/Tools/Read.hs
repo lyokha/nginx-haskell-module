@@ -60,12 +60,12 @@ import           Text.Read
 -- import           NgxExport.Tools.Read
 --
 -- import           Data.ByteString (ByteString)
--- import qualified Data.ByteString.Lazy as L
+-- import           Data.ByteString.Lazy (LazyByteString)
 -- import qualified Data.ByteString.Lazy.Char8 as C8L
 -- import           Data.Aeson
 -- import           GHC.Generics
 --
--- showAsLazyByteString :: Show a => a -> L.ByteString
+-- showAsLazyByteString :: Show a => a -> LazyByteString
 -- showAsLazyByteString = C8L.pack . show
 --
 -- newtype Conf = Conf Int deriving (Read, Show)
@@ -74,27 +74,27 @@ import           Text.Read
 --               | ConfJSONCon2 deriving (Generic, Show)
 -- instance FromJSON ConfJSON
 --
--- testReadIntHandler :: ByteString -> L.ByteString
+-- testReadIntHandler :: ByteString -> LazyByteString
 -- __/testReadIntHandler/__ = showAsLazyByteString .
 --     'readFromByteString' \@Int
 -- 'NgxExport.ngxExportYY' \'testReadIntHandler
 --
--- testReadConfHandler :: ByteString -> L.ByteString
+-- testReadConfHandler :: ByteString -> LazyByteString
 -- __/testReadConfHandler/__ = showAsLazyByteString .
 --     'readFromByteString' \@Conf
 -- 'NgxExport.ngxExportYY' \'testReadConfHandler
 --
--- testReadConfJSONHandler :: ByteString -> IO L.ByteString
+-- testReadConfJSONHandler :: ByteString -> IO LazyByteString
 -- __/testReadConfJSONHandler/__ = return . showAsLazyByteString .
 --     'readFromByteStringAsJSON' \@ConfJSON
 -- 'NgxExport.ngxExportAsyncIOYY' \'testReadConfJSONHandler
 --
--- testReadConfWithRPtrHandler :: ByteString -> L.ByteString
+-- testReadConfWithRPtrHandler :: ByteString -> LazyByteString
 -- __/testReadConfWithRPtrHandler/__ = showAsLazyByteString .
 --     'readFromByteStringWithRPtr' \@Conf
 -- 'NgxExport.ngxExportYY' \'testReadConfWithRPtrHandler
 --
--- testReadConfWithRPtrJSONHandler :: ByteString -> L.ByteString
+-- testReadConfWithRPtrJSONHandler :: ByteString -> LazyByteString
 -- __/testReadConfWithRPtrJSONHandler/__ = showAsLazyByteString .
 --     'readFromByteStringWithRPtrAsJSON' \@ConfJSON
 -- 'NgxExport.ngxExportYY' \'testReadConfWithRPtrJSONHandler

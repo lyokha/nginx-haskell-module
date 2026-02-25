@@ -1,3 +1,7 @@
+### 1.2.6.3
+
+- Use type synonym *LazyByteString* from *bytestring &ge; 0.11.2.0*.
+
 ### 1.2.6.2
 
 - In module *NgxExport.Tools.Read*, compute the wrapped type of data *Readable*

@@ -1,5 +1,6 @@
 ### 1.7.11
 
+- Use type synonym *LazyByteString* from *bytestring &ge; 0.11.2.0*.
 - Minor internal improvement, drop *LambdaCase* extension in module *NgxExport*.
 
 ### 1.7.10.2

@@ -45,6 +45,7 @@ import           Language.Haskell.TH
 import           Foreign.C.Types
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString.Lazy as L
+import           Data.ByteString.Lazy (LazyByteString)
 import           Data.IORef
 import           Data.Maybe
 import           Control.Monad
@@ -62,7 +63,7 @@ import           System.IO.Unsafe (unsafePerformIO)
 -- services have type
 --
 -- @
--- 'ByteString' -> 'Prelude.Bool' -> 'IO' 'L.ByteString'
+-- 'ByteString' -> 'Prelude.Bool' -> 'IO' 'LazyByteString'
 -- @
 --
 -- which corresponds to the type of usual services from module "NgxExport". The
@@ -70,10 +71,10 @@ import           System.IO.Unsafe (unsafePerformIO)
 -- and may have two different types:
 --
 -- @
--- 'Read' a => a -> 'Prelude.Bool' -> 'IO' 'L.ByteString'
+-- 'Read' a => a -> 'Prelude.Bool' -> 'IO' 'LazyByteString'
 -- @
 -- @
--- t'Data.Aeson.FromJSON' a => a -> 'Prelude.Bool' -> 'IO' 'L.ByteString'
+-- t'Data.Aeson.FromJSON' a => a -> 'Prelude.Bool' -> 'IO' 'LazyByteString'
 -- @
 --
 -- The choice of a certain type of a typed service depends on the format in
@@ -92,36 +93,37 @@ import           System.IO.Unsafe (unsafePerformIO)
 --
 -- import           Data.ByteString (ByteString)
 -- import qualified Data.ByteString.Lazy as L
+-- import           Data.ByteString.Lazy (LazyByteString)
 -- import qualified Data.ByteString.Lazy.Char8 as C8L
 -- import           Data.Aeson
 -- import           Data.IORef
 -- import           Control.Monad
 -- import           GHC.Generics
 --
--- test :: ByteString -> Bool -> IO L.ByteString
+-- test :: ByteString -> Bool -> IO LazyByteString
 -- __/test/__ = const . return . L.fromStrict
 -- 'ngxExportSimpleService' \'test $
 --     'PersistentService' $ Just $ 'Sec' 10
 --
--- showAsLazyByteString :: Show a => a -> L.ByteString
+-- showAsLazyByteString :: Show a => a -> LazyByteString
 -- showAsLazyByteString = C8L.pack . show
 --
--- testRead :: Show a => a -> IO L.ByteString
+-- testRead :: Show a => a -> IO LazyByteString
 -- testRead = return . showAsLazyByteString
 --
--- testReadInt :: Int -> Bool -> IO L.ByteString
+-- testReadInt :: Int -> Bool -> IO LazyByteString
 -- __/testReadInt/__ = const . testRead
 -- 'ngxExportSimpleServiceTyped' \'testReadInt \'\'Int $
 --     'PersistentService' $ Just $ 'Sec' 10
 --
 -- newtype Conf = Conf Int deriving (Read, Show)
 --
--- testReadConf :: Conf -> Bool -> IO L.ByteString
+-- testReadConf :: Conf -> Bool -> IO LazyByteString
 -- __/testReadConf/__ = const . testRead
 -- 'ngxExportSimpleServiceTyped' \'testReadConf \'\'Conf $
 --     'PersistentService' $ Just $ 'Sec' 10
 --
--- testConfStorage :: ByteString -> IO L.ByteString
+-- testConfStorage :: ByteString -> IO LazyByteString
 -- __/testConfStorage/__ = const $
 --     showAsLazyByteString \<$\> readIORef __/storage_Conf_testReadConf/__
 -- 'ngxExportIOYY' \'testConfStorage
@@ -130,7 +132,7 @@ import           System.IO.Unsafe (unsafePerformIO)
 --                                    , value :: Int
 --                                    } deriving (Read, Show)
 --
--- testReadConfWithDelay :: ConfWithDelay -> Bool -> IO L.ByteString
+-- testReadConfWithDelay :: ConfWithDelay -> Bool -> IO LazyByteString
 -- __/testReadConfWithDelay/__ c\@ConfWithDelay {..} fstRun = do
 --     unless fstRun $ 'threadDelaySec' $ 'toSec' delay
 --     testRead c
@@ -141,7 +143,7 @@ import           System.IO.Unsafe (unsafePerformIO)
 --               | ConfJSONCon2 deriving (Generic, Show)
 -- instance FromJSON ConfJSON
 --
--- testReadConfJSON :: ConfJSON -> Bool -> IO L.ByteString
+-- testReadConfJSON :: ConfJSON -> Bool -> IO LazyByteString
 -- __/testReadConfJSON/__ = 'NgxExport.Tools.SplitService.ignitionService' testRead
 -- 'ngxExportSimpleServiceTypedAsJSON' \'testReadConfJSON \'\'ConfJSON
 --     'SingleShotService'
@@ -389,7 +391,7 @@ ngxExportSimpleService' f c m = do
     concat <$> sequence
         [sequence $
             makeStorage ++
-            [sigD nameSsf [t|ByteString -> Bool -> IO L.ByteString|]
+            [sigD nameSsf [t|ByteString -> Bool -> IO LazyByteString|]
             ,funD nameSsf
                 [clause [varP confBs, varP fstRun]
                     (normalB
@@ -408,7 +410,7 @@ ngxExportSimpleService' f c m = do
 -- | Exports a simple service of type
 --
 -- @
--- 'ByteString' -> 'Prelude.Bool' -> 'IO' 'L.ByteString'
+-- 'ByteString' -> 'Prelude.Bool' -> 'IO' 'LazyByteString'
 -- @
 --
 -- with specified name and service mode.
@@ -421,7 +423,7 @@ ngxExportSimpleService f =
 -- | Exports a simple service of type
 --
 -- @
--- 'Read' a => a -> 'Prelude.Bool' -> 'IO' 'L.ByteString'
+-- 'Read' a => a -> 'Prelude.Bool' -> 'IO' 'LazyByteString'
 -- @
 --
 -- with specified name and service mode.
@@ -449,7 +451,7 @@ ngxExportSimpleServiceTyped f c =
 -- | Exports a simple service of type
 --
 -- @
--- t'Data.Aeson.FromJSON' a => a -> 'Prelude.Bool' -> 'IO' 'L.ByteString'
+-- t'Data.Aeson.FromJSON' a => a -> 'Prelude.Bool' -> 'IO' 'LazyByteString'
 -- @
 --
 -- with specified name and service mode.
@@ -477,7 +479,7 @@ ngxExportSimpleServiceTypedAsJSON f c =
 -- | Exports a simple service of type
 --
 -- @
--- 'Read' a => a -> 'Prelude.Bool' -> 'IO' 'L.ByteString'
+-- 'Read' a => a -> 'Prelude.Bool' -> 'IO' 'LazyByteString'
 -- @
 --
 -- with specified name and service mode.
@@ -498,7 +500,7 @@ ngxExportSimpleServiceTyped' f c =
 -- | Exports a simple service of type
 --
 -- @
--- t'Data.Aeson.FromJSON' a => a -> 'Prelude.Bool' -> 'IO' 'L.ByteString'
+-- t'Data.Aeson.FromJSON' a => a -> 'Prelude.Bool' -> 'IO' 'LazyByteString'
 -- @
 --
 -- with specified name and service mode.
