@@ -13,7 +13,7 @@ library
   build-depends:            base >= 4.8 && < 5
                           , ngx-export
                           , ngx-export-tools
-                          , bytestring
+                          , bytestring >= 0.11.2.0
                           , aeson
 
   ghc-options:             -Wall -O2
