@@ -877,7 +877,7 @@ yY :: YY -> YYImpl
 yY f x (I n) p pl spd = do
     (s, r) <- safeYYHandler $ do
         s <- f <$> B.unsafePackCStringLen (x, n)
-        fmap (, 0) $ return $!! s
+        fmap (, 0) $ evaluate $!! s
     pokeLazyByteString s p pl spd
     return r
 
@@ -885,7 +885,7 @@ ioyYCommon :: (CStringLen -> IO ByteString) -> IOYY -> YYImpl
 ioyYCommon pack f x (I n) p pl spd = do
     (s, r) <- safeYYHandler $ do
         s <- pack (x, n) >>= flip f False
-        fmap (, 0) $ return $!! s
+        fmap (, 0) $ evaluate $!! s
     pokeLazyByteString s p pl spd
     return r
 
@@ -907,7 +907,7 @@ asyncIOCommon a (I fd) efd p pl pr spd = mask_ $
     (do
         (s, (r, exiting)) <- safeAsyncYYHandler $ do
             (s, exiting) <- a
-            E.interruptible $ fmap (, (0, exiting)) $ return $!! s
+            E.interruptible $ fmap (, (0, exiting)) $ evaluate $!! s
         pokeLazyByteString s p pl spd
         poke pr r
         if exiting
@@ -1001,7 +1001,7 @@ asyncHandler f x (I n) fd (ToBool efd) pct plct spct pst
         x' <- B.unsafePackCStringLen (x, n)
         (s, ct, I st, rhs) <- E.interruptible $ do
             v <- f x'
-            return $!! v
+            evaluate $!! v
         pokeAsyncHandlerData ct pct plct spct pst st rhs prhs plrhs sprhs
         return (s, False)
     ) fd efd
@@ -1015,7 +1015,7 @@ asyncHandlerRB f tmpf b (I m) x (I n) fd (ToBool efd) pct plct spct pst
         x' <- B.unsafePackCStringLen (x, n)
         (s, ct, I st, rhs) <- E.interruptible $ do
             v <- f b' x'
-            return $!! v
+            evaluate $!! v
         pokeAsyncHandlerData ct pct plct spct pst st rhs prhs plrhs sprhs
         return (s, False)
     ) fd efd
@@ -1053,9 +1053,8 @@ handler :: Handler -> HandlerImpl
 handler f x (I n) p pl pct plct spct pst prhs plrhs sprhs spd =
     safeHandler pct pst $ do
         v@(s, ct, I st, rhs) <- f <$> B.unsafePackCStringLen (x, n)
-        lct <- (return $!! v) >> pokeContentTypeAndStatus ct pct plct pst st
-        (return $!! lct) >>
-            pokeLazyByteString (fromHTTPHeaders rhs) prhs plrhs sprhs
+        lct <- (evaluate $!! v) >> pokeContentTypeAndStatus ct pct plct pst st
+        pokeLazyByteString (fromHTTPHeaders rhs) prhs plrhs sprhs
         pokeLazyByteString s p pl spd
         when (lct > 0) $ newStablePtr ct >>= poke spct
         return 0
@@ -1071,7 +1070,7 @@ unsafeHandler :: UnsafeHandler -> UnsafeHandlerImpl
 unsafeHandler f x (I n) p pl pct plct pst =
     safeHandler pct pst $ do
         v@(s, ct, I st) <- f <$> B.unsafePackCStringLen (x, n)
-        (return $!! v) >> void (pokeContentTypeAndStatus ct pct plct pst st)
+        (evaluate $!! v) >> void (pokeContentTypeAndStatus ct pct plct pst st)
         PtrLen t l <- B.unsafeUseAsCStringLen s return
         pokeCStringLen t l p pl
         return 0

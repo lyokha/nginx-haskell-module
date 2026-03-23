@@ -1,3 +1,8 @@
+### 1.7.11.1
+
+- Replace *(return &dollar;!!)* with *(evaluate &dollar;!!)* which is more
+  robust with imprecise exceptions.
+
 ### 1.7.11
 
 - Use type synonym *LazyByteString* from *bytestring &ge; 0.11.2.0*.
