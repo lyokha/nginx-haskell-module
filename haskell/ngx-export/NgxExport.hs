@@ -92,6 +92,7 @@ import           Control.Concurrent
 import           Control.Concurrent.Async
 import           GHC.IO.Exception (ioe_errno)
 import           Data.IORef
+import           Data.Bifunctor
 import qualified Data.ByteString as B
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString.Unsafe as B
@@ -699,6 +700,17 @@ instance Show FinalizeHTTPRequest where
     show (FinalizeHTTPRequest _ (Just s)) = s
     show (FinalizeHTTPRequest _ Nothing) = ""
 
+forceValue :: NFData a => IO a -> IO a
+forceValue = (>>= evaluate . force)
+{-# SPECIALIZE INLINE forceValue ::
+   IO LazyByteString -> IO LazyByteString #-}
+{-# SPECIALIZE INLINE forceValue ::
+   IO (LazyByteString -> Bool) -> IO (LazyByteString -> Bool) #-}
+{-# SPECIALIZE INLINE forceValue ::
+   IO ContentHandlerResult -> IO ContentHandlerResult #-}
+{-# SPECIALIZE INLINE forceValue ::
+   IO UnsafeContentHandlerResult -> IO UnsafeContentHandlerResult #-}
+
 safeMallocBytes :: Int -> IO (Ptr a)
 safeMallocBytes =
     flip catchIOError (const $ return nullPtr) . mallocBytes
@@ -875,17 +887,15 @@ sLS f x (I n) p pl =
 
 yY :: YY -> YYImpl
 yY f x (I n) p pl spd = do
-    (s, r) <- safeYYHandler $ do
-        s <- f <$> B.unsafePackCStringLen (x, n)
-        fmap (, 0) $ evaluate $!! s
+    (s, r) <- safeYYHandler $
+        fmap (, 0) $ forceValue $ f <$> B.unsafePackCStringLen (x, n)
     pokeLazyByteString s p pl spd
     return r
 
 ioyYCommon :: (CStringLen -> IO ByteString) -> IOYY -> YYImpl
 ioyYCommon pack f x (I n) p pl spd = do
-    (s, r) <- safeYYHandler $ do
-        s <- pack (x, n) >>= flip f False
-        fmap (, 0) $ evaluate $!! s
+    (s, r) <- safeYYHandler $
+        fmap (, 0) $ forceValue $ pack (x, n) >>= flip f False
     pokeLazyByteString s p pl spd
     return r
 
@@ -905,9 +915,7 @@ asyncIOCommon :: IO (LazyByteString, Bool) -> CInt -> Bool -> AsyncIOCommonImpl
 asyncIOCommon a (I fd) efd p pl pr spd = mask_ $
     async
     (do
-        (s, (r, exiting)) <- safeAsyncYYHandler $ do
-            (s, exiting) <- a
-            E.interruptible $ fmap (, (0, exiting)) $ evaluate $!! s
+        (s, (r, exiting)) <- safeAsyncYYHandler $ second (0, ) <$> forceValue a
         pokeLazyByteString s p pl spd
         poke pr r
         if exiting
@@ -999,9 +1007,7 @@ asyncHandler f x (I n) fd (ToBool efd) pct plct spct pst
     asyncIOCommon
     (do
         x' <- B.unsafePackCStringLen (x, n)
-        (s, ct, I st, rhs) <- E.interruptible $ do
-            v <- f x'
-            evaluate $!! v
+        (s, ct, I st, rhs) <- E.interruptible $ forceValue $ f x'
         pokeAsyncHandlerData ct pct plct spct pst st rhs prhs plrhs sprhs
         return (s, False)
     ) fd efd
@@ -1013,9 +1019,7 @@ asyncHandlerRB f tmpf b (I m) x (I n) fd (ToBool efd) pct plct spct pst
     (do
         b' <- peekRequestBodyChunks tmpf b m
         x' <- B.unsafePackCStringLen (x, n)
-        (s, ct, I st, rhs) <- E.interruptible $ do
-            v <- f b' x'
-            evaluate $!! v
+        (s, ct, I st, rhs) <- E.interruptible $ forceValue $ f b' x'
         pokeAsyncHandlerData ct pct plct spct pst st rhs prhs plrhs sprhs
         return (s, False)
     ) fd efd
@@ -1052,8 +1056,8 @@ bY f x (I n) p pl =
 handler :: Handler -> HandlerImpl
 handler f x (I n) p pl pct plct spct pst prhs plrhs sprhs spd =
     safeHandler pct pst $ do
-        v@(s, ct, I st, rhs) <- f <$> B.unsafePackCStringLen (x, n)
-        lct <- (evaluate $!! v) >> pokeContentTypeAndStatus ct pct plct pst st
+        (s, ct, I st, rhs) <- forceValue $ f <$> B.unsafePackCStringLen (x, n)
+        lct <- pokeContentTypeAndStatus ct pct plct pst st
         pokeLazyByteString (fromHTTPHeaders rhs) prhs plrhs sprhs
         pokeLazyByteString s p pl spd
         when (lct > 0) $ newStablePtr ct >>= poke spct
@@ -1069,8 +1073,8 @@ defHandler f x (I n) p pl pe spd =
 unsafeHandler :: UnsafeHandler -> UnsafeHandlerImpl
 unsafeHandler f x (I n) p pl pct plct pst =
     safeHandler pct pst $ do
-        v@(s, ct, I st) <- f <$> B.unsafePackCStringLen (x, n)
-        (evaluate $!! v) >> void (pokeContentTypeAndStatus ct pct plct pst st)
+        (s, ct, I st) <- forceValue $ f <$> B.unsafePackCStringLen (x, n)
+        void $ pokeContentTypeAndStatus ct pct plct pst st
         PtrLen t l <- B.unsafeUseAsCStringLen s return
         pokeCStringLen t l p pl
         return 0

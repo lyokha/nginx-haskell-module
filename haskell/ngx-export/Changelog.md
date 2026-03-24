@@ -1,7 +1,7 @@
 ### 1.7.11.1
 
-- Replace *(return &dollar;!!)* with *(evaluate &dollar;!!)* which is more
-  robust with imprecise exceptions.
+- Replace *(return &dollar;!!)* with *forceValue = (&gt;&gt;= evaluate . force)*
+  which is more robust with imprecise exceptions.
 
 ### 1.7.11
 
