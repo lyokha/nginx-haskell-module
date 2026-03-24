@@ -703,13 +703,13 @@ instance Show FinalizeHTTPRequest where
 forceValue :: NFData a => IO a -> IO a
 forceValue = (>>= evaluate . force)
 {-# SPECIALIZE INLINE forceValue ::
-   IO LazyByteString -> IO LazyByteString #-}
+    IO LazyByteString -> IO LazyByteString #-}
 {-# SPECIALIZE INLINE forceValue ::
-   IO (LazyByteString -> Bool) -> IO (LazyByteString -> Bool) #-}
+    IO (LazyByteString -> Bool) -> IO (LazyByteString -> Bool) #-}
 {-# SPECIALIZE INLINE forceValue ::
-   IO ContentHandlerResult -> IO ContentHandlerResult #-}
+    IO ContentHandlerResult -> IO ContentHandlerResult #-}
 {-# SPECIALIZE INLINE forceValue ::
-   IO UnsafeContentHandlerResult -> IO UnsafeContentHandlerResult #-}
+    IO UnsafeContentHandlerResult -> IO UnsafeContentHandlerResult #-}
 
 safeMallocBytes :: Int -> IO (Ptr a)
 safeMallocBytes =
