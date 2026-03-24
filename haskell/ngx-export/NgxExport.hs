@@ -705,7 +705,7 @@ forceValue = (>>= evaluate . force)
 {-# SPECIALIZE INLINE forceValue ::
     IO LazyByteString -> IO LazyByteString #-}
 {-# SPECIALIZE INLINE forceValue ::
-    IO (LazyByteString -> Bool) -> IO (LazyByteString -> Bool) #-}
+    IO (LazyByteString, Bool) -> IO (LazyByteString, Bool) #-}
 {-# SPECIALIZE INLINE forceValue ::
     IO ContentHandlerResult -> IO ContentHandlerResult #-}
 {-# SPECIALIZE INLINE forceValue ::
