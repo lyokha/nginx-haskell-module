@@ -2,6 +2,7 @@
 
 - Replace *(return &dollar;!!)* with *forceValue = (&gt;&gt;= evaluate . force)*
   which is more robust with imprecise exceptions.
+- Drop support for GHC versions older than *8.10*.
 
 ### 1.7.11
 
@@ -25,7 +26,7 @@
 ### 1.7.9
 
 - Reify types of internal handlers from their signatures.
-- Dropped support for GHC versions older than *8.2*.
+- Drop support for GHC versions older than *8.2*.
 
 ### 1.7.8
 

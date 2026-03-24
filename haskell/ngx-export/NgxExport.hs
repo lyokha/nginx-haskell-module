@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, TemplateHaskell, ForeignFunctionInterface #-}
+{-# LANGUAGE TemplateHaskell, ForeignFunctionInterface #-}
 {-# LANGUAGE DerivingStrategies, GeneralizedNewtypeDeriving, DeriveAnyClass #-}
 {-# LANGUAGE ViewPatterns, PatternSynonyms, TupleSections #-}
 
@@ -270,11 +270,7 @@ type NgxExportDec = Name -> Name -> Name -> Name -> Q [Dec]
 
 ngxExport' :: (Name -> Q Exp) -> NgxExportDec
 ngxExport' mode e a h f = do
-#if MIN_VERSION_template_haskell(2,16,0)
     AppT (AppT ArrowT _) typeF@ConT {} <- reifyType h
-#else
-    VarI _ (AppT (AppT ArrowT _) typeF@ConT {}) _ <- reify h
-#endif
     sequence
         [sigD nameFt typeFt
         ,funD nameFt $ fBody [|exportType $(conE e `appE` modeF)|]

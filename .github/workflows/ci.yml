@@ -9,7 +9,7 @@ jobs:
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       matrix:
-        ghc: ['8.8', '8.10', '9.0']
+        ghc: ['8.10', '9.0']
         cabal: ['3.10']
         nginx: [1.22.1]
         include:
