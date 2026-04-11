@@ -49,7 +49,7 @@ pandas==2.0.3
     # via -r requirements.in
 pillow==12.1.1
     # via matplotlib
-pygments==2.16.1
+pygments==2.20.0
     # via sphinx
 pyparsing==3.0.9
     # via matplotlib
