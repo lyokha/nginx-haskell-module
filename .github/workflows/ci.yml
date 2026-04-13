@@ -26,12 +26,12 @@ jobs:
             allownewer: true
           - ghc: '9.14'
             cabal: '3.16'
-            nginx: 1.28.1
+            nginx: 1.28.3
             experimental: true
             allownewer: true
           - ghc: '9.12'
             cabal: '3.16'
-            nginx: 1.28.1
+            nginx: 1.28.3
             experimental: false
           - ghc: '9.10'
             cabal: '3.14'
@@ -63,7 +63,7 @@ jobs:
           cabal-version: ${{ matrix.cabal }}
           cabal-update: true
       - name: Install prove
-        uses: perl-actions/install-with-cpanm@v1.7
+        uses: perl-actions/install-with-cpanm@v2
         with:
           install: "Test::Nginx"
           tests: false
