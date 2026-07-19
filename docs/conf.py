@@ -2,7 +2,7 @@ project = u'nginx-haskell-module'
 author = u'Alexey Radkov'
 copyright = u'2015-2026, Alexey Radkov'
 
-version = '3.4.3'
+version = '3.4.4'
 
 html_title = u'Nginx Haskell module'
 html_logo = 'images/nginx-haskell-module-120.png'

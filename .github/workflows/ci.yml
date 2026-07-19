@@ -23,12 +23,12 @@ jobs:
             cabal: '3.16'
             nginx: freenginx-head
             experimental: true
-            allownewer: true
+            allownewer: false
           - ghc: '9.14'
             cabal: '3.16'
-            nginx: 1.28.3
+            nginx: 1.30.4
             experimental: true
-            allownewer: true
+            allownewer: false
           - ghc: '9.12'
             cabal: '3.16'
             nginx: 1.28.3
@@ -55,7 +55,7 @@ jobs:
             experimental: false
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Install GHC and Cabal
         uses: haskell-actions/setup@v2
         with:
