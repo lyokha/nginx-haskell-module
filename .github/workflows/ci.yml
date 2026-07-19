@@ -23,12 +23,12 @@ jobs:
             cabal: '3.16'
             nginx: freenginx-head
             experimental: true
-            allownewer: false
+            allownewer: true
           - ghc: '9.14'
             cabal: '3.16'
             nginx: 1.30.4
-            experimental: true
-            allownewer: false
+            experimental: false
+            allownewer: true
           - ghc: '9.12'
             cabal: '3.16'
             nginx: 1.28.3
