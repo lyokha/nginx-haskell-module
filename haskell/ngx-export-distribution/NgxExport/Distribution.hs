@@ -46,6 +46,7 @@ module NgxExport.Distribution (
                               ,defaultMain
                               ) where
 
+import NgxExport.Distribution.Compat.Verbosity
 import Distribution.Simple hiding (defaultMain)
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program
@@ -441,7 +442,8 @@ patchAndCollectDependentLibs verbosity lib desc lbi = do
         archiveArg = ["-a", prettyShow $ package desc]
     nhmToolP <- fst <$> requireProgram verbosity nhmTool (withPrograms lbi)
     let nhmToolR = programInvocation nhmToolP $ "dist" : lib :
-            verbosityArg verbosity ++ rpathArg ++ dirArg ++ archiveArg
+            verbosityArg (toVerbosityFlags verbosity) ++
+                rpathArg ++ dirArg ++ archiveArg
     runProgramInvocation verbosity nhmToolR
 
 -- | Build hooks.
@@ -459,17 +461,20 @@ ngxExportHooks :: UserHooks
 ngxExportHooks =
     simpleUserHooks { hookedPrograms = [nhmTool]
                     , confHook = \desc flags -> do
-                        let verbosity = toVerbosity $ configVerbosity flags
+                        let cFlags = configVerbosity flags
+                            verbosity = toVerbosity $
+                                extractVerbosityFlags cFlags
                             pdb = configPrograms flags
                         _ <- requireProgram verbosity nhmTool pdb >>=
                                  requireProgram verbosity patchelf . snd
                         confHook simpleUserHooks desc flags
                     , buildHook = \desc lbi _ flags -> do
-                        let verbosity = toVerbosity $ buildVerbosity flags
+                        let bFlags = buildVerbosity flags
+                            verbosity = toVerbosity $
+                                extractVerbosityFlags bFlags
                         buildSharedLib verbosity desc lbi flags >>= \lib ->
                             patchAndCollectDependentLibs verbosity lib desc lbi
                     }
-    where toVerbosity = fromFlagOrDefault normal
 
 -- | A simple implementation of /main/ for a Cabal setup script.
 --

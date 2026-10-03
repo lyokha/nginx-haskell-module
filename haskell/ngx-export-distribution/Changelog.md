@@ -1,3 +1,7 @@
+### 0.6.1.0
+
+- Support Cabal *3.18* with its refactored *verbosity* mechanism.
+
 ### 0.6.0.2
 
 - *nhm-tool*: GHC's *Project Unit Id* must be considered in Cabal *3.12* and

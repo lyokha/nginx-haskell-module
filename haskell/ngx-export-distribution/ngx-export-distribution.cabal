@@ -1,5 +1,5 @@
 name:                       ngx-export-distribution
-version:                    0.6.0.2
+version:                    0.6.1.0
 synopsis:                   Build custom libraries for Nginx Haskell module
 description:                Build custom libraries for
         <https://github.com/lyokha/nginx-haskell-module Nginx Haskell module>.
@@ -23,6 +23,7 @@ library
                           , filepath
 
   exposed-modules:          NgxExport.Distribution
+                          , NgxExport.Distribution.Compat.Verbosity
 
   ghc-options:             -Wall
 
@@ -37,7 +38,9 @@ executable nhm-tool
                           , ansi-terminal >= 0.6.2
                           , cabal-plan
                           , parsec >= 3.0.0
+                          , ngx-export-distribution
 
+  hs-source-dirs:           nhm-tool
   main-is:                  nhm-tool.hs
 
   other-modules:            Paths_ngx_export_distribution

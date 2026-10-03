@@ -3,6 +3,7 @@
 
 module Main where
 
+import NgxExport.Distribution.Compat.Verbosity
 import Text.Parsec hiding (uncons)
 import Distribution.Simple.Program
 import Distribution.Verbosity
@@ -143,8 +144,9 @@ main = do
     case args of
         "dist" : args' -> do
             let distData = foldl parseDistArg (Just defaultArgs) args'
+                verbosity = defaultVerbosity
                 defaultArgs = DistData defaultDistDataDir "" "" False ""
-                    normal normal Nothing False
+                    verbosity verbosity Nothing False
             case distData of
                 Nothing -> usage (Just HelpDist) False
                 Just (normalizeDistData -> distData'@DistData {..}) ->
@@ -230,10 +232,10 @@ parseDistArg (Just dist@DistData {..}) arg =
                   | "-p" == arg ->
                         Just dist' { distDataPatchOnly = True }
                   | "-v" == arg ->
-                        Just dist' { distDataOwnVerbosity = verbose }
+                        Just dist' { distDataOwnVerbosity = verbose' }
                   | "-vv" == arg ->
-                        Just dist' { distDataOwnVerbosity = verbose
-                                   , distDataOtherVerbosity = verbose
+                        Just dist' { distDataOwnVerbosity = verbose'
+                                   , distDataOtherVerbosity = verbose'
                                    }
                   | (`elem` ["-h", "-help", "--help"]) arg ->
                         Just dist' { distDataHelp = True }
@@ -248,6 +250,7 @@ parseDistArg (Just dist@DistData {..}) arg =
         Just "-a" -> Just dist' { distDataArchive = arg }
         Just _ -> undefined
     where dist' = dist { distDataWaitArg = Nothing }
+          verbose' = toVerbosity verbose
 
 parsePlanArg :: Maybe PlanData -> String -> Maybe PlanData
 parsePlanArg Nothing _ = Nothing
@@ -384,7 +387,8 @@ cmdDist DistData {..} = do
               flip (requireProgram distDataOtherVerbosity) emptyProgramDb
           getProgramOutput' = getProgramOutput distDataOtherVerbosity
           runProgram' = runProgram distDataOtherVerbosity
-          putStrLn' = when (distDataOwnVerbosity == verbose) . putStrLn
+          putStrLn' = when (toVerbosityFlags distDataOwnVerbosity == verbose) .
+              putStrLn
           putStrLnTrim = putStrLn' . dropWhileEnd (== '\n')
 
 parsePatchelfRpathOutput :: String -> Either ParseError [String]
