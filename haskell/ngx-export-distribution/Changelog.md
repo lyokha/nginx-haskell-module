@@ -1,6 +1,8 @@
 ### 0.6.1.0
 
-- Support Cabal *3.18* with its refactored *verbosity* mechanism.
+- Added a new module *NgxExport.Distribution.Compat.Verbosity* to support
+  different implementations of the *verbosity* mechanism in Cabal *3.16* and
+  *3.18*.
 
 ### 0.6.0.2
 

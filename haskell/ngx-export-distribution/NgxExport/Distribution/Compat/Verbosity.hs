@@ -10,9 +10,9 @@
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- Utility functions to convert between different Cabal verbosity object parts.
--- The functions are meant to be used internally and only exported for usage in
--- utility /nhm-tool/.
+-- Utility functions to extract and combine different Cabal verbosity object
+-- parts. The functions are meant to be used internally and only exported for
+-- usage in utility /nhm-tool/.
 --
 -----------------------------------------------------------------------------
 
@@ -45,19 +45,17 @@ defaultVerbosityHandles_ = defaultVerbosityHandles
 import Distribution.Verbosity (Verbosity, normal)
 #endif
 
--- | Verbosity conversions.
+-- | Extracts /verbosity flags/ from 'Verbosity'.
 --
--- In Cabal /3.16/ and older returns the passed argument. In Cabal /3.18/ and
--- newer extracts /verbosity flags/ from 'Verbosity'.
+-- With Cabal /3.16/ and older it simply returns the passed argument.
 toVerbosityFlags :: Verbosity -> VERBOSITY_FLAGS
 toVerbosityFlags verbosity = TO_VERBOSITY_FLAGS(verbosity)
 {-# ANN toVerbosityFlags "HLint: ignore Redundant bracket" #-}
 
--- | Verbosity conversions.
+-- | Builds 'Verbosity' from the passed /verbosity flags/ and default
+--   /verbosity handles/.
 --
--- In Cabal /3.16/ and older returns the passed argument. In Cabal /3.18/ and
--- newer combines /verbosity flags/ and /default verbosity handles/ into
--- 'Verbosity'.
+-- With Cabal /3.16/ and older it simply returns the passed argument.
 toVerbosity :: VERBOSITY_FLAGS -> Verbosity
 toVerbosity flags = TO_VERBOSITY(flags, defaultVerbosityHandles_)
 {-# ANN toVerbosity "HLint: ignore Redundant bracket" #-}
@@ -68,9 +66,11 @@ toVerbosity flags = TO_VERBOSITY(flags, defaultVerbosityHandles_)
 extractVerbosityFlags :: Flag VERBOSITY_FLAGS -> VERBOSITY_FLAGS
 extractVerbosityFlags = fromFlagOrDefault $ toVerbosityFlags defaultVerbosity
 
--- | Returns verbosity with default /verbosity flags/ and /verbosity handles/.
+-- | Builds verbosity from default /verbosity flags/ and /verbosity handles/.
 --
--- Default /verbosity flags/ is 'normal'.
+-- With Cabal /3.16/ and older it simply returns 'normal'. With Cabal /3.18/
+-- and newer it combines 'normal' and default /verbosity handles/ into
+-- 'Verbosity'.
 defaultVerbosity :: Verbosity
 defaultVerbosity = toVerbosity normal
 
