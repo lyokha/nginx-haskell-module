@@ -461,17 +461,15 @@ ngxExportHooks :: UserHooks
 ngxExportHooks =
     simpleUserHooks { hookedPrograms = [nhmTool]
                     , confHook = \desc flags -> do
-                        let cFlags = configVerbosity flags
-                            verbosity = toVerbosity $
-                                extractVerbosityFlags cFlags
+                        let verbosity = toVerbosity $
+                                extractVerbosityFlags $ configVerbosity flags
                             pdb = configPrograms flags
                         _ <- requireProgram verbosity nhmTool pdb >>=
                                  requireProgram verbosity patchelf . snd
                         confHook simpleUserHooks desc flags
                     , buildHook = \desc lbi _ flags -> do
-                        let bFlags = buildVerbosity flags
-                            verbosity = toVerbosity $
-                                extractVerbosityFlags bFlags
+                        let verbosity = toVerbosity $
+                                extractVerbosityFlags $ buildVerbosity flags
                         buildSharedLib verbosity desc lbi flags >>= \lib ->
                             patchAndCollectDependentLibs verbosity lib desc lbi
                     }
