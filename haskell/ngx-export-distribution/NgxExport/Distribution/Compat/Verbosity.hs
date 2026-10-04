@@ -28,18 +28,14 @@ import Distribution.Simple.Flag (Flag, fromFlagOrDefault)
 
 #if MIN_VERSION_Cabal(3,18,0)
 #define VERBOSITY_FLAGS VerbosityFlags
-#define VERBOSITY_HANDLES VerbosityHandles
 #define TO_VERBOSITY_FLAGS(verbosity) (verbosityFlags (verbosity))
-#define TO_VERBOSITY(flags, handles) (Verbosity (flags) (handles))
-import Distribution.Verbosity (Verbosity (..)
+#define TO_VERBOSITY(flags, handles) (mkVerbosity (handles) (flags))
+import Distribution.Verbosity (Verbosity, mkVerbosity
                               ,VerbosityFlags, verbosityFlags, normal
-                              ,VerbosityHandles, defaultVerbosityHandles
+                              ,defaultVerbosityHandles
                               )
-defaultVerbosityHandles_ :: VERBOSITY_HANDLES
-defaultVerbosityHandles_ = defaultVerbosityHandles
 #else
 #define VERBOSITY_FLAGS Verbosity
-#define VERBOSITY_HANDLES ()
 #define TO_VERBOSITY_FLAGS(verbosity) (verbosity)
 #define TO_VERBOSITY(flags, handles) (flags)
 import Distribution.Verbosity (Verbosity, normal)
@@ -57,7 +53,7 @@ toVerbosityFlags verbosity = TO_VERBOSITY_FLAGS(verbosity)
 --
 -- With Cabal /3.16/ and older it simply returns the passed argument.
 toVerbosity :: VERBOSITY_FLAGS -> Verbosity
-toVerbosity flags = TO_VERBOSITY(flags, defaultVerbosityHandles_)
+toVerbosity flags = TO_VERBOSITY(flags, defaultVerbosityHandles)
 {-# ANN toVerbosity "HLint: ignore Redundant bracket" #-}
 
 -- | Extracts /verbosity flags/ from the passed flag.

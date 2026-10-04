@@ -1,3 +1,8 @@
+### 0.6.1.1
+
+- Minor stylistic improvements in module
+  *NgxExport.Distribution.Compat.Verbosity*.
+
 ### 0.6.1.0
 
 - Added a new module *NgxExport.Distribution.Compat.Verbosity* to support
